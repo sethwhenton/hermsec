@@ -64,8 +64,13 @@ The project should be split into specialized implementation agents/workstreams. 
 | Agent 8 | Security Intelligence Feed | `src/intel/**`, feed fetchers/cache/matching | Wave 2 |
 | Agent 9 | Testing, QA, Security Validation | `tests/**`, fixtures, CI checks | Wave 2 |
 | Agent 10 | VPS, GitHub, Future Remote Mode | `docs/remote-mode.md`, future modules | Wave 2 |
+| Agent 11 | Official Benchmark Dataset Evaluation | `tests/benchmarks/**`, official source manifests | Planned by sub-agent |
+| Agent 12 | Generated Vulnerable Apps | `tests/fixtures/repos/**`, `groundtruth.yml` | Planned by sub-agent |
+| Agent 13 | Evaluation Runner And Metrics | `src/eval/**`, `src/cli/commands/eval.ts` | Planned by sub-agent |
+| Agent 14 | Evaluation Reports And Final Report Evidence | `docs/evaluation/**`, scorecards and tables | Planned by sub-agent |
+| Agent 15 | Evaluation CI And Fixture Governance | fixture linting, source pinning, safety gates | Planned by sub-agent |
 
-Recommended simultaneous work limit: 5 to 6 active agents. More than that creates coordination noise and merge conflicts.
+Recommended simultaneous work limit: 5 to 6 active agents. More than that creates coordination noise and merge conflicts. The evaluation expansion adds 5 more specialized workstreams, bringing the total lifecycle plan to 15 implementation agents.
 
 ## Architecture Overview
 
@@ -2493,7 +2498,603 @@ A release candidate is acceptable only when:
 13. The demo fixture scan completes within the performance budget.
 14. The release notes list known limitations and any skipped optional tests.
 
-## Phase 10: Post-MVP VPS And GitHub Mode
+## Phase 10: Evaluation Benchmark Suite And Effectiveness Metrics
+
+### Goal
+
+Build an evaluation suite that measures Hermsec's detection performance and practical usefulness with reproducible evidence: true positives, false positives, false negatives, true negatives, precision, recall, F1, false-positive rate, false-negative rate, report quality, runtime, redaction quality, and scanner-only versus agent-assisted behavior.
+
+The evaluator is read-only. It may read Hermsec reports, fixture repositories, scanner outputs, benchmark manifests, and ground-truth files, but it must not modify scanned repositories, run installs, execute lifecycle scripts, require secrets, or make network calls by default.
+
+### Evaluation Workstreams
+
+| Agent | Workstream | Purpose |
+| --- | --- | --- |
+| Agent 11 | Official benchmark datasets | OWASP/NIST/WebGoat/Juice Shop source planning and ground truth |
+| Agent 12 | Generated vulnerable apps | Hermsec-owned vulnerable mini apps plus clean negative controls |
+| Agent 13 | Metrics runner | Precision, recall, F1, confusion matrices, matching algorithm |
+| Agent 14 | Evaluation reports | Markdown/HTML/JSON/Tex artifacts for final academic report |
+| Agent 15 | Evaluation CI and governance | Offline-safe fixture policy, source pinning, secret scanning |
+
+### Official Benchmark Dataset Plan
+
+Official benchmark assets live under:
+
+```text
+tests/benchmarks/
+  manifest.lock.json
+  subsets/
+    quick.json
+    standard.json
+    full.json
+  ground-truth/
+    owasp-benchmark-python-0.1.json
+    owasp-benchmark-java-1.2.json
+    nist-sard-juliet-java-1.3.json
+    nist-sard-juliet-cpp-1.3.1.json
+    owasp-webgoat-manual.json
+    owasp-juice-shop-manual.json
+  expected-results/
+  scorer-fixtures/
+  results/
+  scorecards/
+  .cache/
+    official-sources/
+    official-subsets/
+```
+
+`.cache/`, `results/`, and materialized upstream source trees must be git-ignored unless a later license review explicitly approves committing a tiny derived subset.
+
+Dataset priorities:
+
+| Priority | Dataset | Use | Initial Scope |
+| --- | --- | --- | --- |
+| P0 | OWASP Benchmark for Python | Primary Bandit/Semgrep precision, recall, FP/FN scoring | Pin commit SHA, parse expected results, start with quick/standard subsets |
+| P0 | OWASP Benchmark for Java | Semgrep Java scoring and cross-language comparison | Pin commit SHA, include categories Hermsec can reasonably scan |
+| P1 | NIST SARD Juliet Java | CWE-labeled static-analysis validation | Use accepted/non-deprecated cases where metadata is sufficient |
+| P1 | NIST SARD Juliet C/C++ | Future C/C++ coverage and gap visibility | Optional until C/C++ support is first-class |
+| P1 | OWASP Juice Shop | Realistic Node/Express/Angular effectiveness and report quality | Static scan only by default; manual/curated truth mapping |
+| P2 | OWASP WebGoat | Realistic Java effectiveness and safety behavior | Static scan only by default; manual/curated truth mapping |
+
+Acquisition rules:
+
+- Add an explicit opt-in command later, such as `tools/benchmarks/fetchOfficialBenchmarks.ts`.
+- Fetching is never part of default `npm test`.
+- Pin GitHub datasets by immutable commit SHA, not moving branches.
+- Pin SARD datasets by suite ID plus downloaded archive hash.
+- Verify SHA-256 before materializing subsets.
+- Do not run `npm install`, `mvn`, Gradle, package lifecycle scripts, app servers, Docker containers, or exploit flows during acquisition.
+- Commit only Hermsec-owned manifests, subset definitions, scoring code, and ground-truth mappings unless license review approves more.
+
+License and safety notes:
+
+- OWASP Benchmark Java is GPL-2.0; OWASP Benchmark Python is GPL-3.0. Keep full upstream source in ignored cache by default.
+- OWASP WebGoat is GPL-2.0-or-later and explicitly warns that running it makes the host vulnerable.
+- OWASP Juice Shop is MIT licensed, deliberately vulnerable, and should be run locally only if dynamic tests are explicitly enabled.
+- NIST Juliet is described by NIST as public domain for Juliet 1.1; still verify provenance for the exact downloaded SARD suite before committing copied source.
+- SARD status matters: exclude deprecated cases from new metrics and prefer accepted cases where available.
+- Do not include real secrets, real personal data, working credentials, exploit instructions, or public attack targets in benchmark fixtures.
+
+Subsets:
+
+```text
+quick:    5 TP and 5 FP per supported CWE/category where available
+standard: 25 TP and 25 FP per supported CWE/category where available
+full:     all supported cases from pinned datasets
+```
+
+Selection rules:
+
+- Use deterministic hashing of upstream case ID so subsets are stable across machines.
+- Preserve a balanced vulnerable/non-vulnerable split for FP/FN measurement.
+- Prefer categories aligned with MVP scanners: injection, path traversal, XSS, XXE, weak crypto/hash/randomness, command execution, deserialization, redirects, dependency vulnerabilities, and secrets.
+- Mark DAST-only or app-behavior-only cases as `effectivenessOnly` until Hermsec has a DAST capability.
+- Keep WebGoat and Juice Shop in effectiveness scoring, not strict precision scoring, until manually mapped file/route truth exists.
+
+Benchmark truth case:
+
+```ts
+type BenchmarkTruthCase = {
+  datasetId: string;
+  upstreamVersion: string;
+  upstreamCaseId: string;
+  language: string;
+  category: string;
+  cweIds: string[];
+  expectedVulnerable: boolean;
+  expectedKind: "true-positive" | "false-positive" | "mixed" | "effectiveness-only";
+  files: { path: string; startLine?: number; endLine?: number }[];
+  route?: string;
+  tags: string[];
+  sourceUrl: string;
+};
+```
+
+### Generated Vulnerable Apps And Ground Truth Fixtures
+
+Hermsec also needs small, controlled repositories that exercise scanner planning, scanner wrappers, normalization, dedupe, redaction, report rendering, and false-positive handling.
+
+Fixture app set:
+
+```text
+tests/fixtures/repos/
+  node-express-vulnerable/
+  node-express-clean/
+  python-flask-vulnerable/
+  python-flask-clean/
+  mixed-node-python-vulnerable/
+  next-style-vulnerable/
+  next-style-clean/
+```
+
+Vulnerability categories:
+
+| Category | Node/Express | Python/Flask | Scanner Targets |
+| --- | --- | --- | --- |
+| SQL injection | unsafe query construction | unsafe sqlite query construction | Semgrep, Bandit |
+| Command injection | `child_process` misuse | `subprocess` unsafe input | Semgrep, Bandit |
+| Path traversal | unsafe file path join/send | unsafe file read/download | Semgrep, Bandit |
+| XSS/template injection | unsanitized HTML response | unsafe template/string rendering | Semgrep |
+| SSRF-style sink | user-controlled fetch target, no live call | user-controlled request target, no live call | Semgrep |
+| Weak crypto/hash | md5/sha1/password hash toy usage | md5/sha1/password hash toy usage | Semgrep, Bandit |
+| Hardcoded fake secret | clearly fake token | clearly fake token | Gitleaks |
+| Insecure config | permissive CORS/cookies/debug flags | Flask debug/weak secret key | Semgrep, Bandit |
+| Dependency advisory | pinned vulnerable lockfile package | pinned vulnerable requirements package | npm audit, OSV, pip-audit |
+
+Clean negative controls mirror the same app shape but avoid vulnerable sinks, fake secrets, unsafe config, and intentionally vulnerable dependency pins.
+
+Safety constraints:
+
+- Every vulnerable app is clearly marked as a fixture in `README.md`.
+- Do not include real credentials, domains, tokens, API keys, webhook URLs, private URLs, or personal data.
+- Fake secrets must use obvious labels such as `HERMSEC_FAKE_TEST_TOKEN_DO_NOT_USE`.
+- Apps must not require package installation to be scanned.
+- Tests must not run package lifecycle scripts.
+- Do not include exploit payloads, attack walkthroughs, or instructions for abusing the apps.
+- Network behavior must be stubbed, disabled, or unreachable in tests.
+- Keep vulnerable code minimal and toy-like so reports are stable.
+- Live advisory scans are opt-in and skipped by default.
+
+Each fixture repository includes `groundtruth.yml`:
+
+```yaml
+schemaVersion: 1
+fixtureId: node-express-vulnerable
+language:
+  - javascript
+framework:
+  - express
+kind: vulnerable-app
+safeToRun: false
+notes:
+  - Intentionally vulnerable scanner fixture.
+  - Do not deploy.
+expectedFindings:
+  - id: node-sqli-user-search
+    category: code
+    weakness:
+      cwe:
+        - CWE-89
+      label: sql-injection
+    severity: high
+    confidence: high
+    expectedTools:
+      - semgrep
+    location:
+      file: src/routes/search.js
+      startLineHint: 12
+    match:
+      titleContains:
+        - sql
+      messageContains:
+        - injection
+unexpectedFindings:
+  allowExtraInformational: true
+negativeControl:
+  pairedFixture: node-express-clean
+```
+
+Ground-truth rules:
+
+- `id` is Hermsec-owned and stable.
+- `expectedTools` names scanner families, not exact rule IDs, unless a rule ID is stable in Hermsec-owned rules.
+- `location.startLineHint` is a soft assertion to reduce brittle tests.
+- Dependency findings may include advisory IDs only when fixture scanner evidence contains them.
+- Ground truth must never require invented CVEs.
+- Negative controls assert zero high/critical code, secret, and dependency findings unless the scanner output fixture explicitly says otherwise.
+
+### Evaluation Runner And Metrics
+
+Primary files:
+
+```text
+src/eval/
+  schema.ts
+  groundTruthSchema.ts
+  findingProjection.ts
+  identifierNormalize.ts
+  pathNormalize.ts
+  severityTolerance.ts
+  cweTolerance.ts
+  matcher.ts
+  metrics.ts
+  confusionMatrix.ts
+  categoryScoring.ts
+  modeComparison.ts
+  evalRunner.ts
+  reportWriter.ts
+src/cli/commands/eval.ts
+tests/unit/eval/
+tests/integration/eval/
+tests/e2e/eval/
+tests/fixtures/eval/
+```
+
+Commands:
+
+```text
+hermsec eval run
+hermsec eval compare
+hermsec eval explain-match
+```
+
+Example commands:
+
+```text
+hermsec eval run --suite tests/fixtures/eval/suites/mvp --mode scanner-only --out .hermsec-eval/scanner-only
+hermsec eval run --suite tests/fixtures/eval/suites/mvp --mode agent-assisted --out .hermsec-eval/agent-assisted
+hermsec eval compare --scanner-only .hermsec-eval/scanner-only/eval-summary.json --agent-assisted .hermsec-eval/agent-assisted/eval-summary.json --out .hermsec-eval/comparison.json
+hermsec eval explain-match --suite tests/fixtures/eval/suites/mvp --case node-vulnerable-lockfile --finding GT-001
+```
+
+Ground truth schema:
+
+```ts
+type GroundTruthFinding = {
+  id: string;
+  category: "code" | "dependency" | "secret" | "supply-chain" | "config";
+  title: string;
+  severity: "critical" | "high" | "medium" | "low" | "info";
+  cwe: string[];
+  identifiers: { cve: string[]; ghsa: string[]; osv: string[] };
+  location?: { file: string; startLine?: number; endLine?: number };
+  package?: { ecosystem: string; name: string; installedVersion?: string };
+  ruleIds?: string[];
+  aliases?: string[];
+  tags?: string[];
+  matchHints?: {
+    lineTolerance?: number;
+    severityTolerance?: "exact" | "one-step" | "category-only";
+    cweTolerance?: "exact" | "alias" | "weakness-family";
+  };
+};
+```
+
+Matching algorithm:
+
+- Normalize paths with POSIX separators and strip fixture-specific absolute roots.
+- Normalize identifiers to uppercase canonical forms: `CVE-YYYY-NNNN`, `GHSA-*`, `OSV-*`, `CWE-N`.
+- Dependency findings require package match plus advisory ID/alias unless ground truth marks advisory matching optional.
+- Secret findings never compare raw secret values; match on file, rule/type, and redacted fingerprint only.
+- A Hermsec finding can match at most one ground-truth finding.
+- A ground-truth finding can match at most one Hermsec finding.
+- Sort candidates by score descending, then expected ID, actual fingerprint, category, and path for stable ties.
+- Accept matches only when `score >= thresholds.minMatchScore`, default `60`.
+
+Candidate scoring:
+
+| Signal | Code | Dependency | Secret | Config/Supply-chain |
+| --- | ---: | ---: | ---: | ---: |
+| category match | +15 | +15 | +20 | +15 |
+| exact advisory ID or alias | +0 | +45 | +0 | +15 |
+| package ecosystem/name match | +0 | +30 | +0 | +0 |
+| CWE exact match | +25 | +0 | +0 | +20 |
+| CWE tolerated family/alias | +15 | +0 | +0 | +12 |
+| same normalized file path | +25 | +0 | +25 | +30 |
+| line overlap | +20 | +0 | +15 | +10 |
+| line within tolerance | +12 | +0 | +8 | +6 |
+| scanner/rule ID overlap | +20 | +10 | +20 | +20 |
+| severity exact | +10 | +10 | +10 | +10 |
+| severity within tolerance | +5 | +5 | +5 | +5 |
+
+Metrics:
+
+```ts
+type EvalMetrics = {
+  totalExpected: number;
+  totalActual: number;
+  truePositive: number;
+  falsePositive: number;
+  falseNegative: number;
+  trueNegativeCases: number;
+  precision: number;
+  recall: number;
+  f1: number;
+  macroF1: number;
+  weightedF1: number;
+};
+```
+
+Definitions:
+
+- `TP`: accepted one-to-one match.
+- `FP`: Hermsec finding with no accepted ground-truth match.
+- `FN`: ground-truth finding with no accepted Hermsec match.
+- `TN`: clean case where expected and actual findings are both empty. TN is reported for completeness but not used in precision, recall, or F1.
+
+Confusion matrices:
+
+- Detection matrix: `TP`, `FP`, `FN`, `TN`.
+- Category matrix: expected category rows, predicted category columns, plus `<missed>` and `<spurious>`.
+- Severity matrix: expected severity rows, predicted severity columns for matched findings, plus `<missed>` and `<spurious>`.
+- CWE matrix: expected CWE bucket rows, predicted CWE bucket columns, plus `<missing-cwe>`.
+
+Per-category scores:
+
+```text
+code
+dependency
+secret
+supply-chain
+config
+```
+
+Severity scoring:
+
+- Strict severity match requires exact equality.
+- Tolerant severity match allows one ordinal step.
+- `critical` expected findings may tolerate `high` for matching, but still fail strict severity accuracy.
+- `info` findings do not satisfy expected `medium` or higher.
+
+CWE scoring:
+
+- Strict CWE match requires intersection between expected and actual CWE IDs.
+- Alias match uses ground-truth `aliases`.
+- Weakness-family match uses deterministic buckets in `cweTolerance.ts`.
+- The evaluator must not invent CWE IDs; tolerated buckets only affect scoring explanations.
+
+Scanner-only versus agent-assisted comparison:
+
+- Scanner-only mode evaluates `findings.json` produced without model explanation.
+- Agent-assisted mode evaluates `findings.json` plus explanation artifacts.
+- Detection metrics should normally be identical between modes.
+- Any delta must be explained by deterministic enrichment, not model-only claims.
+- If agent-assisted output changes normalized finding identifiers, severity, location, package, or evidence without scanner evidence, mark `agentChangedDetection: true`.
+
+Evaluation outputs:
+
+```text
+<outputDir>/
+  eval-summary.json
+  eval-matches.json
+  confusion-matrix.json
+  per-category.json
+  mode-comparison.json
+  eval-report.md
+```
+
+### Evaluation Evidence And Final Report Artifacts
+
+Evaluation output is a structured evidence bundle that can be cited directly in the final academic report.
+
+Output layout:
+
+```text
+docs/evaluation/<campaign-id>/
+  evaluation.md
+  evaluation.html
+  evaluation-summary.json
+  evaluation-results.tex
+  charts/
+    severity-by-tool.svg
+    finding-overlap.svg
+    runtime-by-scenario.svg
+    report-completeness.svg
+    redaction-results.svg
+  tables/
+    detection-matrix.md
+    detection-matrix.tex
+    tool-comparison.md
+    tool-comparison.tex
+    performance-results.md
+    performance-results.tex
+    report-quality-rubric.md
+    report-quality-rubric.tex
+    limitations.md
+    limitations.tex
+  runs/
+    <run-id>/
+      run-metadata.json
+      hermsec-summary.json
+      hermsec-findings.json
+      hermsec-report.md
+      hermsec-report.html
+      raw-scanner-index.json
+      normalized-finding-map.json
+      evaluator-notes.md
+```
+
+Evaluation artifacts must not include real secrets, private source code, API keys, private repository URLs, full environment dumps, or unredacted scanner evidence.
+
+Required scenarios:
+
+| Scenario | Purpose | Expected Evidence |
+| --- | --- | --- |
+| Clean repository | Confirm low-noise behavior | No critical/high findings unless scanners provide evidence |
+| Vulnerable Python repository | Test Bandit/Semgrep-style code findings | SQL injection, command injection, unsafe subprocess, or toy equivalents |
+| Vulnerable Node lockfile | Test dependency advisory handling | CVE/GHSA/OSV identifiers only when present in scanner evidence |
+| Fake secret repository | Test secret detection and redaction | Secret finding appears, value is redacted in every artifact |
+| Mixed Node/Python repository | Test multi-scanner orchestration | Findings grouped by source, language, severity, and confidence |
+| Offline run | Test local-first behavior | Local scanners run, online enrichment is skipped or queued |
+| No-model run | Test scanner-only usefulness | Complete report without AI explanation |
+| Mock-model run | Test grounded explanation | Model explains evidence without adding unsupported CVEs |
+| Repeated scan with fix | Test delta reporting | New, unchanged, fixed, and worsened findings are classified |
+| Large generated fixture | Test performance | Runtime, memory, output size, and report rendering stay within budget |
+
+Required charts:
+
+- Severity by tool.
+- Finding overlap.
+- Runtime by scenario.
+- Report completeness.
+- Redaction results.
+
+Required tables:
+
+- Detection matrix.
+- Tool comparison.
+- Report quality rubric.
+- Performance results.
+- Limitations table.
+
+Final-report integration:
+
+- Generate `evaluation-results.tex` and table-specific `.tex` files.
+- Use generated artifacts in the final report's evaluation method, results, discussion, limitations, and appendix.
+- Academic claims must be phrased from measured evidence.
+- Do not claim Hermsec is more accurate than a scanner unless the evaluation defines and measures that comparison.
+
+### Evaluation CI, Safety, And Fixture Governance
+
+Evaluation CI must prove Hermsec can evaluate vulnerable repositories without becoming an unsafe runner.
+
+CI layers:
+
+```text
+ci:evaluation-static
+  fixture manifest lint
+  source pin lint
+  no-network policy lint
+  secret scan
+  unsafe-script scan
+
+ci:evaluation-fixtures
+  generated vulnerability fixture lint
+  scanner-output fixture schema tests
+  golden normalization tests
+  offline scan tests
+
+ci:evaluation-safety
+  no install/package-executor tests
+  blocked network tests
+  lifecycle script non-execution tests
+  external-target detection tests
+  report redaction tests
+```
+
+Rules:
+
+- Evaluation CI runs with offline mode enabled by default.
+- Evaluation CI must not install dependencies, run package lifecycle scripts, run package executors, or modify fixture source trees.
+- All scanner tests run against checked-in fixtures, generated temp copies, or mocked scanner output.
+- Tests that need real network, live advisories, cloud model calls, or package registry access are opt-in and excluded from default CI.
+- Benchmark repositories must be pinned by immutable source, version, and hash before use.
+
+Every fixture repository must include `hermsec-fixture.json`:
+
+```json
+{
+  "id": "node-vulnerable-lockfile",
+  "kind": "repo",
+  "purpose": "dependency scanner normalization",
+  "source": {
+    "type": "generated",
+    "origin": "local",
+    "pinnedRef": null,
+    "sha256": null,
+    "retrievedAt": null
+  },
+  "safety": {
+    "containsIntentionalVulnerabilities": true,
+    "containsExploitCode": false,
+    "requiresNetwork": false,
+    "allowedTargets": ["localhost", "127.0.0.1"],
+    "packageScriptsMustNotRun": true
+  },
+  "expectedScanners": ["osv-scanner", "npm-audit"],
+  "expectedFindingKinds": ["dependency"],
+  "fakeSecretsOnly": true,
+  "owner": "Hermsec evaluation fixtures"
+}
+```
+
+Generated vulnerable code constraints:
+
+- Vulnerabilities must be toy examples, not operational exploit tooling.
+- Code must not contact public IPs, domains, metadata services, package registries, paste sites, or webhook collectors.
+- Code must not include working malware behavior, persistence, credential theft, destructive file operations, cryptominers, worms, or exploit chains.
+- Network examples must use inert strings, comments, mocked clients, or loopback-only endpoints.
+- Command-injection examples must use harmless placeholders and must not be executed by tests.
+- SQL injection examples must use local in-memory data or static snippets only.
+- Secret fixtures must contain fake, labeled, non-routable credentials only.
+- Dependency fixtures should prefer lockfiles and scanner-output fixtures over installing vulnerable packages.
+
+Source pinning layout:
+
+```text
+tests/fixtures/sources/<fixture-id>/
+  SOURCE.md
+  hermsec-fixture.json
+  checksums.txt
+  normalized/
+```
+
+`SOURCE.md` records upstream URL, immutable commit/release/archive digest, retrieval date, license, purpose, safety review notes, removed/neutralized files, and SHA-256 checksums.
+
+Default evaluation runs set:
+
+```text
+HERMSEC_OFFLINE=1
+HERMSEC_DISABLE_NETWORK=1
+HERMSEC_DISABLE_PROVIDER_CALLS=1
+HERMSEC_DISABLE_PACKAGE_INSTALLS=1
+HERMSEC_DISABLE_LIFECYCLE_SCRIPTS=1
+```
+
+Fixture linter fails CI for:
+
+- missing `hermsec-fixture.json`
+- fixture manifests with `requiresNetwork: true` in default CI paths
+- undocumented package scripts
+- `curl | sh`, `wget | sh`, base64/eval loaders, remote script execution, or install-time fetches
+- non-loopback URLs in runnable code paths
+- real-looking secrets not matching the fake secret allowlist
+- executable exploit launchers
+- references to external targets, webhook collectors, or metadata service IPs
+- generated files too large for stable CI without documented performance purpose
+
+### Evaluation Tests
+
+- Parser tests for OWASP expected-results CSV files.
+- Parser tests for SARD metadata/status files.
+- Ground-truth schema validation tests.
+- Scorer tests with synthetic Hermsec findings covering TP, FP, FN, TN, duplicate findings, wrong CWE, wrong file, and missing line metadata.
+- Snapshot tests for generated scorecards.
+- Safety tests proving benchmark runs do not execute installs, lifecycle scripts, package executors, app servers, or exploit commands.
+- Opt-in integration tests that run Hermsec against the quick subset from local cache only.
+- Regression tests proving model explanations cannot change benchmark truth or add unsupported CVE/CWE claims.
+- Matcher tests for exact match, duplicate actual findings, stable tie-breaking, path normalization, and Windows paths with spaces.
+- Dependency tests for CVE/GHSA/OSV aliases, package mismatch, ecosystem mismatch, and advisory overlap.
+- Severity tests for exact, one-step tolerant, critical downgrade, and invalid severity values.
+- Mode comparison tests detect invented identifiers and model-caused finding mutation.
+
+### Evaluation Acceptance Criteria
+
+1. `tests/benchmarks/manifest.lock.json` can reproduce every selected official dataset from pinned sources.
+2. Default CI does not download, install, execute, or host benchmark applications.
+3. Quick subset scoring produces deterministic TP, FP, FN, TN, precision, recall, F1, FPR, and FNR.
+4. Generated vulnerable apps are deterministic and paired with clean negative controls.
+5. Every fixture has valid `groundtruth.yml` and `hermsec-fixture.json`.
+6. Evaluator produces deterministic, schema-valid JSON and Markdown reports.
+7. Matching details are explainable for every TP, FP, and FN.
+8. Severity and CWE tolerance scores are reported separately from strict scores.
+9. Scanner-only and agent-assisted results can be compared in one command.
+10. Agent-assisted evaluation flags invented identifiers or model-caused detection changes.
+11. Every evaluation campaign writes Markdown, HTML, JSON, chart, table, and per-run metadata artifacts.
+12. The final academic report can include generated `.tex` tables without manually retyping metrics.
+13. Evaluation reports contain no secrets, no live target instructions, and no invented CVE/advisory identifiers.
+
+## Phase 11: Post-MVP VPS And GitHub Mode
 
 Status: post-MVP. Local mode remains the primary build target. Remote mode must reuse the same scan engine, finding schema, scheduler rules, report renderer, redaction layer, and scanner safety policy from the local MVP.
 

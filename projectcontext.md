@@ -20,7 +20,7 @@ docs/research/local-mode-chat-agent-intel-plan.md
 implementationplan.md
 ```
 
-These contain the end-to-end architecture, scanner choices, vulnerability intelligence sources, GitHub access strategy, model role, data schema, local-mode chat agent plan, workspace/session model, git-aware scheduler, harness boundary, implementation phases, testing plan, and presentation plan.
+These contain the end-to-end architecture, scanner choices, vulnerability intelligence sources, GitHub access strategy, model role, data schema, local-mode chat agent plan, workspace/session model, git-aware scheduler, harness boundary, implementation phases, benchmark evaluation plan, testing plan, and presentation plan.
 
 ## Planned Stack
 
@@ -73,6 +73,7 @@ These contain the end-to-end architecture, scanner choices, vulnerability intell
 11. Add restricted agent runtime, provider router, redaction, and structured-output validation.
 12. Add scheduled/offline/online mode support with git-aware baselines.
 13. Add security intelligence update and Vibe Coder Security Feed.
-14. Add AgentMail and Telegram later, after the local MVP.
-15. Add Hermes Agent or VPS/GitHub adapter after the Hermsec core is stable.
-16. Create demo vulnerable repos and presentation materials.
+14. Add evaluation benchmarks, generated vulnerable fixtures, metrics runner, scorecards, and final-report evidence outputs.
+15. Add AgentMail and Telegram later, after the local MVP.
+16. Add Hermes Agent or VPS/GitHub adapter after the Hermsec core is stable.
+17. Create demo vulnerable repos and presentation materials.
