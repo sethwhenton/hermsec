@@ -51,6 +51,7 @@ type BlessedNode = {
   focus?(): void;
   hide?(): void;
   show?(): void;
+  key?(names: string | string[], listener: (character?: unknown, key?: BlessedKey) => boolean | void): void;
   log?(value: string): void;
   add?(value: string): void;
   scrollTo?(value: number): void;
@@ -64,6 +65,11 @@ type InputNode = BlessedNode & {
   readInput?(): void;
   _reading?: boolean;
   value?: string;
+};
+
+type BlessedKey = {
+  name?: string;
+  full?: string;
 };
 
 type OnboardingStep =
@@ -88,6 +94,7 @@ type RichAction = {
   label: string;
   command: string;
   description: string;
+  aliases?: string[];
 };
 
 const PROVIDER_ENV: Record<PreferredModelProvider, string> = {
@@ -109,7 +116,7 @@ const DEFAULT_ACTIONS: RichAction[] = [
   { label: "Reports", command: "/reports", description: "Local report list" },
   { label: "Settings", command: "/settings", description: "Privacy/model/report settings" },
   { label: "Model", command: "/model", description: "Choose model provider" },
-  { label: "Provider", command: "/provider", description: "Configure provider env var" },
+  { label: "Provider", command: "/provider", description: "Configure provider env var", aliases: ["/connect"] },
   { label: "Sessions", command: "/sessions", description: "Saved chat history" },
 ];
 
@@ -140,6 +147,7 @@ export class RichHermsecTui {
   private overlayHeader = "";
   private overlayMode: "commands" | "menu" = "menu";
   private selectedActionIndex = 0;
+  private lastOverlayNavigation?: { name: "up" | "down"; at: number };
   private homeMode = false;
   private exitResolver?: (summary: TuiRunSummary) => void;
   private onboardingStep: OnboardingStep = "done";
@@ -348,6 +356,8 @@ export class RichHermsecTui {
         this.updateLiveInputOverlay();
       }, 0);
     });
+    this.inputBox.key?.(["up"], () => (this.handleOverlayNavigation("up") ? false : undefined));
+    this.inputBox.key?.(["down"], () => (this.handleOverlayNavigation("down") ? false : undefined));
     this.beginInput();
   }
 
@@ -377,14 +387,10 @@ export class RichHermsecTui {
       void this.exit("user-exit");
     });
     this.screen.key(["up"], () => {
-      if (this.overlayVisible) {
-        this.moveSelection(-1);
-      }
+      this.handleOverlayNavigation("up");
     });
     this.screen.key(["down"], () => {
-      if (this.overlayVisible) {
-        this.moveSelection(1);
-      }
+      this.handleOverlayNavigation("down");
     });
     this.screen.key(["tab"], () => {
       this.focusInput();
@@ -1173,6 +1179,24 @@ export class RichHermsecTui {
     this.render();
   }
 
+  private handleOverlayNavigation(name: "up" | "down"): boolean {
+    if (!this.overlayVisible || this.currentActions.length === 0) {
+      return false;
+    }
+    if (this.currentActions.length < 2) {
+      return true;
+    }
+
+    const now = Date.now();
+    if (this.lastOverlayNavigation?.name === name && now - this.lastOverlayNavigation.at < 15) {
+      return true;
+    }
+
+    this.lastOverlayNavigation = { name, at: now };
+    this.moveSelection(name === "up" ? -1 : 1);
+    return true;
+  }
+
   private async activateSelectedAction(): Promise<void> {
     if (!this.currentActionHandler || this.currentActions.length === 0) {
       return;
@@ -1665,7 +1689,7 @@ function commandActions(): RichAction[] {
     { label: "Reports", command: "/reports", description: "Show local reports" },
     { label: "Settings", command: "/settings", description: "Edit settings" },
     { label: "Models", command: "/models", description: "Switch model" },
-    { label: "Provider", command: "/connect", description: "Connect provider" },
+    { label: "Provider", command: "/provider", description: "Connect provider", aliases: ["/connect"] },
     { label: "Workspace", command: "/workspace list", description: "Manage workspaces" },
     { label: "Schedule", command: "/schedule list", description: "Show timed scans" },
     { label: "History", command: "/history", description: "Current session history" },
@@ -1681,16 +1705,17 @@ function filterCommandActions(input: string): RichAction[] {
     return commandActions();
   }
   const matches = commandActions().filter((action) => (
-    normalizeAction(action.command.replace(/^\//, "")).startsWith(query) ||
-    normalizeAction(action.label).includes(query) ||
-    normalizeAction(action.description).includes(query)
+    actionSearchTerms(action).some((term) => term.startsWith(query) || term.includes(query))
   ));
   return matches.length > 0 ? matches : commandActions();
 }
 
 function isExactSlashCommand(input: string, actions: RichAction[]): boolean {
   const normalized = input.trim().toLowerCase();
-  return actions.some((action) => action.command.toLowerCase() === normalized);
+  return actions.some((action) => (
+    action.command.toLowerCase() === normalized ||
+    action.aliases?.some((alias) => alias.toLowerCase() === normalized)
+  ));
 }
 
 function formatActionOverlay(header: string, actions: RichAction[], mode: "commands" | "menu", selectedIndex: number): string {
@@ -1713,7 +1738,7 @@ function formatActionOverlay(header: string, actions: RichAction[], mode: "comma
 }
 
 function formatActionRows(actions: RichAction[], mode: "commands" | "menu", selectedIndex: number): string[] {
-  return actions.slice(0, 12).map((action, index) => {
+  return actions.map((action, index) => {
     const key = mode === "menu" ? `${index + 1}` : action.command;
     const label = mode === "menu" ? action.label : action.description;
     const detail = mode === "menu" ? action.description : "";
@@ -1761,14 +1786,23 @@ function resolveAction(input: string, actions: RichAction[]): RichAction | undef
 
   const normalized = normalizeAction(trimmed);
   return actions.find((action) => (
-    normalizeAction(action.label) === normalized ||
-    normalizeAction(action.command) === normalized ||
-    normalizeAction(action.command.replace(/^\//, "")) === normalized
+    actionSearchTerms(action).some((term) => term === normalized)
   ));
 }
 
 function normalizeAction(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function actionSearchTerms(action: RichAction): string[] {
+  return [
+    action.label,
+    action.command,
+    action.command.replace(/^\//, ""),
+    action.description,
+    ...(action.aliases ?? []),
+    ...(action.aliases ?? []).map((alias) => alias.replace(/^\//, "")),
+  ].map(normalizeAction).filter(Boolean);
 }
 
 function assignLayout(node: BlessedNode | undefined, layout: Record<string, unknown>): void {
@@ -1805,3 +1839,10 @@ function nonInteractiveMessage(): string {
 function hasData<T>(result: CommandResult<T>): result is Extract<CommandResult<T>, { ok: true }> & { data: T } {
   return result.ok && result.data !== undefined;
 }
+
+export const __richTuiTestInternals = {
+  commandActions,
+  filterCommandActions,
+  formatActionOverlay,
+  resolveAction,
+};

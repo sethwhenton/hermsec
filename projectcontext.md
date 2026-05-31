@@ -39,7 +39,7 @@ Current verified scanner/tool status on this PC: Semgrep, Gitleaks, Bandit, OSV-
 
 Current verified intel status: CISA KEV and NVD live update both complete successfully; the combined cache contains `1654` items, and offline cache reuse works.
 
-Current full-suite status on June 1, 2026: `pmg npm test` builds successfully and runs `51` Node tests; `51` pass, `0` fail, and `0` skip.
+Current full-suite status on June 1, 2026: `pmg npm test` builds successfully and runs `52` Node tests; `52` pass, `0` fail, and `0` skip.
 
 Current verified eval status: the Node vulnerable fixture scanner-only run reports precision `1.00`, recall `1.00`, and F1 `1.00` after aligning the JSON ground truth with all intentionally planted findings.
 

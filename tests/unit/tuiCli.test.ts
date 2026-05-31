@@ -6,7 +6,7 @@ import { Readable, Writable } from "node:stream";
 import test from "node:test";
 import { createCliToolbox } from "../../src/tui/cli.js";
 import { formatHelp, formatHistory } from "../../src/tui/format.js";
-import { RichHermsecTui } from "../../src/tui/RichApp.js";
+import { __richTuiTestInternals, RichHermsecTui } from "../../src/tui/RichApp.js";
 import type { TuiWorkspace } from "../../src/tui/types.js";
 
 test("TUI help advertises command, session, and history commands", () => {
@@ -51,6 +51,20 @@ test("TUI history formatter shows recent transcript messages", () => {
   assert.doesNotMatch(history, /TUI cwd/);
   assert.match(history, /You/);
   assert.match(history, /Hermsec/);
+});
+
+test("rich TUI command palette keeps slash commands navigable", () => {
+  const { commandActions, filterCommandActions, formatActionOverlay, resolveAction } = __richTuiTestInternals;
+  const actions = commandActions();
+
+  assert.equal(actions.find((action) => action.label === "Provider")?.command, "/provider");
+  assert.equal(filterCommandActions("/provid")[0]?.command, "/provider");
+  assert.equal(filterCommandActions("/connect")[0]?.command, "/provider");
+  assert.equal(resolveAction("/connect", actions)?.command, "/provider");
+
+  const overlay = formatActionOverlay("/", actions, "commands", actions.length - 1);
+  assert.match(overlay, /\/exit/);
+  assert.match(overlay, /\{yellow-bg\}\/exit/);
 });
 
 test("TUI scan adapter uses the real scan harness", async () => {
