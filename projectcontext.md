@@ -17,9 +17,10 @@ docs/research/manual-mode-start-to-finish.md
 docs/research/automation-online-offline-notifications.md
 docs/research/tui-onboarding-harness-plan.md
 docs/research/local-mode-chat-agent-intel-plan.md
+implementationplan.md
 ```
 
-These contain the end-to-end architecture, scanner choices, vulnerability intelligence sources, GitHub access strategy, model role, data schema, local-mode chat agent plan, workspace/session model, git-aware scheduler, harness boundary, implementation phases, and presentation plan.
+These contain the end-to-end architecture, scanner choices, vulnerability intelligence sources, GitHub access strategy, model role, data schema, local-mode chat agent plan, workspace/session model, git-aware scheduler, harness boundary, implementation phases, testing plan, and presentation plan.
 
 ## Planned Stack
 
@@ -59,21 +60,19 @@ These contain the end-to-end architecture, scanner choices, vulnerability intell
 
 ## Next Work
 
-1. Initialize the local Hermsec folder as a git repository and connect it to `https://github.com/sethwhenton/Security-insider-Lab-II.git`.
-2. Create the TypeScript project skeleton.
-3. Implement `hermsec doctor`.
-4. Implement `hermsec scan <target>` with local path metadata only.
-5. Add onboarding prompts for privacy mode, project source, scanner readiness, report destination, and schedule choice.
-6. Add GitHub URL clone-to-temp support.
-7. Add repository discovery and scanner plan.
-8. Add scanner wrappers one at a time.
-9. Normalize findings into the shared schema.
-10. Add Markdown/JSON reports.
-11. Add chatbot-first TUI dashboard, workspace/session manager, scan progress, findings list, finding detail, and report center.
-12. Add model explanation.
-13. Add configurable local report saving.
-14. Add scheduled/offline/online mode support.
-15. Add security intelligence update and Vibe Coder Security Feed.
-16. Add AgentMail and Telegram later, after the local MVP.
-17. Add Hermes Agent adapter after the Hermsec core is stable.
-18. Create demo vulnerable repos and presentation materials.
+1. Follow `implementationplan.md` as the source of truth for workstream ownership, implementation phases, schemas, tool contracts, and test coverage.
+2. Create the TypeScript project skeleton with `.npmrc` hardening and no lifecycle install scripts.
+3. Implement app-data storage, workspaces, sessions, and local report destination config.
+4. Implement `hermsec doctor`.
+5. Implement `hermsec scan <target>` with local path metadata only.
+6. Add repository discovery, scanner planning, and safe process execution.
+7. Add one scanner wrapper at a time, beginning with a fixture-backed scanner path.
+8. Normalize findings into the shared schema.
+9. Add HTML/Markdown/JSON local report rendering and report index.
+10. Add chatbot-first TUI onboarding, dashboard, scan progress, findings list, finding detail, and report center.
+11. Add restricted agent runtime, provider router, redaction, and structured-output validation.
+12. Add scheduled/offline/online mode support with git-aware baselines.
+13. Add security intelligence update and Vibe Coder Security Feed.
+14. Add AgentMail and Telegram later, after the local MVP.
+15. Add Hermes Agent or VPS/GitHub adapter after the Hermsec core is stable.
+16. Create demo vulnerable repos and presentation materials.
