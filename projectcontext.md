@@ -9,7 +9,7 @@ Hermsec is a local-first, CVE-aware AI security assistant for repositories. The 
 Hermsec now has a hardened local production-readiness milestone:
 
 - TypeScript CLI package with `hermsec` bin.
-- Blessed-powered keyboard-first terminal chatbot UI with safe non-interactive fallback, fixed input focus, scroll-locked responsive status/context/conversation panels, paste-friendly input, first-run and explicit `hermsec onboard` onboarding in the same panel view, typed command choices, `/help` and `/commands`, `/settings`, `/model`, `/provider`, `/history`, `/sessions`, and wiring to the real doctor, scan harness, report index, schedule list, workspace store, session store, and security-intel update tools.
+- Blessed-powered keyboard-first terminal chatbot UI with safe non-interactive fallback, fixed input focus, an OpenCode-style single chat surface, temporary command/settings/model palettes, paste-friendly input, first-run and explicit `hermsec onboard` onboarding, typed command choices, `/help` and `/commands`, `/settings`, `/model`, `/provider`, `/history`, `/sessions`, and wiring to the real doctor, scan harness, report index, schedule list, workspace store, session store, and security-intel update tools.
 - Local scan harness with repository discovery, built-in heuristics for secrets, JS/TS, Python, package/lockfile, and config/supply-chain patterns, plus optional external scanner execution.
 - JSON-backed app data, user config, workspaces, schedules, sessions, report indexes, and security-intel cache.
 - Deterministic local JSON/Markdown/HTML reports with redaction, evidence bundles, and delta artifacts.

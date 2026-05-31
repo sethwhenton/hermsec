@@ -12,7 +12,6 @@ import {
   activeWorkspace,
   defaultWorkspaceName,
   formatDoctor,
-  formatHelp,
   formatHistory,
   formatReports,
   formatSchedules,
@@ -50,6 +49,8 @@ type BlessedNode = {
   setContent(value: string): void;
   destroy(): void;
   focus?(): void;
+  hide?(): void;
+  show?(): void;
   log?(value: string): void;
   add?(value: string): void;
   scrollTo?(value: number): void;
@@ -87,14 +88,6 @@ type RichAction = {
   command: string;
   description: string;
 };
-
-const LOGO = String.raw`
- _   _ _____ ____  __  __ ____  _____ ____
-| | | | ____|  _ \|  \/  / ___|| ____/ ___|
-| |_| |  _| | |_) | |\/| \___ \|  _|| |
-|  _  | |___|  _ <| |  | |___) | |__| |___
-|_| |_|_____|_| \_\_|  |_|____/|_____\____|
-`.trim();
 
 const PROVIDER_ENV: Record<PreferredModelProvider, string> = {
   none: "",
@@ -139,6 +132,7 @@ export class RichHermsecTui {
   private footer?: BlessedNode;
   private currentActions: RichAction[] = [];
   private currentActionHandler: ((action: RichAction) => Promise<void> | void) | undefined;
+  private overlayVisible = false;
   private exitResolver?: (summary: TuiRunSummary) => void;
   private onboardingStep: OnboardingStep = "done";
   private onboardingDraft: OnboardingDraft = {};
@@ -202,35 +196,32 @@ export class RichHermsecTui {
 
     this.logo = blessed.box({
       parent: this.screen,
-      top: 1,
-      left: 3,
-      width: 60,
+      bottom: 1,
+      left: 2,
+      width: 1,
       height: 5,
-      tags: true,
-      content: `{cyan-fg}${LOGO}{/cyan-fg}`,
-      style: { fg: "cyan", bg: "black" },
+      tags: false,
+      content: "",
+      style: { fg: "cyan", bg: "cyan" },
     }) as BlessedNode;
 
     this.modelLine = blessed.box({
       parent: this.screen,
-      top: 1,
-      left: 65,
-      width: 52,
-      height: 5,
-      border: "line",
+      bottom: 2,
+      left: 5,
+      right: 4,
+      height: 1,
       tags: true,
-      label: " status ",
-      content: "loading settings...",
-      style: { fg: "white", bg: "black", border: { fg: "cyan" } },
+      content: "",
+      style: { fg: "white", bg: "#1f1f1f" },
     }) as BlessedNode;
 
     this.chat = blessed.log({
       parent: this.screen,
-      top: 11,
-      left: 2,
-      width: 70,
-      bottom: 10,
-      border: "line",
+      top: 1,
+      left: 5,
+      right: 4,
+      bottom: 8,
       tags: true,
       scrollable: true,
       alwaysScroll: true,
@@ -238,65 +229,55 @@ export class RichHermsecTui {
       scrollback: 200,
       keys: false,
       mouse: false,
-      scrollbar: { ch: " ", style: { bg: "cyan" } },
-      label: " conversation ",
       style: {
         fg: "white",
         bg: "black",
-        border: { fg: "cyan" },
       },
     }) as BlessedNode;
 
     this.detail = blessed.box({
       parent: this.screen,
-      top: 11,
-      left: 74,
-      width: 42,
-      bottom: 10,
-      border: "line",
+      left: 12,
+      width: 76,
+      bottom: 7,
+      height: 13,
       tags: true,
       scrollable: true,
       alwaysScroll: true,
       keys: false,
       mouse: false,
-      scrollbar: { ch: " ", style: { bg: "cyan" } },
-      label: " context ",
       style: {
         fg: "white",
         bg: "black",
-        border: { fg: "cyan" },
       },
     }) as BlessedNode;
+    this.detail.hide?.();
 
     this.toolbar = blessed.box({
       parent: this.screen,
       left: 2,
       right: 2,
-      bottom: 6,
-      height: 3,
+      bottom: 1,
+      height: 5,
       tags: true,
-      border: "line",
-      label: " commands ",
-      style: { fg: "white", bg: "black", border: { fg: "cyan" } },
+      content: "",
+      style: { fg: "white", bg: "#1f1f1f" },
     }) as BlessedNode;
 
     this.inputBox = blessed.textbox({
       parent: this.screen,
-      left: 2,
-      right: 2,
-      bottom: 2,
-      height: 4,
-      border: "line",
+      left: 5,
+      right: 4,
+      bottom: 4,
+      height: 1,
       tags: false,
       keys: true,
       mouse: false,
       inputOnFocus: false,
-      label: " paste or type command ",
       style: {
         fg: "white",
-        bg: "black",
-        border: { fg: "cyan" },
-        focus: { border: { fg: "yellow" } },
+        bg: "#1f1f1f",
+        focus: { bg: "#1f1f1f" },
       },
     }) as BlessedNode;
 
@@ -307,7 +288,7 @@ export class RichHermsecTui {
       bottom: 0,
       height: 1,
       tags: true,
-      content: "Enter submits | paste supported | Ctrl+C exits | /commands lists everything",
+      content: "ctrl+p commands",
       style: { fg: "gray", bg: "black" },
     }) as BlessedNode;
 
@@ -343,6 +324,9 @@ export class RichHermsecTui {
       this.render();
     });
     this.screen.key(["f1"], () => {
+      void this.submit("/commands");
+    });
+    this.screen.key(["C-p"], () => {
       void this.submit("/commands");
     });
     this.screen.key(["f2"], () => {
@@ -481,10 +465,12 @@ export class RichHermsecTui {
       "",
       onboardingInstruction(this.onboardingStep),
     ];
-    this.detail?.setContent(lines.join("\n"));
-    this.setActions(onboardingActions(this.onboardingStep, this.cwd), async (action) => {
+    const actions = onboardingActions(this.onboardingStep, this.cwd);
+    this.showOverlay(formatMenu(lines.join("\n"), actions, true));
+    this.setActions(actions, async (action) => {
       await this.handleOnboardingAction(action.command);
     });
+    void this.refreshModelLine();
   }
 
   private async handleOnboardingAction(command: string): Promise<void> {
@@ -516,7 +502,9 @@ export class RichHermsecTui {
       case "report-custom":
         this.onboardingDraft.reportLocation = "custom";
         this.onboardingStep = "custom-report";
-        this.detail?.setContent("Paste the custom report folder into the input, then press Enter.");
+        this.showOverlay(formatMenu("Paste the custom report folder into the input, then press Enter.", [
+          { label: "Default Reports", command: "report-app", description: defaultReportDir() },
+        ], true));
         this.setActions([{ label: "Default Reports", command: "report-app", description: defaultReportDir() }], async (action) => {
           await this.handleOnboardingAction(action.command);
         });
@@ -583,35 +571,43 @@ export class RichHermsecTui {
 
   private showHome(): void {
     const workspace = activeWorkspace(this.state);
-    this.detail?.setContent([
+    this.hideOverlay();
+    if (this.state.transcript.length <= 1) {
+      this.addOutputBlock([
       "{cyan-fg}Hermsec workspace{/cyan-fg}",
       "",
-      "{gray-fg}Active{/gray-fg}",
       `Workspace: ${workspace?.name ?? "No active workspace"}`,
       `Target: ${workspace?.target ?? "Use /workspace add <path>"}`,
-      "",
-      "{gray-fg}Defaults{/gray-fg}",
       `Privacy: ${this.state.privacyMode}`,
       `Model: ${this.state.modelMode}`,
       `Reports: ${workspace?.reportDir ?? this.state.reportDir ?? defaultReportDir()}`,
       "",
       "Type /commands to see every action.",
-    ].join("\n"));
+      ].join("\n"));
+    }
     this.setActions(DEFAULT_ACTIONS);
     void this.refreshModelLine();
   }
 
   private showCommands(): void {
-    this.detail?.setContent(formatHelp());
-    this.setActions([
+    const actions = [
+      { label: "Scan", command: "/scan", description: "Scan active workspace" },
+      { label: "Doctor", command: "/doctor", description: "Check installed scanners" },
+      { label: "Intel", command: "/intel", description: "Security update summary" },
+      { label: "Reports", command: "/reports", description: "Show local reports" },
       { label: "Settings", command: "/settings", description: "Edit settings" },
       { label: "Model", command: "/model", description: "Choose model provider" },
       { label: "Provider", command: "/provider", description: "Set provider env" },
+      { label: "Workspace", command: "/workspace list", description: "Manage workspaces" },
+      { label: "Schedule", command: "/schedule list", description: "Show timed scans" },
       { label: "History", command: "/history", description: "Current session history" },
       { label: "Sessions", command: "/sessions", description: "Saved sessions" },
       { label: "Onboard", command: "/onboard", description: "Run onboarding" },
-    ]);
-    this.addHermsecMessage("Commands are shown in the context panel.");
+    ];
+    this.showOverlay(formatCommandPalette(actions));
+    this.setActions(actions, async (action) => {
+      await this.submit(action.command);
+    });
   }
 
   private async handleModelCommand(rest: string): Promise<void> {
@@ -710,7 +706,7 @@ export class RichHermsecTui {
 
   private async showSettings(): Promise<void> {
     const config = await loadUserConfig();
-    this.detail?.setContent([
+    const lines = [
       "{cyan-fg}Settings{/cyan-fg}",
       "",
       `Privacy mode: ${config.privacyMode}`,
@@ -720,8 +716,8 @@ export class RichHermsecTui {
       `Credential: ${credentialStatus(config.preferredModelProvider, config.providerCredentialRef?.name)}`,
       "",
       "Type one of the shown numbers or a slash command. Provider keys stay in environment variables.",
-    ].join("\n"));
-    this.setActions([
+    ];
+    const actions = [
       { label: "Local", command: "settings:privacy:local-only", description: "No cloud model calls" },
       { label: "Balanced", command: "settings:privacy:balanced", description: "Local plus online intel" },
       { label: "Cloud", command: "settings:privacy:cloud-assisted", description: "Allow cloud explanations" },
@@ -730,7 +726,9 @@ export class RichHermsecTui {
       { label: "Reports Custom", command: "settings:report:custom", description: "Paste /settings report <folder>" },
       { label: "Model", command: "/model", description: "Choose model/provider" },
       { label: "Provider", command: "/provider", description: "Set provider env" },
-    ], async (action) => {
+    ];
+    this.showOverlay(formatMenu(lines.join("\n"), actions, true));
+    this.setActions(actions, async (action) => {
       if (action.command.startsWith("settings:privacy:")) {
         const value = action.command.split(":").at(-1);
         if (value) {
@@ -764,19 +762,21 @@ export class RichHermsecTui {
 
   private async showModelPicker(): Promise<void> {
     const config = await loadUserConfig();
-    this.detail?.setContent([
+    const lines = [
       "{cyan-fg}Model picker{/cyan-fg}",
       "",
       `Current provider: ${config.preferredModelProvider ?? "none"}`,
       `Credential: ${credentialStatus(config.preferredModelProvider, config.providerCredentialRef?.name)}`,
       "",
       "Type a number to choose a provider. Use /provider to set the env var name.",
-    ].join("\n"));
-    this.setActions(modelProviders.map((provider) => ({
+    ];
+    const actions = modelProviders.map((provider) => ({
       label: provider,
       command: `model:${provider}`,
       description: PROVIDER_ENV[provider] || "No remote key required",
-    })), async (action) => {
+    }));
+    this.showOverlay(formatMenu(lines.join("\n"), actions, true));
+    this.setActions(actions, async (action) => {
       const provider = action.command.replace(/^model:/, "") as PreferredModelProvider;
       await this.setPreferredProvider(provider);
       await this.showModelPicker();
@@ -785,7 +785,7 @@ export class RichHermsecTui {
 
   private async showProviderPicker(): Promise<void> {
     const config = await loadUserConfig();
-    this.detail?.setContent([
+    const lines = [
       "{cyan-fg}Provider setup{/cyan-fg}",
       "",
       "Hermsec stores environment variable names, never raw API keys.",
@@ -794,12 +794,14 @@ export class RichHermsecTui {
       `Credential: ${credentialStatus(config.preferredModelProvider, config.providerCredentialRef?.name)}`,
       "",
       "Type a number to choose a provider, or paste: /provider env YOUR_ENV_NAME",
-    ].join("\n"));
-    this.setActions(modelProviders.filter((provider) => provider !== "none").map((provider) => ({
+    ];
+    const actions = modelProviders.filter((provider) => provider !== "none").map((provider) => ({
       label: provider,
       command: `provider:${provider}`,
       description: PROVIDER_ENV[provider],
-    })), async (action) => {
+    }));
+    this.showOverlay(formatMenu(lines.join("\n"), actions, true));
+    this.setActions(actions, async (action) => {
       const provider = action.command.replace(/^provider:/, "") as PreferredModelProvider;
       await this.setPreferredProvider(provider);
       await this.showProviderPicker();
@@ -822,7 +824,7 @@ export class RichHermsecTui {
     if (active) {
       active.scannerReadiness = result.data.summary;
     }
-    this.detail?.setContent(formatDoctor(result.data));
+    this.addOutputBlock(formatDoctor(result.data));
     this.addHermsecMessage(result.data.summary);
   }
 
@@ -864,7 +866,7 @@ export class RichHermsecTui {
     }
     this.recordReportFromScan(result.data);
     const statusLines = result.data.scannerStatuses?.map((status) => `${formatStatus(status.status)} ${status.label}: ${status.message}`) ?? [];
-    this.detail?.setContent([
+    this.addOutputBlock([
       result.message,
       "",
       `Target: ${result.data.target}`,
@@ -888,14 +890,14 @@ export class RichHermsecTui {
       this.addHermsecMessage(result.ok ? "Intel returned no data." : result.message);
       return;
     }
-    this.detail?.setContent(formatIntel(result.data));
+    this.addOutputBlock(formatIntel(result.data));
     this.addHermsecMessage(result.data.message);
   }
 
   private async runReports(): Promise<void> {
     const reports = await this.listReports(activeWorkspace(this.state));
     this.state.reports = reports;
-    this.detail?.setContent(formatReports(reports));
+    this.addOutputBlock(formatReports(reports));
     this.addHermsecMessage(`${reports.length} report(s) shown.`);
   }
 
@@ -904,7 +906,7 @@ export class RichHermsecTui {
     const subcommand = subcommandToken?.toLowerCase() ?? "list";
     const argument = remaining.join(" ").trim();
     if (subcommand === "list") {
-      this.detail?.setContent(formatWorkspaces(this.state.workspaces, this.state.activeWorkspaceId));
+      this.addOutputBlock(formatWorkspaces(this.state.workspaces, this.state.activeWorkspaceId));
       return;
     }
     if (subcommand === "add") {
@@ -941,12 +943,12 @@ export class RichHermsecTui {
     }
     const schedules = await this.listSchedules(activeWorkspace(this.state));
     this.state.schedules = schedules;
-    this.detail?.setContent(formatSchedules(schedules));
+    this.addOutputBlock(formatSchedules(schedules));
   }
 
   private showHistory(rest: string): void {
     const count = Number.parseInt(rest.trim(), 10);
-    this.detail?.setContent(formatHistory(this.state.transcript, Number.isFinite(count) ? count : 20));
+    this.addOutputBlock(formatHistory(this.state.transcript, Number.isFinite(count) ? count : 20));
   }
 
   private async runSessions(rest: string): Promise<void> {
@@ -956,11 +958,11 @@ export class RichHermsecTui {
       this.state.activeSessionId = `ses-${crypto.randomUUID()}`;
       this.state.transcript = [{ role: "system", text: `TUI cwd: ${normalizedDisplayPath(this.cwd)}`, at: new Date().toISOString() }];
       this.addHermsecMessage("Started a new session.");
-      this.detail?.setContent(`Started new session: ${this.state.activeSessionId}`);
+      this.addOutputBlock(`Started new session: ${this.state.activeSessionId}`);
       return;
     }
     if (subcommand === "current") {
-      this.detail?.setContent([
+      this.addOutputBlock([
         `Current session: ${this.state.activeSessionId}`,
         `Workspace: ${this.sessionWorkspaceId()}`,
         `Messages: ${this.state.transcript.length}`,
@@ -970,7 +972,7 @@ export class RichHermsecTui {
     }
     const sessions = await this.listSessions(activeWorkspace(this.state));
     this.state.sessions = sessions;
-    this.detail?.setContent(formatSessions(sessions, this.state.activeSessionId, this.state.transcript.length));
+    this.addOutputBlock(formatSessions(sessions, this.state.activeSessionId, this.state.transcript.length));
   }
 
   private async addWorkspace(workspace: TuiWorkspace): Promise<void> {
@@ -1069,7 +1071,7 @@ export class RichHermsecTui {
     this.currentActions = actions;
     this.currentActionHandler = handler;
     this.sidebar?.setContent("");
-    this.toolbar?.setContent(formatActionHints(actions, Boolean(handler)));
+    this.toolbar?.setContent("");
     this.focusInput();
     this.render();
   }
@@ -1098,26 +1100,41 @@ export class RichHermsecTui {
     const workspace = activeWorkspace(this.state);
     const provider = config.preferredModelProvider ?? "none";
     const modelLabel = provider === "none" ? "scanner only" : provider;
-    const width = Number((this.screen as { width?: number } | undefined)?.width ?? this.output.columns ?? 100);
-    const height = Number((this.screen as { height?: number } | undefined)?.height ?? 34);
-    const lines = width < 72 || height < 24
-      ? [
-          statusLine("model", modelLabel),
-          statusLine("credential", credentialStatus(provider, config.providerCredentialRef?.name)),
-        ]
-      : [
-          statusLine("workspace", workspace?.name ?? "No active workspace"),
-          statusLine("privacy", this.state.privacyMode),
-          statusLine("model", modelLabel),
-          statusLine("credential", credentialStatus(provider, config.providerCredentialRef?.name)),
-        ];
-    this.modelLine?.setContent(lines.join("\n"));
+    this.modelLine?.setContent([
+      `{blue-fg}Hermsec{/blue-fg}`,
+      " - ",
+      `{bold}${escapeTag(modelLabel)}{/bold}`,
+      ` {gray-fg}${escapeTag(provider)}{/gray-fg}`,
+      " - ",
+      `{yellow-fg}${escapeTag(workspace?.name ?? "no workspace")}{/yellow-fg}`,
+      ` {gray-fg}${escapeTag(this.state.privacyMode)}{/gray-fg}`,
+    ].join(""));
   }
 
   private addHermsecMessage(text: string): void {
     this.addMessage("hermsec", text);
     this.chat?.log?.(`{cyan-fg}Hermsec>{/cyan-fg} ${escapeTag(redactSecrets(text))}`);
     this.lockViewport();
+  }
+
+  private addOutputBlock(text: string): void {
+    this.hideOverlay();
+    this.chat?.log?.("");
+    this.chat?.log?.(redactSecrets(text));
+    this.lockViewport();
+  }
+
+  private showOverlay(content: string): void {
+    this.overlayVisible = true;
+    this.detail?.setContent(content);
+    this.detail?.show?.();
+    this.lockViewport();
+  }
+
+  private hideOverlay(): void {
+    this.overlayVisible = false;
+    this.detail?.setContent("");
+    this.detail?.hide?.();
   }
 
   private addMessage(role: ChatMessage["role"], text: string): void {
@@ -1189,59 +1206,58 @@ export class RichHermsecTui {
     const height = Number((this.screen as { height?: number } | undefined)?.height ?? 34);
     const bodyWidth = Math.max(30, width - 4);
     const tiny = width < 72 || height < 24;
-    const compact = tiny || width < 108 || height < 32;
-    const wide = width >= 112 && height >= 30;
-    const inputHeight = 4;
+    const inputHeight = 1;
     const footerHeight = 1;
-    const commandHeight = tiny ? 2 : 3;
-    const inputBottom = footerHeight + 1;
-    const commandBottom = inputBottom + inputHeight;
-    const conversationBottom = commandBottom + commandHeight + 1;
+    const composerHeight = tiny ? 4 : 5;
+    const composerBottom = footerHeight + 1;
+    const chatBottom = composerBottom + composerHeight + 1;
+    const paletteWidth = Math.min(82, Math.max(36, width - 20));
+    const paletteLeft = Math.max(4, Math.floor((width - paletteWidth) / 2));
+    const paletteHeight = Math.max(8, Math.min(16, height - chatBottom - 2));
 
-    this.logo?.setContent(tiny ? "{cyan-fg}{bold}HERMSEC{/bold}{/cyan-fg}" : `{cyan-fg}${LOGO}{/cyan-fg}`);
-
-    if (wide) {
-      const statusWidth = Math.min(54, Math.max(38, Math.floor(width * 0.34)));
-      const logoWidth = Math.max(46, width - statusWidth - 7);
-      const mainTop = 8;
-      const detailWidth = Math.min(46, Math.max(36, Math.floor(bodyWidth * 0.36)));
-      const chatWidth = Math.max(34, bodyWidth - detailWidth - 2);
-
-      assignLayout(this.logo, { top: 1, left: 2, width: logoWidth, right: undefined, height: 5 });
-      assignLayout(this.modelLine, { top: 1, left: width - statusWidth - 2, width: statusWidth, right: undefined, height: 6 });
-      assignLayout(this.chat, { top: mainTop, left: 2, width: chatWidth, right: undefined, height: undefined, bottom: conversationBottom });
-      assignLayout(this.detail, { top: mainTop, left: chatWidth + 4, width: detailWidth, right: undefined, height: undefined, bottom: conversationBottom });
-    } else {
-      const logoHeight = tiny ? 1 : compact ? 4 : 5;
-      const statusTop = tiny ? 1 : logoHeight + 2;
-      const statusHeight = tiny ? 4 : 6;
-      const mainTop = statusTop + statusHeight + 1;
-      const bottomLimit = Math.max(mainTop + 4, height - conversationBottom);
-      let detailHeight = Math.max(tiny ? 2 : 4, Math.min(tiny ? 3 : 7, Math.floor((bottomLimit - mainTop) * 0.36)));
-      const chatTop = mainTop + detailHeight + 1;
-      if (chatTop > bottomLimit - 2) {
-        detailHeight = Math.max(1, bottomLimit - mainTop - 3);
-      }
-
-      assignLayout(this.logo, { top: tiny ? 0 : 1, left: 2, width: bodyWidth, right: undefined, height: logoHeight });
-      assignLayout(this.modelLine, { top: statusTop, left: 2, width: bodyWidth, right: undefined, height: statusHeight });
-      assignLayout(this.detail, { top: mainTop, left: 2, width: bodyWidth, right: undefined, height: detailHeight, bottom: undefined });
-      assignLayout(this.chat, { top: mainTop + detailHeight + 1, left: 2, width: bodyWidth, right: undefined, height: undefined, bottom: conversationBottom });
-    }
+    assignLayout(this.chat, {
+      top: 1,
+      left: tiny ? 3 : 5,
+      width: Math.max(30, width - (tiny ? 6 : 9)),
+      right: undefined,
+      height: undefined,
+      bottom: chatBottom,
+    });
+    assignLayout(this.detail, {
+      left: tiny ? 3 : paletteLeft,
+      width: tiny ? bodyWidth - 2 : paletteWidth,
+      right: undefined,
+      bottom: chatBottom - 1,
+      height: paletteHeight,
+    });
 
     assignLayout(this.toolbar, {
       left: 2,
       width: bodyWidth,
       right: undefined,
-      bottom: commandBottom,
-      height: commandHeight,
+      bottom: composerBottom,
+      height: composerHeight,
+    });
+    assignLayout(this.logo, {
+      left: 2,
+      width: 1,
+      right: undefined,
+      bottom: composerBottom,
+      height: composerHeight,
     });
     assignLayout(this.inputBox, {
-      left: 2,
-      width: bodyWidth,
+      left: tiny ? 4 : 5,
+      width: Math.max(24, width - (tiny ? 8 : 10)),
       right: undefined,
-      bottom: inputBottom,
+      bottom: footerHeight + composerHeight - 2,
       height: inputHeight,
+    });
+    assignLayout(this.modelLine, {
+      left: tiny ? 4 : 5,
+      width: Math.max(24, width - (tiny ? 8 : 10)),
+      right: undefined,
+      bottom: composerBottom,
+      height: 1,
     });
     assignLayout(this.footer, {
       left: 1,
@@ -1254,7 +1270,7 @@ export class RichHermsecTui {
 
   private render(): void {
     this.applyResponsiveLayout();
-    this.footer?.setContent(`Workspace: ${activeWorkspace(this.state)?.name ?? "No workspace"} | Privacy: ${this.state.privacyMode} | Session: ${this.state.activeSessionId} | Paste in input | Ctrl+C exits`);
+    this.footer?.setContent("{gray-fg}ctrl+p commands   /commands help   ctrl+c exit{/gray-fg}");
     this.lockViewport();
     this.focusInput();
     this.screen?.render();
@@ -1263,7 +1279,9 @@ export class RichHermsecTui {
   private lockViewport(): void {
     this.focusInput();
     this.chat?.scrollTo?.(this.chat.getScrollHeight?.() ?? 0);
-    this.detail?.scrollTo?.(0);
+    if (this.overlayVisible) {
+      this.detail?.scrollTo?.(0);
+    }
   }
 
   private focusInput(): void {
@@ -1378,25 +1396,29 @@ function extractNaturalTarget(input: string): string {
   return match?.[1]?.trim() ?? "";
 }
 
-function formatActionHints(actions: RichAction[], selectable: boolean): string {
-  const visible = actions.slice(0, 8);
-  if (visible.length === 0) {
-    return "{gray-fg}Type /commands for available Hermsec actions.{/gray-fg}";
-  }
-
-  if (selectable) {
-    return visible
-      .map((action, index) => `{cyan-fg}${index + 1}{/cyan-fg} ${escapeTag(action.label)} {gray-fg}${escapeTag(action.command)}{/gray-fg}`)
-      .join("   ");
-  }
-
-  return visible
-    .map((action) => `{cyan-fg}${escapeTag(action.command)}{/cyan-fg}`)
-    .join("   ");
+function formatMenu(body: string, actions: RichAction[], selectable: boolean): string {
+  return [
+    body,
+    "",
+    ...formatActionRows(actions, selectable ? "menu" : "commands"),
+  ].join("\n");
 }
 
-function statusLine(label: string, value: string): string {
-  return `{gray-fg}${label.padEnd(10)}{/gray-fg} ${escapeTag(compactValue(value, 34))}`;
+function formatCommandPalette(actions: RichAction[]): string {
+  return formatActionRows(actions, "commands").join("\n");
+}
+
+function formatActionRows(actions: RichAction[], mode: "commands" | "menu"): string[] {
+  return actions.slice(0, 12).map((action, index) => {
+    const key = mode === "menu" ? `${index + 1}` : action.command;
+    const label = mode === "menu" ? action.label : action.description;
+    const detail = mode === "menu" ? action.description : "";
+    const row = `${key.padEnd(14)} ${label.padEnd(22)} ${detail}`;
+    if (index === 0) {
+      return `{black-fg}{yellow-bg}${escapeTag(row.padEnd(68))}{/yellow-bg}{/black-fg}`;
+    }
+    return `{white-fg}${escapeTag(key.padEnd(14))}{/white-fg} {cyan-fg}${escapeTag(label.padEnd(22))}{/cyan-fg} {gray-fg}${escapeTag(detail)}{/gray-fg}`;
+  });
 }
 
 function credentialStatus(provider: PreferredModelProvider | undefined, envName: string | undefined): string {
@@ -1414,16 +1436,6 @@ function credentialStatus(provider: PreferredModelProvider | undefined, envName:
 
   const suggested = PROVIDER_ENV[provider];
   return suggested ? `env required: ${suggested}` : "env required";
-}
-
-function compactValue(value: string, maxLength: number): string {
-  if (value.length <= maxLength) {
-    return value;
-  }
-  if (maxLength <= 3) {
-    return value.slice(0, maxLength);
-  }
-  return `${value.slice(0, maxLength - 3)}...`;
 }
 
 function resolveAction(input: string, actions: RichAction[]): RichAction | undefined {
