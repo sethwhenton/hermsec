@@ -137,7 +137,6 @@ export class RichHermsecTui {
   private inputBox?: InputNode;
   private toolbar?: BlessedNode;
   private footer?: BlessedNode;
-  private actionButtons: BlessedNode[] = [];
   private currentActions: RichAction[] = [];
   private currentActionHandler: ((action: RichAction) => Promise<void> | void) | undefined;
   private exitResolver?: (summary: TuiRunSummary) => void;
@@ -206,7 +205,7 @@ export class RichHermsecTui {
       top: 1,
       left: 3,
       width: 60,
-      height: 11,
+      height: 5,
       tags: true,
       content: `{cyan-fg}${LOGO}{/cyan-fg}`,
       style: { fg: "cyan", bg: "black" },
@@ -214,35 +213,54 @@ export class RichHermsecTui {
 
     this.modelLine = blessed.box({
       parent: this.screen,
-      top: 12,
-      left: 3,
-      right: 3,
+      top: 1,
+      left: 65,
+      width: 52,
       height: 5,
+      border: "line",
       tags: true,
+      label: " status ",
       content: "loading settings...",
-      style: { fg: "white", bg: "black" },
+      style: { fg: "white", bg: "black", border: { fg: "cyan" } },
     }) as BlessedNode;
 
-    const conversation = blessed.log({
+    this.chat = blessed.log({
       parent: this.screen,
-      top: 16,
+      top: 11,
       left: 2,
-      right: 2,
+      width: 70,
       bottom: 10,
       border: "line",
       tags: true,
       scrollable: true,
       alwaysScroll: true,
       scrollbar: { ch: " ", style: { bg: "cyan" } },
-      label: " hermsec ",
+      label: " conversation ",
       style: {
         fg: "white",
         bg: "black",
         border: { fg: "cyan" },
       },
     }) as BlessedNode;
-    this.chat = conversation;
-    this.detail = conversation;
+
+    this.detail = blessed.box({
+      parent: this.screen,
+      top: 11,
+      left: 74,
+      width: 42,
+      bottom: 10,
+      border: "line",
+      tags: true,
+      scrollable: true,
+      alwaysScroll: true,
+      scrollbar: { ch: " ", style: { bg: "cyan" } },
+      label: " context ",
+      style: {
+        fg: "white",
+        bg: "black",
+        border: { fg: "cyan" },
+      },
+    }) as BlessedNode;
 
     this.toolbar = blessed.box({
       parent: this.screen,
@@ -551,13 +569,16 @@ export class RichHermsecTui {
     this.detail?.setContent([
       "{cyan-fg}Hermsec workspace{/cyan-fg}",
       "",
-      `Workspace: ${workspace?.name ?? "none"}`,
-      `Target: ${workspace?.target ?? "add one with /workspace add <path>"}`,
+      "{gray-fg}Active{/gray-fg}",
+      `Workspace: ${workspace?.name ?? "No active workspace"}`,
+      `Target: ${workspace?.target ?? "Use /workspace add <path>"}`,
+      "",
+      "{gray-fg}Defaults{/gray-fg}",
       `Privacy: ${this.state.privacyMode}`,
       `Model: ${this.state.modelMode}`,
       `Reports: ${workspace?.reportDir ?? this.state.reportDir ?? defaultReportDir()}`,
       "",
-      "Type a slash command below.",
+      "Type /commands to see every action.",
     ].join("\n"));
     this.setActions(DEFAULT_ACTIONS);
     void this.refreshModelLine();
@@ -660,7 +681,7 @@ export class RichHermsecTui {
     if (PROVIDER_ENV[provider]) {
       await setConfigValue({ cwd: this.cwd, key: "providerCredentialEnv", value: PROVIDER_ENV[provider] });
     }
-    this.addHermsecMessage(`Model provider set to ${provider}.${PROVIDER_ENV[provider] ? ` Credential env: ${PROVIDER_ENV[provider]}.` : ""}`);
+    this.addHermsecMessage(`Model provider set to ${provider}. ${credentialStatus(provider, PROVIDER_ENV[provider])}.`);
     await this.refreshModelLine();
   }
 
@@ -679,7 +700,7 @@ export class RichHermsecTui {
       `Report location: ${config.defaultReportLocation}`,
       `Report directory: ${config.customReportDir ?? defaultReportDir()}`,
       `Provider: ${config.preferredModelProvider ?? "none"}`,
-      `Credential env: ${config.providerCredentialRef?.name ?? "not set"}`,
+      `Credential: ${credentialStatus(config.preferredModelProvider, config.providerCredentialRef?.name)}`,
       "",
       "Type one of the shown numbers or a slash command. Provider keys stay in environment variables.",
     ].join("\n"));
@@ -730,9 +751,9 @@ export class RichHermsecTui {
       "{cyan-fg}Model picker{/cyan-fg}",
       "",
       `Current provider: ${config.preferredModelProvider ?? "none"}`,
-      `Credential env: ${config.providerCredentialRef?.name ?? "not set"}`,
+      `Credential: ${credentialStatus(config.preferredModelProvider, config.providerCredentialRef?.name)}`,
       "",
-      "Click a provider. Use /provider to set the env var name.",
+      "Type a number to choose a provider. Use /provider to set the env var name.",
     ].join("\n"));
     this.setActions(modelProviders.map((provider) => ({
       label: provider,
@@ -753,9 +774,9 @@ export class RichHermsecTui {
       "Hermsec stores environment variable names, never raw API keys.",
       "",
       `Current provider: ${config.preferredModelProvider ?? "none"}`,
-      `Credential env: ${config.providerCredentialRef?.name ?? "not set"}`,
+      `Credential: ${credentialStatus(config.preferredModelProvider, config.providerCredentialRef?.name)}`,
       "",
-      "Click a known provider, or paste: /provider env YOUR_ENV_NAME",
+      "Type a number to choose a provider, or paste: /provider env YOUR_ENV_NAME",
     ].join("\n"));
     this.setActions(modelProviders.filter((provider) => provider !== "none").map((provider) => ({
       label: provider,
@@ -926,7 +947,7 @@ export class RichHermsecTui {
         `Current session: ${this.state.activeSessionId}`,
         `Workspace: ${this.sessionWorkspaceId()}`,
         `Messages: ${this.state.transcript.length}`,
-        `Latest scan: ${this.state.lastScan?.id ?? "none"}`,
+        `Latest scan: ${this.state.lastScan?.id ?? "No scan in this session"}`,
       ].join("\n"));
       return;
     }
@@ -967,6 +988,7 @@ export class RichHermsecTui {
     this.state.scanPreference = selected.scanPreference;
     this.state.reportLocation = selected.reportLocation;
     this.state.reportDir = selected.reportDir;
+    await this.refreshModelLine();
   }
 
   private async listReports(workspace: TuiWorkspace | undefined): Promise<TuiReportSummary[]> {
@@ -1027,8 +1049,6 @@ export class RichHermsecTui {
   }
 
   private setActions(actions: RichAction[], handler?: (action: RichAction) => Promise<void> | void): void {
-    this.actionButtons.forEach((button) => button.destroy());
-    this.actionButtons = [];
     this.currentActions = actions;
     this.currentActionHandler = handler;
     this.sidebar?.setContent("");
@@ -1058,13 +1078,23 @@ export class RichHermsecTui {
 
   private async refreshModelLine(): Promise<void> {
     const config = await loadUserConfig();
-    this.modelLine?.setContent([
-      `{gray-fg}model{/gray-fg}    {bold}${escapeTag(config.preferredModelProvider ?? "none")}{/bold}`,
-      `{gray-fg}provider{/gray-fg} ${escapeTag(config.preferredModelProvider ?? "none")}`,
-      `{gray-fg}key env{/gray-fg}  ${escapeTag(config.providerCredentialRef?.name ?? "not set")}`,
-      "",
-      "{gray-fg}/help for commands{/gray-fg}",
-    ].join("\n"));
+    const workspace = activeWorkspace(this.state);
+    const provider = config.preferredModelProvider ?? "none";
+    const modelLabel = provider === "none" ? "scanner only" : provider;
+    const width = Number((this.screen as { width?: number } | undefined)?.width ?? this.output.columns ?? 100);
+    const height = Number((this.screen as { height?: number } | undefined)?.height ?? 34);
+    const lines = width < 72 || height < 24
+      ? [
+          statusLine("model", modelLabel),
+          statusLine("credential", credentialStatus(provider, config.providerCredentialRef?.name)),
+        ]
+      : [
+          statusLine("workspace", workspace?.name ?? "No active workspace"),
+          statusLine("privacy", this.state.privacyMode),
+          statusLine("model", modelLabel),
+          statusLine("credential", credentialStatus(provider, config.providerCredentialRef?.name)),
+        ];
+    this.modelLine?.setContent(lines.join("\n"));
   }
 
   private addHermsecMessage(text: string): void {
@@ -1139,56 +1169,66 @@ export class RichHermsecTui {
   private applyResponsiveLayout(): void {
     const width = Number((this.screen as { width?: number } | undefined)?.width ?? this.output.columns ?? 100);
     const height = Number((this.screen as { height?: number } | undefined)?.height ?? 34);
+    const bodyWidth = Math.max(30, width - 4);
     const tiny = width < 72 || height < 24;
-    const compact = tiny || width < 96 || height < 32;
+    const compact = tiny || width < 108 || height < 32;
+    const wide = width >= 112 && height >= 30;
     const inputHeight = 4;
     const footerHeight = 1;
     const commandHeight = tiny ? 2 : 3;
     const inputBottom = footerHeight + 1;
     const commandBottom = inputBottom + inputHeight;
     const conversationBottom = commandBottom + commandHeight + 1;
-    const headerHeight = tiny ? 4 : compact ? 7 : 11;
 
     this.logo?.setContent(tiny ? "{cyan-fg}{bold}HERMSEC{/bold}{/cyan-fg}" : `{cyan-fg}${LOGO}{/cyan-fg}`);
-    assignLayout(this.logo, {
-      top: tiny ? 0 : 1,
-      left: 3,
-      right: 3,
-      height: tiny ? 1 : compact ? 4 : 5,
-    });
-    assignLayout(this.modelLine, {
-      top: tiny ? 1 : compact ? 5 : 7,
-      left: 3,
-      right: 3,
-      height: tiny ? 3 : 4,
-    });
-    assignLayout(this.chat, {
-      top: headerHeight,
-      left: 2,
-      right: 2,
-      bottom: conversationBottom,
-    });
-    assignLayout(this.detail, {
-      top: headerHeight,
-      left: 2,
-      right: 2,
-      bottom: conversationBottom,
-    });
+
+    if (wide) {
+      const statusWidth = Math.min(54, Math.max(38, Math.floor(width * 0.34)));
+      const logoWidth = Math.max(46, width - statusWidth - 7);
+      const mainTop = 8;
+      const detailWidth = Math.min(46, Math.max(36, Math.floor(bodyWidth * 0.36)));
+      const chatWidth = Math.max(34, bodyWidth - detailWidth - 2);
+
+      assignLayout(this.logo, { top: 1, left: 2, width: logoWidth, right: undefined, height: 5 });
+      assignLayout(this.modelLine, { top: 1, left: width - statusWidth - 2, width: statusWidth, right: undefined, height: 6 });
+      assignLayout(this.chat, { top: mainTop, left: 2, width: chatWidth, right: undefined, height: undefined, bottom: conversationBottom });
+      assignLayout(this.detail, { top: mainTop, left: chatWidth + 4, width: detailWidth, right: undefined, height: undefined, bottom: conversationBottom });
+    } else {
+      const logoHeight = tiny ? 1 : compact ? 4 : 5;
+      const statusTop = tiny ? 1 : logoHeight + 2;
+      const statusHeight = tiny ? 4 : 6;
+      const mainTop = statusTop + statusHeight + 1;
+      const bottomLimit = Math.max(mainTop + 4, height - conversationBottom);
+      let detailHeight = Math.max(tiny ? 2 : 4, Math.min(tiny ? 3 : 7, Math.floor((bottomLimit - mainTop) * 0.36)));
+      const chatTop = mainTop + detailHeight + 1;
+      if (chatTop > bottomLimit - 2) {
+        detailHeight = Math.max(1, bottomLimit - mainTop - 3);
+      }
+
+      assignLayout(this.logo, { top: tiny ? 0 : 1, left: 2, width: bodyWidth, right: undefined, height: logoHeight });
+      assignLayout(this.modelLine, { top: statusTop, left: 2, width: bodyWidth, right: undefined, height: statusHeight });
+      assignLayout(this.detail, { top: mainTop, left: 2, width: bodyWidth, right: undefined, height: detailHeight, bottom: undefined });
+      assignLayout(this.chat, { top: mainTop + detailHeight + 1, left: 2, width: bodyWidth, right: undefined, height: undefined, bottom: conversationBottom });
+    }
+
     assignLayout(this.toolbar, {
       left: 2,
-      right: 2,
+      width: bodyWidth,
+      right: undefined,
       bottom: commandBottom,
       height: commandHeight,
     });
     assignLayout(this.inputBox, {
       left: 2,
-      right: 2,
+      width: bodyWidth,
+      right: undefined,
       bottom: inputBottom,
       height: inputHeight,
     });
     assignLayout(this.footer, {
       left: 1,
-      right: 1,
+      width: Math.max(30, width - 2),
+      right: undefined,
       bottom: 0,
       height: footerHeight,
     });
@@ -1196,7 +1236,7 @@ export class RichHermsecTui {
 
   private render(): void {
     this.applyResponsiveLayout();
-    this.footer?.setContent(`Workspace: ${activeWorkspace(this.state)?.name ?? "none"} | Privacy: ${this.state.privacyMode} | Session: ${this.state.activeSessionId} | Paste supported in input | Ctrl+C exits`);
+    this.footer?.setContent(`Workspace: ${activeWorkspace(this.state)?.name ?? "No workspace"} | Privacy: ${this.state.privacyMode} | Session: ${this.state.activeSessionId} | Paste in input | Ctrl+C exits`);
     this.focusInput();
     this.screen?.render();
   }
@@ -1328,6 +1368,37 @@ function formatActionHints(actions: RichAction[], selectable: boolean): string {
   return visible
     .map((action) => `{cyan-fg}${escapeTag(action.command)}{/cyan-fg}`)
     .join("   ");
+}
+
+function statusLine(label: string, value: string): string {
+  return `{gray-fg}${label.padEnd(10)}{/gray-fg} ${escapeTag(compactValue(value, 34))}`;
+}
+
+function credentialStatus(provider: PreferredModelProvider | undefined, envName: string | undefined): string {
+  if (envName) {
+    return `env ${envName}`;
+  }
+
+  if (!provider || provider === "none") {
+    return "local scanner only";
+  }
+
+  if (provider === "ollama") {
+    return "local runtime";
+  }
+
+  const suggested = PROVIDER_ENV[provider];
+  return suggested ? `env required: ${suggested}` : "env required";
+}
+
+function compactValue(value: string, maxLength: number): string {
+  if (value.length <= maxLength) {
+    return value;
+  }
+  if (maxLength <= 3) {
+    return value.slice(0, maxLength);
+  }
+  return `${value.slice(0, maxLength - 3)}...`;
 }
 
 function resolveAction(input: string, actions: RichAction[]): RichAction | undefined {

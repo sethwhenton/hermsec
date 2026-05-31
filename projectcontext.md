@@ -9,7 +9,7 @@ Hermsec is a local-first, CVE-aware AI security assistant for repositories. The 
 Hermsec now has a hardened local production-readiness milestone:
 
 - TypeScript CLI package with `hermsec` bin.
-- Blessed-powered keyboard-first terminal chatbot UI with safe non-interactive fallback, fixed input focus, responsive layout, paste-friendly input, first-run and explicit `hermsec onboard` onboarding in the same panel view, typed command choices, `/help` and `/commands`, `/settings`, `/model`, `/provider`, `/history`, `/sessions`, and wiring to the real doctor, scan harness, report index, schedule list, workspace store, session store, and security-intel update tools.
+- Blessed-powered keyboard-first terminal chatbot UI with safe non-interactive fallback, fixed input focus, responsive status/context/conversation panels, paste-friendly input, first-run and explicit `hermsec onboard` onboarding in the same panel view, typed command choices, `/help` and `/commands`, `/settings`, `/model`, `/provider`, `/history`, `/sessions`, and wiring to the real doctor, scan harness, report index, schedule list, workspace store, session store, and security-intel update tools.
 - Local scan harness with repository discovery, built-in heuristics for secrets, JS/TS, Python, package/lockfile, and config/supply-chain patterns, plus optional external scanner execution.
 - JSON-backed app data, user config, workspaces, schedules, sessions, report indexes, and security-intel cache.
 - Deterministic local JSON/Markdown/HTML reports with redaction, evidence bundles, and delta artifacts.
@@ -39,7 +39,7 @@ Current verified scanner/tool status on this PC: Semgrep, Gitleaks, Bandit, OSV-
 
 Current verified intel status: CISA KEV and NVD live update both complete successfully; the combined cache contains `1654` items, and offline cache reuse works.
 
-Current full-suite status on May 31, 2026: `pmg npm test` builds successfully and runs `51` Node tests; `51` pass, `0` fail, and `0` skip.
+Current full-suite status on June 1, 2026: `pmg npm test` builds successfully and runs `51` Node tests; `51` pass, `0` fail, and `0` skip.
 
 Current verified eval status: the Node vulnerable fixture scanner-only run reports precision `1.00`, recall `1.00`, and F1 `1.00` after aligning the JSON ground truth with all intentionally planted findings.
 
