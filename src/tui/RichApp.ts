@@ -59,6 +59,11 @@ type BlessedNode = {
   on(eventName: string, listener: (...args: unknown[]) => void): void;
 };
 
+type InputNode = BlessedNode & {
+  readInput?(): void;
+  _reading?: boolean;
+};
+
 type OnboardingStep =
   | "workspace"
   | "privacy"
@@ -84,10 +89,6 @@ type RichAction = {
 };
 
 const LOGO = String.raw`
- __  __ __   __
-|  \/  |\ \ / /
-| |\/| | \ V /
-|_|  |_|  |_|
  _   _ _____ ____  __  __ ____  _____ ____
 | | | | ____|  _ \|  \/  / ___|| ____/ ___|
 | |_| |  _| | |_) | |\/| \___ \|  _|| |
@@ -133,7 +134,7 @@ export class RichHermsecTui {
   private sidebar?: BlessedNode;
   private chat?: BlessedNode;
   private detail?: BlessedNode;
-  private inputBox?: BlessedNode;
+  private inputBox?: InputNode;
   private toolbar?: BlessedNode;
   private footer?: BlessedNode;
   private actionButtons: BlessedNode[] = [];
@@ -179,7 +180,7 @@ export class RichHermsecTui {
       this.showHome();
     }
 
-    this.inputBox?.focus?.();
+    this.focusInput();
     this.render();
 
     return new Promise<TuiRunSummary>((resolve) => {
@@ -265,7 +266,7 @@ export class RichHermsecTui {
       tags: false,
       keys: true,
       mouse: false,
-      inputOnFocus: true,
+      inputOnFocus: false,
       label: " paste or type command ",
       style: {
         fg: "white",
@@ -289,8 +290,11 @@ export class RichHermsecTui {
     this.inputBox.on("submit", (value: unknown) => {
       const text = String(value ?? "").trim();
       this.inputBox?.clearValue?.();
-      void this.submit(text);
+      void this.submit(text).finally(() => {
+        this.beginInput();
+      });
     });
+    this.beginInput();
   }
 
   private bindKeys(): void {
@@ -304,7 +308,7 @@ export class RichHermsecTui {
       void this.exit("user-exit");
     });
     this.screen.key(["tab"], () => {
-      this.inputBox?.focus?.();
+      this.focusInput();
       this.render();
     });
     this.screen.key(["f1"], () => {
@@ -321,19 +325,19 @@ export class RichHermsecTui {
   private async submit(rawInput: string): Promise<void> {
     const input = rawInput.trim();
     if (input.length === 0) {
-      this.inputBox?.focus?.();
+      this.focusInput();
       return;
     }
 
     if (this.onboardingStep === "done" && !input.startsWith("/") && await this.tryCurrentAction(input, true)) {
-      this.inputBox?.focus?.();
+      this.focusInput();
       this.render();
       return;
     }
 
     if (this.onboardingStep !== "done" && !input.startsWith("/")) {
       await this.handleOnboardingInput(input);
-      this.inputBox?.focus?.();
+      this.focusInput();
       this.render();
       return;
     }
@@ -385,7 +389,7 @@ export class RichHermsecTui {
       this.addHermsecMessage(`Action failed safely: ${errorMessage(error)}`);
     }
 
-    this.inputBox?.focus?.();
+    this.focusInput();
     this.render();
   }
 
@@ -1029,7 +1033,7 @@ export class RichHermsecTui {
     this.currentActionHandler = handler;
     this.sidebar?.setContent("");
     this.toolbar?.setContent(formatActionHints(actions, Boolean(handler)));
-    this.inputBox?.focus?.();
+    this.focusInput();
     this.render();
   }
 
@@ -1143,17 +1147,17 @@ export class RichHermsecTui {
     const inputBottom = footerHeight + 1;
     const commandBottom = inputBottom + inputHeight;
     const conversationBottom = commandBottom + commandHeight + 1;
-    const headerHeight = tiny ? 4 : compact ? 7 : 15;
+    const headerHeight = tiny ? 4 : compact ? 7 : 11;
 
     this.logo?.setContent(tiny ? "{cyan-fg}{bold}HERMSEC{/bold}{/cyan-fg}" : `{cyan-fg}${LOGO}{/cyan-fg}`);
     assignLayout(this.logo, {
       top: tiny ? 0 : 1,
       left: 3,
       right: 3,
-      height: tiny ? 1 : compact ? 4 : 10,
+      height: tiny ? 1 : compact ? 4 : 5,
     });
     assignLayout(this.modelLine, {
-      top: tiny ? 1 : compact ? 5 : 11,
+      top: tiny ? 1 : compact ? 5 : 7,
       left: 3,
       right: 3,
       height: tiny ? 3 : 4,
@@ -1193,8 +1197,30 @@ export class RichHermsecTui {
   private render(): void {
     this.applyResponsiveLayout();
     this.footer?.setContent(`Workspace: ${activeWorkspace(this.state)?.name ?? "none"} | Privacy: ${this.state.privacyMode} | Session: ${this.state.activeSessionId} | Paste supported in input | Ctrl+C exits`);
-    this.inputBox?.focus?.();
+    this.focusInput();
     this.screen?.render();
+  }
+
+  private focusInput(): void {
+    if (!this.inputBox || !this.screen) {
+      return;
+    }
+
+    const focused = (this.screen as blessed.Widgets.Screen & { focused?: unknown }).focused;
+    if (focused !== this.inputBox) {
+      this.inputBox.focus?.();
+    }
+  }
+
+  private beginInput(): void {
+    if (!this.inputBox || !this.screen) {
+      return;
+    }
+
+    this.focusInput();
+    if (!this.inputBox._reading) {
+      this.inputBox.readInput?.();
+    }
   }
 
   private isInteractive(): boolean {
