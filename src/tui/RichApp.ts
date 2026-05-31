@@ -234,6 +234,10 @@ export class RichHermsecTui {
       tags: true,
       scrollable: true,
       alwaysScroll: true,
+      scrollOnInput: true,
+      scrollback: 200,
+      keys: false,
+      mouse: false,
       scrollbar: { ch: " ", style: { bg: "cyan" } },
       label: " conversation ",
       style: {
@@ -253,6 +257,8 @@ export class RichHermsecTui {
       tags: true,
       scrollable: true,
       alwaysScroll: true,
+      keys: false,
+      mouse: false,
       scrollbar: { ch: " ", style: { bg: "cyan" } },
       label: " context ",
       style: {
@@ -322,6 +328,13 @@ export class RichHermsecTui {
     this.screen.on("resize", () => {
       this.render();
     });
+    const lockViewport = () => {
+      this.lockViewport();
+      this.screen?.render();
+    };
+    this.screen.on("wheelup", lockViewport);
+    this.screen.on("wheeldown", lockViewport);
+    this.screen.on("mousewheel", lockViewport);
     this.screen.key(["C-c", "escape"], () => {
       void this.exit("user-exit");
     });
@@ -337,6 +350,10 @@ export class RichHermsecTui {
     });
     this.screen.key(["f3"], () => {
       void this.submit("/model");
+    });
+    this.screen.key(["pageup", "pagedown", "home", "end"], () => {
+      this.lockViewport();
+      this.render();
     });
   }
 
@@ -1100,6 +1117,7 @@ export class RichHermsecTui {
   private addHermsecMessage(text: string): void {
     this.addMessage("hermsec", text);
     this.chat?.log?.(`{cyan-fg}Hermsec>{/cyan-fg} ${escapeTag(redactSecrets(text))}`);
+    this.lockViewport();
   }
 
   private addMessage(role: ChatMessage["role"], text: string): void {
@@ -1237,8 +1255,15 @@ export class RichHermsecTui {
   private render(): void {
     this.applyResponsiveLayout();
     this.footer?.setContent(`Workspace: ${activeWorkspace(this.state)?.name ?? "No workspace"} | Privacy: ${this.state.privacyMode} | Session: ${this.state.activeSessionId} | Paste in input | Ctrl+C exits`);
+    this.lockViewport();
     this.focusInput();
     this.screen?.render();
+  }
+
+  private lockViewport(): void {
+    this.focusInput();
+    this.chat?.scrollTo?.(this.chat.getScrollHeight?.() ?? 0);
+    this.detail?.scrollTo?.(0);
   }
 
   private focusInput(): void {
