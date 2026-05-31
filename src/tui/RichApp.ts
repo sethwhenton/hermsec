@@ -208,7 +208,7 @@ export class RichHermsecTui {
       width: 1,
       height: 5,
       tags: false,
-      content: "",
+      content: " \n \n \n \n ",
       style: { fg: "cyan", bg: "cyan" },
     }) as BlessedNode;
 
@@ -244,7 +244,7 @@ export class RichHermsecTui {
       height: 1,
       tags: true,
       content: "",
-      style: { fg: "white", bg: "#1f1f1f" },
+      style: { fg: "white", bg: "black" },
     }) as BlessedNode;
 
     this.chat = blessed.log({
@@ -292,7 +292,8 @@ export class RichHermsecTui {
       height: 5,
       tags: true,
       content: "",
-      style: { fg: "white", bg: "#1f1f1f" },
+      border: "line",
+      style: { fg: "white", bg: "black", border: { fg: "blue" } },
     }) as BlessedNode;
 
     this.inputBox = blessed.textbox({
@@ -307,8 +308,8 @@ export class RichHermsecTui {
       inputOnFocus: false,
       style: {
         fg: "white",
-        bg: "#1f1f1f",
-        focus: { bg: "#1f1f1f" },
+        bg: "black",
+        focus: { bg: "black" },
       },
     }) as BlessedNode;
 
@@ -320,7 +321,7 @@ export class RichHermsecTui {
       height: 1,
       tags: false,
       content: "Ask anything... \"/scan\"",
-      style: { fg: "gray", bg: "#1f1f1f" },
+      style: { fg: "gray", bg: "black" },
     }) as BlessedNode;
 
     this.footer = blessed.box({
@@ -1726,11 +1727,11 @@ function formatActionRows(actions: RichAction[], mode: "commands" | "menu", sele
 
 function homeLogoText(): string {
   return [
-    "{gray-fg} _                                              {/gray-fg}",
-    "{gray-fg}| |__   ___ _ __ _ __ ___  ___  ___  ___       {/gray-fg}",
-    "{white-fg}| '_ \\ / _ \\ '__| '_ ` _ \\/ __|/ _ \\/ __|{/white-fg}",
-    "{white-fg}| | | |  __/ |  | | | | | \\__ \\  __/ (__     {/white-fg}",
-    "{gray-fg}|_| |_|\\___|_|  |_| |_| |_|___/\\___|\\___|    {/gray-fg}",
+    "{cyan-fg}HH   HH EEEEE RRRR  MM   MM  SSS  EEEEE  CCCC{/cyan-fg}",
+    "{cyan-fg}HH   HH EE    RR  R MMM MMM SS     EE    CC   {/cyan-fg}",
+    "{white-fg}HHHHHHH EEEE  RRRR  MM M MM  SSS  EEEE  CC   {/white-fg}",
+    "{white-fg}HH   HH EE    RR R  MM   MM    SS EE    CC   {/white-fg}",
+    "{white-fg}HH   HH EEEEE RR  R MM   MM SSSS  EEEEE  CCCC{/white-fg}",
   ].join("\n");
 }
 
