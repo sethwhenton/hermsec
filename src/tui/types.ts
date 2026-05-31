@@ -105,9 +105,35 @@ export type TuiIntelSummary = {
   items: string[];
 };
 
+export type TuiSessionSummary = {
+  id: string;
+  workspaceId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messageCount: number;
+  toolCallCount: number;
+  discussedScanIds: string[];
+  discussedFindingIds: string[];
+  compactSummary?: string;
+};
+
+export type TuiSessionSnapshot = {
+  id: string;
+  workspaceId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messages: ChatMessage[];
+  discussedScanIds: string[];
+  discussedFindingIds: string[];
+  compactSummary?: string;
+};
+
 export type TuiState = {
   workspaces: TuiWorkspace[];
   activeWorkspaceId: string | undefined;
+  activeSessionId: string;
   privacyMode: PrivacyMode;
   modelMode: ModelMode;
   scanMode: ScanMode;
@@ -118,6 +144,7 @@ export type TuiState = {
   lastDoctor: TuiDoctorReport | undefined;
   schedules: TuiScheduleSummary[];
   reports: TuiReportSummary[];
+  sessions: TuiSessionSummary[];
   transcript: ChatMessage[];
 };
 
@@ -128,6 +155,8 @@ export type TuiToolbox = {
   listReports?: (workspace: TuiWorkspace | undefined) => Promise<CommandResult<TuiReportSummary[]>>;
   listSchedules?: (workspace: TuiWorkspace | undefined) => Promise<CommandResult<TuiScheduleSummary[]>>;
   updateIntel?: (workspace: TuiWorkspace | undefined) => Promise<CommandResult<TuiIntelSummary>>;
+  listSessions?: (workspace: TuiWorkspace | undefined) => Promise<CommandResult<TuiSessionSummary[]>>;
+  saveSession?: (session: TuiSessionSnapshot) => Promise<CommandResult<TuiSessionSummary>>;
   addWorkspace?: (workspace: TuiWorkspace) => Promise<CommandResult<TuiWorkspace>>;
   useWorkspace?: (workspace: TuiWorkspace) => Promise<CommandResult<TuiWorkspace>>;
 };

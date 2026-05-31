@@ -7,6 +7,7 @@ import type {
   TuiDoctorReport,
   TuiReportSummary,
   TuiScheduleSummary,
+  TuiSessionSummary,
   TuiState,
   TuiStatus,
   TuiWorkspace,
@@ -51,6 +52,7 @@ export function formatStatusRail(state: TuiState): string[] {
     `Findings: ${findings}`,
     `Reports: ${latestReport}`,
     `Model: ${modelLabel(state.modelMode)}`,
+    `Session: ${state.activeSessionId}`,
   ];
 }
 
@@ -111,6 +113,7 @@ export function formatHelp(): string {
     "",
     "Commands:",
     "- /help                 Show commands and safety boundaries",
+    "- /commands             Alias for /help",
     "- /doctor               Check local readiness through the Hermsec doctor tool",
     "- /scan <path>          Scan a local path or GitHub URL through the approved scan harness",
     "- /scan changed         Scan changed files for the active workspace",
@@ -120,9 +123,29 @@ export function formatHelp(): string {
     "- /workspace use <name> Switch active workspace",
     "- /intel                Show or update the curated security feed",
     "- /schedule list        Show configured schedules",
+    "- /sessions             List saved chat sessions for the active workspace",
+    "- /sessions new         Save the current session and start a fresh one",
+    "- /sessions current     Show the current session summary",
+    "- /history [count]      Show recent messages from this session",
     "- /exit                 Leave the TUI",
     "",
     "Natural language works for safe intents, for example: scan this folder, show reports, run doctor, update security news.",
+  ].join("\n");
+}
+
+export function formatHistory(messages: ChatMessage[], limit = 20): string {
+  const count = Math.max(1, Math.min(limit, 100));
+  const visible = messages.slice(-count);
+  if (visible.length === 0) {
+    return "No messages in this session yet.";
+  }
+
+  return [
+    `Recent history (${visible.length}/${messages.length} messages):`,
+    ...visible.map((message, index) => {
+      const speaker = message.role === "user" ? "You" : message.role === "system" ? "System" : "Hermsec";
+      return `${index + 1}. ${speaker} [${message.at}]: ${message.text}`;
+    }),
   ].join("\n");
 }
 
@@ -159,6 +182,33 @@ export function formatSchedules(schedules: TuiScheduleSummary[]): string {
       const next = schedule.nextRunAt ? `, next ${schedule.nextRunAt}` : "";
       const last = schedule.lastRunAt ? `, last ${schedule.lastRunAt}` : "";
       return `${index + 1}. ${schedule.id}: ${schedule.cadence} for ${schedule.target} (${schedule.mode}, ${formatStatus(schedule.status)}${next}${last})`;
+    }),
+  ].join("\n");
+}
+
+export function formatSessions(
+  sessions: TuiSessionSummary[],
+  activeSessionId: string | undefined,
+  currentMessageCount: number,
+): string {
+  const lines = [
+    `Current session: ${activeSessionId ?? "none"} (${currentMessageCount} message${currentMessageCount === 1 ? "" : "s"})`,
+  ];
+
+  if (sessions.length === 0) {
+    return [
+      ...lines,
+      "No saved sessions yet. Use /sessions new or /exit to save the current session.",
+    ].join("\n");
+  }
+
+  return [
+    ...lines,
+    "Saved sessions:",
+    ...sessions.map((session, index) => {
+      const marker = session.id === activeSessionId ? "*" : " ";
+      const summary = session.compactSummary ? ` - ${session.compactSummary}` : "";
+      return `${marker} ${index + 1}. ${session.title} (${session.messageCount} messages, updated ${session.updatedAt})\n   ${session.id}${summary}`;
     }),
   ].join("\n");
 }

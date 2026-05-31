@@ -16,6 +16,20 @@ hermsec doctor
 hermsec scan E:\path\to\repo --out .hermsec\reports --html --md --json
 ```
 
+Inside the TUI:
+
+```text
+/help or /commands    Show available commands
+/doctor               Check local readiness
+/scan <path>          Run the approved scan harness
+/intel                Show security-update summaries
+/reports              Show local reports
+/history [count]      Show recent messages in the current session
+/sessions             List saved sessions for the active workspace
+/sessions new         Save the current session and start a fresh one
+/exit                 Leave the TUI
+```
+
 For development linking and registry publishing notes, see [docs/npm-install.md](docs/npm-install.md).
 
 Hermsec does not install dependencies inside scanned repositories and does not run package lifecycle scripts during scans.

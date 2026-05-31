@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import crypto from "node:crypto";
 import { createInterface } from "node:readline/promises";
 import type { Dirent } from "node:fs";
 import type { Interface } from "node:readline/promises";
@@ -13,8 +14,10 @@ import {
   defaultWorkspaceName,
   formatDoctor,
   formatHelp,
+  formatHistory,
   formatReports,
   formatSchedules,
+  formatSessions,
   formatStatus,
   formatStatusRail,
   formatWorkspaces,
@@ -37,6 +40,8 @@ import type {
   TuiScanRequest,
   TuiScanResult,
   TuiScheduleSummary,
+  TuiSessionSnapshot,
+  TuiSessionSummary,
   TuiState,
   TuiToolbox,
   TuiWorkspace,
@@ -52,7 +57,7 @@ type Choice<TValue extends string> = {
   description: string;
 };
 
-const HELP_HINT = "Try /help, /doctor, /scan <path>, /reports, /workspace list, /intel, /schedule list, or /exit.";
+const HELP_HINT = "Try /help, /commands, /doctor, /scan <path>, /reports, /workspace list, /intel, /sessions, /history, /schedule list, or /exit.";
 
 const UNSAFE_INTENT =
   /\b(npm\s+install|pnpm\s+install|yarn\s+install|bun\s+install|npx|pnpm\s+dlx|bunx|curl\s+.+\|\s*(?:sh|bash)|wget\s+.+\|\s*(?:sh|bash)|edit\s+(?:my\s+)?(?:code|file|source)|modify\s+(?:my\s+)?(?:code|file|source)|write\s+(?:code|file)|delete\s+(?:files?|source)|rm\s+-rf|run\s+(?:a\s+)?shell|execute\s+(?:this\s+)?command|powershell|cmd\.exe)\b/i;
@@ -113,12 +118,14 @@ export class HermsecTui {
 
         if (outcome.shouldExit) {
           this.addHermsecMessage("Goodbye. Reports stay local.");
+          await this.saveCurrentSession();
           this.write("Hermsec> Goodbye. Reports stay local.\n");
           return { exitReason: "user-exit", state: this.state };
         }
       }
     } catch (error) {
       if (isInputClosed(error)) {
+        await this.saveCurrentSession();
         return { exitReason: "input-closed", state: this.state };
       }
 
@@ -285,6 +292,7 @@ export class HermsecTui {
 
     switch (command) {
       case "/help":
+      case "/commands":
         return this.respond(formatHelp());
       case "/doctor":
         return this.doctorCommand();
@@ -298,6 +306,11 @@ export class HermsecTui {
         return this.intelCommand();
       case "/schedule":
         return this.scheduleCommand(restParts.join(" "));
+      case "/sessions":
+      case "/session":
+        return this.sessionsCommand(rest);
+      case "/history":
+        return this.historyCommand(rest);
       case "/report-path":
         return this.reportPathCommand(rest);
       case "/privacy":
@@ -334,6 +347,14 @@ export class HermsecTui {
 
     if (/\b(help|what can you do|commands)\b/.test(normalized)) {
       return this.respond(formatHelp());
+    }
+
+    if (/\b(history|transcript|previous messages)\b/.test(normalized)) {
+      return this.historyCommand("");
+    }
+
+    if (/\b(sessions?|chat sessions?)\b/.test(normalized)) {
+      return this.sessionsCommand("list");
     }
 
     if (/\b(doctor|check readiness|scanner readiness|tools ready)\b/.test(normalized)) {
@@ -564,6 +585,49 @@ export class HermsecTui {
     return this.respond(formatSchedules(schedules));
   }
 
+  private historyCommand(rest: string): CommandOutcome {
+    const count = Number.parseInt(rest.trim(), 10);
+    return this.respond(formatHistory(this.state.transcript, Number.isFinite(count) ? count : 20));
+  }
+
+  private async sessionsCommand(rest: string): Promise<CommandOutcome> {
+    const subcommand = rest.trim().toLowerCase() || "list";
+
+    if (subcommand === "new") {
+      await this.saveCurrentSession();
+      this.state.activeSessionId = newSessionId();
+      this.state.transcript = [
+        {
+          role: "system",
+          text: `TUI cwd: ${normalizedDisplayPath(this.cwd)}`,
+          at: new Date().toISOString(),
+        },
+      ];
+      this.addHermsecMessage("Started a new Hermsec session. Previous session was saved when storage is available.");
+      return this.respond(`Started new session: ${this.state.activeSessionId}`);
+    }
+
+    if (subcommand === "current") {
+      return this.respond(
+        [
+          `Current session: ${this.state.activeSessionId}`,
+          `Workspace: ${this.sessionWorkspaceId()}`,
+          `Messages: ${this.state.transcript.length}`,
+          `Latest scan: ${this.state.lastScan?.id ?? "none"}`,
+        ].join("\n"),
+      );
+    }
+
+    if (subcommand !== "list") {
+      return this.respond("Session commands: /sessions, /sessions list, /sessions current, /sessions new, /history [count].");
+    }
+
+    const workspace = activeWorkspace(this.state);
+    const sessions = await this.listSessions(workspace);
+    this.state.sessions = sessions;
+    return this.respond(formatSessions(sessions, this.state.activeSessionId, this.state.transcript.length));
+  }
+
   private async reportPathCommand(rest: string): Promise<CommandOutcome> {
     const value = rest.trim() || (await this.ask("Report directory", this.state.reportDir ?? defaultReportDir()));
     const resolvedReportDir = normalizeTargetPath(value);
@@ -721,6 +785,49 @@ export class HermsecTui {
     }
 
     return this.state.schedules.filter((schedule) => schedule.target === workspace.target);
+  }
+
+  private async listSessions(workspace: TuiWorkspace | undefined): Promise<TuiSessionSummary[]> {
+    if (this.tools.listSessions) {
+      const result = await this.tools.listSessions(workspace);
+      if (hasData(result)) {
+        return result.data;
+      }
+    }
+
+    return this.state.sessions;
+  }
+
+  private async saveCurrentSession(): Promise<void> {
+    if (!this.tools.saveSession || this.state.transcript.length === 0) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const active = activeWorkspace(this.state);
+    const snapshot: TuiSessionSnapshot = {
+      id: this.state.activeSessionId,
+      workspaceId: this.sessionWorkspaceId(),
+      title: active ? `Hermsec session - ${active.name}` : "Hermsec session",
+      createdAt: this.state.transcript[0]?.at ?? now,
+      updatedAt: now,
+      messages: this.state.transcript,
+      discussedScanIds: this.state.lastScan ? [this.state.lastScan.id] : [],
+      discussedFindingIds: [],
+      compactSummary: this.state.lastScan ? summarizeScan(this.state.lastScan) : "TUI chat session",
+    };
+
+    const result = await this.tools.saveSession(snapshot);
+    if (hasData(result)) {
+      this.state.sessions = [
+        result.data,
+        ...this.state.sessions.filter((session) => session.id !== result.data.id),
+      ].slice(0, 20);
+    }
+  }
+
+  private sessionWorkspaceId(): string {
+    return activeWorkspace(this.state)?.id ?? "global";
   }
 
   private async createWorkspace(
@@ -935,6 +1042,7 @@ export function createDefaultState(cwd: string, initialState: Partial<TuiState> 
   return {
     workspaces: initialState.workspaces ?? [],
     activeWorkspaceId: initialState.activeWorkspaceId,
+    activeSessionId: initialState.activeSessionId ?? newSessionId(),
     privacyMode: initialState.privacyMode ?? "local-only",
     modelMode: initialState.modelMode ?? "none",
     scanMode: initialState.scanMode ?? "auto",
@@ -945,6 +1053,7 @@ export function createDefaultState(cwd: string, initialState: Partial<TuiState> 
     lastDoctor: initialState.lastDoctor,
     schedules: initialState.schedules ?? [],
     reports: initialState.reports ?? [],
+    sessions: initialState.sessions ?? [],
     transcript: initialState.transcript ?? [
       {
         role: "system",
@@ -953,6 +1062,10 @@ export function createDefaultState(cwd: string, initialState: Partial<TuiState> 
       },
     ],
   };
+}
+
+function newSessionId(): string {
+  return `ses-${crypto.randomUUID()}`;
 }
 
 function nonInteractiveMessage(): string {

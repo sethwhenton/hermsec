@@ -11,7 +11,7 @@ import {
   requireStringArray,
 } from "./jsonStore.js";
 
-export const sessionRoles = ["user", "assistant", "tool"] as const;
+export const sessionRoles = ["system", "user", "assistant", "tool"] as const;
 export type SessionRole = (typeof sessionRoles)[number];
 
 export const sessionToolNames = ["scan", "doctor", "report", "workspace", "intel", "schedule"] as const;

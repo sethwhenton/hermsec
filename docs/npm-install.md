@@ -16,6 +16,21 @@ hermsec schedule list
 hermsec intel update
 ```
 
+Useful TUI commands:
+
+```text
+/help or /commands    Show every TUI command and safety boundary
+/doctor               Check scanner and local readiness
+/scan <path>          Scan a workspace with the real Hermsec harness
+/intel                Refresh and summarize trusted security updates
+/reports              Show local reports
+/history [count]      Show recent messages in the current session
+/sessions             List saved sessions for the active workspace
+/sessions current     Show the current session summary
+/sessions new         Save the current session and start a fresh one
+/exit                 Leave the TUI
+```
+
 ## Local tarball install
 
 From the repository root:

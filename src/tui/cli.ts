@@ -1,4 +1,10 @@
 import { ensureHermsecAppData } from "../storage/appData.js";
+import {
+  listSessions as listStoredSessions,
+  saveSession as saveStoredSession,
+  type SessionRecord,
+  type SessionRole,
+} from "../storage/sessionStore.js";
 import { getActiveWorkspace, getWorkspace, listWorkspaces, type WorkspaceProfile } from "../storage/workspaceStore.js";
 import { loadUserConfig } from "../storage/userConfig.js";
 import { runScan as runHarnessScan } from "../core/harness.js";
@@ -18,6 +24,8 @@ import type {
   TuiScanRequest,
   TuiScanResult,
   TuiScheduleSummary,
+  TuiSessionSnapshot,
+  TuiSessionSummary,
   TuiState,
   TuiStatus,
   TuiToolbox,
@@ -91,6 +99,8 @@ export function createCliToolbox(cwd: string): TuiToolbox {
     listReports: (workspace) => runTuiReportList(cwd, workspace),
     listSchedules: (workspace) => runTuiScheduleList(workspace),
     updateIntel: (workspace) => runTuiIntelUpdate(cwd, workspace),
+    listSessions: (workspace) => runTuiSessionList(workspace),
+    saveSession: (session) => runTuiSessionSave(session),
     addWorkspace: (workspace) => runTuiWorkspaceAdd(workspace),
     useWorkspace: (workspace) => runTuiWorkspaceUse(workspace),
   };
@@ -103,12 +113,14 @@ async function loadTuiState(): Promise<Partial<TuiState>> {
   ]);
   const config = await loadUserConfig();
   const active = activeWorkspace ?? workspaces[0];
+  const sessions = active ? await listStoredSessions(active.id) : await listStoredSessions("global");
   const state: Partial<TuiState> = {
     workspaces: workspaces.map(toTuiWorkspace),
     privacyMode: active?.privacyMode ?? config.privacyMode,
     scanMode: active?.scanMode ?? "auto",
     reportLocation: "custom",
     reportDir: active?.reportDir ?? config.customReportDir,
+    sessions: sessions.map(toTuiSessionSummary),
   };
 
   if (active?.id) {
@@ -239,6 +251,44 @@ async function runTuiScheduleList(
     ok: true,
     message: schedules.length ? `${schedules.length} schedule(s) configured.` : "No schedules configured.",
     data: schedules.map(toTuiSchedule),
+  };
+}
+
+async function runTuiSessionList(
+  workspace: TuiWorkspace | undefined,
+): Promise<CommandResult<TuiSessionSummary[]>> {
+  const sessions = await listStoredSessions(workspace?.id ?? "global");
+  return {
+    ok: true,
+    message: sessions.length ? `${sessions.length} session(s) found.` : "No sessions found.",
+    data: sessions.map(toTuiSessionSummary),
+  };
+}
+
+async function runTuiSessionSave(session: TuiSessionSnapshot): Promise<CommandResult<TuiSessionSummary>> {
+  const saved = await saveStoredSession({
+    schemaVersion: 1,
+    id: session.id,
+    workspaceId: session.workspaceId,
+    title: session.title,
+    createdAt: session.createdAt,
+    updatedAt: session.updatedAt,
+    messages: session.messages.map((message, index) => ({
+      id: `msg-${index + 1}`,
+      role: mapChatRole(message.role),
+      content: message.text,
+      createdAt: message.at,
+      redactionApplied: true,
+    })),
+    toolCalls: [],
+    discussedScanIds: session.discussedScanIds,
+    discussedFindingIds: session.discussedFindingIds,
+    ...(session.compactSummary ? { compactSummary: session.compactSummary } : {}),
+  });
+  return {
+    ok: true,
+    message: `Session saved: ${saved.id}`,
+    data: toTuiSessionSummary(saved),
   };
 }
 
@@ -405,6 +455,35 @@ function toTuiSchedule(schedule: ScheduleRecord): TuiScheduleSummary {
     summary.lastRunAt = schedule.lastRunAt;
   }
   return summary;
+}
+
+function toTuiSessionSummary(session: SessionRecord): TuiSessionSummary {
+  const summary: TuiSessionSummary = {
+    id: session.id,
+    workspaceId: session.workspaceId,
+    title: session.title,
+    createdAt: session.createdAt,
+    updatedAt: session.updatedAt,
+    messageCount: session.messages.length,
+    toolCallCount: session.toolCalls.length,
+    discussedScanIds: session.discussedScanIds,
+    discussedFindingIds: session.discussedFindingIds,
+  };
+  if (session.compactSummary) {
+    summary.compactSummary = session.compactSummary;
+  }
+  return summary;
+}
+
+function mapChatRole(role: "system" | "user" | "hermsec"): SessionRole {
+  switch (role) {
+    case "system":
+      return "system";
+    case "user":
+      return "user";
+    case "hermsec":
+      return "assistant";
+  }
 }
 
 function mapScheduleStatus(status: ScheduleStatus | undefined): TuiStatus {
