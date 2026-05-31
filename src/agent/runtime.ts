@@ -107,7 +107,26 @@ async function explainSelectedFindings(
       { role: "system", content: hermsecSystemPrompt },
       {
         role: "user",
-        content: `Return one JSON object keyed by finding id. Each value must match ModelExplanation. Use only this evidence:\n${JSON.stringify(redactedEvidence.value, null, 2)}`
+        content: [
+          "Return ONLY one valid JSON object keyed by finding id.",
+          "Do not copy scanner objects back to me.",
+          "Each top-level key must be one supplied finding id.",
+          "Each value must have exactly these explanation fields:",
+          "{",
+          '  "title": "short finding title",',
+          '  "impact": "defensive impact using only scanner evidence",',
+          '  "evidenceSummary": "what the scanner evidence says, including only supplied file/package/version/CVE/GHSA/OSV identifiers",',
+          '  "suggestedFix": "safe defensive remediation from supplied evidence",',
+          '  "confidenceReason": "why the scanner confidence is high/medium/low/confirmed",',
+          '  "safeNextSteps": ["defensive next step 1", "defensive next step 2"],',
+          '  "cveUsage": "from_evidence|not_applicable|not_present"',
+          "}",
+          "Use cveUsage=from_evidence only when the finding evidence includes a CVE.",
+          "Use cveUsage=not_present for GHSA-only/package-only/code/secret findings without a CVE.",
+          "Use cveUsage=not_applicable only when CVEs do not apply to the finding category.",
+          "Use only this evidence:",
+          JSON.stringify(redactedEvidence.value, null, 2),
+        ].join("\n")
       }
     ],
     temperature: 0,

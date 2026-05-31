@@ -31,7 +31,11 @@ if ($missingTools.Count -gt 0) {
   }
 }
 
-npm test
+if (Get-Command pmg -ErrorAction SilentlyContinue) {
+  pmg npm test
+} else {
+  npm test
+}
 
 $doctorJson = node dist/src/bin/hermsec.js doctor --json | Out-String
 $doctor = $doctorJson | ConvertFrom-Json

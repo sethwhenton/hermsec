@@ -69,12 +69,14 @@ async function explainScanRun(
   const apiKeyEnv = userConfig.providerCredentialRef?.kind === "env"
     ? userConfig.providerCredentialRef.name
     : providerCredentialEnv[providerId];
+  const providerConfig = {
+    provider: providerId,
+    ...(apiKeyEnv ? { apiKeyEnv } : {}),
+    allowRemoteProviders: userConfig.privacyMode !== "local-only",
+    timeoutMs: modelTimeoutMs(findings.length),
+  };
   const selection = await selectModelProvider(
-    {
-      provider: providerId,
-      ...(apiKeyEnv ? { apiKeyEnv } : {}),
-      allowRemoteProviders: userConfig.privacyMode !== "local-only",
-    },
+    providerConfig,
     userConfig.privacyMode,
   );
 
@@ -82,11 +84,7 @@ async function explainScanRun(
     message: "Explain these scanner findings for the Hermsec report. Use only supplied scanner evidence.",
     findings,
     provider: selection.provider,
-    providerConfig: {
-      provider: providerId,
-      ...(apiKeyEnv ? { apiKeyEnv } : {}),
-      allowRemoteProviders: userConfig.privacyMode !== "local-only",
-    },
+    providerConfig,
     privacyMode: userConfig.privacyMode,
     offlineMode: options.mode === "offline" && !selection.health.local,
   });
@@ -106,4 +104,8 @@ async function explainScanRun(
 function mapFormats(formats: OutputFormat[]): ReportFormat[] {
   const mapped = formats.map((format) => (format === "md" ? "markdown" : format)) as ReportFormat[];
   return mapped.length ? mapped : ["html", "markdown", "json"];
+}
+
+function modelTimeoutMs(findingCount: number): number {
+  return Math.min(120_000, Math.max(45_000, 30_000 + findingCount * 2_500));
 }

@@ -40,4 +40,11 @@ node dist/src/bin/hermsec.js doctor --json
 .\scripts\verify-production.ps1
 ```
 
-Production verification is not complete until `doctor` reports `command-pmg` as `pass` and `scripts/verify-production.ps1` exits successfully without `-AllowMissingPmg`.
+Production verification is complete only when `doctor` reports `command-pmg` as `pass` and `scripts/verify-production.ps1` exits successfully without `-AllowMissingPmg`. When PMG is present, the verifier runs `pmg npm test` so the build and test command use the guarded package-manager path.
+
+Current verified local installation:
+
+- PMG version: `0.17.4`
+- Install path: `C:\Users\whent\.local\bin\pmg.exe`
+- Source: official SafeDep GitHub release `v0.17.4`
+- Integrity: `pmg_Windows_x86_64.zip` SHA-256 matched the published `checksums.txt`

@@ -68,7 +68,7 @@ export async function renderReport(input: RenderReportInput): Promise<RenderRepo
   });
 
   const explanations = input.explanations ?? {};
-  const generatedWithModel = Object.values(explanations).some((explanation) => explanation !== undefined);
+  const generatedWithModel = wasGeneratedWithModel(input.agentSummary);
   const document: ReportDocument = {
     schemaVersion: "1.0",
     scanId: input.scanRun.id,
@@ -197,6 +197,16 @@ function buildExecutiveSummary(document: ReportDocument): string {
 
 function buildPriorityActions(document: ReportDocument): string[] {
   return document.findings.slice(0, 5).map((finding) => `${finding.id}: ${finding.remediation}`);
+}
+
+function wasGeneratedWithModel(agentSummary: Partial<AgentSummary> | undefined): boolean {
+  if (!agentSummary) {
+    return false;
+  }
+  if (!agentSummary.provider || agentSummary.provider === "none") {
+    return false;
+  }
+  return !agentSummary.fallbackReason;
 }
 
 export function renderMarkdown(run: ScanRun): string {

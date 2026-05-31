@@ -17,9 +17,29 @@ export type ExplanationValidationResult =
 const cvePattern = /\bCVE-\d{4}-\d{4,8}\b/gi;
 const ghsaPattern = /\bGHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}\b/gi;
 const osvPattern = /\b(?:OSV|PYSEC|GO|RUSTSEC)-\d{4}-\d+\b/gi;
-const pathPattern = /(?:[A-Za-z]:\\|\.{1,2}[\\/]|[A-Za-z0-9_.-]+[\\/])[A-Za-z0-9_./\\ @()+-]+/g;
+const pathPattern = /(?:[A-Za-z]:\\|\.{1,2}[\\/]|[A-Za-z0-9_.-]+[\\/])(?:[A-Za-z0-9_.@()+-]+[\\/])*[A-Za-z0-9_.@()+-]+\.[A-Za-z0-9]{1,12}\b/g;
 const linePattern = /\bline\s+(\d{1,8})\b/gi;
 const unsafeRemediationPattern = /\b(?:exploit|payload|reverse shell|curl\s+[^|]+\|\s*sh|wget\s+[^|]+\|\s*sh|npm\s+install|pnpm\s+install|yarn\s+install|bun\s+install|pip\s+install)\b/gi;
+const genericPackageWords = new Set([
+  "audit",
+  "dependency",
+  "dependencies",
+  "ecosystem",
+  "file",
+  "files",
+  "json",
+  "lock",
+  "lockfile",
+  "manifest",
+  "manager",
+  "metadata",
+  "name",
+  "registry",
+  "release",
+  "source",
+  "version",
+  "versions",
+]);
 
 export function parseModelExplanation(raw: string): ModelExplanation | undefined {
   try {
@@ -130,11 +150,11 @@ function collectAllowedEvidence(finding: Finding): {
     files,
     lines,
     disallowedPackageMentions(text: string): string[] {
-      const mentions = uniqueMatches(text, /\bpackage\s+["'`]?(@?[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)?)["'`]?\b/gi);
-      if (!knownPackage) {
-        return mentions;
-      }
-      return mentions.filter((mention) => mention.toLowerCase() !== `package ${knownPackage}`.toLowerCase());
+      const mentions = packageMentionCandidates(text);
+      return mentions
+        .filter((mention) => !isGenericPackageWord(mention.packageName))
+        .filter((mention) => !knownPackage || mention.packageName.toLowerCase() !== knownPackage.toLowerCase())
+        .map((mention) => mention.raw);
     }
   };
 }
@@ -167,6 +187,27 @@ function uniqueLineMatches(text: string): number[] {
     }
   }
   return [...matches].sort((left, right) => left - right);
+}
+
+function packageMentionCandidates(text: string): Array<{ raw: string; packageName: string }> {
+  const matches = new Map<string, { raw: string; packageName: string }>();
+  const pattern = /\bpackage\s+["'`]?(@?[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)?)["'`]?\b/gi;
+  for (const match of text.matchAll(pattern)) {
+    const raw = match[0];
+    const packageName = match[1];
+    if (!packageName) {
+      continue;
+    }
+    const key = raw.toLowerCase();
+    if (!matches.has(key)) {
+      matches.set(key, { raw, packageName });
+    }
+  }
+  return [...matches.values()].sort((left, right) => left.raw.localeCompare(right.raw));
+}
+
+function isGenericPackageWord(packageName: string): boolean {
+  return genericPackageWords.has(packageName.toLowerCase());
 }
 
 function clampUnsafeRemediation(value: string): string {
