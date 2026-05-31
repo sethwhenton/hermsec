@@ -41,6 +41,8 @@ Current full-suite status on May 31, 2026: `npm test` builds successfully and ru
 
 Current verified eval status: the Node vulnerable fixture scanner-only run reports precision `1.00`, recall `1.00`, and F1 `1.00` after aligning the JSON ground truth with all intentionally planted findings.
 
+Production verification script: `scripts/verify-production.ps1` runs tool discovery, `npm test`, `hermsec doctor --json`, and the scanner-only eval gate. It fails when PMG is missing unless `-AllowMissingPmg` is supplied for pre-approval verification. PMG setup instructions are in `docs/pmg-setup.md`.
+
 Known local shortcomings:
 
 - SafeDep PMG is not installed on this PC. Global instructions require explicit user approval before installing or globally configuring PMG.
@@ -108,7 +110,7 @@ These contain the end-to-end architecture, scanner choices, vulnerability intell
 
 ## Next Work
 
-1. Get explicit approval before installing or globally configuring SafeDep PMG on this machine, then rerun `hermsec doctor --json`.
+1. Get explicit approval before installing or globally configuring SafeDep PMG on this machine, then rerun `hermsec doctor --json` and `.\scripts\verify-production.ps1`.
 2. Add official OWASP/NIST benchmark acquisition behind explicit opt-in commands.
 3. Add EPSS, Scorecard/deps.dev/Socket/Phylum, and curated security-news feed adapters.
 4. Add OS-level schedule registration if needed; current scheduler storage, manual `schedule run`, and watch mode work locally.

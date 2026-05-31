@@ -293,7 +293,7 @@ function commandAvailabilityCheck(
     remediation: requirement === "required"
       ? `Install ${label} or add it to PATH.`
       : requirement === "recommended"
-        ? `Install ${label} for stronger package-manager protection, or document why it is unavailable.`
+        ? `Install ${label} for stronger package-manager protection. See docs/pmg-setup.md for SafeDep PMG setup.`
         : `Install ${label} if you want Hermsec to use that optional capability.`,
   };
 }

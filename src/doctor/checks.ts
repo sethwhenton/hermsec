@@ -213,7 +213,7 @@ function commandCheck(command: string, label: string, requirement: DoctorRequire
     remediation: requirement === "required"
       ? `Install ${label} or add it to PATH.`
       : requirement === "recommended"
-        ? `Install ${label} for stronger supply-chain protection.`
+        ? `Install ${label} for stronger supply-chain protection. See docs/pmg-setup.md for SafeDep PMG setup.`
         : `Install ${label} to enable this optional scanner.`,
   };
 }

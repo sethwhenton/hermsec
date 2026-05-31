@@ -49,4 +49,12 @@ Safety defaults:
 - Online scans use installed scanner CLIs when available: Semgrep, Gitleaks, Bandit, OSV-Scanner, pip-audit, and SafeDep PMG-wrapped npm audit. If a scanner is missing, Hermsec records a skipped status and keeps local heuristic coverage.
 - Output is redacted before printing.
 
+Production verification:
+
+```powershell
+.\scripts\verify-production.ps1
+```
+
+If PMG is still awaiting machine-level approval, use `.\scripts\verify-production.ps1 -AllowMissingPmg` only to verify every other production gate. PMG setup details live in `docs/pmg-setup.md`.
+
 Command handlers call stable facade modules through optional imports and return actionable `MODULE_UNAVAILABLE` errors instead of crashing.
