@@ -4,7 +4,7 @@ Hermsec is a local-first security assistant for repositories. It scans project f
 
 ## Quick Start
 
-Hermsec can be installed as an npm CLI. Once installed, type `hermsec` in PowerShell to open the rich terminal chatbot UI with panels, mouse-enabled buttons, paste-friendly input, onboarding, settings, model/provider pickers, sessions, and scan/report views.
+Hermsec can be installed as an npm CLI. Once installed, type `hermsec` in PowerShell to open the keyboard-first terminal chatbot UI with a fixed input box, responsive layout, onboarding, settings, model/provider pickers, sessions, and scan/report views.
 
 ```powershell
 pmg npm ci --ignore-scripts
@@ -35,7 +35,7 @@ Inside the TUI:
 /exit                 Leave the TUI
 ```
 
-On first launch, onboarding runs inside the same rich TUI view. You can click through the setup or paste a local path/GitHub URL directly into the bottom input. Run `hermsec onboard` to open that onboarding view again.
+On first launch, onboarding runs inside the same TUI view. Type the shown number choices or paste a local path/GitHub URL directly into the bottom input. Run `hermsec onboard` to open that onboarding view again.
 
 For development linking and registry publishing notes, see [docs/npm-install.md](docs/npm-install.md).
 

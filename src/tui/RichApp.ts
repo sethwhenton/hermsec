@@ -137,6 +137,8 @@ export class RichHermsecTui {
   private toolbar?: BlessedNode;
   private footer?: BlessedNode;
   private actionButtons: BlessedNode[] = [];
+  private currentActions: RichAction[] = [];
+  private currentActionHandler: ((action: RichAction) => Promise<void> | void) | undefined;
   private exitResolver?: (summary: TuiRunSummary) => void;
   private onboardingStep: OnboardingStep = "done";
   private onboardingDraft: OnboardingDraft = {};
@@ -167,8 +169,6 @@ export class RichHermsecTui {
       autoPadding: true,
       title: "Hermsec",
     });
-    this.screen.enableMouse();
-
     this.buildLayout();
     this.bindKeys();
     this.addHermsecMessage("Hermsec is ready. Paste paths or commands into the input, then press Enter.");
@@ -203,8 +203,8 @@ export class RichHermsecTui {
     this.logo = blessed.box({
       parent: this.screen,
       top: 1,
-      left: 2,
-      width: 31,
+      left: 3,
+      width: 60,
       height: 11,
       tags: true,
       content: `{cyan-fg}${LOGO}{/cyan-fg}`,
@@ -214,94 +214,57 @@ export class RichHermsecTui {
     this.modelLine = blessed.box({
       parent: this.screen,
       top: 12,
-      left: 2,
-      width: 31,
+      left: 3,
+      right: 3,
       height: 5,
       tags: true,
       content: "loading settings...",
       style: { fg: "white", bg: "black" },
     }) as BlessedNode;
 
-    this.sidebar = blessed.box({
+    const conversation = blessed.log({
       parent: this.screen,
-      top: 17,
-      left: 1,
-      width: 33,
-      bottom: 6,
+      top: 16,
+      left: 2,
+      right: 2,
+      bottom: 10,
       border: "line",
       tags: true,
-      label: " actions ",
-      style: {
-        fg: "white",
-        bg: "black",
-        border: { fg: "cyan" },
-      },
-    }) as BlessedNode;
-
-    this.chat = blessed.log({
-      parent: this.screen,
-      top: 1,
-      left: 35,
-      right: 39,
-      bottom: 13,
-      border: "line",
-      tags: true,
-      mouse: true,
-      keys: true,
       scrollable: true,
       alwaysScroll: true,
       scrollbar: { ch: " ", style: { bg: "cyan" } },
-      label: " chat ",
+      label: " hermsec ",
       style: {
         fg: "white",
         bg: "black",
         border: { fg: "cyan" },
       },
     }) as BlessedNode;
-
-    this.detail = blessed.box({
-      parent: this.screen,
-      top: 1,
-      right: 1,
-      width: 38,
-      bottom: 13,
-      border: "line",
-      tags: true,
-      mouse: true,
-      keys: true,
-      scrollable: true,
-      alwaysScroll: true,
-      scrollbar: { ch: " ", style: { bg: "cyan" } },
-      label: " context ",
-      style: {
-        fg: "white",
-        bg: "black",
-        border: { fg: "cyan" },
-      },
-    }) as BlessedNode;
+    this.chat = conversation;
+    this.detail = conversation;
 
     this.toolbar = blessed.box({
       parent: this.screen,
-      left: 35,
-      right: 1,
-      bottom: 7,
-      height: 6,
+      left: 2,
+      right: 2,
+      bottom: 6,
+      height: 3,
       tags: true,
       border: "line",
-      label: " buttons ",
+      label: " commands ",
       style: { fg: "white", bg: "black", border: { fg: "cyan" } },
     }) as BlessedNode;
 
     this.inputBox = blessed.textbox({
       parent: this.screen,
-      left: 35,
-      right: 1,
+      left: 2,
+      right: 2,
       bottom: 2,
       height: 4,
       border: "line",
       tags: false,
       keys: true,
-      mouse: true,
+      mouse: false,
       inputOnFocus: true,
       label: " paste or type command ",
       style: {
@@ -319,7 +282,7 @@ export class RichHermsecTui {
       bottom: 0,
       height: 1,
       tags: true,
-      content: "Enter submits | Tab focuses input | mouse clicks buttons | Ctrl+C exits | /commands lists everything",
+      content: "Enter submits | paste supported | Ctrl+C exits | /commands lists everything",
       style: { fg: "gray", bg: "black" },
     }) as BlessedNode;
 
@@ -334,6 +297,9 @@ export class RichHermsecTui {
     if (!this.screen) {
       return;
     }
+    this.screen.on("resize", () => {
+      this.render();
+    });
     this.screen.key(["C-c", "escape"], () => {
       void this.exit("user-exit");
     });
@@ -356,6 +322,12 @@ export class RichHermsecTui {
     const input = rawInput.trim();
     if (input.length === 0) {
       this.inputBox?.focus?.();
+      return;
+    }
+
+    if (this.onboardingStep === "done" && !input.startsWith("/") && await this.tryCurrentAction(input, true)) {
+      this.inputBox?.focus?.();
+      this.render();
       return;
     }
 
@@ -420,11 +392,15 @@ export class RichHermsecTui {
   private startOnboarding(): void {
     this.onboardingStep = "workspace";
     this.onboardingDraft = {};
-    this.addHermsecMessage("Welcome. Onboarding runs inside this terminal UI. Paste a workspace path, or click Use current folder.");
+    this.addHermsecMessage("Welcome. Onboarding runs inside this terminal UI. Paste a workspace path, or type the number for Use current folder.");
     this.showOnboarding();
   }
 
   private async handleOnboardingInput(input: string): Promise<void> {
+    if (await this.tryCurrentAction(input, true)) {
+      return;
+    }
+
     switch (this.onboardingStep) {
       case "workspace":
         await this.setOnboardingWorkspace(input);
@@ -435,7 +411,7 @@ export class RichHermsecTui {
         this.showOnboarding();
         return;
       default:
-        this.addHermsecMessage("Use the onboarding buttons for this step, or type /commands.");
+        this.addHermsecMessage("Type one of the shown numbers, or type /commands.");
     }
   }
 
@@ -577,7 +553,7 @@ export class RichHermsecTui {
       `Model: ${this.state.modelMode}`,
       `Reports: ${workspace?.reportDir ?? this.state.reportDir ?? defaultReportDir()}`,
       "",
-      "Click buttons or paste a slash command below.",
+      "Type a slash command below.",
     ].join("\n"));
     this.setActions(DEFAULT_ACTIONS);
     void this.refreshModelLine();
@@ -701,7 +677,7 @@ export class RichHermsecTui {
       `Provider: ${config.preferredModelProvider ?? "none"}`,
       `Credential env: ${config.providerCredentialRef?.name ?? "not set"}`,
       "",
-      "Use the buttons to change common settings. Provider keys stay in environment variables.",
+      "Type one of the shown numbers or a slash command. Provider keys stay in environment variables.",
     ].join("\n"));
     this.setActions([
       { label: "Local", command: "settings:privacy:local-only", description: "No cloud model calls" },
@@ -1049,36 +1025,31 @@ export class RichHermsecTui {
   private setActions(actions: RichAction[], handler?: (action: RichAction) => Promise<void> | void): void {
     this.actionButtons.forEach((button) => button.destroy());
     this.actionButtons = [];
-    this.toolbar?.setContent("");
-    this.sidebar?.setContent(actions.map((action, index) => `${index + 1}. ${action.label}\n   ${action.description}`).join("\n\n"));
-
-    actions.slice(0, 12).forEach((action, index) => {
-      const button = blessed.button({
-        parent: this.toolbar as never,
-        mouse: true,
-        keys: true,
-        shrink: true,
-        top: Math.floor(index / 4) * 2,
-        left: 2 + (index % 4) * 19,
-        height: 1,
-        width: 17,
-        align: "center",
-        tags: true,
-        content: action.label,
-        style: {
-          fg: "black",
-          bg: "cyan",
-          focus: { bg: "yellow", fg: "black" },
-          hover: { bg: "yellow", fg: "black" },
-        },
-      }) as BlessedNode;
-      button.on("press", () => {
-        void (handler ? handler(action) : this.submit(action.command));
-      });
-      this.actionButtons.push(button);
-    });
+    this.currentActions = actions;
+    this.currentActionHandler = handler;
+    this.sidebar?.setContent("");
+    this.toolbar?.setContent(formatActionHints(actions, Boolean(handler)));
     this.inputBox?.focus?.();
     this.render();
+  }
+
+  private async tryCurrentAction(input: string, recordUser: boolean): Promise<boolean> {
+    if (!this.currentActionHandler) {
+      return false;
+    }
+
+    const action = resolveAction(input, this.currentActions);
+    if (!action) {
+      return false;
+    }
+
+    if (recordUser) {
+      this.addMessage("user", input);
+      this.chat?.log?.(`{yellow-fg}You>{/yellow-fg} ${escapeTag(redactSecrets(input))}`);
+    }
+
+    await this.currentActionHandler(action);
+    return true;
   }
 
   private async refreshModelLine(): Promise<void> {
@@ -1161,8 +1132,68 @@ export class RichHermsecTui {
     this.exitResolver?.({ exitReason: reason, state: this.state });
   }
 
+  private applyResponsiveLayout(): void {
+    const width = Number((this.screen as { width?: number } | undefined)?.width ?? this.output.columns ?? 100);
+    const height = Number((this.screen as { height?: number } | undefined)?.height ?? 34);
+    const tiny = width < 72 || height < 24;
+    const compact = tiny || width < 96 || height < 32;
+    const inputHeight = 4;
+    const footerHeight = 1;
+    const commandHeight = tiny ? 2 : 3;
+    const inputBottom = footerHeight + 1;
+    const commandBottom = inputBottom + inputHeight;
+    const conversationBottom = commandBottom + commandHeight + 1;
+    const headerHeight = tiny ? 4 : compact ? 7 : 15;
+
+    this.logo?.setContent(tiny ? "{cyan-fg}{bold}HERMSEC{/bold}{/cyan-fg}" : `{cyan-fg}${LOGO}{/cyan-fg}`);
+    assignLayout(this.logo, {
+      top: tiny ? 0 : 1,
+      left: 3,
+      right: 3,
+      height: tiny ? 1 : compact ? 4 : 10,
+    });
+    assignLayout(this.modelLine, {
+      top: tiny ? 1 : compact ? 5 : 11,
+      left: 3,
+      right: 3,
+      height: tiny ? 3 : 4,
+    });
+    assignLayout(this.chat, {
+      top: headerHeight,
+      left: 2,
+      right: 2,
+      bottom: conversationBottom,
+    });
+    assignLayout(this.detail, {
+      top: headerHeight,
+      left: 2,
+      right: 2,
+      bottom: conversationBottom,
+    });
+    assignLayout(this.toolbar, {
+      left: 2,
+      right: 2,
+      bottom: commandBottom,
+      height: commandHeight,
+    });
+    assignLayout(this.inputBox, {
+      left: 2,
+      right: 2,
+      bottom: inputBottom,
+      height: inputHeight,
+    });
+    assignLayout(this.footer, {
+      left: 1,
+      right: 1,
+      bottom: 0,
+      height: footerHeight,
+    });
+  }
+
   private render(): void {
+    this.applyResponsiveLayout();
     this.footer?.setContent(`Workspace: ${activeWorkspace(this.state)?.name ?? "none"} | Privacy: ${this.state.privacyMode} | Session: ${this.state.activeSessionId} | Paste supported in input | Ctrl+C exits`);
+    this.inputBox?.focus?.();
     this.screen?.render();
   }
 
@@ -1174,7 +1205,7 @@ export class RichHermsecTui {
 function onboardingInstruction(step: OnboardingStep): string {
   switch (step) {
     case "workspace":
-      return "Paste a workspace path/GitHub URL, or click Use current folder.";
+      return "Paste a workspace path/GitHub URL, or type 1 for Use current folder.";
     case "privacy":
       return "Choose the default privacy boundary.";
     case "report":
@@ -1254,6 +1285,49 @@ function summarizeScan(scan: TuiScanResult): string {
 function extractNaturalTarget(input: string): string {
   const match = /\bscan\s+(.+)$/i.exec(input);
   return match?.[1]?.trim() ?? "";
+}
+
+function formatActionHints(actions: RichAction[], selectable: boolean): string {
+  const visible = actions.slice(0, 8);
+  if (visible.length === 0) {
+    return "{gray-fg}Type /commands for available Hermsec actions.{/gray-fg}";
+  }
+
+  if (selectable) {
+    return visible
+      .map((action, index) => `{cyan-fg}${index + 1}{/cyan-fg} ${escapeTag(action.label)} {gray-fg}${escapeTag(action.command)}{/gray-fg}`)
+      .join("   ");
+  }
+
+  return visible
+    .map((action) => `{cyan-fg}${escapeTag(action.command)}{/cyan-fg}`)
+    .join("   ");
+}
+
+function resolveAction(input: string, actions: RichAction[]): RichAction | undefined {
+  const trimmed = input.trim();
+  const index = Number.parseInt(trimmed, 10);
+  if (Number.isInteger(index) && index >= 1 && index <= actions.length) {
+    return actions[index - 1];
+  }
+
+  const normalized = normalizeAction(trimmed);
+  return actions.find((action) => (
+    normalizeAction(action.label) === normalized ||
+    normalizeAction(action.command) === normalized ||
+    normalizeAction(action.command.replace(/^\//, "")) === normalized
+  ));
+}
+
+function normalizeAction(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function assignLayout(node: BlessedNode | undefined, layout: Record<string, unknown>): void {
+  if (!node) {
+    return;
+  }
+  Object.assign(node as unknown as Record<string, unknown>, layout);
 }
 
 function escapeTag(value: string): string {

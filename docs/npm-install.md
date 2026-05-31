@@ -6,7 +6,7 @@ Hermsec is packaged as a Node.js command-line app. The installed command is:
 hermsec
 ```
 
-Running `hermsec` with no arguments opens the rich terminal chatbot UI. It uses mouse-enabled buttons, panels, scrollable context, paste-friendly input, onboarding, settings, model/provider pickers, sessions, and the real scan/report adapters. Scriptable commands remain available for automation:
+Running `hermsec` with no arguments opens the keyboard-first terminal chatbot UI. It uses a fixed input box, responsive layout, scrollable context, paste-friendly input, onboarding, settings, model/provider pickers, sessions, and the real scan/report adapters. Scriptable commands remain available for automation:
 
 ```powershell
 hermsec doctor
@@ -36,7 +36,7 @@ Useful TUI commands:
 /exit                 Leave the TUI
 ```
 
-First-run onboarding happens inside this same TUI view, so the setup flow looks and behaves like the main app instead of dropping into a plain prompt. You can also rerun that view with `hermsec onboard`.
+First-run onboarding happens inside this same TUI view, so the setup flow looks and behaves like the main app instead of dropping into a plain prompt. Type the shown number choices, or rerun the view with `hermsec onboard`.
 
 ## Local tarball install
 

@@ -2,7 +2,7 @@
 
 Hermsec's CLI is a defensive command router over the local-first scan engine, workspace/config storage, scheduler, intelligence feed, and evaluation modules.
 
-Running `hermsec` or `hermsec chat` opens the Blessed-powered terminal chatbot UI when a real TTY is available. The rich UI includes mouse-enabled buttons, onboarding, `/settings`, `/model`, `/provider`, `/sessions`, `/history`, scan/report panels, and paste-friendly command input. `hermsec onboard` opens the same rich UI directly in onboarding mode.
+Running `hermsec` or `hermsec chat` opens the Blessed-powered terminal chatbot UI when a real TTY is available. The UI is keyboard-first like OpenCode: the cursor stays in the bottom input box, command choices are typed, and the layout adjusts for narrower or shorter terminal windows. It includes onboarding, `/settings`, `/model`, `/provider`, `/sessions`, `/history`, scan/report panels, and paste-friendly command input. `hermsec onboard` opens the same UI directly in onboarding mode.
 
 ```bash
 hermsec
