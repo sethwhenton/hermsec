@@ -63,6 +63,7 @@ type BlessedNode = {
 type InputNode = BlessedNode & {
   readInput?(): void;
   _reading?: boolean;
+  value?: string;
 };
 
 type OnboardingStep =
@@ -123,6 +124,9 @@ export class RichHermsecTui {
   private state: TuiState;
   private screen?: blessed.Widgets.Screen;
   private logo?: BlessedNode;
+  private homeLogo?: BlessedNode;
+  private homeTip?: BlessedNode;
+  private placeholder?: BlessedNode;
   private modelLine?: BlessedNode;
   private sidebar?: BlessedNode;
   private chat?: BlessedNode;
@@ -133,6 +137,10 @@ export class RichHermsecTui {
   private currentActions: RichAction[] = [];
   private currentActionHandler: ((action: RichAction) => Promise<void> | void) | undefined;
   private overlayVisible = false;
+  private overlayHeader = "";
+  private overlayMode: "commands" | "menu" = "menu";
+  private selectedActionIndex = 0;
+  private homeMode = false;
   private exitResolver?: (summary: TuiRunSummary) => void;
   private onboardingStep: OnboardingStep = "done";
   private onboardingDraft: OnboardingDraft = {};
@@ -165,7 +173,6 @@ export class RichHermsecTui {
     });
     this.buildLayout();
     this.bindKeys();
-    this.addHermsecMessage("Hermsec is ready. Paste paths or commands into the input, then press Enter.");
 
     if (this.forceOnboarding || (!this.skipOnboarding && this.state.workspaces.length === 0)) {
       this.startOnboarding();
@@ -203,6 +210,30 @@ export class RichHermsecTui {
       tags: false,
       content: "",
       style: { fg: "cyan", bg: "cyan" },
+    }) as BlessedNode;
+
+    this.homeLogo = blessed.box({
+      parent: this.screen,
+      top: 5,
+      left: 2,
+      right: 2,
+      height: 7,
+      align: "center",
+      tags: true,
+      content: homeLogoText(),
+      style: { fg: "white", bg: "black" },
+    }) as BlessedNode;
+
+    this.homeTip = blessed.box({
+      parent: this.screen,
+      top: 22,
+      left: 2,
+      right: 2,
+      height: 3,
+      align: "center",
+      tags: true,
+      content: "{yellow-fg}Tip{/yellow-fg} Type {bold}/scan{/bold}, {bold}/doctor{/bold}, or press {bold}ctrl+p{/bold} for commands.",
+      style: { fg: "gray", bg: "black" },
     }) as BlessedNode;
 
     this.modelLine = blessed.box({
@@ -281,6 +312,17 @@ export class RichHermsecTui {
       },
     }) as BlessedNode;
 
+    this.placeholder = blessed.box({
+      parent: this.screen,
+      left: 5,
+      right: 4,
+      bottom: 4,
+      height: 1,
+      tags: false,
+      content: "Ask anything... \"/scan\"",
+      style: { fg: "gray", bg: "#1f1f1f" },
+    }) as BlessedNode;
+
     this.footer = blessed.box({
       parent: this.screen,
       left: 1,
@@ -295,9 +337,15 @@ export class RichHermsecTui {
     this.inputBox.on("submit", (value: unknown) => {
       const text = String(value ?? "").trim();
       this.inputBox?.clearValue?.();
+      this.updateInputDecorations("");
       void this.submit(text).finally(() => {
         this.beginInput();
       });
+    });
+    this.inputBox.on("keypress", () => {
+      setTimeout(() => {
+        this.updateLiveInputOverlay();
+      }, 0);
     });
     this.beginInput();
   }
@@ -316,8 +364,26 @@ export class RichHermsecTui {
     this.screen.on("wheelup", lockViewport);
     this.screen.on("wheeldown", lockViewport);
     this.screen.on("mousewheel", lockViewport);
-    this.screen.key(["C-c", "escape"], () => {
+    this.screen.key(["C-c"], () => {
       void this.exit("user-exit");
+    });
+    this.screen.key(["escape"], () => {
+      if (this.overlayVisible) {
+        this.hideOverlay();
+        this.render();
+        return;
+      }
+      void this.exit("user-exit");
+    });
+    this.screen.key(["up"], () => {
+      if (this.overlayVisible) {
+        this.moveSelection(-1);
+      }
+    });
+    this.screen.key(["down"], () => {
+      if (this.overlayVisible) {
+        this.moveSelection(1);
+      }
     });
     this.screen.key(["tab"], () => {
       this.focusInput();
@@ -344,7 +410,22 @@ export class RichHermsecTui {
   private async submit(rawInput: string): Promise<void> {
     const input = rawInput.trim();
     if (input.length === 0) {
+      if (this.overlayVisible && this.currentActionHandler) {
+        await this.activateSelectedAction();
+      }
       this.focusInput();
+      return;
+    }
+
+    if (
+      this.overlayVisible &&
+      this.overlayMode === "commands" &&
+      input.startsWith("/") &&
+      !isExactSlashCommand(input, commandActions())
+    ) {
+      await this.activateSelectedAction();
+      this.focusInput();
+      this.render();
       return;
     }
 
@@ -362,6 +443,10 @@ export class RichHermsecTui {
     }
 
     this.addMessage("user", input);
+    this.leaveHome();
+    if (!input.startsWith("/")) {
+      this.hideOverlay();
+    }
     this.chat?.log?.(`{yellow-fg}You>{/yellow-fg} ${escapeTag(redactSecrets(input))}`);
     const normalized = input.toLowerCase();
     const [commandToken, ...restParts] = input.split(/\s+/);
@@ -394,9 +479,9 @@ export class RichHermsecTui {
         await this.runSessions(rest);
       } else if (command === "/settings") {
         await this.handleSettingsCommand(rest);
-      } else if (command === "/model") {
+      } else if (command === "/model" || command === "/models") {
         await this.handleModelCommand(rest);
-      } else if (command === "/provider") {
+      } else if (command === "/provider" || command === "/connect") {
         await this.handleProviderCommand(rest);
       } else if (command === "/onboard") {
         this.startOnboarding();
@@ -415,7 +500,10 @@ export class RichHermsecTui {
   private startOnboarding(): void {
     this.onboardingStep = "workspace";
     this.onboardingDraft = {};
-    this.addHermsecMessage("Welcome. Onboarding runs inside this terminal UI. Paste a workspace path, or type the number for Use current folder.");
+    this.homeMode = true;
+    this.chat?.hide?.();
+    this.homeLogo?.show?.();
+    this.homeTip?.show?.();
     this.showOnboarding();
   }
 
@@ -466,10 +554,9 @@ export class RichHermsecTui {
       onboardingInstruction(this.onboardingStep),
     ];
     const actions = onboardingActions(this.onboardingStep, this.cwd);
-    this.showOverlay(formatMenu(lines.join("\n"), actions, true));
-    this.setActions(actions, async (action) => {
+    this.showActionOverlay(lines.join("\n"), actions, async (action) => {
       await this.handleOnboardingAction(action.command);
-    });
+    }, "menu");
     void this.refreshModelLine();
   }
 
@@ -502,12 +589,11 @@ export class RichHermsecTui {
       case "report-custom":
         this.onboardingDraft.reportLocation = "custom";
         this.onboardingStep = "custom-report";
-        this.showOverlay(formatMenu("Paste the custom report folder into the input, then press Enter.", [
+        this.showActionOverlay("Paste the custom report folder into the input, then press Enter.", [
           { label: "Default Reports", command: "report-app", description: defaultReportDir() },
-        ], true));
-        this.setActions([{ label: "Default Reports", command: "report-app", description: defaultReportDir() }], async (action) => {
+        ], async (action) => {
           await this.handleOnboardingAction(action.command);
-        });
+        }, "menu");
         break;
       case "model-none":
       case "model-local":
@@ -570,44 +656,20 @@ export class RichHermsecTui {
   }
 
   private showHome(): void {
-    const workspace = activeWorkspace(this.state);
     this.hideOverlay();
-    if (this.state.transcript.length <= 1) {
-      this.addOutputBlock([
-      "{cyan-fg}Hermsec workspace{/cyan-fg}",
-      "",
-      `Workspace: ${workspace?.name ?? "No active workspace"}`,
-      `Target: ${workspace?.target ?? "Use /workspace add <path>"}`,
-      `Privacy: ${this.state.privacyMode}`,
-      `Model: ${this.state.modelMode}`,
-      `Reports: ${workspace?.reportDir ?? this.state.reportDir ?? defaultReportDir()}`,
-      "",
-      "Type /commands to see every action.",
-      ].join("\n"));
-    }
+    this.homeMode = true;
+    this.chat?.hide?.();
+    this.homeLogo?.show?.();
+    this.homeTip?.show?.();
     this.setActions(DEFAULT_ACTIONS);
     void this.refreshModelLine();
   }
 
   private showCommands(): void {
-    const actions = [
-      { label: "Scan", command: "/scan", description: "Scan active workspace" },
-      { label: "Doctor", command: "/doctor", description: "Check installed scanners" },
-      { label: "Intel", command: "/intel", description: "Security update summary" },
-      { label: "Reports", command: "/reports", description: "Show local reports" },
-      { label: "Settings", command: "/settings", description: "Edit settings" },
-      { label: "Model", command: "/model", description: "Choose model provider" },
-      { label: "Provider", command: "/provider", description: "Set provider env" },
-      { label: "Workspace", command: "/workspace list", description: "Manage workspaces" },
-      { label: "Schedule", command: "/schedule list", description: "Show timed scans" },
-      { label: "History", command: "/history", description: "Current session history" },
-      { label: "Sessions", command: "/sessions", description: "Saved sessions" },
-      { label: "Onboard", command: "/onboard", description: "Run onboarding" },
-    ];
-    this.showOverlay(formatCommandPalette(actions));
-    this.setActions(actions, async (action) => {
+    const actions = commandActions();
+    this.showActionOverlay("", actions, async (action) => {
       await this.submit(action.command);
-    });
+    }, "commands");
   }
 
   private async handleModelCommand(rest: string): Promise<void> {
@@ -707,7 +769,7 @@ export class RichHermsecTui {
   private async showSettings(): Promise<void> {
     const config = await loadUserConfig();
     const lines = [
-      "{cyan-fg}Settings{/cyan-fg}",
+      "{bold}Settings{/bold}                                      {gray-fg}esc{/gray-fg}",
       "",
       `Privacy mode: ${config.privacyMode}`,
       `Report location: ${config.defaultReportLocation}`,
@@ -727,8 +789,7 @@ export class RichHermsecTui {
       { label: "Model", command: "/model", description: "Choose model/provider" },
       { label: "Provider", command: "/provider", description: "Set provider env" },
     ];
-    this.showOverlay(formatMenu(lines.join("\n"), actions, true));
-    this.setActions(actions, async (action) => {
+    this.showActionOverlay(lines.join("\n"), actions, async (action) => {
       if (action.command.startsWith("settings:privacy:")) {
         const value = action.command.split(":").at(-1);
         if (value) {
@@ -757,36 +818,36 @@ export class RichHermsecTui {
         return;
       }
       await this.submit(action.command);
-    });
+    }, "menu");
   }
 
   private async showModelPicker(): Promise<void> {
     const config = await loadUserConfig();
     const lines = [
-      "{cyan-fg}Model picker{/cyan-fg}",
+      "{bold}Select model{/bold}                                  {gray-fg}esc{/gray-fg}",
       "",
+      "Search",
+      "",
+      "{magenta-fg}Recent{/magenta-fg}",
       `Current provider: ${config.preferredModelProvider ?? "none"}`,
       `Credential: ${credentialStatus(config.preferredModelProvider, config.providerCredentialRef?.name)}`,
-      "",
-      "Type a number to choose a provider. Use /provider to set the env var name.",
     ];
     const actions = modelProviders.map((provider) => ({
       label: provider,
       command: `model:${provider}`,
       description: PROVIDER_ENV[provider] || "No remote key required",
     }));
-    this.showOverlay(formatMenu(lines.join("\n"), actions, true));
-    this.setActions(actions, async (action) => {
+    this.showActionOverlay(lines.join("\n"), actions, async (action) => {
       const provider = action.command.replace(/^model:/, "") as PreferredModelProvider;
       await this.setPreferredProvider(provider);
       await this.showModelPicker();
-    });
+    }, "menu");
   }
 
   private async showProviderPicker(): Promise<void> {
     const config = await loadUserConfig();
     const lines = [
-      "{cyan-fg}Provider setup{/cyan-fg}",
+      "{bold}Connect provider{/bold}                              {gray-fg}esc{/gray-fg}",
       "",
       "Hermsec stores environment variable names, never raw API keys.",
       "",
@@ -800,12 +861,11 @@ export class RichHermsecTui {
       command: `provider:${provider}`,
       description: PROVIDER_ENV[provider],
     }));
-    this.showOverlay(formatMenu(lines.join("\n"), actions, true));
-    this.setActions(actions, async (action) => {
+    this.showActionOverlay(lines.join("\n"), actions, async (action) => {
       const provider = action.command.replace(/^provider:/, "") as PreferredModelProvider;
       await this.setPreferredProvider(provider);
       await this.showProviderPicker();
-    });
+    }, "menu");
   }
 
   private async runDoctor(): Promise<void> {
@@ -1070,10 +1130,57 @@ export class RichHermsecTui {
   private setActions(actions: RichAction[], handler?: (action: RichAction) => Promise<void> | void): void {
     this.currentActions = actions;
     this.currentActionHandler = handler;
+    this.selectedActionIndex = 0;
     this.sidebar?.setContent("");
     this.toolbar?.setContent("");
     this.focusInput();
     this.render();
+  }
+
+  private showActionOverlay(
+    header: string,
+    actions: RichAction[],
+    handler: (action: RichAction) => Promise<void> | void,
+    mode: "commands" | "menu",
+  ): void {
+    this.overlayVisible = true;
+    this.overlayHeader = header;
+    this.overlayMode = mode;
+    this.currentActions = actions;
+    this.currentActionHandler = handler;
+    this.selectedActionIndex = 0;
+    this.renderActionOverlay();
+    this.focusInput();
+    this.render();
+  }
+
+  private renderActionOverlay(): void {
+    if (!this.overlayVisible) {
+      return;
+    }
+    this.detail?.setContent(formatActionOverlay(this.overlayHeader, this.currentActions, this.overlayMode, this.selectedActionIndex));
+    this.detail?.show?.();
+  }
+
+  private moveSelection(direction: number): void {
+    if (!this.overlayVisible || this.currentActions.length === 0) {
+      return;
+    }
+    const next = this.selectedActionIndex + direction;
+    this.selectedActionIndex = (next + this.currentActions.length) % this.currentActions.length;
+    this.renderActionOverlay();
+    this.render();
+  }
+
+  private async activateSelectedAction(): Promise<void> {
+    if (!this.currentActionHandler || this.currentActions.length === 0) {
+      return;
+    }
+    const action = this.currentActions[Math.max(0, Math.min(this.selectedActionIndex, this.currentActions.length - 1))];
+    if (!action) {
+      return;
+    }
+    await this.currentActionHandler(action);
   }
 
   private async tryCurrentAction(input: string, recordUser: boolean): Promise<boolean> {
@@ -1113,28 +1220,80 @@ export class RichHermsecTui {
 
   private addHermsecMessage(text: string): void {
     this.addMessage("hermsec", text);
+    this.leaveHome();
     this.chat?.log?.(`{cyan-fg}Hermsec>{/cyan-fg} ${escapeTag(redactSecrets(text))}`);
     this.lockViewport();
   }
 
   private addOutputBlock(text: string): void {
+    this.leaveHome();
     this.hideOverlay();
     this.chat?.log?.("");
     this.chat?.log?.(redactSecrets(text));
     this.lockViewport();
   }
 
-  private showOverlay(content: string): void {
-    this.overlayVisible = true;
-    this.detail?.setContent(content);
-    this.detail?.show?.();
-    this.lockViewport();
-  }
-
   private hideOverlay(): void {
     this.overlayVisible = false;
+    this.overlayHeader = "";
+    this.selectedActionIndex = 0;
     this.detail?.setContent("");
     this.detail?.hide?.();
+  }
+
+  private updateLiveInputOverlay(): void {
+    const value = this.currentInputValue();
+    this.updateInputDecorations(value);
+    if (this.onboardingStep !== "done") {
+      return;
+    }
+
+    if (value.startsWith("/")) {
+      const actions = filterCommandActions(value);
+      if (this.overlayHeader !== value) {
+        this.selectedActionIndex = 0;
+      }
+      this.overlayVisible = true;
+      this.overlayHeader = value;
+      this.overlayMode = "commands";
+      this.currentActions = actions;
+      this.currentActionHandler = async (action) => {
+        await this.submit(action.command);
+      };
+      if (this.selectedActionIndex >= actions.length) {
+        this.selectedActionIndex = 0;
+      }
+      this.renderActionOverlay();
+      this.render();
+      return;
+    }
+
+    if (this.overlayVisible && this.overlayMode === "commands") {
+      this.hideOverlay();
+      this.render();
+    }
+  }
+
+  private currentInputValue(): string {
+    return String(this.inputBox?.value ?? "");
+  }
+
+  private updateInputDecorations(value: string): void {
+    if (value.length === 0) {
+      this.placeholder?.show?.();
+    } else {
+      this.placeholder?.hide?.();
+    }
+  }
+
+  private leaveHome(): void {
+    if (!this.homeMode) {
+      return;
+    }
+    this.homeMode = false;
+    this.homeLogo?.hide?.();
+    this.homeTip?.hide?.();
+    this.chat?.show?.();
   }
 
   private addMessage(role: ChatMessage["role"], text: string): void {
@@ -1210,10 +1369,97 @@ export class RichHermsecTui {
     const footerHeight = 1;
     const composerHeight = tiny ? 4 : 5;
     const composerBottom = footerHeight + 1;
+    const composerWidth = Math.min(78, Math.max(34, width - 20));
+    const composerLeft = Math.max(3, Math.floor((width - composerWidth) / 2));
+    const homeComposerTop = Math.max(8, Math.min(height - composerHeight - 5, Math.floor(height * 0.45)));
     const chatBottom = composerBottom + composerHeight + 1;
     const paletteWidth = Math.min(82, Math.max(36, width - 20));
     const paletteLeft = Math.max(4, Math.floor((width - paletteWidth) / 2));
-    const paletteHeight = Math.max(8, Math.min(16, height - chatBottom - 2));
+    const paletteHeight = Math.max(8, Math.min(16, this.homeMode ? homeComposerTop - 1 : height - chatBottom - 2));
+
+    if (this.homeMode) {
+      const logoTop = Math.max(2, homeComposerTop - 8);
+      this.chat?.hide?.();
+      this.homeLogo?.show?.();
+      this.homeTip?.show?.();
+      assignLayout(this.homeLogo, {
+        top: logoTop,
+        left: 2,
+        width: Math.max(30, width - 4),
+        right: undefined,
+        bottom: undefined,
+        height: 6,
+      });
+      assignLayout(this.homeTip, {
+        top: Math.min(height - 5, homeComposerTop + composerHeight + 5),
+        left: 2,
+        width: Math.max(30, width - 4),
+        right: undefined,
+        bottom: undefined,
+        height: 3,
+      });
+      assignLayout(this.toolbar, {
+        top: homeComposerTop,
+        left: composerLeft,
+        width: composerWidth,
+        right: undefined,
+        bottom: undefined,
+        height: composerHeight,
+      });
+      assignLayout(this.logo, {
+        top: homeComposerTop,
+        left: composerLeft,
+        width: 1,
+        right: undefined,
+        bottom: undefined,
+        height: composerHeight,
+      });
+      assignLayout(this.inputBox, {
+        top: homeComposerTop + 1,
+        left: composerLeft + 3,
+        width: Math.max(24, composerWidth - 6),
+        right: undefined,
+        bottom: undefined,
+        height: inputHeight,
+      });
+      assignLayout(this.placeholder, {
+        top: homeComposerTop + 1,
+        left: composerLeft + 3,
+        width: Math.max(24, composerWidth - 6),
+        right: undefined,
+        bottom: undefined,
+        height: inputHeight,
+      });
+      assignLayout(this.modelLine, {
+        top: homeComposerTop + 3,
+        left: composerLeft + 3,
+        width: Math.max(24, composerWidth - 6),
+        right: undefined,
+        bottom: undefined,
+        height: 1,
+      });
+      assignLayout(this.detail, {
+        top: Math.max(2, homeComposerTop - paletteHeight),
+        left: paletteLeft,
+        width: paletteWidth,
+        right: undefined,
+        bottom: undefined,
+        height: paletteHeight,
+      });
+      assignLayout(this.footer, {
+        left: 1,
+        width: Math.max(30, width - 2),
+        right: undefined,
+        bottom: 0,
+        top: undefined,
+        height: footerHeight,
+      });
+      return;
+    }
+
+    this.chat?.show?.();
+    this.homeLogo?.hide?.();
+    this.homeTip?.hide?.();
 
     assignLayout(this.chat, {
       top: 1,
@@ -1227,6 +1473,7 @@ export class RichHermsecTui {
       left: tiny ? 3 : paletteLeft,
       width: tiny ? bodyWidth - 2 : paletteWidth,
       right: undefined,
+      top: undefined,
       bottom: chatBottom - 1,
       height: paletteHeight,
     });
@@ -1235,6 +1482,7 @@ export class RichHermsecTui {
       left: 2,
       width: bodyWidth,
       right: undefined,
+      top: undefined,
       bottom: composerBottom,
       height: composerHeight,
     });
@@ -1242,6 +1490,7 @@ export class RichHermsecTui {
       left: 2,
       width: 1,
       right: undefined,
+      top: undefined,
       bottom: composerBottom,
       height: composerHeight,
     });
@@ -1250,12 +1499,22 @@ export class RichHermsecTui {
       width: Math.max(24, width - (tiny ? 8 : 10)),
       right: undefined,
       bottom: footerHeight + composerHeight - 2,
+      top: undefined,
+      height: inputHeight,
+    });
+    assignLayout(this.placeholder, {
+      left: tiny ? 4 : 5,
+      width: Math.max(24, width - (tiny ? 8 : 10)),
+      right: undefined,
+      bottom: footerHeight + composerHeight - 2,
+      top: undefined,
       height: inputHeight,
     });
     assignLayout(this.modelLine, {
       left: tiny ? 4 : 5,
       width: Math.max(24, width - (tiny ? 8 : 10)),
       right: undefined,
+      top: undefined,
       bottom: composerBottom,
       height: 1,
     });
@@ -1270,7 +1529,8 @@ export class RichHermsecTui {
 
   private render(): void {
     this.applyResponsiveLayout();
-    this.footer?.setContent("{gray-fg}ctrl+p commands   /commands help   ctrl+c exit{/gray-fg}");
+    this.updateInputDecorations(this.currentInputValue());
+    this.footer?.setContent("{gray-fg}~  Hermsec  /status   ctrl+p commands   ctrl+c exit{/gray-fg}");
     this.lockViewport();
     this.focusInput();
     this.screen?.render();
@@ -1396,29 +1656,82 @@ function extractNaturalTarget(input: string): string {
   return match?.[1]?.trim() ?? "";
 }
 
-function formatMenu(body: string, actions: RichAction[], selectable: boolean): string {
+function commandActions(): RichAction[] {
   return [
-    body,
+    { label: "Scan", command: "/scan", description: "Scan active workspace" },
+    { label: "Doctor", command: "/doctor", description: "Check installed scanners" },
+    { label: "Intel", command: "/intel", description: "Security update summary" },
+    { label: "Reports", command: "/reports", description: "Show local reports" },
+    { label: "Settings", command: "/settings", description: "Edit settings" },
+    { label: "Models", command: "/models", description: "Switch model" },
+    { label: "Provider", command: "/connect", description: "Connect provider" },
+    { label: "Workspace", command: "/workspace list", description: "Manage workspaces" },
+    { label: "Schedule", command: "/schedule list", description: "Show timed scans" },
+    { label: "History", command: "/history", description: "Current session history" },
+    { label: "Sessions", command: "/sessions", description: "Saved sessions" },
+    { label: "Onboard", command: "/onboard", description: "Run onboarding" },
+    { label: "Exit", command: "/exit", description: "Exit the app" },
+  ];
+}
+
+function filterCommandActions(input: string): RichAction[] {
+  const query = normalizeAction(input.replace(/^\//, ""));
+  if (!query) {
+    return commandActions();
+  }
+  const matches = commandActions().filter((action) => (
+    normalizeAction(action.command.replace(/^\//, "")).startsWith(query) ||
+    normalizeAction(action.label).includes(query) ||
+    normalizeAction(action.description).includes(query)
+  ));
+  return matches.length > 0 ? matches : commandActions();
+}
+
+function isExactSlashCommand(input: string, actions: RichAction[]): boolean {
+  const normalized = input.trim().toLowerCase();
+  return actions.some((action) => action.command.toLowerCase() === normalized);
+}
+
+function formatActionOverlay(header: string, actions: RichAction[], mode: "commands" | "menu", selectedIndex: number): string {
+  const title = mode === "commands" ? "" : header;
+  const rows = formatActionRows(actions, mode, selectedIndex);
+  if (mode === "commands") {
+    return [
+      ...rows,
+      "",
+      `{gray-fg}${escapeTag(header || "/")}{/gray-fg}`,
+    ].join("\n");
+  }
+  return [
+    title,
     "",
-    ...formatActionRows(actions, selectable ? "menu" : "commands"),
+    ...rows,
+    "",
+    "{gray-fg}enter select   up/down move   esc close{/gray-fg}",
   ].join("\n");
 }
 
-function formatCommandPalette(actions: RichAction[]): string {
-  return formatActionRows(actions, "commands").join("\n");
-}
-
-function formatActionRows(actions: RichAction[], mode: "commands" | "menu"): string[] {
+function formatActionRows(actions: RichAction[], mode: "commands" | "menu", selectedIndex: number): string[] {
   return actions.slice(0, 12).map((action, index) => {
     const key = mode === "menu" ? `${index + 1}` : action.command;
     const label = mode === "menu" ? action.label : action.description;
     const detail = mode === "menu" ? action.description : "";
     const row = `${key.padEnd(14)} ${label.padEnd(22)} ${detail}`;
-    if (index === 0) {
+    if (index === selectedIndex) {
       return `{black-fg}{yellow-bg}${escapeTag(row.padEnd(68))}{/yellow-bg}{/black-fg}`;
     }
     return `{white-fg}${escapeTag(key.padEnd(14))}{/white-fg} {cyan-fg}${escapeTag(label.padEnd(22))}{/cyan-fg} {gray-fg}${escapeTag(detail)}{/gray-fg}`;
   });
+}
+
+function homeLogoText(): string {
+  return [
+    "{gray-fg} _                                              {/gray-fg}",
+    "{gray-fg}| |__   ___ _ __ _ __ ___  ___  ___  ___       {/gray-fg}",
+    "{white-fg}| '_ \\ / _ \\ '__| '_ ` _ \\/ __|/ _ \\/ __|{/white-fg}",
+    "{white-fg}| | | |  __/ |  | | | | | \\__ \\  __/ (__     {/white-fg}",
+    "{gray-fg}|_| |_|\\___|_|  |_| |_| |_|___/\\___|\\___|    {/gray-fg}",
+  ].join("\n");
 }
 
 function credentialStatus(provider: PreferredModelProvider | undefined, envName: string | undefined): string {
