@@ -1,0 +1,16 @@
+schemaVersion: 1
+fixtureId: python-flask-clean
+language:
+  - python
+framework:
+  - flask
+kind: clean-app
+safeToRun: false
+notes:
+  - Clean negative-control scanner fixture.
+  - Do not install dependencies or run it.
+expectedFindings: []
+unexpectedFindings:
+  allowExtraInformational: true
+negativeControl:
+  pairedFixture: python-flask-vulnerable

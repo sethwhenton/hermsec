@@ -1,0 +1,16 @@
+schemaVersion: 1
+fixtureId: node-express-clean
+language:
+  - javascript
+framework:
+  - express
+kind: clean-app
+safeToRun: false
+notes:
+  - Clean negative-control scanner fixture.
+  - Do not install dependencies or run package scripts.
+expectedFindings: []
+unexpectedFindings:
+  allowExtraInformational: true
+negativeControl:
+  pairedFixture: node-express-vulnerable

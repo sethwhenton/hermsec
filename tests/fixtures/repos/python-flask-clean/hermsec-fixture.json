@@ -1,0 +1,23 @@
+{
+  "id": "python-flask-clean",
+  "kind": "repo",
+  "purpose": "generated Python/Flask clean scanner negative control",
+  "source": {
+    "type": "generated",
+    "origin": "local",
+    "pinnedRef": null,
+    "sha256": null,
+    "retrievedAt": null
+  },
+  "safety": {
+    "containsIntentionalVulnerabilities": false,
+    "containsExploitCode": false,
+    "requiresNetwork": false,
+    "allowedTargets": ["localhost", "127.0.0.1"],
+    "packageScriptsMustNotRun": true
+  },
+  "expectedScanners": ["bandit", "semgrep", "pip-audit", "osv-scanner"],
+  "expectedFindingKinds": [],
+  "fakeSecretsOnly": true,
+  "owner": "Hermsec evaluation fixtures"
+}

@@ -1,0 +1,104 @@
+schemaVersion: 1
+fixtureId: python-flask-vulnerable
+language:
+  - python
+framework:
+  - flask
+kind: vulnerable-app
+safeToRun: false
+notes:
+  - Intentionally vulnerable scanner fixture with fake secrets only.
+  - Do not deploy, install, or run it.
+expectedFindings:
+  - id: python-sqli-user-search
+    category: code
+    title: Unsafe toy SQLite query construction
+    weakness:
+      cwe:
+        - CWE-89
+      label: sql-injection
+    severity: high
+    confidence: high
+    expectedTools:
+      - bandit
+      - semgrep
+    location:
+      file: app.py
+      startLineHint: 14
+  - id: python-command-shell
+    category: code
+    title: User-controlled shell command in local echo helper
+    weakness:
+      cwe:
+        - CWE-78
+      label: command-injection
+    severity: high
+    confidence: high
+    expectedTools:
+      - bandit
+      - semgrep
+    location:
+      file: app.py
+      startLineHint: 20
+  - id: python-path-read
+    category: code
+    title: Unchecked local path join for fixture file read
+    weakness:
+      cwe:
+        - CWE-22
+      label: path-traversal
+    severity: medium
+    confidence: high
+    expectedTools:
+      - bandit
+      - semgrep
+    location:
+      file: app.py
+      startLineHint: 26
+  - id: python-template-string
+    category: code
+    title: Unsafe template string rendering in fixture route
+    weakness:
+      cwe:
+        - CWE-79
+      label: template-injection
+    severity: medium
+    confidence: medium
+    expectedTools:
+      - semgrep
+    location:
+      file: app.py
+      startLineHint: 34
+  - id: python-weak-md5
+    category: code
+    title: MD5 hash used in toy route
+    weakness:
+      cwe:
+        - CWE-328
+      label: weak-hash
+    severity: low
+    confidence: high
+    expectedTools:
+      - bandit
+      - semgrep
+    location:
+      file: app.py
+      startLineHint: 33
+  - id: python-fake-secret
+    category: secret
+    title: Fake Hermsec token fixture
+    weakness:
+      cwe:
+        - CWE-798
+      label: hardcoded-fake-secret
+    severity: high
+    confidence: confirmed
+    expectedTools:
+      - gitleaks
+    location:
+      file: app.py
+      startLineHint: 9
+unexpectedFindings:
+  allowExtraInformational: true
+negativeControl:
+  pairedFixture: python-flask-clean

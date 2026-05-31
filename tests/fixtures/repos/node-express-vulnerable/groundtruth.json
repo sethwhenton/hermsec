@@ -1,0 +1,29 @@
+[
+  {
+    "id": "node-sqli",
+    "category": "code",
+    "severity": "high",
+    "cwe": ["CWE-89"],
+    "location": { "file": "src/app.js", "startLine": 8 }
+  },
+  {
+    "id": "node-command",
+    "category": "code",
+    "severity": "critical",
+    "cwe": ["CWE-78"],
+    "location": { "file": "src/app.js", "startLine": 13 }
+  },
+  {
+    "id": "node-secret",
+    "category": "secret",
+    "severity": "high",
+    "location": { "file": ".env.example", "startLine": 1 }
+  },
+  {
+    "id": "node-lodash",
+    "category": "dependency",
+    "severity": "high",
+    "identifiers": { "ghsa": ["GHSA-35jh-r3h4-6jhm"] },
+    "package": { "ecosystem": "npm", "name": "lodash", "installedVersion": "4.17.20" }
+  }
+]

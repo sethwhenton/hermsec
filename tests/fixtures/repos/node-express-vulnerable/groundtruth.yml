@@ -1,0 +1,109 @@
+schemaVersion: 1
+fixtureId: node-express-vulnerable
+language:
+  - javascript
+framework:
+  - express
+kind: vulnerable-app
+safeToRun: false
+notes:
+  - Intentionally vulnerable scanner fixture with fake secrets only.
+  - Do not deploy, install, or run package scripts.
+expectedFindings:
+  - id: node-sqli-user-search
+    category: code
+    title: Unsafe toy SQL query construction
+    weakness:
+      cwe:
+        - CWE-89
+      label: sql-injection
+    severity: high
+    confidence: high
+    expectedTools:
+      - semgrep
+    location:
+      file: src/routes/search.js
+      startLineHint: 14
+    match:
+      titleContains:
+        - sql
+      messageContains:
+        - injection
+  - id: node-command-echo
+    category: code
+    title: User-controlled command string in local echo helper
+    weakness:
+      cwe:
+        - CWE-78
+      label: command-injection
+    severity: high
+    confidence: high
+    expectedTools:
+      - semgrep
+    location:
+      file: src/routes/search.js
+      startLineHint: 20
+  - id: node-path-read
+    category: code
+    title: Unchecked path join for fixture file read
+    weakness:
+      cwe:
+        - CWE-22
+      label: path-traversal
+    severity: medium
+    confidence: high
+    expectedTools:
+      - semgrep
+    location:
+      file: src/routes/search.js
+      startLineHint: 26
+  - id: node-reflected-html
+    category: code
+    title: Unsanitized HTML response in fixture route
+    weakness:
+      cwe:
+        - CWE-79
+      label: xss
+    severity: medium
+    confidence: medium
+    expectedTools:
+      - semgrep
+    location:
+      file: src/routes/search.js
+      startLineHint: 34
+  - id: node-weak-md5
+    category: code
+    title: MD5 hash used in toy route
+    weakness:
+      cwe:
+        - CWE-328
+      label: weak-hash
+    severity: low
+    confidence: high
+    expectedTools:
+      - semgrep
+    location:
+      file: src/routes/search.js
+      startLineHint: 33
+  - id: node-fake-secret
+    category: secret
+    title: Fake Hermsec token fixture
+    weakness:
+      cwe:
+        - CWE-798
+      label: hardcoded-fake-secret
+    severity: high
+    confidence: confirmed
+    expectedTools:
+      - gitleaks
+    location:
+      file: src/routes/search.js
+      startLineHint: 7
+    match:
+      ruleContains:
+        - hermsec
+        - fake
+unexpectedFindings:
+  allowExtraInformational: true
+negativeControl:
+  pairedFixture: node-express-clean

@@ -14,6 +14,7 @@ coverage/
 *.pfx
 
 # Hermsec local runtime state
+.hermsec/
 .hermsec/cache/
 .hermsec/queue/
 .hermsec/tmp/
@@ -25,4 +26,3 @@ coverage/
 Thumbs.db
 .vscode/
 .idea/
-

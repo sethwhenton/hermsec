@@ -1,0 +1,17 @@
+{
+  "id": "node-express-clean",
+  "kind": "repo",
+  "purpose": "Hermsec clean negative control fixture",
+  "source": {
+    "type": "generated",
+    "origin": "local"
+  },
+  "safety": {
+    "containsIntentionalVulnerabilities": false,
+    "containsExploitCode": false,
+    "requiresNetwork": false,
+    "allowedTargets": ["localhost", "127.0.0.1"],
+    "packageScriptsMustNotRun": true
+  },
+  "fakeSecretsOnly": true
+}

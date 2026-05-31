@@ -1,0 +1,17 @@
+{
+  "id": "python-flask-vulnerable",
+  "kind": "repo",
+  "purpose": "Hermsec scanner fixture for toy Python vulnerabilities",
+  "source": {
+    "type": "generated",
+    "origin": "local"
+  },
+  "safety": {
+    "containsIntentionalVulnerabilities": true,
+    "containsExploitCode": false,
+    "requiresNetwork": false,
+    "allowedTargets": ["localhost", "127.0.0.1"],
+    "packageScriptsMustNotRun": true
+  },
+  "fakeSecretsOnly": true
+}
