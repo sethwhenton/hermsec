@@ -60,6 +60,16 @@ export type ActualFindingProjection = {
   tool?: string;
 };
 
+export type IgnoredActualFinding = {
+  id: string;
+  fingerprint: string;
+  category: EvalFindingCategory;
+  reason: "duplicate";
+  duplicateOfId: string;
+  duplicateOfFingerprint: string;
+  noiseKey: string;
+};
+
 export type MatchThresholds = {
   minMatchScore: number;
   defaultLineTolerance: number;
@@ -101,6 +111,7 @@ export type MatchResult = {
   rejectedCandidates: MatchCandidate[];
   falsePositives: ActualFindingProjection[];
   falseNegatives: GroundTruthFinding[];
+  ignoredActual: IgnoredActualFinding[];
   trueNegative: boolean;
   thresholds: MatchThresholds;
 };

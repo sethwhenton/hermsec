@@ -1,9 +1,13 @@
 import path from "node:path";
+import { runAgentTurn } from "../agent/runtime.js";
+import { providerCredentialEnv } from "../model/credentials.js";
+import { selectModelProvider } from "../model/providerRouter.js";
 import { runScan as runLocalScan } from "./scan.js";
 import { renderReport } from "../reports/reportRenderer.js";
 import { stableId } from "../shared/text.js";
 import type { CommandResult, OutputFormat, ScanMode } from "../shared/types.js";
 import type { ReportFormat } from "../reports/schema.js";
+import { loadUserConfig } from "../storage/userConfig.js";
 
 export type HarnessScanOptions = {
   cwd: string;
@@ -20,6 +24,7 @@ export async function runScan(options: HarnessScanOptions): Promise<CommandResul
     mode: options.mode,
   });
   const workspaceName = path.basename(scanRun.target) || "workspace";
+  const agent = await explainScanRun(scanRun.findings, options);
   const report = await renderReport({
     scanRun,
     workspaceId: stableId(scanRun.target, "ws"),
@@ -31,10 +36,8 @@ export async function runScan(options: HarnessScanOptions): Promise<CommandResul
       value: scanRun.target,
       displayName: workspaceName,
     },
-    agentSummary: {
-      provider: options.useModel ? "configured-model-or-fallback" : "none",
-      fallbackReason: options.useModel ? "Model adapters are optional; scanner evidence was preserved locally." : "Model disabled with --no-model.",
-    },
+    explanations: agent.explanations,
+    agentSummary: agent.summary,
   });
 
   return {
@@ -43,6 +46,59 @@ export async function runScan(options: HarnessScanOptions): Promise<CommandResul
     data: {
       scan: scanRun,
       report: report.artifacts,
+    },
+  };
+}
+
+async function explainScanRun(
+  findings: Awaited<ReturnType<typeof runLocalScan>>["findings"],
+  options: HarnessScanOptions,
+) {
+  if (!options.useModel) {
+    return {
+      explanations: {},
+      summary: {
+        provider: "none",
+        fallbackReason: "Model disabled with --no-model.",
+      },
+    };
+  }
+
+  const userConfig = await loadUserConfig();
+  const providerId = userConfig.preferredModelProvider ?? "none";
+  const apiKeyEnv = userConfig.providerCredentialRef?.kind === "env"
+    ? userConfig.providerCredentialRef.name
+    : providerCredentialEnv[providerId];
+  const selection = await selectModelProvider(
+    {
+      provider: providerId,
+      ...(apiKeyEnv ? { apiKeyEnv } : {}),
+      allowRemoteProviders: userConfig.privacyMode !== "local-only",
+    },
+    userConfig.privacyMode,
+  );
+
+  const agentTurn = await runAgentTurn({
+    message: "Explain these scanner findings for the Hermsec report. Use only supplied scanner evidence.",
+    findings,
+    provider: selection.provider,
+    providerConfig: {
+      provider: providerId,
+      ...(apiKeyEnv ? { apiKeyEnv } : {}),
+      allowRemoteProviders: userConfig.privacyMode !== "local-only",
+    },
+    privacyMode: userConfig.privacyMode,
+    offlineMode: options.mode === "offline" && !selection.health.local,
+  });
+
+  const fallbackReason = [selection.fallbackReason, agentTurn.modelSkippedReason].filter(Boolean).join("; ");
+  return {
+    explanations: agentTurn.explanations ?? {},
+    summary: {
+      provider: agentTurn.providerUsed,
+      ...(fallbackReason ? { fallbackReason } : {}),
+      executiveSummary: agentTurn.message,
+      priorityActions: agentTurn.priorityActions ?? [],
     },
   };
 }

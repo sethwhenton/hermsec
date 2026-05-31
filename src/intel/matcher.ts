@@ -1,7 +1,26 @@
 import type { IntelRelevance, SecurityIntelItem, WorkspaceInventory } from "./schema.js";
+import type { Finding } from "../shared/types.js";
 
 function normalizeName(value: string): string {
   return value.toLowerCase();
+}
+
+function normalizeIdentifier(value: string): string {
+  const normalized = value.trim().toUpperCase().replace(/_/g, "-");
+  if (/^CVE-\d{4}-\d{4,}$/.test(normalized)) {
+    return normalized;
+  }
+  if (/^GHSA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(normalized)) {
+    return normalized.toLowerCase();
+  }
+  return normalized;
+}
+
+function itemIdentifiers(item: SecurityIntelItem): Set<string> {
+  return new Set(
+    [...item.identifiers.cve, ...item.identifiers.ghsa, ...item.identifiers.osv]
+      .map(normalizeIdentifier),
+  );
 }
 
 function numericVersion(version: string): number[] {
@@ -57,6 +76,22 @@ function versionSatisfies(version: string, range: string): boolean {
   return true;
 }
 
+function findingPackageAffected(
+  findingPackage: NonNullable<Finding["package"]>,
+  intelPackage: SecurityIntelItem["packages"][number],
+): boolean {
+  return packageAffected(
+    {
+      ecosystem: findingPackage.ecosystem,
+      name: findingPackage.name,
+      ...(findingPackage.installedVersion ? { version: findingPackage.installedVersion } : {}),
+      direct: true,
+      files: [],
+    },
+    intelPackage,
+  );
+}
+
 export function packageAffected(
   inventoryPackage: WorkspaceInventory["packages"][number],
   intelPackage: SecurityIntelItem["packages"][number],
@@ -108,7 +143,8 @@ export function scoreIntelRelevance(item: SecurityIntelItem, inventory: Workspac
   }
 
   const identifiers = [...item.identifiers.cve, ...item.identifiers.ghsa, ...item.identifiers.osv];
-  if (identifiers.some((identifier) => inventory.previousFindingIds.includes(identifier))) {
+  const normalizedPreviousFindingIds = new Set(inventory.previousFindingIds.map(normalizeIdentifier));
+  if (identifiers.some((identifier) => normalizedPreviousFindingIds.has(normalizeIdentifier(identifier)))) {
     score += 25;
     reasons.push("A previous finding referenced the same advisory identifier");
   }
@@ -159,4 +195,133 @@ export function matchIntelToWorkspace(
     .map((item) => scoreIntelRelevance(item, inventory))
     .filter((item): item is IntelRelevance => Boolean(item))
     .sort((a, b) => b.score - a.score || a.itemId.localeCompare(b.itemId));
+}
+
+export function buildWorkspaceInventoryFromFindings(
+  workspaceId: string,
+  findings: readonly Finding[],
+  capturedAt = new Date().toISOString(),
+): WorkspaceInventory {
+  const packages = findings
+    .map((finding) => finding.package)
+    .filter((pkg): pkg is NonNullable<Finding["package"]> => Boolean(pkg))
+    .map((pkg) => ({
+      ecosystem: pkg.ecosystem,
+      name: pkg.name,
+      ...(pkg.installedVersion ? { version: pkg.installedVersion } : {}),
+      direct: true,
+      files: [],
+    }))
+    .filter(
+      (pkg, index, all) =>
+        all.findIndex(
+          (candidate) =>
+            normalizeName(candidate.ecosystem) === normalizeName(pkg.ecosystem) &&
+            normalizeName(candidate.name) === normalizeName(pkg.name) &&
+            candidate.version === pkg.version,
+        ) === index,
+    );
+  const previousFindingIds = [
+    ...new Set(
+      findings.flatMap((finding) => [
+        finding.id,
+        finding.fingerprint,
+        ...(finding.identifiers?.cve ?? []),
+        ...(finding.identifiers?.ghsa ?? []),
+        ...(finding.identifiers?.osv ?? []),
+      ]),
+    ),
+  ];
+
+  return {
+    workspaceId,
+    capturedAt,
+    ecosystems: [...new Set(packages.map((pkg) => pkg.ecosystem))],
+    packages,
+    runtimes: [],
+    frameworks: [],
+    ciTools: [],
+    dockerImages: [],
+    previousFindingIds,
+  };
+}
+
+export function matchIntelToFindings(
+  items: SecurityIntelItem[],
+  findings: readonly Finding[],
+  workspaceId = "findings",
+): IntelRelevance[] {
+  return items
+    .map((item) => scoreIntelAgainstFindings(item, findings, workspaceId))
+    .filter((item): item is IntelRelevance => Boolean(item))
+    .sort((a, b) => b.score - a.score || a.itemId.localeCompare(b.itemId));
+}
+
+export function scoreIntelAgainstFindings(
+  item: SecurityIntelItem,
+  findings: readonly Finding[],
+  workspaceId = "findings",
+): IntelRelevance | undefined {
+  let score = 0;
+  const reasons: string[] = [];
+  const matchedPackages: string[] = [];
+  const identifiers = itemIdentifiers(item);
+
+  for (const finding of findings) {
+    const findingIdentifiers = [
+      ...(finding.identifiers?.cve ?? []),
+      ...(finding.identifiers?.ghsa ?? []),
+      ...(finding.identifiers?.osv ?? []),
+    ].map(normalizeIdentifier);
+    const identifierMatches = findingIdentifiers.filter((identifier) => identifiers.has(identifier));
+    if (identifierMatches.length > 0) {
+      score += 80;
+      reasons.push(`Finding ${finding.id} references ${identifierMatches.join(", ")}`);
+    }
+
+    const findingPackage = finding.package;
+    if (findingPackage) {
+      const affectedPackage = item.packages.find((pkg) => findingPackageAffected(findingPackage, pkg));
+      if (affectedPackage) {
+        score += 70;
+        const packageLabel = `${findingPackage.ecosystem}:${findingPackage.name}${
+          findingPackage.installedVersion ? `@${findingPackage.installedVersion}` : ""
+        }`;
+        matchedPackages.push(packageLabel);
+        reasons.push(`Finding ${finding.id} package ${packageLabel} matches ${affectedPackage.affectedRange ?? "an affected range"}`);
+      }
+    }
+
+    const cweMatches = (finding.cwe ?? []).filter((cwe) => item.identifiers.cwe.includes(cwe.toUpperCase()));
+    if (cweMatches.length > 0) {
+      score += 10;
+      reasons.push(`Finding ${finding.id} shares ${cweMatches.join(", ")}`);
+    }
+  }
+
+  if (score === 0) {
+    return undefined;
+  }
+
+  if (item.cisaKev?.knownExploited) {
+    score += 25;
+    reasons.push("CISA KEV marks this CVE as known exploited");
+  }
+
+  const priority = score >= 95 || item.cisaKev?.knownExploited
+    ? "urgent"
+    : score >= 70
+      ? "high"
+      : score >= 25
+        ? "normal"
+        : "watch";
+
+  return {
+    itemId: item.id,
+    workspaceId,
+    score,
+    reasons,
+    matchedPackages: [...new Set(matchedPackages)],
+    priority,
+  };
 }

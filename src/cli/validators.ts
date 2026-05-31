@@ -45,3 +45,8 @@ export function isDuration(value: string): boolean {
 export function looksLikeSecretKey(key: string): boolean {
   return /(?:api[_-]?key|token|secret|password|credential|private[_-]?key)/i.test(key);
 }
+
+export function looksLikeSecretValue(value: string): boolean {
+  return /^(?:sk-|gh[pousr]_|github_pat_|glpat-|xox[baprs]-|AKIA|ASIA|AIza|ya29\.)/i.test(value.trim())
+    || /-----BEGIN [A-Z ]*PRIVATE KEY-----/i.test(value);
+}

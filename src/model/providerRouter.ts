@@ -1,5 +1,7 @@
 import { noModelProvider } from "./noModel.js";
-import { openAiCompatibleProvider } from "./openaiCompatible.js";
+import { anthropicProvider } from "./anthropic.js";
+import { geminiProvider } from "./gemini.js";
+import { openAiCompatibleProvider, ollamaProvider, openAiProvider, openRouterProvider } from "./openaiCompatible.js";
 import { opencodeGoProvider } from "./opencodeGo.js";
 import type { ModelProviderAdapter, ModelProviderId, ProviderConfig, ProviderHealth } from "./provider.js";
 
@@ -15,11 +17,11 @@ const providers: Record<ModelProviderId, ModelProviderAdapter> = {
   none: noModelProvider,
   "openai-compatible": openAiCompatibleProvider,
   "opencode-go": opencodeGoProvider,
-  ollama: noModelProvider,
-  openai: noModelProvider,
-  openrouter: noModelProvider,
-  claude: noModelProvider,
-  gemini: noModelProvider
+  ollama: ollamaProvider,
+  openai: openAiProvider,
+  openrouter: openRouterProvider,
+  claude: anthropicProvider,
+  gemini: geminiProvider
 };
 
 const remoteProviders = new Set<ModelProviderId>(["opencode-go", "openai", "openrouter", "claude", "gemini"]);
@@ -52,5 +54,14 @@ export async function selectModelProvider(
 }
 
 export function listConfiguredProviders(): ModelProviderAdapter[] {
-  return [noModelProvider, openAiCompatibleProvider, opencodeGoProvider];
+  return [
+    noModelProvider,
+    openAiCompatibleProvider,
+    ollamaProvider,
+    opencodeGoProvider,
+    openAiProvider,
+    openRouterProvider,
+    anthropicProvider,
+    geminiProvider,
+  ];
 }

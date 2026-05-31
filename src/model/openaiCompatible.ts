@@ -1,5 +1,5 @@
 import { redactForLog } from "../agent/redaction.js";
-import { credentialStatusFromEnv, readCredentialFromEnv } from "./credentials.js";
+import { credentialStatusFromEnv, normalizeCredentialEnvName, readCredentialFromEnv } from "./credentials.js";
 import type {
   ModelInfo,
   ModelProviderAdapter,
@@ -11,7 +11,7 @@ import type {
 } from "./provider.js";
 
 export type OpenAiCompatibleDefaults = {
-  id: Extract<ModelProviderId, "openai-compatible" | "opencode-go" | "openai" | "openrouter">;
+  id: Extract<ModelProviderId, "openai-compatible" | "opencode-go" | "openai" | "openrouter" | "ollama">;
   baseUrl: string;
   credentialEnv?: string;
   models: readonly string[];
@@ -30,14 +30,29 @@ export function createOpenAiCompatibleProvider(defaults: OpenAiCompatibleDefault
     async healthCheck(config?: ProviderConfig): Promise<ProviderHealth> {
       const envName = config?.apiKeyEnv ?? defaults.credentialEnv;
       const credential = envName ? credentialStatusFromEnv(envName) : undefined;
+      if (credential && !credential.validEnvName) {
+        return {
+          ok: false,
+          provider: defaults.id,
+          message: "Provider credential reference must be an environment variable name, not a key value.",
+          credential: "env-missing",
+          credentialEnv: credential.envName,
+          local: defaults.local
+        };
+      }
+
       const missingRequiredCredential = Boolean(envName && !credential?.present && !defaults.local);
       return {
         ok: !missingRequiredCredential,
         provider: defaults.id,
         message: missingRequiredCredential
-          ? `Missing provider credential environment variable: ${envName}`
-          : `${defaults.label ?? defaults.id} provider is configured.`,
+          ? `Missing provider credential environment variable: ${credential?.envName}`
+          : credential?.present
+            ? `${defaults.label ?? defaults.id} provider credential was verified from the environment.`
+            : `${defaults.label ?? defaults.id} provider is configured.`,
         credential: envName ? (credential?.present ? "env-present" : "env-missing") : "not-required",
+        ...(credential?.envName ? { credentialEnv: credential.envName } : {}),
+        ...(credential?.fingerprint ? { credentialFingerprint: credential.fingerprint } : {}),
         local: defaults.local
       };
     },
@@ -49,9 +64,13 @@ export function createOpenAiCompatibleProvider(defaults: OpenAiCompatibleDefault
       }
 
       const envName = config?.apiKeyEnv ?? defaults.credentialEnv;
-      const apiKey = envName ? readCredentialFromEnv(envName) : undefined;
-      if (envName && !apiKey && !defaults.local) {
-        throw new Error(`Missing provider credential environment variable: ${envName}`);
+      const safeEnvName = normalizeCredentialEnvName(envName);
+      if (envName && !safeEnvName) {
+        throw new Error("Provider credential reference must be an environment variable name, not a key value.");
+      }
+      const apiKey = safeEnvName ? readCredentialFromEnv(safeEnvName) : undefined;
+      if (safeEnvName && !apiKey && !defaults.local) {
+        throw new Error(`Missing provider credential environment variable: ${safeEnvName}`);
       }
 
       const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -114,6 +133,32 @@ export const openAiCompatibleProvider = createOpenAiCompatibleProvider({
   models: ["local-model"],
   local: true,
   label: "OpenAI-compatible"
+});
+
+export const openAiProvider = createOpenAiCompatibleProvider({
+  id: "openai",
+  baseUrl: "https://api.openai.com/v1",
+  credentialEnv: "OPENAI_API_KEY",
+  models: ["gpt-4.1-mini"],
+  local: false,
+  label: "OpenAI"
+});
+
+export const openRouterProvider = createOpenAiCompatibleProvider({
+  id: "openrouter",
+  baseUrl: "https://openrouter.ai/api/v1",
+  credentialEnv: "OPENROUTER_API_KEY",
+  models: ["openai/gpt-4.1-mini"],
+  local: false,
+  label: "OpenRouter"
+});
+
+export const ollamaProvider = createOpenAiCompatibleProvider({
+  id: "ollama",
+  baseUrl: "http://localhost:11434/v1",
+  models: ["llama3.1"],
+  local: true,
+  label: "Ollama"
 });
 
 function stripTrailingSlash(value: string): string {

@@ -23,17 +23,30 @@ hermsec schedule list
 hermsec schedule run <schedule-id>
 hermsec schedule remove <schedule-id>
 hermsec watch <target> [--after-idle <duration>] [--mode auto|offline|online]
-hermsec intel update [--workspace <id>] [--source osv,kev,...] [--offline]
+hermsec intel update [--workspace <id>] [--source cisa-kev|osv|github-advisory|nvd] [--offline]
 hermsec eval run [--suite <path>] [--mode scanner-only|agent-assisted] [--out <dir>]
 hermsec eval compare --scanner-only <summary.json> --agent-assisted <summary.json> [--out <file>]
 hermsec eval explain-match [--suite <path>] --case <id> --finding <id>
 ```
 
+Model provider setup:
+
+```bash
+set GEMINI_API_KEY=...
+hermsec config set privacyMode cloud-assisted
+hermsec config set preferredModelProvider gemini
+hermsec config set providerCredentialEnv GEMINI_API_KEY
+hermsec scan <target> --mode online
+```
+
+Supported starter providers are `openrouter`, `openai`, `claude`, `gemini`, `opencode-go`, `ollama`, `openai-compatible`, and `none`. Hermsec stores provider IDs and environment-variable names only; it rejects raw-looking key values.
+
 Safety defaults:
 
 - The CLI does not install dependencies or run package executors.
 - Scan targets are normalized locally unless they look like a URL or SSH Git target.
-- Secret-like config keys are rejected; store credentials in environment variables or an OS credential store and save only references.
+- Secret-like config values are rejected; store credentials in environment variables or an OS credential store and save only references.
+- Online scans use installed scanner CLIs when available: Semgrep, Gitleaks, Bandit, OSV-Scanner, pip-audit, and SafeDep PMG-wrapped npm audit. If a scanner is missing, Hermsec records a skipped status and keeps local heuristic coverage.
 - Output is redacted before printing.
 
-Until the other workstreams land, command handlers call stable facade modules through optional imports and return actionable `MODULE_UNAVAILABLE` errors instead of crashing.
+Command handlers call stable facade modules through optional imports and return actionable `MODULE_UNAVAILABLE` errors instead of crashing.

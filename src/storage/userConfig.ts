@@ -1,4 +1,5 @@
 import path from "node:path";
+import { normalizeCredentialEnvName } from "../model/credentials.js";
 import { ensureHermsecAppData, getAppDataLayout } from "./appData.js";
 import {
   JsonStore,
@@ -62,7 +63,11 @@ export function validateCredentialRef(value: unknown): ProviderCredentialRef | u
   const record = requireRecord(value, "providerCredentialRef");
   const kind = requireEnum(record.kind, "providerCredentialRef.kind", credentialRefKinds);
   const name = optionalString(record.name, "providerCredentialRef.name");
-  return name ? { kind, name } : { kind };
+  const safeName = normalizeCredentialEnvName(name);
+  if (name && !safeName) {
+    throw new Error("providerCredentialRef.name must be an environment variable name, not a key value.");
+  }
+  return safeName ? { kind, name: safeName } : { kind };
 }
 
 export function validateUserConfig(value: unknown): UserConfig {
@@ -172,6 +177,22 @@ export async function setConfigValue(options: { cwd: string; key: string; value:
       break;
     case "preferredModelProvider":
       config.preferredModelProvider = requireEnum(options.value, "preferredModelProvider", modelProviders);
+      break;
+    case "providerCredentialRef":
+    case "providerCredentialEnv":
+    case "providerCredentialRef.name": {
+      const safeName = normalizeCredentialEnvName(options.value);
+      if (!safeName) {
+        throw new Error("providerCredentialRef.name must be an environment variable name, not a key value.");
+      }
+      config.providerCredentialRef = { kind: "env", name: safeName };
+      break;
+    }
+    case "providerCredentialRef.kind":
+      config.providerCredentialRef = {
+        ...(config.providerCredentialRef ?? {}),
+        kind: requireEnum(options.value, "providerCredentialRef.kind", credentialRefKinds),
+      };
       break;
     default:
       throw new Error(`Unsupported config key: ${options.key}`);

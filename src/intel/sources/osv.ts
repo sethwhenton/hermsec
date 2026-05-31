@@ -1,6 +1,10 @@
 import type { IntelFetcher, IntelFetchResult, IntelSeverity, SecurityIntelItem, WorkspaceInventory } from "../schema.js";
+import { fetchIntelJson } from "../http.js";
+import { getIntelSourceDefinition } from "../sourceRegistry.js";
 
-const osvQueryBatchUrl = "https://api.osv.dev/v1/querybatch";
+const osvDefinition = getIntelSourceDefinition("osv");
+const osvQueryBatchUrl = osvDefinition?.endpoints[0] ?? "https://api.osv.dev/v1/querybatch";
+const osvVulnerabilityUrl = "https://api.osv.dev/v1/vulns";
 
 type OsvVulnerability = {
   id?: string;
@@ -13,9 +17,17 @@ type OsvVulnerability = {
   database_specific?: { severity?: string };
   affected?: {
     package?: { ecosystem?: string; name?: string };
+    ecosystem_specific?: { severity?: string };
     ranges?: { events?: { introduced?: string; fixed?: string; last_affected?: string }[] }[];
   }[];
   references?: { type?: string; url?: string }[];
+};
+
+type OsvQueryBatchResponse = {
+  results?: {
+    vulns?: { id?: string; modified?: string }[];
+    next_page_token?: string;
+  }[];
 };
 
 function osvEcosystem(ecosystem: string): string {
@@ -29,9 +41,15 @@ function osvEcosystem(ecosystem: string): string {
 }
 
 function severityFromOsv(vuln: OsvVulnerability): IntelSeverity {
-  const databaseSeverity = vuln.database_specific?.severity?.toLowerCase();
-  if (databaseSeverity === "critical" || databaseSeverity === "high" || databaseSeverity === "medium" || databaseSeverity === "low") {
-    return databaseSeverity;
+  const severities = [
+    vuln.database_specific?.severity,
+    ...(vuln.affected ?? []).map((affected) => affected.ecosystem_specific?.severity),
+  ]
+    .map((value) => normalizeSeverity(value))
+    .filter((value): value is IntelSeverity => value !== undefined);
+  const highest = severities.sort(compareSeverity).at(-1);
+  if (highest) {
+    return highest;
   }
   const cvss = vuln.severity?.find((item) => item.score?.startsWith("CVSS:"));
   if (!cvss?.score) {
@@ -48,12 +66,11 @@ function severityFromOsv(vuln: OsvVulnerability): IntelSeverity {
 }
 
 function identifiers(vuln: OsvVulnerability): SecurityIntelItem["identifiers"] {
-  const aliases = vuln.aliases ?? [];
+  const identifiers = [vuln.id ?? "", ...(vuln.aliases ?? [])].filter(Boolean);
   return {
-    cve: aliases.filter((alias) => alias.startsWith("CVE-")),
-    ghsa: aliases.filter((alias) => alias.startsWith("GHSA-")),
-    osv: [vuln.id ?? "", ...aliases.filter((alias) => !alias.startsWith("CVE-") && !alias.startsWith("GHSA-"))]
-      .filter(Boolean),
+    cve: identifiers.filter((alias) => alias.startsWith("CVE-")),
+    ghsa: identifiers.filter((alias) => alias.startsWith("GHSA-")),
+    osv: identifiers.filter((alias) => !alias.startsWith("CVE-") && !alias.startsWith("GHSA-")),
     cwe: [],
   };
 }
@@ -85,6 +102,30 @@ function affectedPackages(vuln: OsvVulnerability): SecurityIntelItem["packages"]
     });
   }
   return packages;
+}
+
+function normalizeSeverity(value?: string): IntelSeverity | undefined {
+  const normalized = value?.toLowerCase();
+  if (normalized === "critical" || normalized === "high" || normalized === "medium" || normalized === "low") {
+    return normalized;
+  }
+  return undefined;
+}
+
+function compareSeverity(left: IntelSeverity, right: IntelSeverity): number {
+  const ranks: Record<IntelSeverity, number> = { unknown: 0, low: 1, medium: 2, high: 3, critical: 4 };
+  return ranks[left] - ranks[right];
+}
+
+function uniqueIds(raw: OsvQueryBatchResponse): string[] {
+  return [
+    ...new Set(
+      (raw.results ?? [])
+        .flatMap((result) => result.vulns ?? [])
+        .map((vuln) => vuln.id ?? "")
+        .filter(Boolean),
+    ),
+  ].slice(0, 100);
 }
 
 function normalizeOsv(vuln: OsvVulnerability, fetchedAt: string): SecurityIntelItem | undefined {
@@ -136,7 +177,7 @@ export const osvFetcher: IntelFetcher = {
       };
     }
 
-    const response = await fetch(osvQueryBatchUrl, {
+    const response = await fetchIntelJson<OsvQueryBatchResponse>("osv", osvQueryBatchUrl, {
       method: "POST",
       headers: { "content-type": "application/json", accept: "application/json" },
       body: JSON.stringify(body),
@@ -147,12 +188,40 @@ export const osvFetcher: IntelFetcher = {
         fetchedAt: input.now,
         status: "failed",
         items: [],
-        error: { code: "osv-http", message: `OSV returned HTTP ${response.status}` },
+        error: response.error,
       };
     }
-    const raw = (await response.json()) as { results?: { vulns?: OsvVulnerability[] }[] };
-    const items = (raw.results ?? [])
-      .flatMap((result) => result.vulns ?? [])
+    if (response.status === "not-modified") {
+      return {
+        source: "osv",
+        fetchedAt: input.now,
+        status: "cached",
+        items: [],
+        ...(response.etag ? { etag: response.etag } : {}),
+        ...(response.lastModified ? { lastModified: response.lastModified } : {}),
+      };
+    }
+
+    const queryRaw = response.data ?? {};
+    const vulnerabilities: OsvVulnerability[] = [];
+    for (const id of uniqueIds(queryRaw)) {
+      const detail = await fetchIntelJson<OsvVulnerability>("osv", `${osvVulnerabilityUrl}/${encodeURIComponent(id)}`);
+      if (!detail.ok) {
+        return {
+          source: "osv",
+          fetchedAt: input.now,
+          status: "failed",
+          items: [],
+          error: detail.error,
+        };
+      }
+      if (detail.status === "fresh" && detail.data) {
+        vulnerabilities.push(detail.data);
+      }
+    }
+
+    const raw = { query: queryRaw, vulnerabilities };
+    const items = vulnerabilities
       .map((vuln) => normalizeOsv(vuln, input.now))
       .filter((item): item is SecurityIntelItem => Boolean(item));
     return {

@@ -5,7 +5,7 @@ import { moduleSpecs } from "../moduleSpecs.js";
 import { invokeOptionalModule, isModuleUnavailable } from "../optionalModule.js";
 import { toOutcome } from "../output.js";
 import type { CliOutcome, CommandContext } from "../types.js";
-import { looksLikeSecretKey } from "../validators.js";
+import { looksLikeSecretValue } from "../validators.js";
 import path from "node:path";
 
 type ConfigGetOptions = {
@@ -85,7 +85,7 @@ async function configSet(args: string[], context: CommandContext): Promise<CliOu
   if (!key || value === undefined) {
     return toOutcome(usageError("Config set requires a key and value.", "hermsec config --help"), json);
   }
-  if (looksLikeSecretKey(key)) {
+  if (looksLikeSecretValue(value)) {
     return toOutcome({
       ok: false,
       errorCode: "SECRET_CONFIG_REJECTED",

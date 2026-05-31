@@ -1,22 +1,24 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { externalScannerCatalog } from "../scanners/external.js";
 import type { ScannerStatus } from "../shared/types.js";
 
 type ToolProbe = {
   id: string;
   label: string;
   executable: string;
+  requirement: "required" | "recommended" | "optional";
 };
 
 const TOOL_PROBES: ToolProbe[] = [
-  { id: "git", label: "Git", executable: "git" },
-  { id: "npm-audit", label: "npm audit", executable: "npm" },
-  { id: "semgrep", label: "Semgrep", executable: "semgrep" },
-  { id: "gitleaks", label: "Gitleaks", executable: "gitleaks" },
-  { id: "bandit", label: "Bandit", executable: "bandit" },
-  { id: "pip-audit", label: "pip-audit", executable: "pip-audit" },
-  { id: "osv-scanner", label: "OSV-Scanner", executable: "osv-scanner" },
+  { id: "git", label: "Git", executable: "git", requirement: "required" },
+  ...externalScannerCatalog().map((scanner) => ({
+    id: scanner.id,
+    label: scanner.label,
+    executable: scanner.executable,
+    requirement: scanner.id === "pmg" ? "recommended" as const : "optional" as const,
+  })),
 ];
 
 export function scannerAvailabilityStatuses(): ScannerStatus[] {
@@ -33,8 +35,10 @@ export function scannerAvailabilityStatuses(): ScannerStatus[] {
     return {
       id: tool.id,
       label: tool.label,
-      status: "missing",
-      message: `${tool.label} was not detected on PATH. Built-in offline heuristics remain available.`,
+      status: tool.requirement === "required" ? "missing" : "skipped",
+      message: tool.requirement === "required"
+        ? `${tool.label} was not detected on PATH. This is required for production readiness.`
+        : `${tool.label} was not detected on PATH. This optional tool was skipped; built-in offline heuristics remain available.`,
     };
   });
 }

@@ -1,4 +1,5 @@
 import { scoreCweMatch } from "./cweTolerance.js";
+import { dedupeActualFindings } from "./findingProjection.js";
 import { identifierOverlap, normalizeIdentifiers, normalizeIdentifierSet } from "./identifierNormalize.js";
 import { pathMatches } from "./pathNormalize.js";
 import { scoreSeverity } from "./severityTolerance.js";
@@ -63,9 +64,10 @@ export function matchFindings(
   actual: readonly ActualFindingProjection[],
   thresholds: MatchThresholds = DEFAULT_MATCH_THRESHOLDS,
 ): MatchResult {
+  const dedupedActual = dedupeActualFindings(actual);
   const candidates = expected
     .flatMap((expectedFinding) =>
-      actual.map((actualFinding) => scoreCandidate(expectedFinding, actualFinding, thresholds)),
+      dedupedActual.findings.map((actualFinding) => scoreCandidate(expectedFinding, actualFinding, thresholds)),
     )
     .sort(compareCandidates);
 
@@ -89,7 +91,7 @@ export function matchFindings(
     acceptedKeys.add(candidateKey(candidate));
   }
 
-  const falsePositives = actual.filter((finding) => !usedActual.has(finding.fingerprint));
+  const falsePositives = dedupedActual.findings.filter((finding) => !usedActual.has(finding.fingerprint));
   const falseNegatives = expected.filter((finding) => !usedExpected.has(finding.id));
 
   return {
@@ -97,7 +99,8 @@ export function matchFindings(
     rejectedCandidates: candidates.filter((candidate) => !acceptedKeys.has(candidateKey(candidate))),
     falsePositives,
     falseNegatives,
-    trueNegative: expected.length === 0 && actual.length === 0,
+    ignoredActual: dedupedActual.ignored,
+    trueNegative: expected.length === 0 && dedupedActual.findings.length === 0,
     thresholds,
   };
 }

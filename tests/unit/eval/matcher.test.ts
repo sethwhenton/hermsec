@@ -67,6 +67,28 @@ test("evaluation metrics report precision, recall, and F1 from one-to-one matche
   assert.equal(metrics.f1, 0.5);
 });
 
+test("evaluation matcher classifies duplicate actual findings as ignored noise", () => {
+  const expected = [makeCodeGroundTruth()];
+  const actual: ActualFindingProjection[] = [
+    makeActualCodeFinding(),
+    {
+      ...makeActualCodeFinding(),
+      id: "ACTUAL-CODE-SQLI-DUPLICATE",
+      fingerprint: "actual-code-sqli-duplicate",
+      severity: "medium",
+    },
+  ];
+
+  const result = matchFindings(expected, actual);
+  const metrics = computeMetrics(result);
+
+  assert.equal(result.matches.length, 1);
+  assert.equal(result.falsePositives.length, 0);
+  assert.equal(result.ignoredActual.length, 1);
+  assert.equal(result.ignoredActual[0]?.reason, "duplicate");
+  assert.equal(metrics.precision, 1);
+});
+
 test("dependency findings require package and advisory evidence for a strong match", () => {
   const expected: GroundTruthFinding = {
     id: "GT-DEP-LODASH",

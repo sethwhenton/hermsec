@@ -1,4 +1,8 @@
 import type { IntelFetcher, IntelFetchResult, IntelSeverity, SecurityIntelItem, WorkspaceInventory } from "../schema.js";
+import { fetchIntelJson } from "../http.js";
+import { getIntelSourceDefinition } from "../sourceRegistry.js";
+
+const githubAdvisoryUrl = getIntelSourceDefinition("github-advisory")?.endpoints[0] ?? "https://api.github.com/advisories";
 
 type GitHubAdvisory = {
   ghsa_id?: string;
@@ -15,10 +19,12 @@ type GitHubAdvisory = {
   vulnerabilities?: {
     package?: { ecosystem?: string; name?: string };
     vulnerable_version_range?: string;
-    first_patched_version?: { identifier?: string };
+    first_patched_version?: string | { identifier?: string } | null;
   }[];
   cvss?: { score?: number; vector_string?: string };
 };
+
+type GitHubAdvisoryVulnerability = NonNullable<GitHubAdvisory["vulnerabilities"]>[number];
 
 function githubEcosystem(ecosystem: string): string | undefined {
   const normalized = ecosystem.toLowerCase();
@@ -46,12 +52,15 @@ function normalizeGithubAdvisory(advisory: GitHubAdvisory, fetchedAt: string): S
   const vulnerabilities = advisory.vulnerabilities ?? [];
   const packages = vulnerabilities
     .filter((vuln) => vuln.package?.ecosystem && vuln.package.name)
-    .map((vuln) => ({
-      ecosystem: String(vuln.package?.ecosystem).toLowerCase(),
-      name: String(vuln.package?.name),
-      ...(vuln.vulnerable_version_range ? { affectedRange: vuln.vulnerable_version_range } : {}),
-      ...(vuln.first_patched_version?.identifier ? { fixedVersion: vuln.first_patched_version.identifier } : {}),
-    }));
+    .map((vuln) => {
+      const fixedVersion = firstPatchedVersion(vuln.first_patched_version);
+      return {
+        ecosystem: String(vuln.package?.ecosystem).toLowerCase(),
+        name: String(vuln.package?.name),
+        ...(vuln.vulnerable_version_range ? { affectedRange: vuln.vulnerable_version_range } : {}),
+        ...(fixedVersion ? { fixedVersion } : {}),
+      };
+    });
   const cves = [
     advisory.cve_id ?? "",
     ...(advisory.identifiers ?? [])
@@ -85,20 +94,43 @@ function normalizeGithubAdvisory(advisory: GitHubAdvisory, fetchedAt: string): S
   };
 }
 
-function advisoryQueries(inventory?: WorkspaceInventory): URL[] {
-  return (inventory?.packages ?? [])
+function firstPatchedVersion(value: GitHubAdvisoryVulnerability["first_patched_version"]): string | undefined {
+  if (typeof value === "string" && value.length > 0) {
+    return value;
+  }
+  if (typeof value !== "object" || value === null) {
+    return undefined;
+  }
+  return value?.identifier;
+}
+
+function advisoryQueries(inventory: WorkspaceInventory | undefined, since: string | undefined): URL[] {
+  const packageUrls = (inventory?.packages ?? [])
     .slice(0, 30)
     .flatMap((pkg) => {
       const ecosystem = githubEcosystem(pkg.ecosystem);
       if (!ecosystem || !pkg.version) {
         return [];
       }
-      const url = new URL("https://api.github.com/advisories");
+      const url = new URL(githubAdvisoryUrl);
       url.searchParams.set("ecosystem", ecosystem);
       url.searchParams.set("affects", `${pkg.name}@${pkg.version}`);
       url.searchParams.set("per_page", "100");
       return [url];
     });
+  if (packageUrls.length > 0) {
+    return packageUrls;
+  }
+
+  const url = new URL(githubAdvisoryUrl);
+  url.searchParams.set("type", "reviewed");
+  url.searchParams.set("sort", "updated");
+  url.searchParams.set("direction", "desc");
+  url.searchParams.set("per_page", "30");
+  if (since) {
+    url.searchParams.set("modified", `>=${since.slice(0, 10)}`);
+  }
+  return [url];
 }
 
 export const githubAdvisoryFetcher: IntelFetcher = {
@@ -107,7 +139,7 @@ export const githubAdvisoryFetcher: IntelFetcher = {
   onlineRequired: true,
   ttlMs: 6 * 60 * 60 * 1000,
   async fetch(input): Promise<IntelFetchResult> {
-    const urls = advisoryQueries(input.inventory);
+    const urls = advisoryQueries(input.inventory, input.since);
     if (input.mode === "offline" || urls.length === 0) {
       return {
         source: "github-advisory",
@@ -119,11 +151,12 @@ export const githubAdvisoryFetcher: IntelFetcher = {
 
     const raw: GitHubAdvisory[] = [];
     for (const url of urls) {
-      const response = await fetch(url, {
+      const response = await fetchIntelJson<GitHubAdvisory[]>("github-advisory", url, {
         headers: {
           accept: "application/vnd.github+json",
           "user-agent": "hermsec-local-intel",
         },
+        ...(urls.length === 1 && input.cache ? { cache: input.cache } : {}),
       });
       if (!response.ok) {
         return {
@@ -131,10 +164,20 @@ export const githubAdvisoryFetcher: IntelFetcher = {
           fetchedAt: input.now,
           status: "failed",
           items: [],
-          error: { code: "github-advisory-http", message: `GitHub Advisories returned HTTP ${response.status}` },
+          error: response.error,
         };
       }
-      raw.push(...((await response.json()) as GitHubAdvisory[]));
+      if (response.status === "not-modified") {
+        return {
+          source: "github-advisory",
+          fetchedAt: input.now,
+          status: "cached",
+          items: [],
+          ...(response.etag ? { etag: response.etag } : {}),
+          ...(response.lastModified ? { lastModified: response.lastModified } : {}),
+        };
+      }
+      raw.push(...(response.data ?? []));
     }
 
     const items = raw

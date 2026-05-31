@@ -61,6 +61,11 @@ export type WorkspaceInventory = {
   previousFindingIds: string[];
 };
 
+export type IntelFetchCache = {
+  etag?: string;
+  lastModified?: string;
+};
+
 export type IntelRelevance = {
   itemId: string;
   workspaceId: string;
@@ -76,6 +81,7 @@ export type IntelFetchInput = {
   workspace?: WorkspaceProfile;
   inventory?: WorkspaceInventory;
   since?: string;
+  cache?: IntelFetchCache;
   now: string;
 };
 

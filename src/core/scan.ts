@@ -2,6 +2,7 @@ import path from "node:path";
 import { scannerAvailabilityStatuses } from "./doctor.js";
 import { assertDirectory, readTextFile, walkSourceTree } from "./files.js";
 import { discoverRepositoryMetadata, repositoryDiscoveryMessage } from "./repository.js";
+import { runExternalScanners } from "../scanners/external.js";
 import { runOfflineHeuristicScanners } from "../scanners/heuristics.js";
 import { normalizeTargetPath } from "../shared/paths.js";
 import { stableId } from "../shared/text.js";
@@ -34,8 +35,13 @@ export async function runScan(options: ScanOptions): Promise<ScanRun> {
   const offlineResults = await runOfflineHeuristicScanners(walk.files, readTextFile);
   scannerStatuses.push(...offlineResults.statuses);
 
+  const externalResults = mode === "offline"
+    ? { findings: [] as Finding[], statuses: [] as ScannerStatus[] }
+    : await runExternalScanners(walk.files, readTextFile);
+  scannerStatuses.push(...externalResults.statuses);
+
   const finished = Date.now();
-  const uniqueFindings = dedupeFindings(offlineResults.findings);
+  const uniqueFindings = dedupeFindings([...offlineResults.findings, ...externalResults.findings]);
   const run: ScanRun = {
     schemaVersion: "1.0",
     id: stableId(`${target}:${startedAt}`, "scan"),

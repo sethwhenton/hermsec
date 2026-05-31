@@ -23,7 +23,7 @@ export function rootHelp(): string {
     "  hermsec schedule run <schedule-id>",
     "  hermsec schedule remove <schedule-id>",
     "  hermsec watch <target> [--after-idle <duration>] [--mode auto|offline|online]",
-    "  hermsec intel update [--workspace <id>] [--source osv,kev,...] [--offline]",
+    "  hermsec intel update [--workspace <id>] [--source cisa-kev|osv|github-advisory|nvd] [--offline]",
     "  hermsec eval run [--suite <path>] [--mode scanner-only|agent-assisted] [--out <dir>]",
     "  hermsec eval compare --scanner-only <summary.json> --agent-assisted <summary.json> [--out <file>]",
     "  hermsec eval explain-match [--suite <path>] --case <id> --finding <id>",
@@ -43,7 +43,16 @@ export function commandHelp(command: string): string {
     case "scan":
       return "Usage: hermsec scan <target> [--mode auto|offline|online] [--out <dir>] [--json] [--md] [--html] [--no-model]";
     case "config":
-      return "Usage: hermsec config get [key] | set <key> <value> | path";
+      return [
+        "Usage: hermsec config get [key] | set <key> <value> | path",
+        "",
+        "Common keys:",
+        "  privacyMode local-only|balanced|cloud-assisted",
+        "  preferredModelProvider none|ollama|openrouter|openai|claude|gemini|opencode-go|openai-compatible",
+        "  providerCredentialEnv <ENV_VAR_NAME>",
+        "  defaultReportLocation app-data|project-local|custom|ask",
+        "  customReportDir <path>",
+      ].join("\n");
     case "workspace":
       return "Usage: hermsec workspace list | add [path] [--name <name>] | use <id|name|path>";
     case "report":
@@ -53,7 +62,7 @@ export function commandHelp(command: string): string {
     case "watch":
       return "Usage: hermsec watch <target> [--after-idle <duration>] [--mode auto|offline|online]";
     case "intel":
-      return "Usage: hermsec intel update [--workspace <id>] [--source osv,kev,...] [--offline]";
+      return "Usage: hermsec intel update [--workspace <id>] [--source cisa-kev|osv|github-advisory|nvd] [--offline]";
     case "eval":
       return "Usage: hermsec eval run|compare|explain-match [options]";
     default:

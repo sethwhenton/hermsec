@@ -31,6 +31,8 @@ export type ProviderHealth = {
   provider: ModelProviderId;
   message: string;
   credential?: "not-required" | "env-present" | "env-missing";
+  credentialEnv?: string;
+  credentialFingerprint?: string;
   local: boolean;
 };
 

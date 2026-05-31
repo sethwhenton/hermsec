@@ -68,6 +68,16 @@ export async function readIntelIndex(): Promise<IntelCacheIndex> {
   return JSON.parse(raw) as IntelCacheIndex;
 }
 
+export async function readIntelSourceState(source: IntelSource): Promise<IntelSourceState | undefined> {
+  await ensureIntelCacheLayout();
+  if (await pathExists(sourceStatePath(source))) {
+    const raw = await fs.readFile(sourceStatePath(source), "utf8");
+    return JSON.parse(raw) as IntelSourceState;
+  }
+  const index = await readIntelIndex();
+  return index.sources[source];
+}
+
 export async function writeRawSnapshot(source: IntelSource, fetchedAt: string, raw: unknown): Promise<string> {
   await ensureIntelCacheLayout();
   const timestamp = fetchedAt.replace(/[:.]/g, "-");
@@ -92,6 +102,11 @@ export async function readCachedIntelItems(): Promise<SecurityIntelItem[]> {
     .map((line) => JSON.parse(line) as SecurityIntelItem);
 }
 
+export async function readCachedIntelItemsForSource(source: IntelSource): Promise<SecurityIntelItem[]> {
+  const items = await readCachedIntelItems();
+  return items.filter((item) => item.source === source || item.provenance.normalizedFrom.includes(source));
+}
+
 export async function writeCachedIntelItems(items: SecurityIntelItem[]): Promise<SecurityIntelItem[]> {
   await ensureIntelCacheLayout();
   const deduped = dedupeIntelItems(items);
@@ -114,6 +129,8 @@ export async function upsertIntelItems(items: SecurityIntelItem[]): Promise<Secu
 
 export async function recordIntelFetchResult(result: IntelFetchResult): Promise<IntelFetchResult> {
   await ensureIntelCacheLayout();
+  const index = await readIntelIndex();
+  const previousState = index.sources[result.source] ?? (await readIntelSourceState(result.source));
   const rawSnapshotPath = result.raw === undefined
     ? result.rawSnapshotPath
     : await writeRawSnapshot(result.source, result.fetchedAt, result.raw);
@@ -128,24 +145,25 @@ export async function recordIntelFetchResult(result: IntelFetchResult): Promise<
     await upsertIntelItems(items);
   }
 
-  const index = await readIntelIndex();
   const state: IntelSourceState = {
     source: result.source,
     lastFetchedAt: result.fetchedAt,
     status: result.status,
-    itemIds: items.map((item) => item.id),
+    itemIds: items.length > 0 ? items.map((item) => item.id) : previousState?.itemIds ?? [],
     ...(result.etag ? { etag: result.etag } : {}),
     ...(result.lastModified ? { lastModified: result.lastModified } : {}),
     ...(rawSnapshotPath ? { rawSnapshotPath } : {}),
     ...(result.error ? { error: result.error.message } : {}),
   };
   await writeJsonFileAtomic(sourceStatePath(result.source), state);
+  const nextIndex = await readIntelIndex();
+  const updatesCache = result.status === "fresh" || result.status === "cached";
   await writeJsonFileAtomic(indexPath(), {
-    ...index,
-    updatedAt: result.fetchedAt,
+    ...nextIndex,
+    updatedAt: updatesCache ? result.fetchedAt : nextIndex.updatedAt,
     itemCount: (await readCachedIntelItems()).length,
     sources: {
-      ...index.sources,
+      ...nextIndex.sources,
       [result.source]: state,
     },
   } satisfies IntelCacheIndex);
@@ -161,4 +179,17 @@ export async function cacheAgeMs(now = new Date()): Promise<number | undefined> 
   const index = await readIntelIndex();
   const updated = Date.parse(index.updatedAt);
   return Number.isNaN(updated) || updated === 0 ? undefined : now.getTime() - updated;
+}
+
+export function sourceCacheAgeMs(state: IntelSourceState | undefined, now = new Date()): number | undefined {
+  if (!state?.lastFetchedAt || state.status === "failed") {
+    return undefined;
+  }
+  const updated = Date.parse(state.lastFetchedAt);
+  return Number.isNaN(updated) ? undefined : now.getTime() - updated;
+}
+
+export function sourceCacheFresh(state: IntelSourceState | undefined, ttlMs: number, now = new Date()): boolean {
+  const age = sourceCacheAgeMs(state, now);
+  return age !== undefined && age >= 0 && age < ttlMs;
 }

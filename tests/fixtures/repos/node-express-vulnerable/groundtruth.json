@@ -1,23 +1,66 @@
 [
   {
-    "id": "node-sqli",
+    "id": "node-app-sqli",
     "category": "code",
     "severity": "high",
     "cwe": ["CWE-89"],
-    "location": { "file": "src/app.js", "startLine": 8 }
+    "location": { "file": "src/app.js", "startLine": 5 }
   },
   {
-    "id": "node-command",
+    "id": "node-app-command-exec",
+    "category": "code",
+    "severity": "high",
+    "cwe": ["CWE-78"],
+    "location": { "file": "src/app.js", "startLine": 10 }
+  },
+  {
+    "id": "node-app-xss",
+    "category": "code",
+    "severity": "medium",
+    "cwe": ["CWE-79"],
+    "location": { "file": "src/app.js", "startLine": 14 }
+  },
+  {
+    "id": "node-env-secret",
+    "category": "secret",
+    "severity": "high",
+    "cwe": ["CWE-798"],
+    "location": { "file": ".env.example", "startLine": 1 }
+  },
+  {
+    "id": "node-route-secret",
+    "category": "secret",
+    "severity": "high",
+    "cwe": ["CWE-798"],
+    "location": { "file": "src/routes/search.js", "startLine": 7 }
+  },
+  {
+    "id": "node-route-sqli",
+    "category": "code",
+    "severity": "high",
+    "cwe": ["CWE-89"],
+    "location": { "file": "src/routes/search.js", "startLine": 14 }
+  },
+  {
+    "id": "node-route-command-exec",
+    "category": "code",
+    "severity": "high",
+    "cwe": ["CWE-78"],
+    "location": { "file": "src/routes/search.js", "startLine": 19 }
+  },
+  {
+    "id": "node-route-command-input",
     "category": "code",
     "severity": "critical",
     "cwe": ["CWE-78"],
-    "location": { "file": "src/app.js", "startLine": 13 }
+    "location": { "file": "src/routes/search.js", "startLine": 19 }
   },
   {
-    "id": "node-secret",
-    "category": "secret",
-    "severity": "high",
-    "location": { "file": ".env.example", "startLine": 1 }
+    "id": "node-route-xss",
+    "category": "code",
+    "severity": "medium",
+    "cwe": ["CWE-79"],
+    "location": { "file": "src/routes/search.js", "startLine": 33 }
   },
   {
     "id": "node-lodash",

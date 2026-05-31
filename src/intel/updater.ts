@@ -1,4 +1,11 @@
-import { recordIntelFetchResult, readCachedIntelItems, upsertIntelItems } from "./cache.js";
+import {
+  recordIntelFetchResult,
+  readCachedIntelItems,
+  readCachedIntelItemsForSource,
+  readIntelSourceState,
+  sourceCacheFresh,
+  upsertIntelItems,
+} from "./cache.js";
 import { defaultIntelFetchers } from "./fetchers.js";
 import type { IntelFetchInput, IntelFetchResult, IntelFetcher, IntelSource, SecurityIntelItem } from "./schema.js";
 import { offlineFallbackFeedItems } from "./sourceRegistry.js";
@@ -32,24 +39,19 @@ export async function updateIntelCache(options: UpdateIntelOptions = { mode: "au
   };
 
   const results: IntelFetchResult[] = [];
-  if (mode !== "offline") {
+  if (mode === "offline") {
+    const cached = await readCachedIntelItems();
+    if (cached.length > 0) {
+      results.push({
+        source: "vendor",
+        fetchedAt: now,
+        status: "cached",
+        items: cached,
+      });
+    }
+  } else {
     for (const fetcher of selected) {
-      try {
-        results.push(await recordIntelFetchResult(await fetcher.fetch(input)));
-      } catch (error) {
-        results.push(
-          await recordIntelFetchResult({
-            source: fetcher.source,
-            fetchedAt: now,
-            status: "failed",
-            items: [],
-            error: {
-              code: "intel-fetch-failed",
-              message: error instanceof Error ? error.message : String(error),
-            },
-          }),
-        );
-      }
+      results.push(await runFetcher(fetcher, input));
     }
   }
 
@@ -58,7 +60,7 @@ export async function updateIntelCache(options: UpdateIntelOptions = { mode: "au
     items = await upsertIntelItems(offlineFallbackFeedItems(now));
   }
 
-  if (mode === "offline") {
+  if (mode === "offline" && results.length === 0) {
     results.push({
       source: "vendor",
       fetchedAt: now,
@@ -73,4 +75,47 @@ export async function updateIntelCache(options: UpdateIntelOptions = { mode: "au
     results,
     items,
   };
+}
+
+async function runFetcher(fetcher: IntelFetcher, input: IntelFetchInput): Promise<IntelFetchResult> {
+  const now = new Date(input.now);
+  const state = await readIntelSourceState(fetcher.source);
+  const cachedItems = await readCachedIntelItemsForSource(fetcher.source);
+
+  if (input.mode === "auto" && cachedItems.length > 0 && sourceCacheFresh(state, fetcher.ttlMs, now)) {
+    return {
+      source: fetcher.source,
+      fetchedAt: input.now,
+      status: "cached",
+      items: cachedItems,
+      ...(state?.etag ? { etag: state.etag } : {}),
+      ...(state?.lastModified ? { lastModified: state.lastModified } : {}),
+    };
+  }
+
+  const fetchInput: IntelFetchInput = {
+    ...input,
+    ...(state?.etag || state?.lastModified
+      ? { cache: { ...(state.etag ? { etag: state.etag } : {}), ...(state.lastModified ? { lastModified: state.lastModified } : {}) } }
+      : {}),
+  };
+
+  try {
+    const result = await fetcher.fetch(fetchInput);
+    const hydratedResult = result.status === "cached" && result.items.length === 0 && cachedItems.length > 0
+      ? { ...result, items: cachedItems }
+      : result;
+    return recordIntelFetchResult(hydratedResult);
+  } catch (error) {
+    return recordIntelFetchResult({
+      source: fetcher.source,
+      fetchedAt: input.now,
+      status: "failed",
+      items: [],
+      error: {
+        code: "intel-fetch-failed",
+        message: error instanceof Error ? error.message : String(error),
+      },
+    });
+  }
 }

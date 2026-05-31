@@ -1,7 +1,7 @@
 import type { CommandResult } from "../shared/types.js";
 import { getIntelFeed } from "./feed.js";
 import { updateIntelCache } from "./updater.js";
-import type { IntelSource } from "./schema.js";
+import { parseIntelSources } from "./sourceRegistry.js";
 
 export async function updateIntel(options: {
   cwd: string;
@@ -9,9 +9,18 @@ export async function updateIntel(options: {
   sources?: string[];
   offline: boolean;
 }): Promise<CommandResult> {
+  const requested = parseIntelSources(options.sources ?? []);
+  if (requested.invalid.length > 0) {
+    return {
+      ok: false,
+      errorCode: "INTEL_SOURCE_UNKNOWN",
+      message: `Unknown security intelligence source(s): ${requested.invalid.join(", ")}.`,
+      remediation: "Use one of: cisa-kev, kev, osv, github-advisory, ghsa, nvd.",
+    };
+  }
   const summary = await updateIntelCache({
     mode: options.offline ? "offline" : "auto",
-    ...(options.sources ? { sources: options.sources as IntelSource[] } : {}),
+    ...(requested.sources.length > 0 ? { sources: requested.sources } : {}),
   });
   const feed = await getIntelFeed({ limit: 10, includeFallback: true });
   return {

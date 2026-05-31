@@ -1,6 +1,9 @@
 import type { IntelFetcher, IntelFetchResult, SecurityIntelItem } from "../schema.js";
+import { fetchIntelJson } from "../http.js";
+import { getIntelSourceDefinition } from "../sourceRegistry.js";
 
-const cisaKevUrl = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json";
+const cisaKevUrl = getIntelSourceDefinition("cisa-kev")?.endpoints[0]
+  ?? "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json";
 
 type CisaKevVulnerability = {
   cveID?: string;
@@ -54,30 +57,40 @@ export const cisaKevFetcher: IntelFetcher = {
     if (input.mode === "offline") {
       return { source: "cisa-kev", fetchedAt: input.now, status: "skipped", items: [] };
     }
-    const response = await fetch(cisaKevUrl, { headers: { accept: "application/json" } });
+    const response = await fetchIntelJson<{ vulnerabilities?: CisaKevVulnerability[] }>("cisa-kev", cisaKevUrl, {
+      ...(input.cache ? { cache: input.cache } : {}),
+    });
     if (!response.ok) {
       return {
         source: "cisa-kev",
         fetchedAt: input.now,
         status: "failed",
         items: [],
-        error: { code: "cisa-kev-http", message: `CISA KEV returned HTTP ${response.status}` },
+        error: response.error,
       };
     }
-    const raw = (await response.json()) as { vulnerabilities?: CisaKevVulnerability[] };
+    if (response.status === "not-modified") {
+      return {
+        source: "cisa-kev",
+        fetchedAt: input.now,
+        status: "cached",
+        items: [],
+        ...(response.etag ? { etag: response.etag } : {}),
+        ...(response.lastModified ? { lastModified: response.lastModified } : {}),
+      };
+    }
+    const raw = response.data ?? {};
     const items = (raw.vulnerabilities ?? [])
       .map((item) => normalizeKev(item, input.now))
       .filter((item): item is SecurityIntelItem => Boolean(item));
-    const etag = response.headers.get("etag") ?? undefined;
-    const lastModified = response.headers.get("last-modified") ?? undefined;
     return {
       source: "cisa-kev",
       fetchedAt: input.now,
       status: "fresh",
       raw,
       items,
-      ...(etag ? { etag } : {}),
-      ...(lastModified ? { lastModified } : {}),
+      ...(response.etag ? { etag: response.etag } : {}),
+      ...(response.lastModified ? { lastModified: response.lastModified } : {}),
     };
   },
 };

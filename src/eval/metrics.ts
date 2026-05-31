@@ -1,5 +1,5 @@
 import type { Finding, FindingCategory, Severity } from "../shared/types.js";
-import { projectFindings } from "./findingProjection.js";
+import { dedupeActualFindings, projectFindings } from "./findingProjection.js";
 import { normalizeGroundTruthFinding } from "./groundTruthSchema.js";
 import { matchFindings } from "./matcher.js";
 import type { DetectionCounts, EvalMetrics, GroundTruthFinding, MatchResult } from "./schema.js";
@@ -34,6 +34,12 @@ export type SimpleMatchResult = {
   score: number;
 };
 
+export type SimpleIgnoredActual = {
+  findingId: string;
+  reason: "duplicate";
+  duplicateOfId: string;
+};
+
 export type SimpleEvalMetrics = {
   totalExpected: number;
   totalActual: number;
@@ -46,6 +52,7 @@ export type SimpleEvalMetrics = {
   matches: SimpleMatchResult[];
   unmatchedExpected: string[];
   unmatchedActual: string[];
+  ignoredActual: SimpleIgnoredActual[];
 };
 
 export function computeMetricsFromCounts(
@@ -105,9 +112,15 @@ export function evaluateFindingsSimple(
   actual: readonly Finding[],
   minScore = 60,
 ): SimpleEvalMetrics {
+  const projectedActual = projectFindings(actual);
+  const dedupedActual = dedupeActualFindings(projectedActual);
+  const actualByFingerprint = new Map(actual.map((finding) => [finding.fingerprint, finding]));
+  const scoredActual = dedupedActual.findings
+    .map((finding) => actualByFingerprint.get(finding.fingerprint))
+    .filter((finding): finding is Finding => finding !== undefined);
   const candidates: SimpleMatchResult[] = [];
   for (const truth of expected) {
-    for (const finding of actual) {
+    for (const finding of scoredActual) {
       const score = scoreMatch(truth, finding);
       if (score >= minScore) {
         candidates.push({ expectedId: truth.id, findingId: finding.id, score });
@@ -132,14 +145,14 @@ export function evaluateFindingsSimple(
   }
 
   const truePositive = matches.length;
-  const falsePositive = actual.length - truePositive;
+  const falsePositive = scoredActual.length - truePositive;
   const falseNegative = expected.length - truePositive;
   const precision = safeRatio(truePositive, truePositive + falsePositive, 1);
   const recall = safeRatio(truePositive, truePositive + falseNegative, 1);
 
   return {
     totalExpected: expected.length,
-    totalActual: actual.length,
+    totalActual: scoredActual.length,
     truePositive,
     falsePositive,
     falseNegative,
@@ -148,7 +161,12 @@ export function evaluateFindingsSimple(
     f1: fScore(precision, recall),
     matches,
     unmatchedExpected: expected.filter((item) => !usedExpected.has(item.id)).map((item) => item.id),
-    unmatchedActual: actual.filter((item) => !usedActual.has(item.id)).map((item) => item.id),
+    unmatchedActual: scoredActual.filter((item) => !usedActual.has(item.id)).map((item) => item.id),
+    ignoredActual: dedupedActual.ignored.map((item) => ({
+      findingId: item.id,
+      reason: item.reason,
+      duplicateOfId: item.duplicateOfId,
+    })),
   };
 }
 
