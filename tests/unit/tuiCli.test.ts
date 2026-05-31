@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { Readable, Writable } from "node:stream";
 import test from "node:test";
 import { createCliToolbox } from "../../src/tui/cli.js";
 import { formatHelp, formatHistory } from "../../src/tui/format.js";
+import { RichHermsecTui } from "../../src/tui/RichApp.js";
 import type { TuiWorkspace } from "../../src/tui/types.js";
 
 test("TUI help advertises command, session, and history commands", () => {
@@ -13,6 +15,30 @@ test("TUI help advertises command, session, and history commands", () => {
   assert.match(help, /\/commands/);
   assert.match(help, /\/sessions/);
   assert.match(help, /\/history/);
+  assert.match(help, /\/settings/);
+  assert.match(help, /\/model/);
+  assert.match(help, /\/provider/);
+});
+
+test("rich TUI falls back safely in non-interactive terminals", async () => {
+  const input = Readable.from([]) as Readable & { isTTY?: boolean };
+  const chunks: string[] = [];
+  const output = new Writable({
+    write(chunk, _encoding, callback) {
+      chunks.push(String(chunk));
+      callback();
+    },
+  }) as Writable & { columns?: number; isTTY?: boolean };
+  input.isTTY = false;
+  output.isTTY = false;
+  output.columns = 100;
+
+  const app = new RichHermsecTui({ input, output, cwd: process.cwd() });
+  const summary = await app.run();
+
+  assert.equal(summary.exitReason, "non-interactive");
+  assert.match(chunks.join(""), /rich chatbot UI/);
+  assert.doesNotMatch(chunks.join(""), /HERMSEC_FAKE_TEST_TOKEN_DO_NOT_USE/);
 });
 
 test("TUI history formatter shows recent transcript messages", () => {

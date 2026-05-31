@@ -1,4 +1,3 @@
-import { ensureHermsecAppData } from "../storage/appData.js";
 import {
   listSessions as listStoredSessions,
   saveSession as saveStoredSession,
@@ -77,17 +76,19 @@ export async function launchChat(options: {
 }
 
 export async function runOnboarding(options: { cwd: string; args: string[] }): Promise<CommandResult> {
-  const layout = await ensureHermsecAppData();
-  const config = await loadUserConfig();
+  const summary = await runTui({
+    cwd: options.cwd,
+    skipOnboarding: false,
+    forceOnboarding: true,
+    tools: createCliToolbox(options.cwd),
+  });
   return {
     ok: true,
-    message: `Onboarding ready. Config: ${layout.configFile}. Reports: ${config.customReportDir ?? layout.reportsDir}`,
-    data: {
-      appDataDir: layout.appDataDir,
-      configPath: layout.configFile,
-      reportDirectory: config.customReportDir ?? layout.reportsDir,
-      privacyMode: config.privacyMode,
-    },
+    message:
+      summary.exitReason === "non-interactive"
+        ? "Hermsec onboarding needs an interactive terminal. Use `hermsec --help` for scriptable commands."
+        : "Onboarding session finished.",
+    data: summary,
   };
 }
 

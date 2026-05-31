@@ -1,8 +1,9 @@
 import { HermsecTui } from "./App.js";
+import { RichHermsecTui } from "./RichApp.js";
 import type { TuiRunOptions, TuiRunSummary } from "./types.js";
 
 export async function runTui(options: TuiRunOptions = {}): Promise<TuiRunSummary> {
-  const app = new HermsecTui(options);
+  const app = new RichHermsecTui(options);
   return app.run();
 }
 
@@ -11,6 +12,7 @@ export async function startChat(options: TuiRunOptions = {}): Promise<TuiRunSumm
 }
 
 export { HermsecTui } from "./App.js";
+export { RichHermsecTui } from "./RichApp.js";
 export type {
   ChatMessage,
   ModelMode,
@@ -26,6 +28,8 @@ export type {
   TuiScanRequest,
   TuiScanResult,
   TuiScheduleSummary,
+  TuiSessionSnapshot,
+  TuiSessionSummary,
   TuiState,
   TuiStatus,
   TuiToolbox,

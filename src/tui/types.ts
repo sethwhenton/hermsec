@@ -169,6 +169,7 @@ export type TuiRunOptions = {
   initialState?: Partial<TuiState>;
   forceInteractive?: boolean;
   skipOnboarding?: boolean;
+  forceOnboarding?: boolean;
 };
 
 export type TuiRunSummary = {
