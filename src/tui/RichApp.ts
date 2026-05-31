@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
 import process from "node:process";
-import * as blessed from "blessed";
+import blessed from "blessed";
 
 import { setConfigValue, loadUserConfig, modelProviders, type PreferredModelProvider } from "../storage/userConfig.js";
 import { defaultReportDir, normalizeTargetPath } from "../shared/paths.js";
