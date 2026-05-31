@@ -1,5 +1,6 @@
 import type { CommandResult } from "../shared/types.js";
 import { getIntelFeed } from "./feed.js";
+import { summarizeIntelFeed } from "./summarizer.js";
 import { updateIntelCache } from "./updater.js";
 import { parseIntelSources } from "./sourceRegistry.js";
 
@@ -23,11 +24,13 @@ export async function updateIntel(options: {
     ...(requested.sources.length > 0 ? { sources: requested.sources } : {}),
   });
   const feed = await getIntelFeed({ limit: 10, includeFallback: true });
+  const summaryText = summarizeIntelFeed(feed, 5);
   return {
     ok: true,
     message: `Security intelligence updated: ${summary.items.length} cached item(s), ${summary.results.length} source result(s).`,
     data: {
       summary,
+      summaryText,
       feed: feed.map((item) => ({
         id: item.item.id,
         title: item.item.title,

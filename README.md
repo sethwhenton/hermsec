@@ -4,15 +4,19 @@ Hermsec is a local-first security assistant for repositories. It scans project f
 
 ## Quick Start
 
+Hermsec can be installed as an npm CLI. Once installed, type `hermsec` in PowerShell to open the interactive chatbot/TUI.
+
 ```powershell
-npm ci --ignore-scripts
-npm run build
-npm test
-npm link
+pmg npm ci --ignore-scripts
+pmg npm test
+npm pack
+npm install -g .\hermsec-0.1.0.tgz --ignore-scripts
+hermsec
 hermsec doctor
 hermsec scan E:\path\to\repo --out .hermsec\reports --html --md --json
-hermsec chat
 ```
+
+For development linking and registry publishing notes, see [docs/npm-install.md](docs/npm-install.md).
 
 Hermsec does not install dependencies inside scanned repositories and does not run package lifecycle scripts during scans.
 

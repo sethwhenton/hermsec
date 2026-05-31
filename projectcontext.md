@@ -9,15 +9,15 @@ Hermsec is a local-first, CVE-aware AI security assistant for repositories. The 
 Hermsec now has a hardened local production-readiness milestone:
 
 - TypeScript CLI package with `hermsec` bin.
-- Chatbot-style TUI entry point with safe non-interactive fallback.
+- Chatbot-style TUI entry point with safe non-interactive fallback, wired to the real doctor, scan harness, report index, schedule list, workspace store, and security-intel update tools.
 - Local scan harness with repository discovery, built-in heuristics for secrets, JS/TS, Python, package/lockfile, and config/supply-chain patterns, plus optional external scanner execution.
 - JSON-backed app data, user config, workspaces, schedules, sessions, report indexes, and security-intel cache.
 - Deterministic local JSON/Markdown/HTML reports with redaction, evidence bundles, and delta artifacts.
 - Restricted model/provider layer with env-only credentials, safe credential-reference validation, non-secret provider verification fingerprints, and no-model fallback.
 - Evaluation matcher/metrics for precision, recall, F1, category/confusion scoring, duplicate-noise classification, and safe vulnerable/clean fixture repos.
-- Online security intelligence has deterministic trusted-source fetchers for CISA KEV, OSV.dev, GitHub Advisory Database, and NVD, plus source TTL/cache metadata and offline fallback behavior.
+- Online security intelligence has deterministic trusted-source fetchers for CISA KEV, OSV.dev, GitHub Advisory Database, and NVD, plus source TTL/cache metadata, offline fallback behavior, and short security-update summaries for CLI/TUI news output.
 - Verified model-backed report explanations through the env-only Gemini provider path; OpenAI-compatible, OpenAI, OpenRouter, Claude, OpenCode Go, Ollama, and no-model adapters are wired through the same router.
-- Local install verified with `npm link --ignore-scripts`; `hermsec --version`, `hermsec doctor`, and `hermsec scan` work from PATH.
+- npm CLI packaging is verified with a packed tarball and temporary global-prefix install; `hermsec` launches the TUI, while `hermsec doctor`, `hermsec scan`, and `hermsec intel update` remain scriptable.
 
 Latest verified commands:
 
@@ -30,14 +30,16 @@ node dist/src/bin/hermsec.js intel update --source nvd
 node dist/src/bin/hermsec.js scan tests\fixtures\repos\node-express-vulnerable --mode online --out .hermsec\production-hardening-node --json --md --html --no-model
 node dist/src/bin/hermsec.js scan tests\fixtures\repos\python-flask-vulnerable --mode online --out .hermsec\production-hardening-python --json --no-model
 node dist/src/bin/hermsec.js scan tests\fixtures\repos\node-express-vulnerable --mode online --out .hermsec\verify-model-reports --json --md --html
+node dist/src/bin/hermsec.js intel update --offline
 node dist/src/bin/hermsec.js eval run --mode scanner-only --out .hermsec\verify-eval
+npm pack --ignore-scripts
 ```
 
 Current verified scanner/tool status on this PC: Semgrep, Gitleaks, Bandit, OSV-Scanner, pip-audit, and SafeDep PMG are installed and detected by `doctor`. PMG was installed from the official SafeDep GitHub release binary `v0.17.4`; the Windows zip SHA-256 matched the release `checksums.txt`, and `pmg version` reports `0.17.4`.
 
 Current verified intel status: CISA KEV and NVD live update both complete successfully; the combined cache contains `1654` items, and offline cache reuse works.
 
-Current full-suite status on May 31, 2026: `npm test` builds successfully and runs `40` Node tests; `40` pass, `0` fail, and `0` skip.
+Current full-suite status on May 31, 2026: `pmg npm test` builds successfully and runs `47` Node tests; `47` pass, `0` fail, and `0` skip.
 
 Current verified eval status: the Node vulnerable fixture scanner-only run reports precision `1.00`, recall `1.00`, and F1 `1.00` after aligning the JSON ground truth with all intentionally planted findings.
 

@@ -3,14 +3,16 @@
   "version": "0.1.0",
   "description": "Local-first security assistant for vibe-coded repositories.",
   "type": "module",
-  "private": true,
+  "private": false,
+  "license": "UNLICENSED",
   "bin": {
     "hermsec": "./dist/src/bin/hermsec.js"
   },
   "files": [
     "dist/src",
     "README.md",
-    "LICENSE"
+    "docs/npm-install.md",
+    "docs/pmg-setup.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -18,7 +20,8 @@
     "test": "npm run build && node --test \"dist/tests/**/*.test.js\"",
     "dev": "npm run build && node dist/src/bin/hermsec.js",
     "start": "node dist/src/bin/hermsec.js",
-    "pack:dry-run": "npm pack --dry-run"
+    "prepack": "npm run build",
+    "pack:dry-run": "npm pack --dry-run --ignore-scripts"
   },
   "engines": {
     "node": ">=22.0.0",

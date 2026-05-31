@@ -58,5 +58,22 @@ async function intelUpdate(args: string[], context: CommandContext): Promise<Cli
     options,
     "Security intelligence updated.",
   );
+  if (!json && result.ok) {
+    const summaryText = intelSummaryText(result.data);
+    if (summaryText) {
+      return toOutcome({
+        ...result,
+        message: `${result.message}\n\nTop security updates:\n${summaryText}`,
+      }, json);
+    }
+  }
   return toOutcome(result, json);
+}
+
+function intelSummaryText(data: unknown): string | undefined {
+  if (typeof data !== "object" || data === null || !("summaryText" in data)) {
+    return undefined;
+  }
+  const summaryText = (data as { summaryText?: unknown }).summaryText;
+  return typeof summaryText === "string" && summaryText.trim().length > 0 ? summaryText : undefined;
 }

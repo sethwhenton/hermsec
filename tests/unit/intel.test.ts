@@ -16,6 +16,7 @@ import {
   type SecurityIntelItem,
   type WorkspaceInventory,
 } from "../../src/intel/index.js";
+import { updateIntel } from "../../src/intel/update.js";
 import type { Finding } from "../../src/shared/types.js";
 
 const now = "2026-05-31T12:00:00.000Z";
@@ -156,6 +157,23 @@ test("intel updater preserves cached advisories when a live source fails", async
 
   assert.equal(summary.results[0]?.status, "failed");
   assert.equal(summary.items.some((item) => item.id === "github-advisory:GHSA-35jh-r3h4-6jhm"), true);
+});
+
+test("intel update returns a short security-news summary", async (t) => {
+  await withTempHermsecHome(t);
+  await writeCachedIntelItems([makeIntelItem()]);
+
+  const result = await updateIntel({
+    cwd: process.cwd(),
+    offline: true,
+  });
+
+  if (!result.ok || !result.data) {
+    assert.fail(result.message);
+  }
+  const data = result.data as { summaryText?: string; feed?: unknown[] };
+  assert.match(String(data.summaryText), /Known vulnerable lodash version/);
+  assert.equal(Array.isArray(data.feed), true);
 });
 
 test("matcher scores package and finding identifier matches", () => {
