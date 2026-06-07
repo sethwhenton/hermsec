@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "hermsec-python-flask-vuln-lab",
+  "language": ["python"],
+  "framework": ["flask"],
+  "kind": "vulnerable-app",
+  "safeToRun": false,
+  "doNotInstall": true,
+  "fakeSecretsOnly": true,
+  "notes": [
+    "Intentionally vulnerable scanner fixture with fake secrets only.",
+    "Scan as source; do not deploy or install dependencies for normal validation."
+  ],
+  "expectedFindings": [
+    {
+      "id": "python-hardcoded-fixture-token",
+      "category": "secret",
+      "title": "Fake Hermsec fixture token committed in source",
+      "severity": "high",
+      "confidence": "confirmed",
+      "cwe": ["CWE-798"],
+      "ruleIds": ["hermsec.secret.fake-fixture-token"],
+      "expectedTools": ["hermsec-secrets"],
+      "location": {
+        "file": "app.py",
+        "startLine": 9
+      }
+    },
+    {
+      "id": "python-hardcoded-github-token-shape",
+      "category": "secret",
+      "title": "Fake GitHub token-shaped value committed in source",
+      "severity": "high",
+      "confidence": "high",
+      "cwe": ["CWE-798"],
+      "ruleIds": ["hermsec.secret.github-token"],
+      "expectedTools": ["hermsec-secrets", "gitleaks"],
+      "location": {
+        "file": "app.py",
+        "startLine": 10
+      }
+    },
+    {
+      "id": "python-sql-injection-query",
+      "category": "code",
+      "title": "SQL query built from request input",
+      "severity": "high",
+      "confidence": "high",
+      "cwe": ["CWE-89"],
+      "ruleIds": ["bandit.B608"],
+      "expectedTools": ["bandit", "semgrep"],
+      "location": {
+        "file": "app.py",
+        "startLine": 16
+      }
+    },
+    {
+      "id": "python-command-injection-ping",
+      "category": "code",
+      "title": "Subprocess shell execution includes request input",
+      "severity": "high",
+      "confidence": "high",
+      "cwe": ["CWE-78"],
+      "ruleIds": ["hermsec.python.subprocess-shell", "bandit.B602"],
+      "expectedTools": ["hermsec-code-heuristics", "bandit", "semgrep"],
+      "location": {
+        "file": "app.py",
+        "startLine": 24
+      }
+    },
+    {
+      "id": "python-unsafe-eval",
+      "category": "code",
+      "title": "Dynamic Python execution through eval",
+      "severity": "high",
+      "confidence": "high",
+      "cwe": ["CWE-95"],
+      "ruleIds": ["hermsec.python.eval-exec", "bandit.B307"],
+      "expectedTools": ["hermsec-code-heuristics", "bandit", "semgrep"],
+      "location": {
+        "file": "app.py",
+        "startLine": 31
+      }
+    },
+    {
+      "id": "python-unsafe-pickle-deserialization",
+      "category": "code",
+      "title": "Unsafe pickle deserialization of request data",
+      "severity": "medium",
+      "confidence": "high",
+      "cwe": ["CWE-502"],
+      "ruleIds": ["hermsec.python.pickle", "bandit.B301"],
+      "expectedTools": ["hermsec-code-heuristics", "bandit"],
+      "location": {
+        "file": "app.py",
+        "startLine": 37
+      }
+    },
+    {
+      "id": "python-template-injection",
+      "category": "code",
+      "title": "Template rendering includes unsanitized request input",
+      "severity": "medium",
+      "confidence": "medium",
+      "cwe": ["CWE-79"],
+      "ruleIds": ["semgrep.python.flask.security.audit.render-template-string.render-template-string"],
+      "expectedTools": ["semgrep"],
+      "location": {
+        "file": "app.py",
+        "startLine": 43
+      }
+    },
+    {
+      "id": "python-flask-debug-mode",
+      "category": "code",
+      "title": "Flask debug mode enabled",
+      "severity": "medium",
+      "confidence": "high",
+      "cwe": ["CWE-489"],
+      "ruleIds": ["hermsec.python.debug-true", "bandit.B201"],
+      "expectedTools": ["hermsec-code-heuristics", "bandit"],
+      "location": {
+        "file": "app.py",
+        "startLine": 47
+      }
+    }
+  ],
+  "unexpectedFindings": {
+    "allowExtraInformational": true
+  }
+}

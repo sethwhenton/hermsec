@@ -1,4 +1,5 @@
 import process from "node:process";
+import { runAgentCommand } from "./commands/agent.js";
 import { runChatCommand, runOnboardCommand } from "./commands/chat.js";
 import { runConfigCommand } from "./commands/config.js";
 import { runDoctorCommand } from "./commands/doctor.js";
@@ -41,6 +42,8 @@ export async function dispatchCli(
   switch (command) {
     case "chat":
       return runChatCommand(rest, context);
+    case "agent":
+      return runAgentCommand(rest, context);
     case "doctor":
       return runDoctorCommand(rest, context);
     case "onboard":

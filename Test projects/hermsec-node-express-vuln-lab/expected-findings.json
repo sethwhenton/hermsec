@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "hermsec-node-express-vuln-lab",
+  "language": ["javascript"],
+  "framework": ["express"],
+  "kind": "vulnerable-app",
+  "safeToRun": false,
+  "doNotInstall": true,
+  "fakeSecretsOnly": true,
+  "notes": [
+    "Intentionally vulnerable scanner fixture with fake secrets only.",
+    "Scan as source; do not deploy or install dependencies for normal validation."
+  ],
+  "expectedFindings": [
+    {
+      "id": "node-hardcoded-fixture-token",
+      "category": "secret",
+      "title": "Fake Hermsec fixture token committed in source",
+      "severity": "high",
+      "confidence": "confirmed",
+      "cwe": ["CWE-798"],
+      "ruleIds": ["hermsec.secret.fake-fixture-token"],
+      "expectedTools": ["hermsec-secrets"],
+      "location": {
+        "file": "src/server.js",
+        "startLine": 7
+      }
+    },
+    {
+      "id": "node-hardcoded-github-token-shape",
+      "category": "secret",
+      "title": "Fake GitHub token-shaped value committed in source",
+      "severity": "high",
+      "confidence": "high",
+      "cwe": ["CWE-798"],
+      "ruleIds": ["hermsec.secret.github-token"],
+      "expectedTools": ["hermsec-secrets", "gitleaks"],
+      "location": {
+        "file": "src/server.js",
+        "startLine": 8
+      }
+    },
+    {
+      "id": "node-sql-injection-query",
+      "category": "code",
+      "title": "SQL query built from request input",
+      "severity": "high",
+      "confidence": "high",
+      "cwe": ["CWE-89"],
+      "ruleIds": ["hermsec.code.sql-dynamic-string"],
+      "expectedTools": ["hermsec-code-heuristics", "semgrep"],
+      "location": {
+        "file": "src/server.js",
+        "startLine": 12
+      }
+    },
+    {
+      "id": "node-command-injection-ping",
+      "category": "code",
+      "title": "Shell command execution includes request input",
+      "severity": "critical",
+      "confidence": "high",
+      "cwe": ["CWE-78"],
+      "ruleIds": [
+        "hermsec.code.child-process-exec",
+        "hermsec.code.command-injection-input",
+        "hermsec.javascript.child-process-exec"
+      ],
+      "expectedTools": ["hermsec-code-heuristics", "semgrep"],
+      "location": {
+        "file": "src/server.js",
+        "startLine": 17
+      }
+    },
+    {
+      "id": "node-unsafe-eval",
+      "category": "code",
+      "title": "Dynamic JavaScript execution through eval",
+      "severity": "high",
+      "confidence": "high",
+      "cwe": ["CWE-95"],
+      "ruleIds": ["hermsec.code.eval", "hermsec.javascript-eval"],
+      "expectedTools": ["hermsec-code-heuristics", "semgrep"],
+      "location": {
+        "file": "src/server.js",
+        "startLine": 23
+      }
+    },
+    {
+      "id": "node-reflected-html",
+      "category": "code",
+      "title": "HTML response includes unsanitized request input",
+      "severity": "medium",
+      "confidence": "medium",
+      "cwe": ["CWE-79"],
+      "ruleIds": ["hermsec.code.unsanitized-html-response"],
+      "expectedTools": ["hermsec-code-heuristics", "semgrep"],
+      "location": {
+        "file": "src/server.js",
+        "startLine": 29
+      }
+    }
+  ],
+  "unexpectedFindings": {
+    "allowExtraInformational": true
+  }
+}

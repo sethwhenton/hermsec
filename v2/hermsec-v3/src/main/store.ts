@@ -1,0 +1,183 @@
+import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+import { app } from "electron";
+import type { AppSettings, DeepPartial, ProviderConfig } from "../renderer/src/types/settings";
+import { getEnvDefaults } from "./env";
+import { defaultProjectDir } from "./scan";
+
+const SETTINGS_FILE = "settings.json";
+
+function defaultProvider(env: ReturnType<typeof getEnvDefaults>): ProviderConfig {
+  const models = [
+    { id: "kimi-k2.6", label: "Kimi K2.6", enabled: true },
+    { id: "glm-5.1", label: "GLM 5.1", enabled: true },
+    { id: "deepseek-v4-pro", label: "DeepSeek V4 Pro", enabled: true },
+    { id: "deepseek-v4-flash", label: "DeepSeek V4 Flash", enabled: true },
+  ];
+
+  if (!models.some((model) => model.id === env.model)) {
+    models.unshift({ id: env.model, label: env.model, enabled: true });
+  }
+
+  return {
+    id: env.provider,
+    displayName: "OpenCode Go",
+    baseUrl: env.baseUrl,
+    authKind: "environment",
+    apiKeyEnvVar: env.apiKeyEnvVar,
+    enabled: true,
+    models,
+  };
+}
+
+function defaultSettings(): AppSettings {
+  const env = getEnvDefaults();
+  return {
+    general: {
+      language: "English",
+      autoAcceptPermissions: false,
+      terminalShell: "Auto (Default)",
+      showReasoning: true,
+      privacyMode: false,
+      scanMode: "online",
+    },
+    defaultProjectDir: defaultProjectDir(),
+    defaultReportDir: join(app.getPath("documents"), "Hermsec", "reports"),
+    activeModelId: env.model,
+    automation: {
+      enabled: false,
+      frequency: "daily",
+      time: "09:00",
+    },
+    providers: [defaultProvider(env)],
+  };
+}
+
+function deepMerge<T extends object>(target: T, source: DeepPartial<T>): T {
+  const output = { ...target } as T;
+  for (const key of Object.keys(source) as Array<keyof T>) {
+    const sourceValue = source[key];
+    const targetValue = target[key];
+    if (
+      sourceValue &&
+      typeof sourceValue === "object" &&
+      !Array.isArray(sourceValue) &&
+      targetValue &&
+      typeof targetValue === "object" &&
+      !Array.isArray(targetValue)
+    ) {
+      output[key] = deepMerge(targetValue as object, sourceValue as DeepPartial<object>) as T[keyof T];
+    } else if (sourceValue !== undefined) {
+      output[key] = sourceValue as T[keyof T];
+    }
+  }
+  return output;
+}
+
+function settingsPath(): string {
+  const dir = app.getPath("userData");
+  mkdirSync(dir, { recursive: true });
+  return join(dir, SETTINGS_FILE);
+}
+
+export function readSettings(): AppSettings {
+  const path = settingsPath();
+  if (!existsSync(path)) {
+    const settings = defaultSettings();
+    writeSettings(settings);
+    return settings;
+  }
+
+  try {
+    const raw = readFileSync(path, "utf8");
+    const parsed = JSON.parse(raw) as AppSettings;
+    return normalizeSettings(deepMerge(defaultSettings(), parsed));
+  } catch {
+    const settings = defaultSettings();
+    writeSettings(settings);
+    return settings;
+  }
+}
+
+export function writeSettings(settings: AppSettings): void {
+  const path = settingsPath();
+  const tmp = `${path}.tmp`;
+  writeFileSync(tmp, JSON.stringify(settings, null, 2), "utf8");
+  renameSync(tmp, path);
+}
+
+export function updateSettings(partial: DeepPartial<AppSettings>): AppSettings {
+  const current = readSettings();
+  const next = normalizeSettings(deepMerge(current, partial));
+  writeSettings(next);
+  return next;
+}
+
+function normalizeSettings(settings: AppSettings): AppSettings {
+  const defaults = defaultSettings();
+  const defaultProvider = defaults.providers[0];
+  const providers = settings.providers.map((provider) => {
+    if (provider.id !== defaultProvider.id) return provider;
+    const existingModelIds = new Set(provider.models.map((model) => model.id));
+    const defaultModelsById = new Map(defaultProvider.models.map((model) => [model.id, model]));
+    const modelsById = new Map<string, ProviderConfig["models"][number]>();
+    for (const model of [
+      ...provider.models,
+      ...defaultProvider.models.filter((model) => !existingModelIds.has(model.id)),
+    ]) {
+      const defaultModel = defaultModelsById.get(model.id);
+      const current = modelsById.get(model.id);
+      modelsById.set(model.id, {
+        ...model,
+        label: defaultModel && model.label === model.id ? defaultModel.label : model.label,
+        enabled: current ? current.enabled || model.enabled : model.enabled,
+      });
+    }
+    return {
+      ...provider,
+      models: Array.from(modelsById.values()),
+    };
+  });
+
+  if (!providers.some((provider) => provider.id === defaultProvider.id)) {
+    providers.unshift(defaultProvider);
+  }
+
+  const enabledModelIds = new Set(
+    providers.flatMap((provider) =>
+      provider.enabled ? provider.models.filter((model) => model.enabled).map((model) => model.id) : [],
+    ),
+  );
+  const activeModelId = settings.activeModelId && enabledModelIds.has(settings.activeModelId)
+    ? settings.activeModelId
+    : providers.find((provider) => provider.enabled)?.models.find((model) => model.enabled)?.id;
+
+  return {
+    ...settings,
+    general: {
+      ...settings.general,
+      scanMode: normalizeScanModeSetting(settings.general.scanMode),
+    },
+    automation: {
+      enabled: Boolean(settings.automation?.enabled),
+      frequency:
+        settings.automation?.frequency === "every-3-days" || settings.automation?.frequency === "weekly"
+          ? settings.automation.frequency
+          : "daily",
+      time: /^\d{2}:\d{2}$/.test(settings.automation?.time ?? "") ? settings.automation.time : "09:00",
+      ...(settings.automation?.lastRunAt ? { lastRunAt: settings.automation.lastRunAt } : {}),
+      ...(settings.automation?.lastCheckedAt ? { lastCheckedAt: settings.automation.lastCheckedAt } : {}),
+      ...(settings.automation?.lastResult ? { lastResult: settings.automation.lastResult } : {}),
+      ...(settings.automation?.lastReportDir ? { lastReportDir: settings.automation.lastReportDir } : {}),
+      ...(settings.automation?.lastProjectStateFingerprint
+        ? { lastProjectStateFingerprint: settings.automation.lastProjectStateFingerprint }
+        : {}),
+    },
+    providers,
+    ...(activeModelId ? { activeModelId } : {}),
+  };
+}
+
+function normalizeScanModeSetting(mode: string): string {
+  return "online";
+}

@@ -1,7 +1,13 @@
 # Dependencies and build output
 node_modules/
+v2/node_modules/
+v2/**/node_modules/
 dist/
 build/
+out/
+release/
+v2/**/out/
+v2/**/release/
 coverage/
 
 # Local environment and secrets
@@ -19,6 +25,8 @@ coverage/
 .hermsec/queue/
 .hermsec/tmp/
 .hermsec/secrets/
+.hermsec-v2/
+.hermsec-v3/
 
 # Logs and editor noise
 *.log

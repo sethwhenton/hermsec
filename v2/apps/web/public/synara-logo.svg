@@ -1,0 +1,16 @@
+<svg width="577" height="580" viewBox="0 0 577 580" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .hermsec-logo-fill { fill: #1c2933; }
+    @media (prefers-color-scheme: dark) {
+      .hermsec-logo-fill { fill: #37e6ee; }
+    }
+  </style>
+  <defs>
+    <mask id="hermsec-keyhole-mask" maskUnits="userSpaceOnUse">
+      <rect width="577" height="580" fill="white"/>
+      <circle cx="313" cy="365" r="51" fill="black"/>
+      <path d="M278 411H346L386 566H238L278 411Z" fill="black"/>
+    </mask>
+  </defs>
+  <path class="hermsec-logo-fill" d="M116 40L238 114V260H339V114L461 40V530L339 456V342H238V456L116 530V40Z" mask="url(#hermsec-keyhole-mask)"/>
+</svg>

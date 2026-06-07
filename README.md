@@ -4,38 +4,27 @@ Hermsec is a local-first security assistant for repositories. It scans project f
 
 ## Quick Start
 
-Hermsec can be installed as an npm CLI. Once installed, type `hermsec` in PowerShell to open the keyboard-first terminal chatbot UI with a fixed input box, responsive layout, onboarding, settings, model/provider pickers, sessions, and scan/report views.
+Hermsec now has a Synara-style Electron desktop app for local workspaces, scans, intel, reports, settings, and security chat. The CLI still exists for scriptable scans.
 
 ```powershell
 pmg npm ci --ignore-scripts
+node node_modules\electron\install.js
 pmg npm test
-npm pack
-npm install -g .\hermsec-0.1.0.tgz --ignore-scripts
-hermsec
+pmg npm run start:desktop
 hermsec doctor
 hermsec scan E:\path\to\repo --out .hermsec\reports --html --md --json
 ```
 
-Inside the TUI:
+Inside the desktop composer:
 
 ```text
 /help or /commands    Show available commands
 /doctor               Check local readiness
 /scan <path>          Run the approved scan harness
-/intel                Show security-update summaries
+/intel                Refresh security-update summaries
 /reports              Show local reports
 /settings             Edit privacy, report, model, and provider settings
-/settings report <x>  Set report location or a custom local report folder
-/model                Pick the active model provider
-/provider             Configure provider credential environment variables
-/provider env <name>  Store an env var name, never a raw key
-/history [count]      Show recent messages in the current session
-/sessions             List saved sessions for the active workspace
-/sessions new         Save the current session and start a fresh one
-/exit                 Leave the TUI
 ```
-
-On first launch, onboarding runs inside the same TUI view. Type the shown number choices or paste a local path/GitHub URL directly into the bottom input. Run `hermsec onboard` to open that onboarding view again.
 
 For development linking and registry publishing notes, see [docs/npm-install.md](docs/npm-install.md).
 
@@ -44,3 +33,9 @@ Hermsec does not install dependencies inside scanned repositories and does not r
 ## Provider Keys
 
 Provider keys are read from environment variables such as `OPENCODE_GO_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, and `OPENROUTER_API_KEY`. Keep real keys out of git.
+
+For OpenCode Go, copy `.env.example` to `.env.local`, set `OPENCODE_GO_API_KEY`, keep `HERMSEC_MODEL=deepseek-v4-flash`, then enable remote model calls from Settings when you want model-backed explanations.
+
+## V2 Synara Fork
+
+`v2/` is a whole-source Synara fork for the next desktop direction. It is rebranded as Hermsec V2, removes Synara's marketing app, uses the selected H/keyhole mark, and adds a first Hermsec bridge for Doctor, Scan, and Intel actions. See `v2/docs/HERMSEC_V2_SCOPE.md`.

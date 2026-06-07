@@ -72,6 +72,7 @@ async function explainScanRun(
   const providerConfig = {
     provider: providerId,
     ...(apiKeyEnv ? { apiKeyEnv } : {}),
+    ...(process.env.HERMSEC_MODEL?.trim() ? { model: process.env.HERMSEC_MODEL.trim() } : {}),
     allowRemoteProviders: userConfig.privacyMode !== "local-only",
     timeoutMs: modelTimeoutMs(findings.length),
   };

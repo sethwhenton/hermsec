@@ -1,0 +1,13 @@
+{
+  "name": "hermsec-node-express-vuln-lab",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Intentionally vulnerable Node/Express scanner fixture for Hermsec validation.",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "4.18.2"
+  }
+}

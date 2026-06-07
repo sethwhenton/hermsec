@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { runScan } from "../../src/core/scan.js";
+import type { Finding } from "../../src/shared/types.js";
 
 const fixtureRoot = path.resolve("tests/fixtures/repos");
 
@@ -18,3 +20,57 @@ test("clean fixture has no high or critical findings", async () => {
   assert.equal(run.summary.critical, 0);
   assert.equal(run.summary.high, 0);
 });
+
+test("offline scan covers Hermsec MVP vulnerable test projects with measurable recall", async () => {
+  const labs = [
+    path.resolve("Test projects/hermsec-node-express-vuln-lab"),
+    path.resolve("Test projects/hermsec-python-flask-vuln-lab"),
+  ];
+
+  for (const lab of labs) {
+    const expected = await readExpectedFindings(lab);
+    const run = await runScan({ target: lab, mode: "offline" });
+    const matched = expected.filter((item) =>
+      run.findings.some((finding) => matchesExpectedFinding(finding, item)),
+    );
+    const recall = matched.length / expected.length;
+
+    assert.equal(run.summary.total > 0, true, `${path.basename(lab)} should produce findings`);
+    assert.equal(
+      recall >= 0.5,
+      true,
+      `${path.basename(lab)} recall ${recall.toFixed(2)} was below MVP threshold`,
+    );
+  }
+});
+
+type ExpectedFinding = {
+  category: string;
+  cwe?: string[];
+  location?: {
+    file?: string;
+  };
+  ruleIds?: string[];
+};
+
+async function readExpectedFindings(lab: string): Promise<ExpectedFinding[]> {
+  const raw = await fs.readFile(path.join(lab, "expected-findings.json"), "utf8");
+  const parsed = JSON.parse(raw) as { expectedFindings?: ExpectedFinding[] };
+  assert.ok(Array.isArray(parsed.expectedFindings));
+  return parsed.expectedFindings;
+}
+
+function matchesExpectedFinding(finding: Finding, expected: ExpectedFinding): boolean {
+  const categoryMatches = finding.category === expected.category;
+  const cweMatches =
+    expected.cwe === undefined ||
+    expected.cwe.some((cwe) => finding.cwe?.includes(cwe) === true);
+  const locationMatches =
+    expected.location?.file === undefined ||
+    finding.location?.file.replace(/\\/g, "/").endsWith(expected.location.file) === true;
+  const ruleMatches =
+    expected.ruleIds === undefined ||
+    expected.ruleIds.some((ruleId) => finding.ruleId === ruleId || finding.tool === ruleId);
+
+  return categoryMatches && locationMatches && (cweMatches || ruleMatches);
+}

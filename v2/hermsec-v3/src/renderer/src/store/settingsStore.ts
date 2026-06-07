@@ -1,0 +1,33 @@
+import { create } from "zustand";
+import { getHermsecApi, requireHermsecApi } from "@/lib/ipc";
+import type { AppSettings, DeepPartial } from "@/types/settings";
+
+interface SettingsState {
+  settings: AppSettings | null;
+  loading: boolean;
+  hydrated: boolean;
+  hydrate: () => Promise<void>;
+  update: (partial: DeepPartial<AppSettings>) => Promise<void>;
+}
+
+export const useSettingsStore = create<SettingsState>((set, get) => ({
+  settings: null,
+  loading: false,
+  hydrated: false,
+  hydrate: async () => {
+    if (get().hydrated) return;
+    const api = getHermsecApi();
+    if (!api) {
+      set({ loading: false, hydrated: true });
+      return;
+    }
+    set({ loading: true });
+    const settings = await api.settings.get();
+    set({ settings, loading: false, hydrated: true });
+  },
+  update: async (partial) => {
+    set({ loading: true });
+    const settings = await requireHermsecApi().settings.set(partial);
+    set({ settings, loading: false, hydrated: true });
+  },
+}));

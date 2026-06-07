@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #09090b;
+  --color-surface: #111113;
+  --color-surface-elevated: #18181b;
+  --color-border: #27272a;
+  --color-border-subtle: #1c1c1f;
+  --color-foreground: #f4f4f5;
+  --color-muted: #a1a1aa;
+  --color-muted-foreground: #71717a;
+  --color-accent: #3b82f6;
+  --color-accent-muted: #1d4ed826;
+  --color-success: #22c55e;
+  --color-danger: #ef4444;
+  --font-sans: "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "Cascadia Code", "JetBrains Mono", ui-monospace, monospace;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-background);
+  color: var(--color-foreground);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

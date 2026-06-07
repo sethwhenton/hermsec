@@ -133,9 +133,25 @@ export const moduleSpecs = {
     modulePath: "../scheduler/cli.js",
     exportName: "runSchedule",
     expectedShape:
-      "export async function runSchedule(options: { cwd: string; scheduleId: string }): Promise<CommandResult>",
+      "export async function runSchedule(options: { cwd: string; scheduleId: string; force?: boolean }): Promise<CommandResult>",
     unavailableMessage: "Scheduling is not available yet.",
     remediation: "Implement the schedule runner before running schedules.",
+  },
+  scheduleUpdate: {
+    modulePath: "../scheduler/cli.js",
+    exportName: "updateSchedule",
+    expectedShape:
+      "export async function updateSchedule(options: { cwd: string; scheduleId: string; target?: string; dailyTime?: string; mode?: 'auto' | 'offline' | 'online'; enabled?: boolean }): Promise<CommandResult>",
+    unavailableMessage: "Scheduling is not available yet.",
+    remediation: "Implement schedule storage before editing schedules.",
+  },
+  scheduleSetEnabled: {
+    modulePath: "../scheduler/cli.js",
+    exportName: "setScheduleEnabled",
+    expectedShape:
+      "export async function setScheduleEnabled(options: { cwd: string; scheduleId: string; enabled: boolean }): Promise<CommandResult>",
+    unavailableMessage: "Scheduling is not available yet.",
+    remediation: "Implement schedule storage before toggling schedules.",
   },
   scheduleRemove: {
     modulePath: "../scheduler/cli.js",
