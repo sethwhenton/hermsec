@@ -36,6 +36,8 @@ const hermsecApi = {
       ipcRenderer.invoke("settings:set", partial),
     chooseReportDirectory: (currentPath?: string): Promise<string | null> =>
       ipcRenderer.invoke("settings:choose-report-directory", currentPath),
+    chooseProjectDirectory: (currentPath?: string): Promise<string | null> =>
+      ipcRenderer.invoke("settings:choose-project-directory", currentPath),
   },
   provider: {
     test: (request: ProviderTestRequest): Promise<ProviderTestResult> =>

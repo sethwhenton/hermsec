@@ -1,8 +1,10 @@
 import { AtSign, Check, ChevronDown, Folder, Globe } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { useSessionStore } from "@/store/sessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useUiStore } from "@/store/uiStore";
+import { ProjectPickerModal } from "@/components/projects/ProjectPickerModal";
 import type { ContextChip, ContextChipKind } from "@/types/chat";
 import type { ModelConfig, ProviderConfig } from "@/types/settings";
 
@@ -23,7 +25,9 @@ export function ContextBar({ className }: ContextBarProps) {
   const removeContextChip = useUiStore((s) => s.removeContextChip);
   const settings = useSettingsStore((s) => s.settings);
   const updateSettings = useSettingsStore((s) => s.update);
+  const startNewSession = useSessionStore((s) => s.startNewSession);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const modelMenuRef = useRef<HTMLDivElement>(null);
   const activeModelId = settings?.activeModelId ?? "deepseek-v4-flash";
   const activeProjectPath = settings?.defaultProjectDir;
@@ -59,19 +63,23 @@ export function ContextBar({ className }: ContextBarProps) {
     setModelMenuOpen(false);
   };
 
+  const handleSelectProject = async (projectPath: string) => {
+    await updateSettings({ defaultProjectDir: projectPath });
+    startNewSession();
+  };
+
   return (
     <div className={cn("flex flex-wrap items-center gap-1.5", className)}>
       {activeProjectPath && activeProjectName && (
-        <ContextChipPill
-          chip={{
-            id: "active-project",
-            kind: "project",
-            label: activeProjectName,
-            detail: activeProjectPath,
-            removable: false,
-          }}
-          onRemove={() => {}}
-        />
+        <button
+          type="button"
+          title={activeProjectPath}
+          onClick={() => setProjectPickerOpen(true)}
+          className="inline-flex max-w-64 items-center gap-1 rounded-md border border-border bg-surface-elevated px-2 py-1 text-[11px] text-foreground transition-colors hover:border-accent/40 hover:bg-accent-muted"
+        >
+          {kindIcons.project}
+          <span className="truncate">{activeProjectName}</span>
+        </button>
       )}
 
       {chips.map((chip) => (
@@ -131,6 +139,12 @@ export function ContextBar({ className }: ContextBarProps) {
           </div>
         )}
       </div>
+      <ProjectPickerModal
+        open={projectPickerOpen}
+        currentProjectPath={activeProjectPath}
+        onClose={() => setProjectPickerOpen(false)}
+        onSelect={handleSelectProject}
+      />
     </div>
   );
 }

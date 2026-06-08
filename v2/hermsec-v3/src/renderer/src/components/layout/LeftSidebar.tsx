@@ -15,6 +15,7 @@ import { useSessionStore } from "@/store/sessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useUiStore } from "@/store/uiStore";
 import { HermsecLogo } from "@/components/branding/HermsecLogo";
+import { ProjectPickerModal } from "@/components/projects/ProjectPickerModal";
 import { Button } from "@/components/ui/Button";
 import type { ProjectDirectory } from "@/types/projects";
 import type { ChatSessionSummary } from "@/types/sessions";
@@ -36,6 +37,7 @@ export function LeftSidebar() {
   const [projects, setProjects] = useState<ProjectDirectory[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [projectsError, setProjectsError] = useState<string | null>(null);
+  const [newChatPickerOpen, setNewChatPickerOpen] = useState(false);
   const sessionsByProject = useMemo(() => groupSessionsByProject(sessions), [sessions]);
 
   useEffect(() => {
@@ -82,6 +84,12 @@ export function LeftSidebar() {
     setView("chat");
   };
 
+  const handleNewChatProject = async (projectPath: string) => {
+    await updateSettings({ defaultProjectDir: projectPath });
+    startNewSession();
+    setView("chat");
+  };
+
   const handleSelectSession = async (session: ChatSessionSummary) => {
     await updateSettings({ defaultProjectDir: session.projectPath });
     await openSession(session.id);
@@ -112,10 +120,7 @@ export function LeftSidebar() {
           icon={<MessageSquarePlus className="h-4 w-4" />}
           label="New chat"
           active={view === "chat"}
-          onClick={() => {
-            startNewSession();
-            setView("chat");
-          }}
+          onClick={() => setNewChatPickerOpen(true)}
         />
         <SidebarButton
           collapsed={sidebarCollapsed}
@@ -212,6 +217,12 @@ export function LeftSidebar() {
           onClick={() => setView("settings")}
         />
       </div>
+      <ProjectPickerModal
+        open={newChatPickerOpen}
+        currentProjectPath={settings?.defaultProjectDir}
+        onClose={() => setNewChatPickerOpen(false)}
+        onSelect={handleNewChatProject}
+      />
     </motion.aside>
   );
 }

@@ -33,6 +33,7 @@ export interface HermsecApi {
     get: () => Promise<AppSettings>;
     set: (partial: DeepPartial<AppSettings>) => Promise<AppSettings>;
     chooseReportDirectory: (currentPath?: string) => Promise<string | null>;
+    chooseProjectDirectory: (currentPath?: string) => Promise<string | null>;
   };
   provider: {
     test: (request: ProviderTestRequest) => Promise<ProviderTestResult>;

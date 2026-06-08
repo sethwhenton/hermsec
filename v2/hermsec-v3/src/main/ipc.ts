@@ -36,6 +36,20 @@ export function registerIpcHandlers(): void {
     return result.filePaths[0];
   });
 
+  ipcMain.handle("settings:choose-project-directory", async (_event, currentPath?: string) => {
+    const result = await dialog.showOpenDialog({
+      title: "Choose Hermsec project folder",
+      defaultPath: currentPath,
+      properties: ["openDirectory"],
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+
+    return result.filePaths[0];
+  });
+
   ipcMain.handle("provider:test", async (_event, request: ProviderTestRequest) =>
     testProvider(request),
   );

@@ -25,6 +25,7 @@ export function ChatView() {
   const setChatItems = useUiStore((s) => s.setChatItems);
   const setAgentThinking = useUiStore((s) => s.setAgentThinking);
   const persistCurrentSession = useSessionStore((s) => s.persistCurrentSession);
+  const currentSession = useSessionStore((s) => s.currentSession);
   const settings = useSettingsStore((s) => s.settings);
   const setView = useUiStore((s) => s.setView);
   const runScan = useReportStore((s) => s.runScan);
@@ -169,7 +170,7 @@ export function ChatView() {
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
-      <ChatTopActions />
+      <ChatTopActions title={currentSession?.title || "hermsec"} />
       <AnimatePresence>
         {hasMessages && (
           <motion.div
@@ -244,34 +245,71 @@ function findLatestReportPath(chatItems: ChatItem[]): string | undefined {
   return undefined;
 }
 
-function ChatTopActions() {
+function ChatTopActions({ title }: { title: string }) {
   const [automationOpen, setAutomationOpen] = useState(false);
   const latestReport = useReportStore((s) => s.latestReport);
   const view = useUiStore((s) => s.view);
   const setView = useUiStore((s) => s.setView);
+  const renderActions = () => (
+    <ActionCluster
+      automationOpen={automationOpen}
+      latestReportReady={Boolean(latestReport?.dashboardHtmlPath)}
+      view={view}
+      onDashboard={() => setView("dashboard")}
+      onToggleAutomation={() => setAutomationOpen((open) => !open)}
+      onCloseAutomation={() => setAutomationOpen(false)}
+    />
+  );
 
   return (
-    <div className="absolute right-4 top-3 z-30">
-      <div className="relative flex items-center gap-1 rounded-lg border border-border/70 bg-background/80 p-1 shadow-[0_10px_35px_rgba(0,0,0,0.28)] backdrop-blur">
-        <Button
-          variant={view === "dashboard" ? "subtle" : "ghost"}
-          size="icon"
-          title={latestReport?.dashboardHtmlPath ? "Open dashboard" : "Run a scan to enable dashboard"}
-          disabled={!latestReport?.dashboardHtmlPath}
-          onClick={() => setView("dashboard")}
-        >
-          <LayoutDashboard className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          variant={automationOpen ? "subtle" : "ghost"}
-          size="icon"
-          title="Automation"
-          onClick={() => setAutomationOpen((open) => !open)}
-        >
-          <Clock className="h-3.5 w-3.5" />
-        </Button>
-        <AutomationPopover open={automationOpen} onClose={() => setAutomationOpen(false)} />
+    <>
+      <div className="absolute inset-x-0 top-0 z-30 flex h-12 items-center justify-between border-b border-border-subtle bg-background/95 px-4 backdrop-blur xl:hidden">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-semibold text-foreground">{title}</span>
+          <span className="text-lg leading-none text-muted">...</span>
+        </div>
+        {renderActions()}
       </div>
+      <div className="absolute right-4 top-3 z-30 hidden xl:block">{renderActions()}</div>
+    </>
+  );
+}
+
+function ActionCluster({
+  automationOpen,
+  latestReportReady,
+  view,
+  onDashboard,
+  onToggleAutomation,
+  onCloseAutomation,
+}: {
+  automationOpen: boolean;
+  latestReportReady: boolean;
+  view: string;
+  onDashboard: () => void;
+  onToggleAutomation: () => void;
+  onCloseAutomation: () => void;
+}) {
+  return (
+    <div className="relative flex items-center gap-1 rounded-lg border border-border/70 bg-background/80 p-1 shadow-[0_10px_35px_rgba(0,0,0,0.28)] backdrop-blur">
+      <Button
+        variant={view === "dashboard" ? "subtle" : "ghost"}
+        size="icon"
+        title={latestReportReady ? "Open dashboard" : "Run a scan to enable dashboard"}
+        disabled={!latestReportReady}
+        onClick={onDashboard}
+      >
+        <LayoutDashboard className="h-3.5 w-3.5" />
+      </Button>
+      <Button
+        variant={automationOpen ? "subtle" : "ghost"}
+        size="icon"
+        title="Automation"
+        onClick={onToggleAutomation}
+      >
+        <Clock className="h-3.5 w-3.5" />
+      </Button>
+      <AutomationPopover open={automationOpen} onClose={onCloseAutomation} />
     </div>
   );
 }
