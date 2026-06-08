@@ -43,7 +43,7 @@ export function AgentQuestions({
 
   return (
     <motion.div
-      className="w-full max-w-2xl rounded-lg border border-border bg-surface-elevated p-4"
+      className="w-full max-w-[680px] rounded-[20px] border border-border/80 bg-surface-elevated/85 p-4 shadow-[0_16px_50px_rgba(0,0,0,0.22)]"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 380, damping: 32 }}

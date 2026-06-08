@@ -21,10 +21,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     >
       <div
         className={cn(
-          "rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+          "rounded-[22px] px-4 py-3 text-sm leading-relaxed shadow-[0_16px_50px_rgba(0,0,0,0.2)]",
           isUser
-            ? "max-w-[82%] bg-foreground text-background sm:max-w-[70%]"
-            : "w-full border border-border bg-surface-elevated text-foreground",
+            ? "max-w-[78%] border border-border/70 bg-surface-elevated text-foreground sm:max-w-[68%]"
+            : "max-w-[min(680px,92%)] border border-border/80 bg-surface-elevated/78 text-foreground backdrop-blur",
         )}
       >
         <p className="whitespace-pre-wrap">{message.content}</p>

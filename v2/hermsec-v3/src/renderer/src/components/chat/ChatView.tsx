@@ -1,4 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
+import { Clock, LayoutDashboard } from "lucide-react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { requireHermsecApi } from "@/lib/ipc";
 import { useReportStore } from "@/store/reportStore";
@@ -6,6 +8,8 @@ import { useSessionStore } from "@/store/sessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useUiStore } from "@/store/uiStore";
 import type { ChatItem, ChatMessage } from "@/types/chat";
+import { AutomationPopover } from "@/components/automation/AutomationPopover";
+import { Button } from "@/components/ui/Button";
 import { ScanProgressPanel } from "@/components/scan/ScanProgressPanel";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
@@ -27,8 +31,14 @@ export function ChatView() {
   const progress = useReportStore((s) => s.progress);
   const scanRunning = useReportStore((s) => s.scanRunning);
   const latestReport = useReportStore((s) => s.latestReport);
+  const hydrateLatest = useReportStore((s) => s.hydrateLatest);
 
   const hasMessages = chatItems.length > 0;
+
+  useEffect(() => {
+    if (!settings?.defaultProjectDir) return;
+    void hydrateLatest(settings.defaultProjectDir);
+  }, [hydrateLatest, settings?.defaultProjectDir]);
 
   const pushMessage = async (
     role: ChatMessage["role"],
@@ -159,11 +169,12 @@ export function ChatView() {
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
+      <ChatTopActions />
       <AnimatePresence>
         {hasMessages && (
           <motion.div
             key="messages"
-            className="min-h-0 flex-1"
+            className="min-h-0 flex-1 overflow-hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -177,7 +188,7 @@ export function ChatView() {
       <AnimatePresence>
         {scanRunning && (
           <motion.div
-            className="pointer-events-none absolute right-6 top-6 z-20 w-[380px] max-w-[calc(100%-3rem)]"
+            className="pointer-events-none absolute right-6 top-14 z-20 w-[380px] max-w-[calc(100%-3rem)]"
             initial={{ opacity: 0, y: -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
@@ -231,6 +242,38 @@ function findLatestReportPath(chatItems: ChatItem[]): string | undefined {
     }
   }
   return undefined;
+}
+
+function ChatTopActions() {
+  const [automationOpen, setAutomationOpen] = useState(false);
+  const latestReport = useReportStore((s) => s.latestReport);
+  const view = useUiStore((s) => s.view);
+  const setView = useUiStore((s) => s.setView);
+
+  return (
+    <div className="absolute right-4 top-3 z-30">
+      <div className="relative flex items-center gap-1 rounded-lg border border-border/70 bg-background/80 p-1 shadow-[0_10px_35px_rgba(0,0,0,0.28)] backdrop-blur">
+        <Button
+          variant={view === "dashboard" ? "subtle" : "ghost"}
+          size="icon"
+          title={latestReport?.dashboardHtmlPath ? "Open dashboard" : "Run a scan to enable dashboard"}
+          disabled={!latestReport?.dashboardHtmlPath}
+          onClick={() => setView("dashboard")}
+        >
+          <LayoutDashboard className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant={automationOpen ? "subtle" : "ghost"}
+          size="icon"
+          title="Automation"
+          onClick={() => setAutomationOpen((open) => !open)}
+        >
+          <Clock className="h-3.5 w-3.5" />
+        </Button>
+        <AutomationPopover open={automationOpen} onClose={() => setAutomationOpen(false)} />
+      </div>
+    </div>
+  );
 }
 
 async function answerSecurityQuestion(text: string, latestReportPath?: string): Promise<string> {

@@ -19,8 +19,8 @@ export function MessageList({ onQuestionsSubmit }: MessageListProps) {
   }, [chatItems, isAgentThinking]);
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6">
-      <div className="mx-auto flex w-full max-w-[760px] flex-col gap-4">
+    <div className="h-full min-h-0 overflow-y-auto px-4 pb-16 pt-20 sm:px-6 sm:pt-24">
+      <div className="mx-auto flex w-full max-w-[760px] flex-col gap-5">
         {chatItems.map((item) => {
           if (item.kind === "message") {
             return <MessageBubble key={item.id} message={item.message} />;

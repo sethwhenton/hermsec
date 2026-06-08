@@ -66,7 +66,7 @@ export function AutomationPopover({ open, onClose }: AutomationPopoverProps) {
   };
 
   return (
-    <div className="absolute right-24 top-9 z-50 w-[340px] rounded-xl border border-border bg-surface-elevated p-4 shadow-[0_22px_70px_rgba(0,0,0,0.45)]">
+    <div className="absolute right-0 top-9 z-50 w-[340px] rounded-xl border border-border bg-surface-elevated p-4 shadow-[0_22px_70px_rgba(0,0,0,0.45)]">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-accent" />

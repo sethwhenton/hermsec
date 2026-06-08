@@ -41,7 +41,7 @@ export function Composer({ onSend, disabled, className }: ComposerProps) {
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-lg)] border border-border bg-surface-elevated p-3 shadow-[0_12px_40px_rgba(0,0,0,0.45)]",
+        "rounded-[28px] border border-border/80 bg-surface-elevated/95 p-4 shadow-[0_22px_80px_rgba(0,0,0,0.42)] backdrop-blur",
         className,
       )}
     >
@@ -54,9 +54,9 @@ export function Composer({ onSend, disabled, className }: ComposerProps) {
         onKeyDown={handleKeyDown}
         placeholder="Do anything"
         rows={1}
-        className="no-drag mb-2 w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+        className="no-drag mb-3 w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
       />
-      <div className="mb-2">
+      <div className="mb-3">
         <ContextBar />
       </div>
       <div className="flex items-center justify-between">
