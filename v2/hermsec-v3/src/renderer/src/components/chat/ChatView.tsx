@@ -7,7 +7,8 @@ import { useReportStore } from "@/store/reportStore";
 import { useSessionStore } from "@/store/sessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useUiStore } from "@/store/uiStore";
-import type { ChatItem, ChatMessage } from "@/types/chat";
+import type { AgentQuestion, ChatItem, ChatMessage } from "@/types/chat";
+import type { AppSettings, AutomationFrequency, AutomationSettings } from "@/types/settings";
 import { AutomationPopover } from "@/components/automation/AutomationPopover";
 import { Button } from "@/components/ui/Button";
 import { Composer } from "./Composer";
@@ -18,14 +19,24 @@ function createId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+type AssistantAnswer = string | {
+  content: string;
+  copyAction?: ChatMessage["copyAction"];
+  reportLink?: ChatMessage["reportLink"];
+};
+type ParsedAutomation = Pick<AutomationSettings, "frequency" | "intervalDays" | "time">;
+type HermsecActionRoute = "scan" | "automation" | "capabilities" | "fix-prompt" | "chat";
+
 export function ChatView() {
   const chatItems = useUiStore((s) => s.chatItems);
   const isAgentThinking = useUiStore((s) => s.isAgentThinking);
   const setChatItems = useUiStore((s) => s.setChatItems);
   const setAgentThinking = useUiStore((s) => s.setAgentThinking);
+  const setAgentStatus = useUiStore((s) => s.setAgentStatus);
   const persistCurrentSession = useSessionStore((s) => s.persistCurrentSession);
   const currentSession = useSessionStore((s) => s.currentSession);
   const settings = useSettingsStore((s) => s.settings);
+  const updateSettings = useSettingsStore((s) => s.update);
   const setView = useUiStore((s) => s.setView);
   const runScan = useReportStore((s) => s.runScan);
   const cancelScan = useReportStore((s) => s.cancelScan);
@@ -33,6 +44,7 @@ export function ChatView() {
   const scanRunning = useReportStore((s) => s.scanRunning);
   const latestReport = useReportStore((s) => s.latestReport);
   const hydrateLatest = useReportStore((s) => s.hydrateLatest);
+  const [pendingAutomation, setPendingAutomation] = useState<Partial<ParsedAutomation> | null>(null);
 
   const hasMessages = chatItems.length > 0;
 
@@ -45,11 +57,19 @@ export function ChatView() {
     role: ChatMessage["role"],
     content: string,
     reportLink?: ChatMessage["reportLink"],
+    copyAction?: ChatMessage["copyAction"],
   ) => {
     const item: ChatItem = {
       kind: "message",
       id: createId(),
-      message: { id: createId(), role, content, createdAt: Date.now(), ...(reportLink ? { reportLink } : {}) },
+      message: {
+        id: createId(),
+        role,
+        content,
+        createdAt: Date.now(),
+        ...(reportLink ? { reportLink } : {}),
+        ...(copyAction ? { copyAction } : {}),
+      },
     };
     const nextItems = [...useUiStore.getState().chatItems, item];
     setChatItems(nextItems);
@@ -60,33 +80,28 @@ export function ChatView() {
     );
   };
 
-  const pushQuestions = async () => {
+  const pushQuestionItem = async (questions: AgentQuestion[]) => {
     const item: ChatItem = {
       kind: "questions",
       id: createId(),
-      questions: [
-        {
-          id: "hermsec_action",
-          prompt: "Choose what you want Hermsec to do next.",
-          options: [
-            { id: "scan_repo", label: "Scan repo" },
-            { id: "set_automation", label: "Set an automation" },
-          ],
-        },
-      ],
+      questions,
     };
     const nextItems = [...useUiStore.getState().chatItems, item];
     setChatItems(nextItems);
     await persistCurrentSession(settings?.defaultProjectDir ?? "", nextItems);
   };
 
-  const isScanRequest = (text: string) => {
-    const lower = text.toLowerCase();
-    if (/^(what|which|why|how|explain|summarize|show me|tell me)\b/.test(lower)) {
-      return false;
-    }
-    return /\b(scan|rescan)\b/.test(lower) || /\b(run|start|perform)\s+(a\s+)?scan\b/.test(lower);
-  };
+  const pushCapabilityQuestions = () =>
+    pushQuestionItem([
+      {
+        id: "hermsec_action",
+        prompt: "Choose what you want Hermsec to do next.",
+        options: [
+          { id: "scan_repo", label: "Scan repo" },
+          { id: "set_automation", label: "Set an automation" },
+        ],
+      },
+    ]);
 
   const runProjectScan = async () => {
     const result = await runScan({
@@ -116,29 +131,102 @@ export function ChatView() {
     );
   };
 
+  const saveAutomation = async (partial: Partial<ParsedAutomation>) => {
+    const currentSettings = useSettingsStore.getState().settings;
+    const frequency = partial.frequency ?? "custom-days";
+    const intervalDays = frequency === "custom-days" ? normalizeIntervalDays(partial.intervalDays) : undefined;
+    const time = partial.time ?? "09:00";
+
+    await updateSettings({
+      automation: {
+        ...currentSettings?.automation,
+        enabled: true,
+        frequency,
+        ...(intervalDays ? { intervalDays } : {}),
+        time,
+      },
+    });
+
+    setPendingAutomation(null);
+    await pushMessage(
+      "assistant",
+      [
+        `Done. I set the Hermsec scan automation to run ${formatAutomationFrequency({ frequency, intervalDays })} at ${formatClockTime(time)}.`,
+        "It runs only while Hermsec is open. When it is due, Hermsec checks whether the selected project changed; if nothing changed, it skips the scan.",
+      ].join("\n"),
+    );
+  };
+
+  const continueAutomationFlow = async (partial: Partial<ParsedAutomation>) => {
+    const missingFrequency = !partial.frequency;
+    const missingTime = !partial.time;
+
+    if (!missingFrequency && !missingTime) {
+      await saveAutomation(partial);
+      return;
+    }
+
+    setPendingAutomation(partial);
+    await pushMessage(
+      "assistant",
+      missingFrequency && missingTime
+        ? "I can set that up. I just need the scan cadence and exact run time."
+        : missingFrequency
+          ? "I have the time. How often should Hermsec run this scan?"
+          : "I have the cadence. What time should Hermsec run it?",
+    );
+    await pushQuestionItem(buildAutomationQuestions(partial));
+  };
+
+  const handleAutomationRequest = async (text: string) => {
+    const parsed = parseAutomationRequest(text);
+    await continueAutomationFlow(parsed);
+  };
+
   const handleSend = async (text: string) => {
     await pushMessage("user", text);
     setAgentThinking(true);
+    setAgentStatus("Understanding your request...");
 
     try {
       const currentItems = useUiStore.getState().chatItems;
       const latestReportPath = latestReport?.htmlPath ?? findLatestReportPath(currentItems);
-      if (isScanRequest(text)) {
+      if (pendingAutomation) {
+        setAgentStatus("Finishing the automation setup...");
+        await continueAutomationFlow({
+          ...pendingAutomation,
+          ...parseAutomationRequest(text),
+        });
+        return;
+      }
+
+      const route = classifyHermsecAction(text, currentItems);
+      if (route === "scan") {
+        setAgentStatus("Starting the online scan pipeline...");
         await runProjectScan();
         return;
       }
 
-      if (wantsCapabilities(text.toLowerCase())) {
-        await pushMessage(
-          "assistant",
-          "I can help with Hermsec security work for this project. The two core MVP actions are scanning the selected repo and setting an in-app automation that reruns scans when the project changes.",
-        );
-        await pushQuestions();
+      if (route === "automation") {
+        setAgentStatus("Planning a scan automation...");
+        await handleAutomationRequest(text);
         return;
       }
 
-      const response = await answerSecurityQuestion(text, latestReportPath);
-      await pushMessage("assistant", response);
+      if (route === "capabilities") {
+        setAgentStatus("Preparing Hermsec capabilities...");
+        await pushMessage(
+          "assistant",
+          "I can scan this repo, explain the findings in plain language, show you where issues sit in code, help prioritize fixes, generate a fix prompt for another coding agent, and set an in-app scan automation.",
+        );
+        await pushCapabilityQuestions();
+        return;
+      }
+
+      setAgentStatus(route === "fix-prompt" ? "Preparing a scanner-backed fix prompt..." : agentModelStatus(settings));
+      const response = await answerSecurityQuestion(text, latestReportPath, settings?.defaultProjectDir, currentItems);
+      const answer = normalizeAssistantAnswer(response);
+      await pushMessage("assistant", answer.content, answer.reportLink, answer.copyAction);
     } catch (error) {
       await pushMessage(
         "assistant",
@@ -146,6 +234,7 @@ export function ChatView() {
       );
     } finally {
       setAgentThinking(false);
+      setAgentStatus("Thinking...");
     }
   };
 
@@ -160,11 +249,17 @@ export function ChatView() {
       return;
     }
     if (action === "set_automation") {
-      void pushMessage(
-        "assistant",
-        "Use the clock button in the top-right action strip to configure the in-app automation frequency and exact run time.",
-      );
+      void continueAutomationFlow({});
       setView("chat");
+      return;
+    }
+
+    if (answers.automation_frequency || answers.automation_time) {
+      const selected = parseAutomationAnswers(answers);
+      void continueAutomationFlow({
+        ...(pendingAutomation ?? {}),
+        ...selected,
+      });
     }
   };
 
@@ -186,9 +281,7 @@ export function ChatView() {
         )}
       </AnimatePresence>
 
-      <motion.div
-        layout
-        transition={{ type: "spring", stiffness: 420, damping: 38 }}
+      <div
         className={cn(
           "mx-auto w-full max-w-3xl shrink-0 px-6",
           hasMessages ? "pb-6 pt-2" : "flex flex-1 flex-col items-center justify-center gap-5 pb-12",
@@ -212,11 +305,12 @@ export function ChatView() {
           )}
         </AnimatePresence>
 
-        <motion.div layout className="w-full">
+        <div className="w-full">
           <Composer
             onSend={handleSend}
             disabled={isAgentThinking}
             scanRunning={scanRunning}
+            compact={hasMessages}
             onStopScan={() => {
               void cancelScan();
             }}
@@ -224,10 +318,26 @@ export function ChatView() {
               void restartScan();
             }}
           />
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
     </div>
   );
+}
+
+function classifyHermsecAction(text: string, chatItems: ChatItem[]): HermsecActionRoute {
+  const lower = text.toLowerCase();
+  if (isScanRequestText(lower)) return "scan";
+  if (isAutomationRequest(lower)) return "automation";
+  if (wantsCapabilities(lower)) return "capabilities";
+  if (wantsFixPrompt(lower) || wantsPromptRevision(lower, findLatestFixPrompt(chatItems))) return "fix-prompt";
+  return "chat";
+}
+
+function isScanRequestText(lower: string): boolean {
+  if (/^(what|which|why|how|explain|summarize|show me|tell me)\b/.test(lower)) {
+    return false;
+  }
+  return /\b(scan|rescan)\b/.test(lower) || /\b(run|start|perform)\s+(a\s+)?scan\b/.test(lower);
 }
 
 function findLatestReportPath(chatItems: ChatItem[]): string | undefined {
@@ -308,8 +418,15 @@ function ActionCluster({
   );
 }
 
-async function answerSecurityQuestion(text: string, latestReportPath?: string): Promise<string> {
+async function answerSecurityQuestion(
+  text: string,
+  latestReportPath?: string,
+  projectPath?: string,
+  chatItems: ChatItem[] = [],
+): Promise<AssistantAnswer> {
   const lower = text.toLowerCase();
+  const previousPrompt = findLatestFixPrompt(chatItems);
+  const promptFollowUp = wantsPromptRevision(lower, previousPrompt);
 
   if (wantsCapabilities(lower)) {
     return [
@@ -324,44 +441,50 @@ async function answerSecurityQuestion(text: string, latestReportPath?: string): 
     ].join("\n");
   }
 
-  if (wantsReportExplanation(lower)) {
+  if (wantsFixPrompt(lower) || promptFollowUp) {
     if (!latestReportPath) {
-      return "I do not have a report in this chat yet. Run `Scan project` first, then ask me to explain the HTML report, summarize findings, or prioritize fixes.";
+      return "I can write that fix prompt after I have scan evidence. Run `Scan project` first, then ask me for a prompt for another coding agent.";
     }
 
     const result = await requireHermsecApi().reports.explain({
       reportPath: latestReportPath,
-      question: text,
+      question: promptFollowUp
+        ? `Create another version of the previous fix prompt. User revision request: ${text}`
+        : text,
+      ...(previousPrompt ? { previousPrompt } : {}),
     });
     return result.ok
-      ? result.message
+      ? {
+          content: result.message,
+          ...(result.copyText
+            ? {
+                copyAction: {
+                  label: result.copyLabel ?? "Copy",
+                  text: result.copyText,
+                },
+              }
+            : {}),
+          ...(result.promptFilePath
+            ? {
+                reportLink: {
+                  label: "Open prompt file in File Explorer",
+                  path: result.promptFilePath,
+                },
+              }
+            : {}),
+        }
       : `I found the latest report reference, but could not explain it yet. ${result.message}`;
   }
 
-  if (/\b(automation|schedule|cron|daily|weekly|background)\b/.test(lower)) {
-    return "For automations, Hermsec should run scheduled security scans for a selected project, write the HTML/JSON report to your configured report directory, and preserve the result in the project session history. The next useful step is choosing the project, schedule, scan mode, and report destination.";
-  }
-
-  if (/\b(doctor|health|check setup|scanner|tooling|semgrep|gitleaks|bandit|osv|pmg)\b/.test(lower)) {
-    return "Doctor mode is for checking whether Hermsec can actually run its security stack: local scanners, package audit tools, report output paths, model/provider config, and environment access. If a scan looks incomplete, Doctor is the first thing to run.";
-  }
-
-  if (/\b(online|offline|auto mode|scan mode|mode)\b/.test(lower)) {
-    return "Hermsec V3 is configured as an online-only scanner. It runs the local evidence tools, dependency checks, and online vulnerability intelligence path together, then generates the dashboard and report artifacts from that evidence.";
-  }
-
-  if (isSecurityScoped(lower)) {
-    if (latestReportPath) {
-      const result = await requireHermsecApi().reports.explain({
-        reportPath: latestReportPath,
-        question: text,
-      });
-      if (result.ok) return result.message;
-    }
-    return "I can help with that security question, but I need scan evidence for a precise answer. Run `Scan project` first, then I can explain findings, severity, likely impact, and remediation from the generated report.";
-  }
-
-  return "I’m scoped to Hermsec security work: repository scans, vulnerability findings, report explanations, remediation, scanner setup, and security automations. Ask me something about this project’s security posture or run a scan to give me evidence to work from.";
+  const result = await requireHermsecApi().reports.converse({
+    reportPath: latestReportPath,
+    projectPath,
+    question: text,
+    history: buildConversationHistory(chatItems),
+  });
+  return result.ok
+    ? result.message
+    : `I could not reach the model cleanly yet. ${result.message}`;
 }
 
 function wantsCapabilities(text: string): boolean {
@@ -369,9 +492,199 @@ function wantsCapabilities(text: string): boolean {
 }
 
 function wantsReportExplanation(text: string): boolean {
-  return /\b(report|html|scan|found|finding|findings|summary|explain|severity|critical|high|medium|secret|token|fix|remediate|priority|prioritize)\b/.test(text);
+  return /\b(report|html|scan|scanned|found|finding|findings|summary|explain|severity|critical|high|medium|secret|token|fix|remediate|priority|prioritize|where|file|line|code|location|prompt|another agent|coding agent)\b/.test(text);
+}
+
+function wantsFixPrompt(text: string): boolean {
+  return /\b(prompt|copy prompt|another agent|coding agent|fixing agent|send .*agent|agent .*fix)\b/.test(text);
+}
+
+function wantsPromptRevision(text: string, previousPrompt?: string): boolean {
+  if (!previousPrompt) return false;
+  return /\b(update|revise|revision|rewrite|improve|another version|new version|break it down|split it|phases?|stages?|step by step|make it)\b/.test(text);
 }
 
 function isSecurityScoped(text: string): boolean {
-  return /\b(security|vulnerab|cve|cwe|secret|token|credential|injection|xss|sql|command|eval|dependency|supply chain|npm|package|risk|threat|exploit|patch|remediate|repo|project)\b/.test(text);
+  return /\b(security|vulnerab|cve|cwe|secret|token|credential|injection|xss|csrf|xsrf|sql|command|eval|dependency|supply chain|npm|package|risk|threat|exploit|patch|remediate|repo|project|walk me through|issue|issues)\b/.test(text);
+}
+
+function looksLikeReportFollowUp(text: string): boolean {
+  return /\b(yes|no|have you|did you|what about|which one|where|why|how|show|tell|explain|fix|next|issue|issues|line|code|file|scan|scanned)\b/.test(text);
+}
+
+function normalizeAssistantAnswer(answer: AssistantAnswer): {
+  content: string;
+  copyAction?: ChatMessage["copyAction"];
+  reportLink?: ChatMessage["reportLink"];
+} {
+  return typeof answer === "string" ? { content: answer } : answer;
+}
+
+function agentModelStatus(settings: AppSettings | null): string {
+  const activeModelId = settings?.activeModelId;
+  const activeModel = settings?.providers
+    .flatMap((provider) => provider.models.map((model) => ({ ...model, provider: provider.displayName })))
+    .find((model) => model.enabled && model.id === activeModelId);
+
+  if (activeModel) {
+    return `Reading report evidence and asking ${activeModel.label} (${thinkingLabel(settings?.general.thinkingLevel)})...`;
+  }
+
+  return "Reading report evidence and preparing a security answer...";
+}
+
+function thinkingLabel(level: string | undefined): string {
+  if (level === "fast") return "Fast";
+  if (level === "deep") return "Deep";
+  return "Balanced";
+}
+
+function buildConversationHistory(chatItems: ChatItem[]) {
+  return chatItems
+    .filter((item): item is Extract<ChatItem, { kind: "message" }> => item.kind === "message")
+    .slice(-10)
+    .map((item) => ({
+      role: item.message.role,
+      content: item.message.content,
+    }));
+}
+
+function findLatestFixPrompt(chatItems: ChatItem[]): string | undefined {
+  for (const item of [...chatItems].reverse()) {
+    if (item.kind !== "message") continue;
+    const copyAction = item.message.copyAction;
+    if (!copyAction?.text) continue;
+    const label = copyAction.label.toLowerCase();
+    if (label.includes("prompt") || copyAction.text.startsWith("You are a defensive security coding agent")) {
+      return copyAction.text;
+    }
+  }
+  return undefined;
+}
+
+function isAutomationRequest(text: string): boolean {
+  const lower = text.toLowerCase();
+  return /\b(automation|automate|schedule|cron|recurring|daily|weekly|monthly|every\s+\d+\s+days?)\b/.test(lower) &&
+    /\b(scan|security|repo|project|run|set|create|enable|make|setup|configure|for me)\b/.test(lower);
+}
+
+function buildAutomationQuestions(partial: Partial<ParsedAutomation>): AgentQuestion[] {
+  const questions: AgentQuestion[] = [];
+  if (!partial.frequency) {
+    questions.push({
+      id: "automation_frequency",
+      prompt: "How often should Hermsec scan this project?",
+      options: [
+        { id: "days:1", label: "Every day" },
+        { id: "days:3", label: "Every 3 days" },
+        { id: "weekly", label: "Every week" },
+        { id: "monthly", label: "Every month" },
+      ],
+    });
+  }
+  if (!partial.time) {
+    questions.push({
+      id: "automation_time",
+      prompt: "What time should it run?",
+      options: [
+        { id: "09:00", label: "09:00 AM" },
+        { id: "12:00", label: "12:00 PM" },
+        { id: "18:00", label: "06:00 PM" },
+        { id: "21:00", label: "09:00 PM" },
+      ],
+    });
+  }
+  return questions;
+}
+
+function parseAutomationAnswers(answers: Record<string, string[]>): Partial<ParsedAutomation> {
+  const parsed: Partial<ParsedAutomation> = {};
+  const frequency = answers.automation_frequency?.[0];
+  const time = answers.automation_time?.[0];
+
+  if (frequency?.startsWith("days:")) {
+    parsed.frequency = "custom-days";
+    parsed.intervalDays = normalizeIntervalDays(Number(frequency.split(":")[1]));
+  } else if (frequency === "weekly" || frequency === "monthly") {
+    parsed.frequency = frequency;
+  }
+
+  if (time && /^\d{2}:\d{2}$/.test(time)) {
+    parsed.time = time;
+  }
+
+  return parsed;
+}
+
+function parseAutomationRequest(text: string): Partial<ParsedAutomation> {
+  const lower = text.toLowerCase();
+  const parsed: Partial<ParsedAutomation> = {};
+  const everyDays = lower.match(/\bevery\s+(\d{1,3})\s+days?\b/);
+
+  if (everyDays) {
+    parsed.frequency = "custom-days";
+    parsed.intervalDays = normalizeIntervalDays(Number(everyDays[1]));
+  } else if (/\b(every\s+day|daily|each\s+day)\b/.test(lower)) {
+    parsed.frequency = "custom-days";
+    parsed.intervalDays = 1;
+  } else if (/\b(every\s+week|weekly|each\s+week)\b/.test(lower)) {
+    parsed.frequency = "weekly";
+  } else if (/\b(every\s+month|monthly|each\s+month)\b/.test(lower)) {
+    parsed.frequency = "monthly";
+  }
+
+  const parsedTime = parseTimeText(lower);
+  if (parsedTime) {
+    parsed.time = parsedTime;
+  }
+
+  return parsed;
+}
+
+function parseTimeText(text: string): string | undefined {
+  const twelveHour = text.match(/\b(?:at\s*)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/);
+  if (twelveHour) {
+    let hours = Number(twelveHour[1]);
+    const minutes = Number(twelveHour[2] ?? "0");
+    if (hours < 1 || hours > 12 || minutes < 0 || minutes > 59) return undefined;
+    const suffix = twelveHour[3];
+    if (suffix === "pm" && hours !== 12) hours += 12;
+    if (suffix === "am" && hours === 12) hours = 0;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  }
+
+  const twentyFourHour = text.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+  if (twentyFourHour) {
+    return `${String(Number(twentyFourHour[1])).padStart(2, "0")}:${twentyFourHour[2]}`;
+  }
+
+  return undefined;
+}
+
+function normalizeIntervalDays(value: number | undefined): number {
+  if (!Number.isFinite(Number(value))) return 1;
+  return Math.min(365, Math.max(1, Math.floor(Number(value))));
+}
+
+function formatAutomationFrequency({
+  frequency,
+  intervalDays,
+}: {
+  frequency: AutomationFrequency;
+  intervalDays?: number;
+}): string {
+  if (frequency === "weekly") return "every week";
+  if (frequency === "monthly") return "every month";
+  const days = normalizeIntervalDays(intervalDays);
+  return days === 1 ? "every day" : `every ${days} days`;
+}
+
+function formatClockTime(value: string): string {
+  const [hourText, minuteText] = value.split(":");
+  const hours = Number(hourText);
+  const minutes = Number(minuteText);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return value;
+  const suffix = hours >= 12 ? "PM" : "AM";
+  const hour12 = hours % 12 || 12;
+  return `${hour12}:${String(minutes).padStart(2, "0")} ${suffix}`;
 }

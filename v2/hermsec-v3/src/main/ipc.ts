@@ -1,6 +1,9 @@
 import { BrowserWindow, dialog, ipcMain } from "electron";
+import { existsSync } from "node:fs";
+import { join, resolve } from "node:path";
 import type { AppSettings, DeepPartial, ProviderTestRequest } from "../renderer/src/types/settings";
 import type {
+  ConverseReportRequest,
   DashboardBundleRequest,
   ExplainReportRequest,
   OpenArtifactRequest,
@@ -9,7 +12,7 @@ import type { OpenReportLocationRequest, ScanProjectRequest } from "../renderer/
 import type { CreateChatSessionRequest, UpdateChatSessionRequest } from "../renderer/src/types/sessions";
 import { testProvider } from "./providerTest";
 import { archiveProjectDirectory, deleteProjectDirectory, listProjectDirectories } from "./projects";
-import { explainReport, getDashboardBundle, latestReport, openArtifact } from "./reports";
+import { converseReport, explainReport, getDashboardBundle, latestReport, openArtifact } from "./reports";
 import { cancelActiveScan, openReportLocation, scanProject } from "./scan";
 import {
   archiveChatSession,
@@ -91,6 +94,10 @@ export function registerIpcHandlers(): void {
     explainReport(request),
   );
 
+  ipcMain.handle("reports:converse", (_event, request: ConverseReportRequest) =>
+    converseReport(request),
+  );
+
   ipcMain.handle("reports:latest", (_event, projectPath?: string) =>
     latestReport(projectPath),
   );
@@ -118,6 +125,35 @@ export function registerIpcHandlers(): void {
     win?.minimize();
   });
 
+  ipcMain.handle("window:new", (event) => {
+    const current = BrowserWindow.fromWebContents(event.sender);
+    const win = new BrowserWindow({
+      width: 1280,
+      height: 860,
+      minWidth: 960,
+      minHeight: 640,
+      show: false,
+      frame: false,
+      backgroundColor: "#09090b",
+      titleBarStyle: "hidden",
+      icon: appIconPath(),
+      webPreferences: {
+        preload: resolve(import.meta.dirname, "../preload/index.cjs"),
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: false,
+      },
+    });
+
+    win.on("ready-to-show", () => win.show());
+    const currentUrl = current?.webContents.getURL();
+    if (currentUrl && /^https?:\/\//.test(currentUrl)) {
+      void win.loadURL(currentUrl);
+    } else {
+      void win.loadFile(join(import.meta.dirname, "../renderer/index.html"));
+    }
+  });
+
   ipcMain.handle("window:maximize", (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win) return;
@@ -132,4 +168,34 @@ export function registerIpcHandlers(): void {
     const win = BrowserWindow.fromWebContents(event.sender);
     win?.close();
   });
+
+  ipcMain.handle("window:toggle-fullscreen", (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return;
+    win.setFullScreen(!win.isFullScreen());
+  });
+
+  ipcMain.handle("window:zoom-in", (event) => {
+    const webContents = event.sender;
+    webContents.setZoomLevel(Math.min(3, webContents.getZoomLevel() + 0.5));
+  });
+
+  ipcMain.handle("window:zoom-out", (event) => {
+    const webContents = event.sender;
+    webContents.setZoomLevel(Math.max(-3, webContents.getZoomLevel() - 0.5));
+  });
+
+  ipcMain.handle("window:actual-size", (event) => {
+    event.sender.setZoomLevel(0);
+  });
+}
+
+function appIconPath(): string | undefined {
+  const iconName = process.platform === "win32" ? "icon.ico" : "icon.png";
+  const candidates = [
+    join(process.resourcesPath, iconName),
+    join(process.resourcesPath, "resources", iconName),
+    resolve(import.meta.dirname, "../../resources", iconName),
+  ];
+  return candidates.find((candidate) => existsSync(candidate));
 }

@@ -2,12 +2,13 @@ import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-function findRepoRoot(startDir: string): string {
+function findEnvFiles(startDir: string): string[] {
+  const envFiles: string[] = [];
   let current = resolve(startDir);
   for (let i = 0; i < 8; i += 1) {
     const envPath = join(current, ".env.local");
     if (existsSync(envPath)) {
-      return current;
+      envFiles.push(envPath);
     }
     const parent = dirname(current);
     if (parent === current) {
@@ -15,30 +16,43 @@ function findRepoRoot(startDir: string): string {
     }
     current = parent;
   }
-  return resolve(startDir);
+  return envFiles.reverse();
 }
 
 export function loadEnvFile(): void {
   const moduleDir = dirname(fileURLToPath(import.meta.url));
-  const repoRoot = findRepoRoot(join(moduleDir, "..", "..", ".."));
-  const envPath = join(repoRoot, ".env.local");
+  const envFiles = findEnvFiles(join(moduleDir, "..", "..", ".."));
 
-  if (!existsSync(envPath)) {
-    return;
-  }
-
-  try {
-    process.loadEnvFile(envPath);
-  } catch {
-    // Safe no-op if loadEnvFile is unavailable or file is malformed.
+  for (const envPath of envFiles) {
+    try {
+      process.loadEnvFile(envPath);
+    } catch {
+      // Safe no-op if loadEnvFile is unavailable or file is malformed.
+    }
   }
 }
 
 export function getEnvDefaults() {
+  const provider = nonEmpty(process.env.HERMSEC_MODEL_PROVIDER) ?? "opencode-go";
   return {
-    model: process.env.HERMSEC_MODEL ?? "deepseek-v4-flash",
-    baseUrl: process.env.HERMSEC_MODEL_BASE_URL ?? "https://api.opencode.ai/v1",
-    provider: process.env.HERMSEC_MODEL_PROVIDER ?? "opencode-go",
-    apiKeyEnvVar: process.env.HERMSEC_MODEL_API_KEY_ENV ?? "HERMSEC_MODEL_API_KEY",
+    model: nonEmpty(process.env.HERMSEC_MODEL) ?? "deepseek-v4-flash",
+    baseUrl: nonEmpty(process.env.HERMSEC_MODEL_BASE_URL) ?? defaultBaseUrl(provider),
+    provider,
+    apiKeyEnvVar: nonEmpty(process.env.HERMSEC_MODEL_API_KEY_ENV) ?? defaultApiKeyEnvVar(provider),
   };
+}
+
+function nonEmpty(value: string | undefined): string | undefined {
+  const trimmed = value?.trim().replace(/^["']|["']$/g, "");
+  return trimmed ? trimmed : undefined;
+}
+
+function defaultBaseUrl(provider: string): string {
+  if (provider === "opencode-go") return "https://opencode.ai/zen/go/v1";
+  return "https://api.openai.com/v1";
+}
+
+function defaultApiKeyEnvVar(provider: string): string {
+  if (provider === "opencode-go") return "OPENCODE_GO_API_KEY";
+  return "HERMSEC_MODEL_API_KEY";
 }

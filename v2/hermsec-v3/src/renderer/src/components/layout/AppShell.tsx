@@ -4,9 +4,11 @@ import { useReportStore } from "@/store/reportStore";
 import { useSessionStore } from "@/store/sessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useUiStore } from "@/store/uiStore";
+import { AutomationsView } from "@/components/automation/AutomationsView";
 import { ChatView } from "@/components/chat/ChatView";
 import { DashboardView } from "@/components/dashboard/DashboardView";
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
+import type { AutomationSettings } from "@/types/settings";
 import { LeftSidebar } from "./LeftSidebar";
 import { TitleBar } from "./TitleBar";
 
@@ -51,7 +53,7 @@ export function AppShell() {
 
     const checkAutomation = async () => {
       if (automationRunning.current) return;
-      if (!shouldRunAutomation(settings.automation.lastRunAt, settings.automation.frequency, settings.automation.time)) {
+      if (!shouldRunAutomation(settings.automation)) {
         return;
       }
 
@@ -126,6 +128,17 @@ export function AppShell() {
               >
                 <DashboardView />
               </motion.div>
+            ) : view === "automations" ? (
+              <motion.div
+                key="automations"
+                className="absolute inset-0"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.18 }}
+              >
+                <AutomationsView />
+              </motion.div>
             ) : (
               <motion.div
                 key="settings"
@@ -149,26 +162,38 @@ function normalizePath(filePath: string): string {
   return filePath.replace(/\\/g, "/").toLowerCase();
 }
 
-function shouldRunAutomation(
-  lastRunAt: string | undefined,
-  frequency: "daily" | "every-3-days" | "weekly",
-  time: string,
-): boolean {
+function shouldRunAutomation(automation: AutomationSettings): boolean {
   const now = new Date();
-  const [hours, minutes] = time.split(":").map((part) => Number(part));
+  const [hours, minutes] = automation.time.split(":").map((part) => Number(part));
   if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return false;
 
-  const intervalDays = frequency === "weekly" ? 7 : frequency === "every-3-days" ? 3 : 1;
   const scheduled = new Date(now);
   scheduled.setHours(hours, minutes, 0, 0);
 
-  if (!lastRunAt) {
+  if (!automation.lastRunAt) {
     return now >= scheduled;
   }
 
-  const lastRun = new Date(lastRunAt);
-  const next = new Date(lastRun);
-  next.setDate(next.getDate() + intervalDays);
+  const lastRun = new Date(automation.lastRunAt);
+  if (Number.isNaN(lastRun.getTime())) return now >= scheduled;
+
+  const next = nextAutomationRun(lastRun, automation);
   next.setHours(hours, minutes, 0, 0);
   return now >= next;
+}
+
+function nextAutomationRun(lastRun: Date, automation: AutomationSettings): Date {
+  const next = new Date(lastRun);
+  if (automation.frequency === "weekly") {
+    next.setDate(next.getDate() + 7);
+    return next;
+  }
+  if (automation.frequency === "monthly") {
+    next.setMonth(next.getMonth() + 1);
+    return next;
+  }
+
+  const intervalDays = Math.min(365, Math.max(1, Math.floor(Number(automation.intervalDays ?? 1))));
+  next.setDate(next.getDate() + intervalDays);
+  return next;
 }

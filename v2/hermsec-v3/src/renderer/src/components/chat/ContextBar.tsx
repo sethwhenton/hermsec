@@ -1,4 +1,4 @@
-import { AtSign, Check, ChevronDown, Folder, Globe } from "lucide-react";
+import { AtSign, Brain, Check, ChevronDown, Folder, Globe } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { useSessionStore } from "@/store/sessionStore";
@@ -27,8 +27,10 @@ export function ContextBar({ className }: ContextBarProps) {
   const updateSettings = useSettingsStore((s) => s.update);
   const startNewSession = useSessionStore((s) => s.startNewSession);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const [thinkingMenuOpen, setThinkingMenuOpen] = useState(false);
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const modelMenuRef = useRef<HTMLDivElement>(null);
+  const thinkingMenuRef = useRef<HTMLDivElement>(null);
   const activeModelId = settings?.activeModelId ?? "deepseek-v4-flash";
   const activeProjectPath = settings?.defaultProjectDir;
   const activeProjectName = activeProjectPath ? folderName(activeProjectPath) : null;
@@ -39,15 +41,21 @@ export function ContextBar({ className }: ContextBarProps) {
   const activeModel = modelOptions.find((model) => model.id === activeModelId);
 
   useEffect(() => {
-    if (!modelMenuOpen) return;
+    if (!modelMenuOpen && !thinkingMenuOpen) return;
 
     const handlePointerDown = (event: MouseEvent) => {
       if (!modelMenuRef.current?.contains(event.target as Node)) {
         setModelMenuOpen(false);
       }
+      if (!thinkingMenuRef.current?.contains(event.target as Node)) {
+        setThinkingMenuOpen(false);
+      }
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setModelMenuOpen(false);
+      if (event.key === "Escape") {
+        setModelMenuOpen(false);
+        setThinkingMenuOpen(false);
+      }
     };
 
     document.addEventListener("mousedown", handlePointerDown);
@@ -56,11 +64,16 @@ export function ContextBar({ className }: ContextBarProps) {
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [modelMenuOpen]);
+  }, [modelMenuOpen, thinkingMenuOpen]);
 
   const handleSelectModel = (modelId: string) => {
     void updateSettings({ activeModelId: modelId });
     setModelMenuOpen(false);
+  };
+
+  const handleSelectThinking = (level: NonNullable<typeof settings>["general"]["thinkingLevel"]) => {
+    void updateSettings({ general: { thinkingLevel: level } });
+    setThinkingMenuOpen(false);
   };
 
   const handleSelectProject = async (projectPath: string) => {
@@ -139,6 +152,54 @@ export function ContextBar({ className }: ContextBarProps) {
           </div>
         )}
       </div>
+
+      <div ref={thinkingMenuRef} className="relative">
+        <button
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded={thinkingMenuOpen}
+          onClick={() => setThinkingMenuOpen((open) => !open)}
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-surface-elevated px-2 py-1 text-[11px] text-muted transition-colors hover:text-foreground"
+          title="Thinking level"
+        >
+          <Brain className="h-3 w-3" />
+          <span>{thinkingLabel(settings?.general.thinkingLevel)}</span>
+          <ChevronDown className="h-3 w-3 shrink-0" />
+        </button>
+
+        {thinkingMenuOpen && (
+          <div
+            role="listbox"
+            aria-label="Select thinking level"
+            className="absolute bottom-full left-0 z-50 mb-2 w-56 overflow-hidden rounded-lg border border-border bg-surface-elevated shadow-[0_18px_55px_rgba(0,0,0,0.45)]"
+          >
+            <div className="border-b border-border-subtle px-3 py-2 text-xs font-medium text-foreground">
+              Thinking level
+            </div>
+            {(["fast", "balanced", "deep"] as const).map((level) => (
+              <button
+                key={level}
+                type="button"
+                role="option"
+                aria-selected={(settings?.general.thinkingLevel ?? "balanced") === level}
+                onClick={() => handleSelectThinking(level)}
+                className={cn(
+                  "flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors",
+                  (settings?.general.thinkingLevel ?? "balanced") === level
+                    ? "bg-white/8 text-foreground"
+                    : "text-muted hover:bg-white/5 hover:text-foreground",
+                )}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">{thinkingLabel(level)}</span>
+                  <span className="block text-[10px] text-muted-foreground">{thinkingDescription(level)}</span>
+                </span>
+                {(settings?.general.thinkingLevel ?? "balanced") === level && <Check className="h-3.5 w-3.5 shrink-0" />}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       <ProjectPickerModal
         open={projectPickerOpen}
         currentProjectPath={activeProjectPath}
@@ -147,6 +208,18 @@ export function ContextBar({ className }: ContextBarProps) {
       />
     </div>
   );
+}
+
+function thinkingLabel(level: string | undefined): string {
+  if (level === "fast") return "Fast";
+  if (level === "deep") return "Deep";
+  return "Balanced";
+}
+
+function thinkingDescription(level: string): string {
+  if (level === "fast") return "Shorter answers";
+  if (level === "deep") return "More context";
+  return "Default security coach";
 }
 
 type ModelOption = ModelConfig & {

@@ -4,14 +4,6 @@
   const R = HERMSEC_REPORT;
   const adjMap = Object.fromEntries(R.adjudications.map((a) => [a.findingId, a]));
 
-  const VERSIONS = [
-    { id: "v1", href: "index.html", label: "v1" },
-    { id: "v2", href: "index-v2.html", label: "v2" },
-    { id: "v3", href: "index-v3.html", label: "v3" },
-    { id: "v4", href: "index-v4.html", label: "v4" },
-    { id: "pdf", href: "index-onepager.html", label: "PDF", active: true }
-  ];
-
   function esc(str) {
     if (str == null) return "";
     return String(str)
@@ -49,18 +41,10 @@
     return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   }
 
-  function renderVersionNav() {
-    return VERSIONS.map(
-      (v) =>
-        `<a href="${esc(v.href)}" class="version-link${v.active ? " is-active" : ""}"${v.active ? ' aria-current="page"' : ""}>${esc(v.label)}</a>`
-    ).join("");
-  }
-
   function renderToolbar() {
     document.getElementById("screen-toolbar").innerHTML = `
       <div class="toolbar-left">
         <span class="toolbar-label">Executive One-Pager</span>
-        <nav class="version-nav" aria-label="Template versions">${renderVersionNav()}</nav>
       </div>
       <button class="btn btn-primary" id="btn-print" type="button">Save as PDF</button>`;
   }

@@ -274,48 +274,6 @@ body {
   gap: 0.45rem;
 }
 
-.version-nav {
-  display: inline-flex;
-  padding: 3px;
-  gap: 2px;
-  background: var(--chip-bg);
-  border-radius: 999px;
-  box-shadow: var(--shadow-hairline);
-}
-
-.version-link {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2.25rem;
-  min-height: 2rem;
-  padding: 0 0.65rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-decoration: none;
-  border-radius: 999px;
-  transition-property: color, background-color, box-shadow;
-  transition-duration: 0.2s;
-  transition-timing-function: var(--ease-standard);
-}
-
-.version-link:hover {
-  color: var(--text);
-  background: var(--hover-elevated);
-}
-
-.version-link.is-active {
-  color: var(--accent);
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-}
-
-.version-link:active {
-  transform: scale(0.96);
-}
-
 /* Header */
 .report-header {
   position: sticky;
@@ -755,11 +713,12 @@ body {
 /* Tab nav — floating island */
 .tab-nav {
   position: sticky;
-  top: 0;
-  z-index: 90;
-  padding: 0.75rem 1.75rem 0;
-  background: transparent;
+  top: clamp(5rem, 8vw, 7.25rem);
+  z-index: 95;
+  padding: 0.55rem 1.75rem 0.45rem;
+  background: linear-gradient(180deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 88%, transparent) 72%, transparent 100%);
   border: none;
+  backdrop-filter: blur(16px) saturate(1.05);
 }
 
 .tab-nav-shell {
@@ -1786,10 +1745,6 @@ body {
   .header-actions {
     width: 100%;
     justify-content: flex-end;
-  }
-
-  .version-nav {
-    align-self: flex-start;
   }
 
   .fixplan-grid {

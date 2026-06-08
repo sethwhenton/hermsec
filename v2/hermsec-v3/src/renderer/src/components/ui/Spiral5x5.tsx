@@ -6,18 +6,26 @@ interface Spiral5x5Props {
   glow?: boolean;
   tone?: "dark" | "light";
   className?: string;
+  size?: number;
+  gap?: number;
 }
 
-export default function Spiral5x5({ glow = false, tone = "dark", className }: Spiral5x5Props) {
+export default function Spiral5x5({
+  glow = false,
+  tone = "dark",
+  className,
+  size = 28,
+  gap = 2,
+}: Spiral5x5Props) {
   return (
     <>
       <style>{`
         .loader-spiral-5x5 {
           display: grid;
           grid-template-columns: repeat(5, 1fr);
-          gap: 2px;
-          width: 28px;
-          height: 28px;
+          gap: var(--spiral-gap, 2px);
+          width: var(--spiral-size, 28px);
+          height: var(--spiral-size, 28px);
         }
         .loader-spiral-5x5 .dot {
           aspect-ratio: 1;
@@ -58,6 +66,7 @@ export default function Spiral5x5({ glow = false, tone = "dark", className }: Sp
       `}</style>
       <div
         className={`loader-spiral-5x5 text-foreground ${glow ? "glow" : ""} ${tone === "light" ? "light" : ""} ${className ?? ""}`}
+        style={{ "--spiral-size": `${size}px`, "--spiral-gap": `${gap}px` } as CSSProperties}
       >
         {Array.from({ length: 25 }).map((_, i) => (
           <div key={i} className="dot" style={{ "--d": spiralOrder.indexOf(i) } as CSSProperties} />

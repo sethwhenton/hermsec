@@ -148,15 +148,16 @@ export function GeneralSettings() {
         description="In-app schedule that checks project changes while Hermsec is open."
       >
         <span className="rounded-md border border-border bg-surface-elevated px-3 py-1.5 text-xs text-foreground">
-          {settings.automation.enabled ? `${formatFrequency(settings.automation.frequency)} at ${settings.automation.time}` : "Disabled"}
+          {settings.automation.enabled ? `${formatFrequency(settings.automation)} at ${settings.automation.time}` : "Disabled"}
         </span>
       </SettingRow>
     </div>
   );
 }
 
-function formatFrequency(frequency: string): string {
-  if (frequency === "weekly") return "Every week";
-  if (frequency === "every-3-days") return "Every 3 days";
-  return "Every day";
+function formatFrequency(automation: { frequency: string; intervalDays?: number }): string {
+  if (automation.frequency === "weekly") return "Every week";
+  if (automation.frequency === "monthly") return "Every month";
+  const days = Math.min(365, Math.max(1, Math.floor(Number(automation.intervalDays ?? 1))));
+  return days === 1 ? "Every day" : `Every ${days} days`;
 }

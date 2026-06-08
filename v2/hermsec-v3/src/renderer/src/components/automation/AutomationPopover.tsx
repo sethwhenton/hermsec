@@ -10,10 +10,9 @@ interface AutomationPopoverProps {
   onClose: () => void;
 }
 
-const frequencyOptions: Array<{ value: AutomationFrequency; label: string }> = [
-  { value: "daily", label: "Every day" },
-  { value: "every-3-days", label: "Every 3 days" },
+const frequencyOptions: Array<{ value: Extract<AutomationFrequency, "weekly" | "monthly">; label: string }> = [
   { value: "weekly", label: "Every week" },
+  { value: "monthly", label: "Every month" },
 ];
 
 export function AutomationPopover({ open, onClose }: AutomationPopoverProps) {
@@ -22,7 +21,10 @@ export function AutomationPopover({ open, onClose }: AutomationPopoverProps) {
   const runScan = useReportStore((s) => s.runScan);
   const latestReport = useReportStore((s) => s.latestReport);
   const scanRunning = useReportStore((s) => s.scanRunning);
-  const [frequency, setFrequency] = useState<AutomationFrequency>(settings?.automation.frequency ?? "daily");
+  const [frequency, setFrequency] = useState<AutomationFrequency>(
+    normalizeFrequency(settings?.automation.frequency),
+  );
+  const [intervalDays, setIntervalDays] = useState(settings?.automation.intervalDays ?? 1);
   const [time, setTime] = useState(settings?.automation.time ?? "09:00");
   const [enabled, setEnabled] = useState(settings?.automation.enabled ?? false);
 
@@ -33,6 +35,7 @@ export function AutomationPopover({ open, onClose }: AutomationPopoverProps) {
       automation: {
         enabled,
         frequency,
+        intervalDays: normalizeIntervalDays(intervalDays),
         time,
       },
     });
@@ -53,6 +56,7 @@ export function AutomationPopover({ open, onClose }: AutomationPopoverProps) {
         ...settings?.automation,
         enabled,
         frequency,
+        intervalDays: normalizeIntervalDays(intervalDays),
         time,
         lastCheckedAt: new Date().toISOString(),
         lastResult: result.unchanged ? "No project changes since the last scan." : result.message,
@@ -92,7 +96,31 @@ export function AutomationPopover({ open, onClose }: AutomationPopoverProps) {
 
       <div className="mb-3">
         <div className="mb-1 text-xs text-muted">Frequency</div>
-        <div className="grid grid-cols-3 gap-1">
+        <div className="mb-2 flex items-center gap-2 rounded-lg border border-border bg-background p-2">
+          <button
+            type="button"
+            className={`h-9 rounded-md border px-3 text-xs transition-colors ${
+              frequency === "custom-days"
+                ? "border-accent bg-accent-muted text-foreground"
+                : "border-border bg-surface-elevated text-muted hover:text-foreground"
+            }`}
+            onClick={() => setFrequency("custom-days")}
+          >
+            Every
+          </button>
+          <input
+            type="number"
+            min={1}
+            max={365}
+            value={intervalDays}
+            onFocus={() => setFrequency("custom-days")}
+            onChange={(event) => setIntervalDays(normalizeIntervalDays(Number(event.target.value)))}
+            className="h-9 w-20 rounded-md border border-border bg-surface-elevated px-3 text-sm text-foreground outline-none focus:border-accent"
+            aria-label="Automation interval in days"
+          />
+          <span className="text-xs text-muted">{normalizeIntervalDays(intervalDays) === 1 ? "Day" : "Days"}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-1">
           {frequencyOptions.map((option) => (
             <button
               key={option.value}
@@ -135,4 +163,14 @@ export function AutomationPopover({ open, onClose }: AutomationPopoverProps) {
       </div>
     </div>
   );
+}
+
+function normalizeFrequency(frequency: AutomationFrequency | undefined): AutomationFrequency {
+  if (frequency === "weekly" || frequency === "monthly") return frequency;
+  return "custom-days";
+}
+
+function normalizeIntervalDays(value: number | undefined): number {
+  if (!Number.isFinite(Number(value))) return 1;
+  return Math.min(365, Math.max(1, Math.floor(Number(value))));
 }

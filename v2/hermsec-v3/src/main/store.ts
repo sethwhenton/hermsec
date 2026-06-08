@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { app } from "electron";
-import type { AppSettings, DeepPartial, ProviderConfig } from "../renderer/src/types/settings";
+import type { AppSettings, AutomationFrequency, DeepPartial, ProviderConfig } from "../renderer/src/types/settings";
 import { getEnvDefaults } from "./env";
 import { defaultProjectDir } from "./scan";
 
@@ -40,13 +40,16 @@ function defaultSettings(): AppSettings {
       showReasoning: true,
       privacyMode: false,
       scanMode: "online",
+      thinkingLevel: "balanced",
+      contextWindow: "standard",
     },
     defaultProjectDir: defaultProjectDir(),
     defaultReportDir: join(app.getPath("documents"), "Hermsec", "reports"),
     activeModelId: env.model,
     automation: {
       enabled: false,
-      frequency: "daily",
+      frequency: "custom-days",
+      intervalDays: 1,
       time: "09:00",
     },
     providers: [defaultProvider(env)],
@@ -135,6 +138,8 @@ function normalizeSettings(settings: AppSettings): AppSettings {
     }
     return {
       ...provider,
+      baseUrl: provider.baseUrl?.trim() ? provider.baseUrl : defaultProvider.baseUrl,
+      apiKeyEnvVar: normalizeProviderApiKeyEnv(provider, defaultProvider),
       models: Array.from(modelsById.values()),
     };
   });
@@ -157,13 +162,13 @@ function normalizeSettings(settings: AppSettings): AppSettings {
     general: {
       ...settings.general,
       scanMode: normalizeScanModeSetting(settings.general.scanMode),
+      thinkingLevel: normalizeThinkingLevel(settings.general.thinkingLevel),
+      contextWindow: normalizeContextWindow(settings.general.contextWindow),
     },
     automation: {
       enabled: Boolean(settings.automation?.enabled),
-      frequency:
-        settings.automation?.frequency === "every-3-days" || settings.automation?.frequency === "weekly"
-          ? settings.automation.frequency
-          : "daily",
+      frequency: normalizeAutomationFrequency(settings.automation?.frequency),
+      intervalDays: normalizeAutomationIntervalDays(settings.automation),
       time: /^\d{2}:\d{2}$/.test(settings.automation?.time ?? "") ? settings.automation.time : "09:00",
       ...(settings.automation?.lastRunAt ? { lastRunAt: settings.automation.lastRunAt } : {}),
       ...(settings.automation?.lastCheckedAt ? { lastCheckedAt: settings.automation.lastCheckedAt } : {}),
@@ -180,4 +185,45 @@ function normalizeSettings(settings: AppSettings): AppSettings {
 
 function normalizeScanModeSetting(mode: string): string {
   return "online";
+}
+
+function normalizeThinkingLevel(level: AppSettings["general"]["thinkingLevel"] | undefined): AppSettings["general"]["thinkingLevel"] {
+  if (level === "fast" || level === "deep") return level;
+  return "balanced";
+}
+
+function normalizeContextWindow(window: AppSettings["general"]["contextWindow"] | undefined): AppSettings["general"]["contextWindow"] {
+  if (window === "compact" || window === "large") return window;
+  return "standard";
+}
+
+function normalizeProviderApiKeyEnv(provider: ProviderConfig, defaultProvider: ProviderConfig): string {
+  const current = provider.apiKeyEnvVar?.trim();
+  if (!current) return defaultProvider.apiKeyEnvVar;
+
+  const defaultEnv = defaultProvider.apiKeyEnvVar?.trim();
+  if (
+    provider.id === defaultProvider.id &&
+    defaultEnv &&
+    current !== defaultEnv &&
+    !process.env[current] &&
+    process.env[defaultEnv]
+  ) {
+    return defaultEnv;
+  }
+
+  return current;
+}
+
+function normalizeAutomationFrequency(frequency: AutomationFrequency | undefined): AutomationFrequency {
+  if (frequency === "weekly" || frequency === "monthly") return frequency;
+  return "custom-days";
+}
+
+function normalizeAutomationIntervalDays(automation: AppSettings["automation"] | undefined): number {
+  if (automation?.frequency === "every-3-days") return 3;
+  if (automation?.frequency === "daily") return 1;
+  const parsed = Number(automation?.intervalDays);
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.min(365, Math.max(1, Math.floor(parsed)));
 }

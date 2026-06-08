@@ -98,9 +98,10 @@ export function dashboardBundle(reportPathOrDir: string): DashboardBundleResult 
     }
 
     let html = readFileSync(dashboardHtmlPath, "utf8");
+    const templates = readTemplates();
     html = html.replace(
       /<link rel="stylesheet" href="styles-v4\.css">\s*/u,
-      `<style>${readFileSync(path.join(dashboardDir, "styles-v4.css"), "utf8")}\n${hermsecDashboardThemeCss()}</style>\n`,
+      `<style>${templates["styles-v4.css"]}\n${hermsecDashboardThemeCss()}</style>\n`,
     );
     const report = buildDashboardReport(reportDir);
     const dataJson = JSON.stringify(report, null, 2).replace(/</g, "\\u003c");
@@ -110,7 +111,7 @@ export function dashboardBundle(reportPathOrDir: string): DashboardBundleResult 
     );
     html = html.replace(
       /<script src="app-v4\.js"><\/script>/u,
-      `<script>${readFileSync(path.join(dashboardDir, "app-v4.js"), "utf8")}</script>`,
+      `<script>${templates["app-v4.js"]}</script>`,
     );
     html = html.replace(/<html lang="en"(?: data-theme="[^"]+")?>/u, '<html lang="en" data-theme="dark">');
 

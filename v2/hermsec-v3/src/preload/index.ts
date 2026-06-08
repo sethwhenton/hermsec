@@ -22,6 +22,8 @@ import type {
   UpdateChatSessionRequest,
 } from "../renderer/src/types/sessions";
 import type {
+  ConverseReportRequest,
+  ConverseReportResult,
   DashboardBundleRequest,
   DashboardBundleResult,
   ExplainReportRequest,
@@ -69,6 +71,8 @@ const hermsecApi = {
   reports: {
     explain: (request: ExplainReportRequest): Promise<ExplainReportResult> =>
       ipcRenderer.invoke("reports:explain", request),
+    converse: (request: ConverseReportRequest): Promise<ConverseReportResult> =>
+      ipcRenderer.invoke("reports:converse", request),
     latest: (projectPath?: string): Promise<LatestReportResult> =>
       ipcRenderer.invoke("reports:latest", projectPath),
     dashboardBundle: (request: DashboardBundleRequest): Promise<DashboardBundleResult> =>
@@ -91,9 +95,14 @@ const hermsecApi = {
       ipcRenderer.invoke("scan:open-report-location", request),
   },
   window: {
+    new: (): Promise<void> => ipcRenderer.invoke("window:new"),
     minimize: (): Promise<void> => ipcRenderer.invoke("window:minimize"),
     maximize: (): Promise<void> => ipcRenderer.invoke("window:maximize"),
     close: (): Promise<void> => ipcRenderer.invoke("window:close"),
+    toggleFullscreen: (): Promise<void> => ipcRenderer.invoke("window:toggle-fullscreen"),
+    zoomIn: (): Promise<void> => ipcRenderer.invoke("window:zoom-in"),
+    zoomOut: (): Promise<void> => ipcRenderer.invoke("window:zoom-out"),
+    actualSize: (): Promise<void> => ipcRenderer.invoke("window:actual-size"),
   },
 };
 

@@ -21,6 +21,8 @@ import type {
   UpdateChatSessionRequest,
 } from "../renderer/src/types/sessions";
 import type {
+  ConverseReportRequest,
+  ConverseReportResult,
   DashboardBundleRequest,
   DashboardBundleResult,
   ExplainReportRequest,
@@ -55,6 +57,7 @@ export interface HermsecApi {
   };
   reports: {
     explain: (request: ExplainReportRequest) => Promise<ExplainReportResult>;
+    converse: (request: ConverseReportRequest) => Promise<ConverseReportResult>;
     latest: (projectPath?: string) => Promise<LatestReportResult>;
     dashboardBundle: (request: DashboardBundleRequest) => Promise<DashboardBundleResult>;
     openArtifact: (request: OpenArtifactRequest) => Promise<OpenArtifactResult>;
@@ -68,9 +71,14 @@ export interface HermsecApi {
     ) => Promise<OpenReportLocationResult>;
   };
   window: {
+    new: () => Promise<void>;
     minimize: () => Promise<void>;
     maximize: () => Promise<void>;
     close: () => Promise<void>;
+    toggleFullscreen: () => Promise<void>;
+    zoomIn: () => Promise<void>;
+    zoomOut: () => Promise<void>;
+    actualSize: () => Promise<void>;
   };
 }
 

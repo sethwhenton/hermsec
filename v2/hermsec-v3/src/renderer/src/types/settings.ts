@@ -24,13 +24,16 @@ export interface GeneralSettings {
   showReasoning: boolean;
   privacyMode: boolean;
   scanMode: string;
+  thinkingLevel: "fast" | "balanced" | "deep";
+  contextWindow: "compact" | "standard" | "large";
 }
 
-export type AutomationFrequency = "daily" | "every-3-days" | "weekly";
+export type AutomationFrequency = "custom-days" | "weekly" | "monthly" | "daily" | "every-3-days";
 
 export interface AutomationSettings {
   enabled: boolean;
   frequency: AutomationFrequency;
+  intervalDays?: number;
   time: string;
   lastRunAt?: string;
   lastCheckedAt?: string;

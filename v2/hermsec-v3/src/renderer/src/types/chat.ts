@@ -25,6 +25,10 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   createdAt: number;
+  copyAction?: {
+    label: string;
+    text: string;
+  };
   reportLink?: {
     label: string;
     path: string;

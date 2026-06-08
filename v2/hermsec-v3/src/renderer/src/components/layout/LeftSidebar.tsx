@@ -7,6 +7,7 @@ import {
   MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
+  Plus,
   Search,
   Settings,
   Trash2,
@@ -99,6 +100,15 @@ export function LeftSidebar() {
     setView("chat");
   };
 
+  const chooseAndAddProject = async () => {
+    const api = getHermsecApi();
+    if (!api) return;
+    const directory = await api.settings.chooseProjectDirectory(settings?.defaultProjectDir);
+    if (!directory) return;
+    await handleNewChatProject(directory);
+    await loadProjects();
+  };
+
   const handleSelectSession = async (session: ChatSessionSummary) => {
     await updateSettings({ defaultProjectDir: session.projectPath });
     await openSession(session.id);
@@ -184,13 +194,24 @@ export function LeftSidebar() {
           icon={<Clock className="h-4 w-4" />}
           label="Automations"
           badge="1"
-          onClick={() => setView("chat")}
+          active={view === "automations"}
+          onClick={() => setView("automations")}
         />
       </div>
 
       {!sidebarCollapsed && (
         <div className="mt-4 flex-1 overflow-y-auto px-2">
-          <div className="mb-2 px-1 text-[10px] uppercase tracking-wider text-muted">Projects</div>
+          <div className="mb-2 flex items-center justify-between px-1">
+            <div className="text-[10px] uppercase tracking-wider text-muted">Projects</div>
+            <button
+              type="button"
+              className="flex h-5 w-5 items-center justify-center rounded-md text-muted transition-colors duration-150 ease-out hover:bg-white/8 hover:text-foreground active:scale-[0.96]"
+              title="Add project"
+              onClick={() => void chooseAndAddProject()}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
           <div className="space-y-0.5">
             {projectsLoading && (
               <div className="px-2 py-1.5 text-xs text-muted">Loading project folders...</div>

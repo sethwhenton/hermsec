@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { ChatItem } from "@/types/chat";
 import type { ContextChip } from "@/types/chat";
 
-export type AppView = "chat" | "dashboard" | "settings";
+export type AppView = "chat" | "dashboard" | "automations" | "settings";
 export type SettingsSection = "general" | "providers" | "models";
 
 interface UiState {
@@ -10,6 +10,7 @@ interface UiState {
   settingsSection: SettingsSection;
   sidebarCollapsed: boolean;
   isAgentThinking: boolean;
+  agentStatus: string;
   currentSessionId?: string;
   contextChips: ContextChip[];
   chatItems: ChatItem[];
@@ -17,6 +18,7 @@ interface UiState {
   setSettingsSection: (section: SettingsSection) => void;
   toggleSidebar: () => void;
   setAgentThinking: (thinking: boolean) => void;
+  setAgentStatus: (status: string) => void;
   setCurrentSessionId: (sessionId?: string) => void;
   setChatItems: (items: ChatItem[]) => void;
   addContextChip: (chip: ContextChip) => void;
@@ -33,6 +35,7 @@ export const useUiStore = create<UiState>((set) => ({
   settingsSection: "general",
   sidebarCollapsed: false,
   isAgentThinking: false,
+  agentStatus: "Thinking...",
   currentSessionId: undefined,
   contextChips: defaultChips,
   chatItems: [],
@@ -40,6 +43,7 @@ export const useUiStore = create<UiState>((set) => ({
   setSettingsSection: (settingsSection) => set({ settingsSection }),
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   setAgentThinking: (isAgentThinking) => set({ isAgentThinking }),
+  setAgentStatus: (agentStatus) => set({ agentStatus }),
   setCurrentSessionId: (currentSessionId) => set({ currentSessionId }),
   setChatItems: (chatItems) => set({ chatItems }),
   addContextChip: (chip) =>
@@ -55,5 +59,5 @@ export const useUiStore = create<UiState>((set) => ({
     set((s) => ({
       chatItems: s.chatItems.map((item) => (item.id === id ? updater(item) : item)),
     })),
-  clearChat: () => set({ chatItems: [], currentSessionId: undefined, isAgentThinking: false }),
+  clearChat: () => set({ chatItems: [], currentSessionId: undefined, isAgentThinking: false, agentStatus: "Thinking..." }),
 }));

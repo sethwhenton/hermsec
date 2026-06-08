@@ -97,34 +97,6 @@ body {
   white-space: nowrap;
 }
 
-.version-nav {
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
-  flex-wrap: wrap;
-}
-
-.version-link {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.72rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  text-decoration: none;
-  border-radius: 999px;
-  transition: color 0.15s cubic-bezier(0.2, 0, 0, 1), background-color 0.15s cubic-bezier(0.2, 0, 0, 1);
-}
-
-.version-link:hover {
-  color: var(--text);
-  background: var(--chip-bg);
-}
-
-.version-link.is-active {
-  color: var(--accent);
-  background: var(--accent-subtle);
-  font-weight: 600;
-}
-
 .btn {
   display: inline-flex;
   align-items: center;

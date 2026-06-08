@@ -3,9 +3,10 @@ import Spiral5x5 from "@/components/ui/Spiral5x5";
 
 interface ThinkingRowProps {
   visible: boolean;
+  status?: string;
 }
 
-export function ThinkingRow({ visible }: ThinkingRowProps) {
+export function ThinkingRow({ visible, status = "Thinking..." }: ThinkingRowProps) {
   return (
     <AnimatePresence>
       {visible && (
@@ -17,8 +18,8 @@ export function ThinkingRow({ visible }: ThinkingRowProps) {
           transition={{ duration: 0.15 }}
         >
           <div className="flex items-center gap-3 rounded-2xl border border-border bg-surface-elevated px-4 py-3">
-            <Spiral5x5 glow />
-            <span className="text-xs text-muted">Thinking…</span>
+            <Spiral5x5 glow size={18} gap={2} />
+            <span className="text-xs text-muted">{status}</span>
           </div>
         </motion.div>
       )}

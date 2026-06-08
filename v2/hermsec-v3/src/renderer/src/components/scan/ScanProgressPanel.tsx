@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { CheckCircle2, ChevronDown, ChevronRight, Circle, Loader2, MinusCircle, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight, Circle, MinusCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { ScanProgressEvent, ScanProgressStatus } from "@/types/scan";
+import Spiral5x5 from "@/components/ui/Spiral5x5";
 
 interface ScanProgressPanelProps {
   events: ScanProgressEvent[];
@@ -45,7 +46,7 @@ export function ScanProgressDisclosure({
       >
         <div className="flex min-w-0 items-center gap-3">
           {running ? (
-            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-accent" />
+            <Spiral5x5 glow size={14} gap={1} className="shrink-0 text-accent" />
           ) : canceled ? (
             <MinusCircle className="h-4 w-4 shrink-0 text-muted" />
           ) : failed ? (
@@ -118,7 +119,7 @@ export function ScanProgressPanel({ events, compact, embedded }: ScanProgressPan
 }
 
 function ProgressIcon({ status }: { status: ScanProgressStatus }) {
-  if (status === "running") return <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />;
+  if (status === "running") return <Spiral5x5 glow size={12} gap={1} className="text-accent" />;
   if (status === "completed") return <CheckCircle2 className="h-3.5 w-3.5 text-success" />;
   if (status === "failed") return <XCircle className="h-3.5 w-3.5 text-danger" />;
   if (status === "canceled") return <MinusCircle className="h-3.5 w-3.5 text-muted" />;
