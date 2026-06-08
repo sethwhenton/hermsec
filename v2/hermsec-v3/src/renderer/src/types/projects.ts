@@ -4,3 +4,8 @@ export interface ProjectDirectory {
   path: string;
   root: string;
 }
+
+export interface ProjectActionResult {
+  ok: boolean;
+  message: string;
+}

@@ -1,4 +1,4 @@
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, RotateCw, Square } from "lucide-react";
 import { useRef, useState, type KeyboardEvent } from "react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
@@ -7,10 +7,20 @@ import { ContextBar } from "./ContextBar";
 interface ComposerProps {
   onSend: (text: string) => void;
   disabled?: boolean;
+  scanRunning?: boolean;
+  onStopScan?: () => void;
+  onRestartScan?: () => void;
   className?: string;
 }
 
-export function Composer({ onSend, disabled, className }: ComposerProps) {
+export function Composer({
+  onSend,
+  disabled,
+  scanRunning,
+  onStopScan,
+  onRestartScan,
+  className,
+}: ComposerProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -60,7 +70,18 @@ export function Composer({ onSend, disabled, className }: ComposerProps) {
         <ContextBar />
       </div>
       <div className="flex items-center justify-between">
-        <div />
+        <div className="flex items-center gap-1.5">
+          {scanRunning ? (
+            <>
+              <Button variant="outline" size="icon" title="Stop scan" onClick={onStopScan}>
+                <Square className="h-3.5 w-3.5 fill-current" />
+              </Button>
+              <Button variant="ghost" size="icon" title="Restart scan" onClick={onRestartScan}>
+                <RotateCw className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          ) : null}
+        </div>
         <Button
           size="icon"
           className="rounded-full"

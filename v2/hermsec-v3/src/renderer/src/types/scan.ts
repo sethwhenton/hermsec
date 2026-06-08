@@ -11,7 +11,7 @@ export interface ProjectStateFingerprint {
   capturedAt: string;
 }
 
-export type ScanProgressStatus = "waiting" | "running" | "completed" | "skipped" | "failed";
+export type ScanProgressStatus = "waiting" | "running" | "completed" | "skipped" | "failed" | "canceled";
 
 export interface ScanProgressEvent {
   id: string;
@@ -42,6 +42,7 @@ export interface ScanSummary {
 export interface ScanProjectResult {
   ok: boolean;
   message: string;
+  canceled?: boolean;
   unchanged?: boolean;
   targetPath?: string;
   reportDir?: string;
@@ -54,6 +55,11 @@ export interface ScanProjectResult {
   durationMs?: number;
   projectState?: ProjectStateFingerprint;
   error?: string;
+}
+
+export interface ScanControlResult {
+  ok: boolean;
+  message: string;
 }
 
 export interface OpenReportLocationRequest {

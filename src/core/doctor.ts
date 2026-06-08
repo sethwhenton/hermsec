@@ -29,7 +29,7 @@ export function scannerAvailabilityStatuses(): ScannerStatus[] {
         id: tool.id,
         label: tool.label,
         status: "ready",
-        message: `${tool.label} was detected on PATH. The local harness does not require it for offline scans.`,
+        message: `${tool.label} was detected on PATH and is available for the online scan pipeline.`,
       };
     }
     return {
@@ -38,7 +38,7 @@ export function scannerAvailabilityStatuses(): ScannerStatus[] {
       status: tool.requirement === "required" ? "missing" : "skipped",
       message: tool.requirement === "required"
         ? `${tool.label} was not detected on PATH. This is required for production readiness.`
-        : `${tool.label} was not detected on PATH. This optional tool was skipped; built-in offline heuristics remain available.`,
+        : `${tool.label} was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.`,
     };
   });
 }

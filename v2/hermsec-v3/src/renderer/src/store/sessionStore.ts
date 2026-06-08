@@ -11,6 +11,8 @@ interface SessionState {
   refreshSessions: () => Promise<ChatSessionSummary[]>;
   startNewSession: () => void;
   openSession: (id: string) => Promise<ChatSessionRecord | null>;
+  archiveSession: (id: string) => Promise<void>;
+  deleteSession: (id: string) => Promise<void>;
   persistCurrentSession: (
     projectPath: string,
     chatItems: ChatItem[],
@@ -49,6 +51,24 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     useUiStore.getState().setChatItems(session.chatItems);
     set({ currentSession: session });
     return session;
+  },
+
+  archiveSession: async (id) => {
+    await requireHermsecApi().sessions.archive(id);
+    if (useUiStore.getState().currentSessionId === id) {
+      useUiStore.getState().clearChat();
+      set({ currentSession: null });
+    }
+    await get().refreshSessions();
+  },
+
+  deleteSession: async (id) => {
+    await requireHermsecApi().sessions.delete(id);
+    if (useUiStore.getState().currentSessionId === id) {
+      useUiStore.getState().clearChat();
+      set({ currentSession: null });
+    }
+    await get().refreshSessions();
   },
 
   persistCurrentSession: async (projectPath, chatItems, titleSeed) => {

@@ -10,7 +10,6 @@ import { useUiStore } from "@/store/uiStore";
 import type { ChatItem, ChatMessage } from "@/types/chat";
 import { AutomationPopover } from "@/components/automation/AutomationPopover";
 import { Button } from "@/components/ui/Button";
-import { ScanProgressPanel } from "@/components/scan/ScanProgressPanel";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
 import { QuickActions } from "./QuickActions";
@@ -29,7 +28,8 @@ export function ChatView() {
   const settings = useSettingsStore((s) => s.settings);
   const setView = useUiStore((s) => s.setView);
   const runScan = useReportStore((s) => s.runScan);
-  const progress = useReportStore((s) => s.progress);
+  const cancelScan = useReportStore((s) => s.cancelScan);
+  const restartScan = useReportStore((s) => s.restartScan);
   const scanRunning = useReportStore((s) => s.scanRunning);
   const latestReport = useReportStore((s) => s.latestReport);
   const hydrateLatest = useReportStore((s) => s.hydrateLatest);
@@ -186,22 +186,6 @@ export function ChatView() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {scanRunning && (
-          <motion.div
-            className="pointer-events-none absolute right-6 top-14 z-20 w-[380px] max-w-[calc(100%-3rem)]"
-            initial={{ opacity: 0, y: -8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.18 }}
-          >
-            <div className="pointer-events-auto">
-              <ScanProgressPanel events={progress} compact />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <motion.div
         layout
         transition={{ type: "spring", stiffness: 420, damping: 38 }}
@@ -229,7 +213,17 @@ export function ChatView() {
         </AnimatePresence>
 
         <motion.div layout className="w-full">
-          <Composer onSend={handleSend} disabled={isAgentThinking} />
+          <Composer
+            onSend={handleSend}
+            disabled={isAgentThinking}
+            scanRunning={scanRunning}
+            onStopScan={() => {
+              void cancelScan();
+            }}
+            onRestartScan={() => {
+              void restartScan();
+            }}
+          />
         </motion.div>
       </motion.div>
     </div>
@@ -320,7 +314,7 @@ async function answerSecurityQuestion(text: string, latestReportPath?: string): 
   if (wantsCapabilities(lower)) {
     return [
       "I can help with Hermsec security work for this project:",
-      "1. Scan the selected repo in Offline, Auto, or Online mode.",
+      "1. Run the full online scan pipeline for the selected repo.",
       "2. Explain the latest HTML report and summarize the real findings.",
       "3. Prioritize fixes by severity, secrets exposure, and exploitability.",
       "4. Talk through remediation steps and what to rerun after patching.",
@@ -353,7 +347,7 @@ async function answerSecurityQuestion(text: string, latestReportPath?: string): 
   }
 
   if (/\b(online|offline|auto mode|scan mode|mode)\b/.test(lower)) {
-    return "Hermsec has three scan modes. Offline uses local deterministic checks and available local scanners. Auto chooses a practical default based on environment. Online runs the fuller vulnerability-intelligence path and is the mode to use when you want the strongest repo security pass.";
+    return "Hermsec V3 is configured as an online-only scanner. It runs the local evidence tools, dependency checks, and online vulnerability intelligence path together, then generates the dashboard and report artifacts from that evidence.";
   }
 
   if (isSecurityScoped(lower)) {

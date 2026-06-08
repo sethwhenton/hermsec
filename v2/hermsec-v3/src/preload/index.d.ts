@@ -7,15 +7,17 @@ import type {
 import type {
   OpenReportLocationRequest,
   OpenReportLocationResult,
+  ScanControlResult,
   ScanProgressEvent,
   ScanProjectRequest,
   ScanProjectResult,
 } from "../renderer/src/types/scan";
-import type { ProjectDirectory } from "../renderer/src/types/projects";
+import type { ProjectActionResult, ProjectDirectory } from "../renderer/src/types/projects";
 import type {
   ChatSessionRecord,
   ChatSessionSummary,
   CreateChatSessionRequest,
+  SessionActionResult,
   UpdateChatSessionRequest,
 } from "../renderer/src/types/sessions";
 import type {
@@ -40,12 +42,16 @@ export interface HermsecApi {
   };
   projects: {
     list: () => Promise<ProjectDirectory[]>;
+    archive: (projectPath: string) => Promise<ProjectActionResult>;
+    delete: (projectPath: string) => Promise<ProjectActionResult>;
   };
   sessions: {
     list: (projectPath?: string) => Promise<ChatSessionSummary[]>;
     get: (id: string) => Promise<ChatSessionRecord | null>;
     create: (request: CreateChatSessionRequest) => Promise<ChatSessionRecord>;
     update: (request: UpdateChatSessionRequest) => Promise<ChatSessionRecord>;
+    archive: (id: string) => Promise<SessionActionResult>;
+    delete: (id: string) => Promise<SessionActionResult>;
   };
   reports: {
     explain: (request: ExplainReportRequest) => Promise<ExplainReportResult>;
@@ -55,6 +61,7 @@ export interface HermsecApi {
   };
   scan: {
     project: (request: ScanProjectRequest) => Promise<ScanProjectResult>;
+    cancel: () => Promise<ScanControlResult>;
     onProgress: (listener: (event: ScanProgressEvent) => void) => () => void;
     openReportLocation: (
       request: OpenReportLocationRequest,

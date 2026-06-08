@@ -7,6 +7,7 @@ export interface ChatSessionSummary {
   createdAt: number;
   updatedAt: number;
   messageCount: number;
+  archivedAt?: number;
 }
 
 export interface ChatSessionRecord extends ChatSessionSummary {
@@ -24,4 +25,9 @@ export interface UpdateChatSessionRequest {
   projectPath?: string;
   title?: string;
   chatItems?: ChatItem[];
+}
+
+export interface SessionActionResult {
+  ok: boolean;
+  message: string;
 }

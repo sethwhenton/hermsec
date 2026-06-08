@@ -48,9 +48,8 @@ function writeSessionsFile(file: SessionsFile): void {
 export function listChatSessions(projectPath?: string): ChatSessionSummary[] {
   const normalizedProjectPath = projectPath ? normalizePath(projectPath) : null;
   return readSessionsFile()
-    .sessions.filter((session) =>
-      normalizedProjectPath ? normalizePath(session.projectPath) === normalizedProjectPath : true,
-    )
+    .sessions.filter((session) => !session.archivedAt)
+    .filter((session) => (normalizedProjectPath ? normalizePath(session.projectPath) === normalizedProjectPath : true))
     .map(toSummary)
     .sort((a, b) => b.updatedAt - a.updatedAt);
 }
@@ -106,6 +105,31 @@ export function updateChatSession(request: UpdateChatSessionRequest): ChatSessio
   return next;
 }
 
+export function archiveChatSession(id: string): { ok: boolean; message: string } {
+  const file = readSessionsFile();
+  const index = file.sessions.findIndex((session) => session.id === id);
+  if (index < 0) {
+    return { ok: false, message: `Chat session not found: ${id}` };
+  }
+  file.sessions[index] = {
+    ...file.sessions[index],
+    archivedAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+  writeSessionsFile(file);
+  return { ok: true, message: "Chat archived." };
+}
+
+export function deleteChatSession(id: string): { ok: boolean; message: string } {
+  const file = readSessionsFile();
+  const next = file.sessions.filter((session) => session.id !== id);
+  if (next.length === file.sessions.length) {
+    return { ok: false, message: `Chat session not found: ${id}` };
+  }
+  writeSessionsFile({ sessions: next });
+  return { ok: true, message: "Chat deleted." };
+}
+
 function normalizeSession(session: Partial<ChatSessionRecord>): ChatSessionRecord | null {
   if (!session.id || !session.projectPath) return null;
   const chatItems = Array.isArray(session.chatItems) ? session.chatItems : [];
@@ -117,6 +141,7 @@ function normalizeSession(session: Partial<ChatSessionRecord>): ChatSessionRecor
     updatedAt: Number(session.updatedAt ?? session.createdAt ?? Date.now()),
     messageCount: countMessages(chatItems),
     chatItems,
+    ...(Number.isFinite(Number(session.archivedAt)) ? { archivedAt: Number(session.archivedAt) } : {}),
   };
 }
 
@@ -132,6 +157,7 @@ function toSummary(session: ChatSessionRecord): ChatSessionSummary {
     createdAt: session.createdAt,
     updatedAt: session.updatedAt,
     messageCount: session.messageCount,
+    ...(session.archivedAt ? { archivedAt: session.archivedAt } : {}),
   };
 }
 

@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { buildDashboardReport } from "./reportData";
 import type { ProjectStateFingerprint } from "./projectState";
+import { SCAN_METADATA_FILE, type LocalScanMetadata } from "./scanMetadata";
 
 export interface ReportArtifactResult {
   reportDir: string;
@@ -10,6 +11,7 @@ export interface ReportArtifactResult {
   onepagerHtmlPath: string;
   onepagerPdfPath?: string;
   projectStatePath: string;
+  scanMetadataPath: string;
 }
 
 export interface DashboardBundleResult {
@@ -33,6 +35,7 @@ const templateFiles = [
 export async function generateReportArtifacts(
   reportDir: string,
   projectState?: ProjectStateFingerprint,
+  scanMetadata?: LocalScanMetadata,
 ): Promise<ReportArtifactResult> {
   const normalizedReportDir = path.resolve(reportDir);
   const dashboardDir = path.join(normalizedReportDir, "dashboard");
@@ -46,6 +49,15 @@ export async function generateReportArtifacts(
     writeFileSync(path.join(targetDir, name), templates[name], "utf8");
   }
 
+  const projectStatePath = path.join(normalizedReportDir, "project-state.json");
+  const scanMetadataPath = path.join(normalizedReportDir, SCAN_METADATA_FILE);
+  if (projectState) {
+    writeFileSync(projectStatePath, JSON.stringify(projectState, null, 2), "utf8");
+  }
+  if (scanMetadata) {
+    writeFileSync(scanMetadataPath, JSON.stringify(scanMetadata, null, 2), "utf8");
+  }
+
   const report = buildDashboardReport(normalizedReportDir);
   const dataJson = JSON.stringify(report, null, 2).replace(/</g, "\\u003c");
   const data = `const HERMSEC_REPORT = ${dataJson};\nwindow.HERMSEC_REPORT = HERMSEC_REPORT;\n`;
@@ -54,12 +66,8 @@ export async function generateReportArtifacts(
 
   const dashboardHtmlPath = path.join(dashboardDir, "index.html");
   const onepagerHtmlPath = path.join(onepagerDir, "index.html");
-  const projectStatePath = path.join(normalizedReportDir, "project-state.json");
   writeFileSync(dashboardHtmlPath, dashboardHtml(), "utf8");
   writeFileSync(onepagerHtmlPath, onepagerHtml(), "utf8");
-  if (projectState) {
-    writeFileSync(projectStatePath, JSON.stringify(projectState, null, 2), "utf8");
-  }
 
   const onepagerPdfPath = await generateOnepagerPdf(onepagerHtmlPath);
   return {
@@ -68,6 +76,7 @@ export async function generateReportArtifacts(
     onepagerHtmlPath,
     ...(onepagerPdfPath ? { onepagerPdfPath } : {}),
     projectStatePath,
+    scanMetadataPath,
   };
 }
 
@@ -91,11 +100,13 @@ export function dashboardBundle(reportPathOrDir: string): DashboardBundleResult 
     let html = readFileSync(dashboardHtmlPath, "utf8");
     html = html.replace(
       /<link rel="stylesheet" href="styles-v4\.css">\s*/u,
-      `<style>${readFileSync(path.join(dashboardDir, "styles-v4.css"), "utf8")}</style>\n`,
+      `<style>${readFileSync(path.join(dashboardDir, "styles-v4.css"), "utf8")}\n${hermsecDashboardThemeCss()}</style>\n`,
     );
+    const report = buildDashboardReport(reportDir);
+    const dataJson = JSON.stringify(report, null, 2).replace(/</g, "\\u003c");
     html = html.replace(
       /<script src="data\.js"><\/script>/u,
-      `<script>${readFileSync(path.join(dashboardDir, "data.js"), "utf8")}</script>`,
+      `<script>const HERMSEC_REPORT = ${dataJson};\nwindow.HERMSEC_REPORT = HERMSEC_REPORT;</script>`,
     );
     html = html.replace(
       /<script src="app-v4\.js"><\/script>/u,
@@ -210,6 +221,56 @@ function onepagerHtml(): string {
   <script src="app-onepager.js"></script>
 </body>
 </html>
+`;
+}
+
+function hermsecDashboardThemeCss(): string {
+  return `
+[data-theme="dark"] {
+  --bg: #09090b;
+  --surface: #111113;
+  --surface-muted: #18181b;
+  --border: rgba(244, 244, 245, 0.11);
+  --border-subtle: rgba(244, 244, 245, 0.07);
+  --text: #f4f4f5;
+  --text-secondary: #d4d4d8;
+  --text-muted: #71717a;
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-subtle: rgba(29, 78, 216, 0.18);
+  --accent-crimson: #ef4444;
+  --critical: #f87171;
+  --critical-bg: rgba(239, 68, 68, 0.13);
+  --high: #fb923c;
+  --high-bg: rgba(251, 146, 60, 0.13);
+  --medium: #facc15;
+  --medium-bg: rgba(250, 204, 21, 0.12);
+  --low: #a1a1aa;
+  --low-bg: rgba(161, 161, 170, 0.12);
+  --info: #93c5fd;
+  --info-bg: rgba(59, 130, 246, 0.12);
+  --success: #22c55e;
+  --success-bg: rgba(34, 197, 94, 0.12);
+  --warning: #facc15;
+  --warning-bg: rgba(250, 204, 21, 0.12);
+  --error: #ef4444;
+  --error-bg: rgba(239, 68, 68, 0.13);
+  --skipped: #71717a;
+  --skipped-bg: rgba(113, 113, 122, 0.12);
+  --bezel-bg: rgba(244, 244, 245, 0.04);
+  --chip-bg: rgba(244, 244, 245, 0.06);
+  --header-bg: rgba(9, 9, 11, 0.88);
+  --tab-shell-bg: rgba(244, 244, 245, 0.04);
+  --tab-inner-bg: rgba(17, 17, 19, 0.9);
+  --hover-elevated: rgba(244, 244, 245, 0.08);
+  --surface-highlight: rgba(244, 244, 245, 0.06);
+  --evidence-inset: rgba(244, 244, 245, 0.035);
+  --link-arrow-bg: rgba(59, 130, 246, 0.16);
+  --agent-border: rgba(59, 130, 246, 0.24);
+  --page-grid-color: rgba(244, 244, 245, 0.035);
+  --page-glow-cool: radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, transparent 70%);
+  --page-glow-warm: radial-gradient(circle, rgba(239, 68, 68, 0.08) 0%, transparent 70%);
+}
 `;
 }
 

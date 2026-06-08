@@ -8,15 +8,17 @@ import type {
 import type {
   OpenReportLocationRequest,
   OpenReportLocationResult,
+  ScanControlResult,
   ScanProgressEvent,
   ScanProjectRequest,
   ScanProjectResult,
 } from "../renderer/src/types/scan";
-import type { ProjectDirectory } from "../renderer/src/types/projects";
+import type { ProjectActionResult, ProjectDirectory } from "../renderer/src/types/projects";
 import type {
   ChatSessionRecord,
   ChatSessionSummary,
   CreateChatSessionRequest,
+  SessionActionResult,
   UpdateChatSessionRequest,
 } from "../renderer/src/types/sessions";
 import type {
@@ -45,6 +47,10 @@ const hermsecApi = {
   },
   projects: {
     list: (): Promise<ProjectDirectory[]> => ipcRenderer.invoke("projects:list"),
+    archive: (projectPath: string): Promise<ProjectActionResult> =>
+      ipcRenderer.invoke("projects:archive", projectPath),
+    delete: (projectPath: string): Promise<ProjectActionResult> =>
+      ipcRenderer.invoke("projects:delete", projectPath),
   },
   sessions: {
     list: (projectPath?: string): Promise<ChatSessionSummary[]> =>
@@ -55,6 +61,10 @@ const hermsecApi = {
       ipcRenderer.invoke("sessions:create", request),
     update: (request: UpdateChatSessionRequest): Promise<ChatSessionRecord> =>
       ipcRenderer.invoke("sessions:update", request),
+    archive: (id: string): Promise<SessionActionResult> =>
+      ipcRenderer.invoke("sessions:archive", id),
+    delete: (id: string): Promise<SessionActionResult> =>
+      ipcRenderer.invoke("sessions:delete", id),
   },
   reports: {
     explain: (request: ExplainReportRequest): Promise<ExplainReportResult> =>
@@ -69,6 +79,7 @@ const hermsecApi = {
   scan: {
     project: (request: ScanProjectRequest): Promise<ScanProjectResult> =>
       ipcRenderer.invoke("scan:project", request),
+    cancel: (): Promise<ScanControlResult> => ipcRenderer.invoke("scan:cancel"),
     onProgress: (listener: (event: ScanProgressEvent) => void): (() => void) => {
       const handler = (_event: Electron.IpcRendererEvent, progress: ScanProgressEvent) => listener(progress);
       ipcRenderer.on("scan:progress", handler);

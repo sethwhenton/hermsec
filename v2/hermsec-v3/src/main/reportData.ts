@@ -1,5 +1,7 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import type { ProjectStateFingerprint } from "./projectState";
+import { SCAN_METADATA_FILE, type LocalScanMetadata } from "./scanMetadata";
 
 type Severity = "critical" | "high" | "medium" | "low" | "info";
 type ScannerStatus = "completed" | "running" | "waiting" | "skipped" | "failed";
@@ -72,14 +74,25 @@ interface HermsecTool {
 export interface DashboardReport {
   scan: {
     id: string;
+    scanId: string;
     project: string;
+    projectName: string;
     targetPath: string;
+    projectPath: string;
     mode: string;
+    scanMode: string;
     generatedAt: string;
+    startedAt: string;
+    finishedAt: string;
+    reportGeneratedAt: string;
     durationMs: number;
+    duration: string;
     branch: string;
+    gitBranch: string;
     commit: string;
+    gitCommit: string;
     dirty: boolean;
+    dirtyWorkingTree: boolean;
   };
   summary: {
     totalFindings: number;
@@ -95,7 +108,9 @@ export interface DashboardReport {
   };
   posture: {
     label: string;
+    grade: string;
     className: string;
+    class: string;
     headline: string;
     detail: string;
     recommendation: string;
@@ -197,26 +212,61 @@ const severityRank: Record<Severity, number> = {
 export function buildDashboardReport(reportDir: string): DashboardReport {
   const dir = path.resolve(reportDir);
   const document = readReportDocument(dir);
+  const metadata = readJson<LocalScanMetadata>(path.join(dir, SCAN_METADATA_FILE));
+  const projectState = readJson<ProjectStateFingerprint>(path.join(dir, "project-state.json"));
   const findings = normalizeFindings(document.findings ?? readLooseFindings(dir));
   const summary = normalizeSummary(document.summary, findings, document.tools ?? []);
   const sortedFindings = [...findings].sort(
     (a, b) => (severityRank[a.severity] ?? 5) - (severityRank[b.severity] ?? 5),
   );
-  const project = document.target?.displayName ?? document.workspaceName ?? path.basename(document.target?.value ?? dir);
-  const targetPath = document.target?.value ?? path.dirname(dir);
-  const generatedAt = document.generatedAt ?? document.run?.finishedAt ?? new Date().toISOString();
+  const targetPath = metadata?.projectPath ?? document.target?.value ?? path.dirname(dir);
+  const project = document.target?.displayName ?? document.workspaceName ?? path.basename(targetPath);
+  const reportGeneratedAt =
+    validIso(document.generatedAt) ??
+    validIso(metadata?.reportGeneratedAt) ??
+    validIso(document.run?.finishedAt) ??
+    reportMtimeIso(dir);
+  const startedAt = validIso(document.run?.startedAt) ?? validIso(metadata?.startedAt) ?? reportGeneratedAt;
+  const finishedAt = validIso(document.run?.finishedAt) ?? validIso(metadata?.finishedAt) ?? reportGeneratedAt;
+  const durationMs = Number(document.run?.durationMs ?? metadata?.durationMs ?? 0);
+  const branch =
+    document.run?.git?.branch ??
+    metadata?.gitBranch ??
+    projectState?.gitBranch ??
+    (projectState?.kind === "filesystem" || metadata?.projectStateKind === "filesystem" ? "filesystem" : "unknown");
+  const commit =
+    document.run?.git?.commit ??
+    metadata?.gitCommit ??
+    projectState?.gitHead ??
+    metadata?.projectFingerprint?.slice(0, 12) ??
+    projectState?.fileStateHash?.slice(0, 12) ??
+    "not recorded";
+  const dirty = Boolean(document.run?.git?.dirty ?? metadata?.dirtyWorkingTree ?? projectState?.gitDirty ?? false);
+  const scanId = document.scanId ?? document.run?.id ?? metadata?.scanId ?? `scan-${Date.parse(reportGeneratedAt) || Date.now()}`;
+  const scanMode = document.run?.mode ?? metadata?.mode ?? "online";
 
   return {
     scan: {
-      id: document.scanId ?? document.run?.id ?? `scan-${Date.now()}`,
+      id: scanId,
+      scanId,
       project,
+      projectName: project,
       targetPath,
-      mode: document.run?.mode ?? "online",
-      generatedAt,
-      durationMs: Number(document.run?.durationMs ?? 0),
-      branch: document.run?.git?.branch ?? "unknown",
-      commit: document.run?.git?.commit ?? "unknown",
-      dirty: Boolean(document.run?.git?.dirty),
+      projectPath: targetPath,
+      mode: scanMode,
+      scanMode,
+      generatedAt: reportGeneratedAt,
+      startedAt,
+      finishedAt,
+      reportGeneratedAt,
+      durationMs,
+      duration: formatDuration(durationMs),
+      branch,
+      gitBranch: branch,
+      commit,
+      gitCommit: commit,
+      dirty,
+      dirtyWorkingTree: dirty,
     },
     summary,
     posture: buildPosture(summary),
@@ -270,6 +320,34 @@ function readLooseFindings(reportDir: string): HermsecFinding[] {
 function readJson<T>(filePath: string): T | null {
   if (!existsSync(filePath)) return null;
   return JSON.parse(readFileSync(filePath, "utf8")) as T;
+}
+
+function validIso(value?: string): string | undefined {
+  if (!value) return undefined;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : undefined;
+}
+
+function reportMtimeIso(reportDir: string): string {
+  try {
+    return new Date(statSync(path.join(reportDir, "report-document.json")).mtimeMs).toISOString();
+  } catch {
+    try {
+      return new Date(statSync(reportDir).mtimeMs).toISOString();
+    } catch {
+      return new Date().toISOString();
+    }
+  }
+}
+
+function formatDuration(durationMs: number): string {
+  if (!Number.isFinite(durationMs) || durationMs <= 0) return "not recorded";
+  if (durationMs < 1000) return `${Math.round(durationMs)}ms`;
+  const seconds = durationMs / 1000;
+  if (seconds < 60) return `${seconds.toFixed(seconds >= 10 ? 0 : 1)}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remaining = Math.round(seconds % 60);
+  return `${minutes}m ${remaining}s`;
 }
 
 function normalizeSummary(
@@ -386,7 +464,9 @@ function buildPosture(summary: DashboardReport["summary"]): DashboardReport["pos
   if (summary.critical > 0 || summary.high > 0 || summary.secrets > 0) {
     return {
       label: "At Risk",
+      grade: "At Risk",
       className: "at-risk",
+      class: "at-risk",
       headline: `${summary.critical + summary.high} high-priority issues need attention`,
       detail: `${summary.totalFindings} findings were produced across the configured scanner stack.`,
       recommendation: "Fix command execution, exposed secret, and injection findings first, then rerun the scan.",
@@ -396,7 +476,9 @@ function buildPosture(summary: DashboardReport["summary"]): DashboardReport["pos
   if (summary.medium > 0) {
     return {
       label: "Review Needed",
+      grade: "Review Needed",
       className: "review",
+      class: "review",
       headline: "No critical blockers, but medium-risk work remains",
       detail: `${summary.medium} medium findings should be reviewed before release.`,
       recommendation: "Patch medium severity findings and keep the scheduled scan active.",
@@ -405,7 +487,9 @@ function buildPosture(summary: DashboardReport["summary"]): DashboardReport["pos
 
   return {
     label: "Stable",
+    grade: "Stable",
     className: "stable",
+    class: "stable",
     headline: "No urgent findings in this scan",
     detail: "Hermsec did not find critical, high, or medium evidence in the latest run.",
     recommendation: "Keep monitoring dependencies, secrets, and risky code paths on a schedule.",

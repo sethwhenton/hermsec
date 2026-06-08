@@ -49,11 +49,10 @@
   }
 
   function formatDate(iso) {
-    try {
-      return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-    } catch {
-      return iso;
-    }
+    if (!iso) return "Not recorded";
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return "Not recorded";
+    return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   }
 
   function showToast(msg) {
@@ -581,15 +580,12 @@
   }
 
   function initTheme() {
-    const saved = localStorage.getItem("hermsec-theme");
-    const theme = saved || "dark";
-    document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.theme = "dark";
   }
 
   function toggleTheme() {
-    const next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
-    document.documentElement.dataset.theme = next;
-    localStorage.setItem("hermsec-theme", next);
+    document.documentElement.dataset.theme = "dark";
+    showToast("Dashboard uses the Hermsec app theme.");
   }
 
   function bindEvents() {

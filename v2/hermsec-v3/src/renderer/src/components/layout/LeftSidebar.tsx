@@ -1,14 +1,17 @@
 import { motion } from "framer-motion";
 import {
+  Archive,
   Clock,
   Folder,
   MessageSquarePlus,
+  MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
   Search,
   Settings,
+  Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { cn } from "@/lib/cn";
 import { getHermsecApi } from "@/lib/ipc";
 import { useSessionStore } from "@/store/sessionStore";
@@ -34,14 +37,16 @@ export function LeftSidebar() {
   const refreshSessions = useSessionStore((s) => s.refreshSessions);
   const startNewSession = useSessionStore((s) => s.startNewSession);
   const openSession = useSessionStore((s) => s.openSession);
+  const archiveSession = useSessionStore((s) => s.archiveSession);
+  const deleteSession = useSessionStore((s) => s.deleteSession);
   const [projects, setProjects] = useState<ProjectDirectory[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [projectsError, setProjectsError] = useState<string | null>(null);
   const [newChatPickerOpen, setNewChatPickerOpen] = useState(false);
+  const [openActions, setOpenActions] = useState<{ type: "project" | "session"; id: string } | null>(null);
   const sessionsByProject = useMemo(() => groupSessionsByProject(sessions), [sessions]);
 
-  useEffect(() => {
-    let active = true;
+  const loadProjects = useCallback(async () => {
     const api = getHermsecApi();
     if (!api) {
       setProjectsLoading(false);
@@ -49,23 +54,27 @@ export function LeftSidebar() {
       return;
     }
 
-    api.projects
-      .list()
-      .then((items) => {
-        if (!active) return;
-        setProjects(items);
-        setProjectsError(null);
-      })
-      .catch((error: unknown) => {
-        if (!active) return;
-        setProjectsError(error instanceof Error ? error.message : "Could not load project folders.");
-      })
-      .finally(() => {
-        if (active) setProjectsLoading(false);
-      });
+    setProjectsLoading(true);
+    try {
+      const items = await api.projects.list();
+      setProjects(items);
+      setProjectsError(null);
+    } catch (error) {
+      setProjectsError(error instanceof Error ? error.message : "Could not load project folders.");
+    } finally {
+      setProjectsLoading(false);
+    }
+  }, []);
 
+  useEffect(() => {
+    void loadProjects();
+  }, [loadProjects]);
+
+  useEffect(() => {
+    const close = () => setOpenActions(null);
+    window.addEventListener("click", close);
     return () => {
-      active = false;
+      window.removeEventListener("click", close);
     };
   }, []);
 
@@ -94,6 +103,48 @@ export function LeftSidebar() {
     await updateSettings({ defaultProjectDir: session.projectPath });
     await openSession(session.id);
     setView("chat");
+  };
+
+  const handleArchiveSession = async (session: ChatSessionSummary) => {
+    setOpenActions(null);
+    await archiveSession(session.id);
+  };
+
+  const handleDeleteSession = async (session: ChatSessionSummary) => {
+    setOpenActions(null);
+    await deleteSession(session.id);
+  };
+
+  const handleArchiveProject = async (project: ProjectDirectory) => {
+    setOpenActions(null);
+    const api = getHermsecApi();
+    if (!api) return;
+    await api.projects.archive(project.path);
+    if (settings?.defaultProjectDir.toLowerCase() === project.path.toLowerCase()) {
+      startNewSession();
+    }
+    await loadProjects();
+  };
+
+  const handleDeleteProject = async (project: ProjectDirectory) => {
+    setOpenActions(null);
+    const api = getHermsecApi();
+    if (!api) return;
+    await api.projects.delete(project.path);
+    if (settings?.defaultProjectDir.toLowerCase() === project.path.toLowerCase()) {
+      startNewSession();
+    }
+    await loadProjects();
+  };
+
+  const openRowActions = (
+    event: MouseEvent,
+    type: "project" | "session",
+    id: string,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setOpenActions((current) => (current?.type === type && current.id === id ? null : { type, id }));
   };
 
   return (
@@ -157,49 +208,79 @@ export function LeftSidebar() {
                 const projectSessions = sessionsByProject.get(normalizePath(project.path)) ?? [];
                 return (
                   <div key={project.id} className="pb-1">
-                    <button
-                      type="button"
-                      title={project.path}
-                      aria-pressed={activeProject}
-                      onClick={() => {
-                        void handleSelectProject(project);
-                      }}
-                      className={cn(
-                        "flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors",
-                        activeProject && !currentSessionId
-                          ? "bg-white/8 text-foreground"
-                          : "text-muted hover:bg-white/5 hover:text-foreground",
-                      )}
+                    <div
+                      className="group/project relative"
+                      onContextMenu={(event) => openRowActions(event, "project", project.id)}
                     >
-                      <Folder className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate">{project.name}</span>
-                        <span className="block truncate text-[10px] text-muted-foreground">
-                          {project.path}
-                        </span>
-                      </span>
-                    </button>
-                    {projectSessions.map((session) => (
                       <button
-                        key={session.id}
                         type="button"
-                        title={session.title}
-                        aria-pressed={currentSessionId === session.id}
+                        title={project.path}
+                        aria-pressed={activeProject}
                         onClick={() => {
-                          void handleSelectSession(session);
+                          void handleSelectProject(project);
                         }}
                         className={cn(
-                          "mt-0.5 flex w-full items-center gap-2 rounded-md py-1.5 pr-2 pl-7 text-left text-xs transition-colors",
-                          currentSessionId === session.id
+                          "flex w-full items-start gap-2 rounded-xl px-2 py-2 pr-8 text-left text-xs transition-colors duration-150 ease-out",
+                          activeProject && !currentSessionId
                             ? "bg-white/8 text-foreground"
                             : "text-muted hover:bg-white/5 hover:text-foreground",
                         )}
                       >
-                        <span className="min-w-0 flex-1 truncate">{session.title}</span>
-                        <span className="shrink-0 text-[10px] text-muted-foreground">
-                          {formatRelativeTime(session.updatedAt)}
+                        <Folder className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate">{project.name}</span>
+                          <span className="block truncate text-[10px] text-muted-foreground">
+                            {project.path}
+                          </span>
                         </span>
                       </button>
+                      <RowActionButton
+                        label={`Project actions for ${project.name}`}
+                        onClick={(event) => openRowActions(event, "project", project.id)}
+                      />
+                      {openActions?.type === "project" && openActions.id === project.id ? (
+                        <ActionMenu
+                          onArchive={() => void handleArchiveProject(project)}
+                          onDelete={() => void handleDeleteProject(project)}
+                        />
+                      ) : null}
+                    </div>
+                    {projectSessions.map((session) => (
+                      <div
+                        key={session.id}
+                        className="group/session relative mt-0.5"
+                        onContextMenu={(event) => openRowActions(event, "session", session.id)}
+                      >
+                        <button
+                          type="button"
+                          title={session.title}
+                          aria-pressed={currentSessionId === session.id}
+                          onClick={() => {
+                            void handleSelectSession(session);
+                          }}
+                          className={cn(
+                            "flex w-full items-center gap-2 rounded-xl py-1.5 pr-8 pl-7 text-left text-xs transition-colors duration-150 ease-out",
+                            currentSessionId === session.id
+                              ? "bg-white/8 text-foreground"
+                              : "text-muted hover:bg-white/5 hover:text-foreground",
+                          )}
+                        >
+                          <span className="min-w-0 flex-1 truncate">{session.title}</span>
+                          <span className="shrink-0 text-[10px] text-muted-foreground">
+                            {formatRelativeTime(session.updatedAt)}
+                          </span>
+                        </button>
+                        <RowActionButton
+                          label={`Session actions for ${session.title}`}
+                          onClick={(event) => openRowActions(event, "session", session.id)}
+                        />
+                        {openActions?.type === "session" && openActions.id === session.id ? (
+                          <ActionMenu
+                            onArchive={() => void handleArchiveSession(session)}
+                            onDelete={() => void handleDeleteSession(session)}
+                          />
+                        ) : null}
+                      </div>
                     ))}
                   </div>
                 );
@@ -255,6 +336,58 @@ function formatRelativeTime(timestamp: number): string {
   if (diffMs < day) return `${Math.floor(diffMs / hour)}h`;
   if (diffMs < week) return `${Math.floor(diffMs / day)}d`;
   return `${Math.floor(diffMs / week)}w`;
+}
+
+function RowActionButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-[opacity,background-color,color] duration-150 ease-out hover:bg-white/8 hover:text-foreground group-hover/project:opacity-100 group-hover/session:opacity-100"
+    >
+      <MoreHorizontal className="h-3.5 w-3.5" />
+    </button>
+  );
+}
+
+function ActionMenu({
+  onArchive,
+  onDelete,
+}: {
+  onArchive: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div
+      className="absolute right-1.5 top-8 z-40 w-36 overflow-hidden rounded-xl border border-border bg-surface-elevated/95 p-1 text-xs shadow-[0_18px_60px_rgba(0,0,0,0.42)] backdrop-blur"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-muted transition-colors hover:bg-white/6 hover:text-foreground"
+        onClick={onArchive}
+      >
+        <Archive className="h-3.5 w-3.5" />
+        Archive
+      </button>
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-danger transition-colors hover:bg-danger/10"
+        onClick={onDelete}
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+        Delete
+      </button>
+    </div>
+  );
 }
 
 function SidebarButton({

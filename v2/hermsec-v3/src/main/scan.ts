@@ -1,10 +1,11 @@
 import { shell } from "electron";
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import type {
   OpenReportLocationRequest,
   OpenReportLocationResult,
+  ScanControlResult,
   ScanProgressEvent,
   ScanProjectRequest,
   ScanProjectResult,
@@ -12,6 +13,7 @@ import type {
 } from "../renderer/src/types/scan";
 import { generateReportArtifacts } from "./reportArtifacts";
 import { getProjectStateFingerprint, projectStateChanged } from "./projectState";
+import type { LocalScanMetadata } from "./scanMetadata";
 
 const CLI_RELATIVE_PATH = path.join("dist", "src", "bin", "hermsec.js");
 const DEFAULT_SCAN_TIMEOUT_MS = 180_000;
@@ -34,6 +36,20 @@ type CliOutcome = {
 };
 
 type ScanProgressCallback = (event: ScanProgressEvent) => void;
+
+type ActiveScanControl = {
+  child?: ChildProcessWithoutNullStreams;
+  canceled: boolean;
+};
+
+class ScanCanceledError extends Error {
+  constructor() {
+    super("Scan stopped.");
+    this.name = "ScanCanceledError";
+  }
+}
+
+let activeScan: ActiveScanControl | null = null;
 
 const PROGRESS_STAGES = [
   { id: "hermsec-heuristics", label: "Hermsec heuristics" },
@@ -120,6 +136,17 @@ export async function scanProject(
   request: ScanProjectRequest = {},
   onProgress?: ScanProgressCallback,
 ): Promise<ScanProjectResult> {
+  if (activeScan) {
+    return {
+      ok: false,
+      message: "A scan is already running. Stop or restart it before starting another scan.",
+      error: "scan-already-running",
+    };
+  }
+
+  const control: ActiveScanControl = { canceled: false };
+  activeScan = control;
+
   try {
     const root = findHermsecRoot();
     const cliPath = path.join(root, CLI_RELATIVE_PATH);
@@ -151,6 +178,8 @@ export async function scanProject(
       };
     }
 
+    const scanStartedMs = Date.now();
+    const scanStartedAt = new Date(scanStartedMs).toISOString();
     emitInitialProgress(onProgress);
 
     const args = [
@@ -169,14 +198,33 @@ export async function scanProject(
       args.push("--no-model");
     }
 
-    const cli = await runWithStageProgress(root, args, onProgress);
+    const cli = await runWithStageProgress(root, args, control, onProgress);
+    throwIfCanceled(control);
     const parsed = parseCliJson(cli.stdout);
     const summary = normalizeSummary(parsed.data?.scan?.summary);
     const htmlPath = parsed.data?.report?.htmlPath;
     const actualReportDir = htmlPath ? path.dirname(htmlPath) : latestReportDir(reportDir) ?? reportDir;
     emitToolProgressFromReport(actualReportDir, onProgress);
     emitProgress(onProgress, "report-generation", "Report generation", "running", "Writing dashboard and one-page report artifacts.");
-    const artifacts = await generateReportArtifacts(actualReportDir, currentProjectState);
+    const finishedAt = new Date().toISOString();
+    const scanMetadata: LocalScanMetadata = {
+      projectPath: parsed.data?.scan?.target ?? targetPath,
+      reportDir: actualReportDir,
+      scanId: parsed.data?.scan?.id ?? `scan-${scanStartedMs}`,
+      mode,
+      startedAt: scanStartedAt,
+      finishedAt,
+      reportGeneratedAt: finishedAt,
+      durationMs: Number(parsed.data?.scan?.durationMs ?? Date.now() - scanStartedMs),
+      ...(currentProjectState.gitBranch ? { gitBranch: currentProjectState.gitBranch } : {}),
+      ...(currentProjectState.gitHead ? { gitCommit: currentProjectState.gitHead } : {}),
+      ...(typeof currentProjectState.gitDirty === "boolean" ? { dirtyWorkingTree: currentProjectState.gitDirty } : {}),
+      projectStateKind: currentProjectState.kind,
+      projectFingerprint: currentProjectState.fingerprint,
+    };
+    throwIfCanceled(control);
+    const artifacts = await generateReportArtifacts(actualReportDir, currentProjectState, scanMetadata);
+    throwIfCanceled(control);
     emitProgress(onProgress, "report-generation", "Report generation", "completed", "Dashboard artifacts were written.");
     emitProgress(
       onProgress,
@@ -201,17 +249,31 @@ export async function scanProject(
       projectState: currentProjectState,
     };
   } catch (error) {
+    if (error instanceof ScanCanceledError) {
+      emitCanceledProgress(onProgress);
+      return {
+        ok: false,
+        canceled: true,
+        message: "Scan stopped.",
+        error: "scan-canceled",
+      };
+    }
     return {
       ok: false,
       message: error instanceof Error ? error.message : "Hermsec scan failed.",
       error: error instanceof Error ? error.message : String(error),
     };
+  } finally {
+    if (activeScan === control) {
+      activeScan = null;
+    }
   }
 }
 
 async function runWithStageProgress(
   cwd: string,
   args: string[],
+  control: ActiveScanControl,
   onProgress?: ScanProgressCallback,
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   let index = 0;
@@ -234,9 +296,27 @@ async function runWithStageProgress(
   }, 3500);
 
   try {
-    return await runNodeCli(cwd, args);
+    return await runNodeCli(cwd, args, control);
   } finally {
     clearInterval(timer);
+  }
+}
+
+export function cancelActiveScan(): ScanControlResult {
+  if (!activeScan) {
+    return { ok: false, message: "No scan is currently running." };
+  }
+
+  activeScan.canceled = true;
+  if (activeScan.child?.pid) {
+    killProcessTree(activeScan.child);
+  }
+  return { ok: true, message: "Scan stop requested." };
+}
+
+function throwIfCanceled(control: ActiveScanControl): void {
+  if (control.canceled) {
+    throw new ScanCanceledError();
   }
 }
 
@@ -260,6 +340,12 @@ function emitProgress(
     ...(message ? { message } : {}),
     timestamp: Date.now(),
   });
+}
+
+function emitCanceledProgress(onProgress?: ScanProgressCallback): void {
+  for (const stage of PROGRESS_STAGES) {
+    emitProgress(onProgress, stage.id, stage.label, "canceled", "Scan was stopped by the user.");
+  }
 }
 
 function emitToolProgressFromReport(reportDir: string, onProgress?: ScanProgressCallback): void {
@@ -313,7 +399,11 @@ function latestReportDir(configuredReportDir: string): string | undefined {
   }
 }
 
-function runNodeCli(cwd: string, args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+function runNodeCli(
+  cwd: string,
+  args: string[],
+  control: ActiveScanControl,
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return new Promise((resolve, reject) => {
     const nodeBinary = process.platform === "win32" ? "node.exe" : "node";
     const child = spawn(nodeBinary, args, {
@@ -321,11 +411,12 @@ function runNodeCli(cwd: string, args: string[]): Promise<{ stdout: string; stde
       env: process.env,
       windowsHide: true,
     });
+    control.child = child;
 
     let stdout = "";
     let stderr = "";
     const timer = windowlessTimeout(() => {
-      child.kill("SIGKILL");
+      killProcessTree(child);
       reject(new Error(`Hermsec scan timed out after ${DEFAULT_SCAN_TIMEOUT_MS / 1000}s.`));
     }, DEFAULT_SCAN_TIMEOUT_MS);
 
@@ -341,6 +432,13 @@ function runNodeCli(cwd: string, args: string[]): Promise<{ stdout: string; stde
     });
     child.on("close", (exitCode) => {
       clearTimeout(timer);
+      if (control.child === child) {
+        delete control.child;
+      }
+      if (control.canceled) {
+        reject(new ScanCanceledError());
+        return;
+      }
       if (exitCode && !stdout.trim()) {
         reject(new Error(stderr.trim() || `Hermsec CLI exited with code ${exitCode}.`));
         return;
@@ -348,6 +446,15 @@ function runNodeCli(cwd: string, args: string[]): Promise<{ stdout: string; stde
       resolve({ stdout, stderr, exitCode: exitCode ?? 0 });
     });
   });
+}
+
+function killProcessTree(child: ChildProcessWithoutNullStreams): void {
+  if (!child.pid) return;
+  if (process.platform === "win32") {
+    spawn("taskkill.exe", ["/PID", String(child.pid), "/T", "/F"], { windowsHide: true });
+    return;
+  }
+  child.kill("SIGTERM");
 }
 
 function windowlessTimeout(callback: () => void, ms: number): NodeJS.Timeout {

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, FolderOpen, RefreshCw } from "lucide-react";
+import { ArrowLeft, FolderOpen, RefreshCw, RotateCw, Square } from "lucide-react";
 import { useEffect } from "react";
 import { requireHermsecApi } from "@/lib/ipc";
 import { useReportStore } from "@/store/reportStore";
@@ -16,6 +16,8 @@ export function DashboardView() {
   const hydrateLatest = useReportStore((s) => s.hydrateLatest);
   const loadDashboard = useReportStore((s) => s.loadDashboard);
   const runScan = useReportStore((s) => s.runScan);
+  const cancelScan = useReportStore((s) => s.cancelScan);
+  const restartScan = useReportStore((s) => s.restartScan);
   const scanRunning = useReportStore((s) => s.scanRunning);
   const progress = useReportStore((s) => s.progress);
   const toast = useReportStore((s) => s.toast);
@@ -86,6 +88,30 @@ export function DashboardView() {
             <RefreshCw className={scanRunning ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
             Scan again
           </Button>
+          {scanRunning ? (
+            <>
+              <Button
+                variant="outline"
+                size="icon"
+                title="Stop scan"
+                onClick={() => {
+                  void cancelScan();
+                }}
+              >
+                <Square className="h-3.5 w-3.5 fill-current" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Restart scan"
+                onClick={() => {
+                  void restartScan();
+                }}
+              >
+                <RotateCw className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          ) : null}
         </div>
       </div>
 

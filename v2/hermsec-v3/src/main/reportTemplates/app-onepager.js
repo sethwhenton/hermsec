@@ -43,11 +43,10 @@
   }
 
   function formatDate(iso) {
-    try {
-      return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-    } catch {
-      return iso;
-    }
+    if (!iso) return "Not recorded";
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return "Not recorded";
+    return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   }
 
   function renderVersionNav() {

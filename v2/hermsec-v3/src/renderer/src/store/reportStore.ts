@@ -9,10 +9,14 @@ interface ReportState {
   progress: ScanProgressEvent[];
   scanRunning: boolean;
   toast: string | null;
+  lastScanRequest: ScanProjectRequest | null;
+  restartAfterCancel: boolean;
   subscribeToProgress: () => void;
   hydrateLatest: (projectPath?: string) => Promise<LatestReportResult | null>;
   loadDashboard: (reportDir?: string) => Promise<string | null>;
   runScan: (request: ScanProjectRequest) => Promise<ScanProjectResult>;
+  cancelScan: () => Promise<void>;
+  restartScan: (request?: ScanProjectRequest) => Promise<void>;
   setToast: (message: string | null) => void;
   clearProgress: () => void;
 }
@@ -25,6 +29,8 @@ export const useReportStore = create<ReportState>((set, get) => ({
   progress: [],
   scanRunning: false,
   toast: null,
+  lastScanRequest: null,
+  restartAfterCancel: false,
 
   subscribeToProgress: () => {
     if (unsubscribeProgress) return;
@@ -59,7 +65,7 @@ export const useReportStore = create<ReportState>((set, get) => ({
   },
 
   runScan: async (request) => {
-    set({ scanRunning: true, progress: [], toast: null });
+    set({ scanRunning: true, progress: [], toast: null, lastScanRequest: request });
     try {
       const result = await requireHermsecApi().scan.project(request);
       if (result.ok && !result.unchanged) {
@@ -81,10 +87,38 @@ export const useReportStore = create<ReportState>((set, get) => ({
       if (result.unchanged) {
         set({ toast: "No project changes since the last scan." });
       }
+      if (result.canceled) {
+        set({ toast: "Scan stopped." });
+      }
       return result;
     } finally {
-      set({ scanRunning: false });
+      const restartRequest = get().restartAfterCancel ? get().lastScanRequest : null;
+      set({ scanRunning: false, restartAfterCancel: false });
+      if (restartRequest) {
+        window.setTimeout(() => {
+          void get().runScan(restartRequest);
+        }, 120);
+      }
     }
+  },
+
+  cancelScan: async () => {
+    const result = await requireHermsecApi().scan.cancel();
+    set({ toast: result.message });
+  },
+
+  restartScan: async (request) => {
+    const currentRequest = request ?? get().lastScanRequest;
+    if (!currentRequest) {
+      set({ toast: "No scan request is available to restart." });
+      return;
+    }
+    if (get().scanRunning) {
+      set({ restartAfterCancel: true, lastScanRequest: currentRequest, toast: "Restarting scan..." });
+      await requireHermsecApi().scan.cancel();
+      return;
+    }
+    void get().runScan(currentRequest);
   },
 
   setToast: (toast) => set({ toast }),

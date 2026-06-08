@@ -1,4 +1,6 @@
 import { useEffect, useRef } from "react";
+import { ScanProgressDisclosure } from "@/components/scan/ScanProgressPanel";
+import { useReportStore } from "@/store/reportStore";
 import { useUiStore } from "@/store/uiStore";
 import { AgentQuestions } from "./AgentQuestions";
 import { MessageBubble } from "./MessageBubble";
@@ -12,11 +14,13 @@ export function MessageList({ onQuestionsSubmit }: MessageListProps) {
   const chatItems = useUiStore((s) => s.chatItems);
   const isAgentThinking = useUiStore((s) => s.isAgentThinking);
   const updateChatItem = useUiStore((s) => s.updateChatItem);
+  const progress = useReportStore((s) => s.progress);
+  const scanRunning = useReportStore((s) => s.scanRunning);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatItems, isAgentThinking]);
+  }, [chatItems, isAgentThinking, progress.length, scanRunning]);
 
   return (
     <div className="h-full min-h-0 overflow-y-auto px-4 pb-16 pt-20 sm:px-6 sm:pt-24">
@@ -43,6 +47,11 @@ export function MessageList({ onQuestionsSubmit }: MessageListProps) {
           );
         })}
         <ThinkingRow visible={isAgentThinking} />
+        <ScanProgressDisclosure
+          events={progress}
+          running={scanRunning}
+          visible={isAgentThinking && (scanRunning || progress.length > 0)}
+        />
         <div ref={bottomRef} />
       </div>
     </div>

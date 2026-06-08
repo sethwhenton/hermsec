@@ -8,10 +8,17 @@ import type {
 import type { OpenReportLocationRequest, ScanProjectRequest } from "../renderer/src/types/scan";
 import type { CreateChatSessionRequest, UpdateChatSessionRequest } from "../renderer/src/types/sessions";
 import { testProvider } from "./providerTest";
-import { listProjectDirectories } from "./projects";
+import { archiveProjectDirectory, deleteProjectDirectory, listProjectDirectories } from "./projects";
 import { explainReport, getDashboardBundle, latestReport, openArtifact } from "./reports";
-import { openReportLocation, scanProject } from "./scan";
-import { createChatSession, getChatSession, listChatSessions, updateChatSession } from "./sessions";
+import { cancelActiveScan, openReportLocation, scanProject } from "./scan";
+import {
+  archiveChatSession,
+  createChatSession,
+  deleteChatSession,
+  getChatSession,
+  listChatSessions,
+  updateChatSession,
+} from "./sessions";
 import { readSettings, updateSettings } from "./store";
 
 export function registerIpcHandlers(): void {
@@ -56,6 +63,14 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("projects:list", () => listProjectDirectories());
 
+  ipcMain.handle("projects:archive", (_event, projectPath: string) =>
+    archiveProjectDirectory(projectPath),
+  );
+
+  ipcMain.handle("projects:delete", (_event, projectPath: string) =>
+    deleteProjectDirectory(projectPath),
+  );
+
   ipcMain.handle("sessions:list", (_event, projectPath?: string) => listChatSessions(projectPath));
 
   ipcMain.handle("sessions:get", (_event, id: string) => getChatSession(id));
@@ -67,6 +82,10 @@ export function registerIpcHandlers(): void {
   ipcMain.handle("sessions:update", (_event, request: UpdateChatSessionRequest) =>
     updateChatSession(request),
   );
+
+  ipcMain.handle("sessions:archive", (_event, id: string) => archiveChatSession(id));
+
+  ipcMain.handle("sessions:delete", (_event, id: string) => deleteChatSession(id));
 
   ipcMain.handle("reports:explain", (_event, request: ExplainReportRequest) =>
     explainReport(request),
@@ -87,6 +106,8 @@ export function registerIpcHandlers(): void {
   ipcMain.handle("scan:project", async (event, request: ScanProjectRequest) =>
     scanProject(request, (progress) => event.sender.send("scan:progress", progress)),
   );
+
+  ipcMain.handle("scan:cancel", () => cancelActiveScan());
 
   ipcMain.handle("scan:open-report-location", async (_event, request: OpenReportLocationRequest) =>
     openReportLocation(request),
