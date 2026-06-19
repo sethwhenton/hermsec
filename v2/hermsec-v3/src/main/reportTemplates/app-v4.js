@@ -138,6 +138,8 @@
       scan.gitCommit && scan.gitCommit.length > 7 ? scan.gitCommit.slice(0, 7) : scan.gitCommit;
     const metaSummary = `${esc(scan.gitBranch)} · ${esc(commitShort)} · ${esc(scan.scanId)} · ${esc(scan.duration)}`;
 
+    const assistLabel = R.assist?.label || scan.assistModeLabel || "Scanner + model summary";
+
     document.getElementById("report-header").innerHTML = `
       <div class="header-inner">
         <div class="header-row header-row-main">
@@ -157,7 +159,7 @@
               <div class="verdict-meta-pills">
                 <span class="header-pill"><strong>${R.fixPlan.fixNow.length}</strong> fix now</span>
                 <span class="header-pill">${esc(scan.duration)}</span>
-                <span class="header-pill">${esc(scan.scanMode)}</span>
+                <span class="header-pill">${esc(assistLabel)}</span>
               </div>
             </div>
           </div>
@@ -195,6 +197,7 @@
             <div class="meta-item"><span>Branch</span><code>${esc(scan.gitBranch)}</code></div>
             <div class="meta-item"><span>Commit</span><code>${esc(scan.gitCommit)}</code></div>
             <div class="meta-item"><span>Dirty tree</span><span>${scan.dirtyWorkingTree ? "Yes" : "No"}</span></div>
+            <div class="meta-item"><span>Assist mode</span><span>${esc(assistLabel)}</span></div>
             <div class="meta-item"><span>Started</span><span>${formatDate(scan.startedAt)}</span></div>
             <div class="meta-item"><span>Finished</span><span>${formatDate(scan.finishedAt)}</span></div>
             <div class="meta-item"><span>Report</span><span>${formatDate(scan.reportGeneratedAt)}</span></div>
@@ -233,12 +236,44 @@
       </li>`
       )
       .join("");
+    const assist = R.assist || {};
+    const topGroups = (assist.groups || []).slice(0, 3);
+    const assistGroups =
+      topGroups.length > 0
+        ? topGroups
+            .map(
+              (group) => `
+        <div class="assist-mini-group">
+          <div>
+            <strong>${esc(group.title)}</strong>
+            <span>${esc((group.scanners || []).join(" + ") || "Scanner evidence")}</span>
+          </div>
+          <span class="badge badge-${esc(group.merged ? "confirmed" : "info")}">${esc(group.merged ? "merged" : "single")}</span>
+        </div>`
+            )
+            .join("")
+        : `<div class="assist-mini-group"><div><strong>No merge groups yet</strong><span>Hermsec will populate this after scanner findings are available.</span></div></div>`;
+    const assistCard = `
+      <div class="assist-mode-card reveal-item">
+        <div class="assist-mode-copy">
+          <span class="section-eyebrow">Assist mode</span>
+          <h3>${esc(assist.label || R.scan.assistModeLabel || "Scanner + model summary")}</h3>
+          <p>${esc(assist.summary?.note || "Scanner output remains authoritative; the model can only support scanner-backed evidence.")}</p>
+        </div>
+        <div class="assist-mode-stats">
+          <div><strong>${assist.summary?.groups ?? 0}</strong><span>groups</span></div>
+          <div><strong>${assist.summary?.mergedGroups ?? 0}</strong><span>merged</span></div>
+          <div><strong>${assist.matchingPairs?.length ?? 0}</strong><span>pairs</span></div>
+        </div>
+        <div class="assist-mini-list">${assistGroups}</div>
+      </div>`;
 
     document.getElementById("panel-pipeline").innerHTML = `
       <h2 class="section-title">Scanner pipeline</h2>
       <p class="section-desc">Status and output from each tool in the Hermsec scan pipeline.</p>
       <div class="bezel bezel-panel">
         <div class="bezel-inner">
+          ${assistCard}
           <ul class="pipeline-list reveal-stagger">${items}</ul>
         </div>
       </div>`;
@@ -369,6 +404,36 @@
   }
 
   function renderAdjudication() {
+    const assistGroups = R.assist?.groups || [];
+    const mergeMap =
+      assistGroups.length > 0
+        ? `
+      <div class="assist-merge-list reveal-stagger">
+        ${assistGroups
+          .slice(0, 8)
+          .map(
+            (group) => `
+        <article class="assist-merge-card reveal-item bezel bezel-card">
+          <div class="bezel-inner assist-merge-card-inner">
+            <div class="assist-merge-header">
+              <div>
+                <span class="finding-id">${esc(group.id)}</span>
+                <h3>${esc(group.title)}</h3>
+              </div>
+              <span class="badge badge-${esc(group.merged ? "confirmed" : "info")}">${esc(group.confidence)}</span>
+            </div>
+            <div class="assist-evidence-row">
+              <span>${esc((group.scanners || []).join(" + ") || "scanner evidence")}</span>
+              <span>${esc((group.locations || []).slice(0, 2).join(", ") || "No file location")}</span>
+              <span>${esc((group.findingIds || []).join(", "))}</span>
+            </div>
+            <p>${esc(group.modelSupport || "Model support is limited to this scanner-backed group.")}</p>
+          </div>
+        </article>`
+          )
+          .join("")}
+      </div>`
+        : `<div class="empty-state"><strong>No scanner merge map</strong><p>This report has no assistant merge artifact yet.</p></div>`;
     const cards = R.adjudications
       .map((a) => {
         const f = R.findings.find((x) => x.id === a.findingId);
@@ -396,6 +461,9 @@
     document.getElementById("panel-adjudication").innerHTML = `
       <h2 class="section-title">Agent adjudication</h2>
       <p class="section-desc">Model review of scanner evidence. Does not replace scanner output or manual verification.</p>
+      <h3 class="subsection-title">Scanner-confirmed merge map</h3>
+      ${mergeMap}
+      <h3 class="subsection-title">Finding verdicts</h3>
       <div class="adj-list reveal-stagger">${cards}</div>`;
     document.getElementById("panel-adjudication").dataset.printTitle = "Agent Adjudication";
   }

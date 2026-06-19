@@ -1,3 +1,5 @@
+import type { HermsecScanAssistMode } from "./scan";
+
 export type ProviderAuthKind = "api_key" | "custom" | "environment";
 
 export interface ModelConfig {
@@ -23,7 +25,7 @@ export interface GeneralSettings {
   terminalShell: string;
   showReasoning: boolean;
   privacyMode: boolean;
-  scanMode: string;
+  scanMode: HermsecScanAssistMode;
   thinkingLevel: "fast" | "balanced" | "deep";
   contextWindow: "compact" | "standard" | "large";
 }
@@ -40,6 +42,7 @@ export interface AutomationSettings {
   lastResult?: string;
   lastReportDir?: string;
   lastProjectStateFingerprint?: string;
+  scanMode?: HermsecScanAssistMode;
 }
 
 export interface AppSettings {

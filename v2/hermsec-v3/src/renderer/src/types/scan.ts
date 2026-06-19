@@ -1,4 +1,5 @@
 export type HermsecScanMode = "online";
+export type HermsecScanAssistMode = "scanner-model-summary" | "deep-assisted";
 
 export interface ProjectStateFingerprint {
   kind: "git" | "filesystem";
@@ -25,6 +26,7 @@ export interface ScanProjectRequest {
   targetPath?: string;
   reportDir?: string;
   mode?: HermsecScanMode;
+  assistMode?: HermsecScanAssistMode;
   useModel?: boolean;
   skipIfUnchanged?: boolean;
   previousProjectState?: ProjectStateFingerprint;
@@ -51,6 +53,9 @@ export interface ScanProjectResult {
   onepagerHtmlPath?: string;
   onepagerPdfPath?: string;
   scanId?: string;
+  assistMode?: HermsecScanAssistMode;
+  assistModeLabel?: string;
+  assistArtifactPath?: string;
   summary?: ScanSummary;
   durationMs?: number;
   projectState?: ProjectStateFingerprint;

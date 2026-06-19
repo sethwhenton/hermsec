@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import type { ProjectStateFingerprint } from "./projectState";
+import { SCAN_ASSIST_FILE, type ScanAssistArtifact } from "./scanAssist";
 import { SCAN_METADATA_FILE, type LocalScanMetadata } from "./scanMetadata";
 
 type Severity = "critical" | "high" | "medium" | "low" | "info";
@@ -28,7 +29,7 @@ interface HermsecDocument {
   };
   summary?: Partial<Record<Severity | "total" | "secrets" | "scannerFailures" | "confirmedCves" | "knownExploited", number>>;
   findings?: HermsecFinding[];
-  explanations?: Record<string, unknown>;
+  explanations?: Record<string, ModelExplanation | undefined>;
   tools?: HermsecTool[];
   evidence?: {
     findingEvidence?: Record<string, Array<{ scanner?: string; message?: string }>>;
@@ -50,7 +51,17 @@ interface HermsecFinding {
   cve?: string[];
   ghsa?: string[];
   osv?: string[];
-  package?: string;
+  identifiers?: {
+    cve?: string[];
+    ghsa?: string[];
+    osv?: string[];
+  };
+  package?: string | {
+    ecosystem?: string;
+    name?: string;
+    installedVersion?: string;
+    version?: string;
+  };
   version?: string;
   description?: string;
   evidence?: string;
@@ -81,6 +92,8 @@ export interface DashboardReport {
     projectPath: string;
     mode: string;
     scanMode: string;
+    assistMode: string;
+    assistModeLabel: string;
     generatedAt: string;
     startedAt: string;
     finishedAt: string;
@@ -190,6 +203,19 @@ export interface DashboardReport {
     limitations: string[];
     redactionNote: string;
   };
+  assist: ScanAssistArtifact & {
+    available: boolean;
+  };
+}
+
+interface ModelExplanation {
+  title?: string;
+  impact?: string;
+  evidenceSummary?: string;
+  suggestedFix?: string;
+  confidenceReason?: string;
+  safeNextSteps?: string[];
+  cveUsage?: string;
 }
 
 interface FixPlanItem {
@@ -213,6 +239,7 @@ export function buildDashboardReport(reportDir: string): DashboardReport {
   const dir = path.resolve(reportDir);
   const document = readReportDocument(dir);
   const metadata = readJson<LocalScanMetadata>(path.join(dir, SCAN_METADATA_FILE));
+  const assist = readScanAssist(dir, metadata);
   const projectState = readJson<ProjectStateFingerprint>(path.join(dir, "project-state.json"));
   const findings = normalizeFindings(document.findings ?? readLooseFindings(dir));
   const summary = normalizeSummary(document.summary, findings, document.tools ?? []);
@@ -244,6 +271,8 @@ export function buildDashboardReport(reportDir: string): DashboardReport {
   const dirty = Boolean(document.run?.git?.dirty ?? metadata?.dirtyWorkingTree ?? projectState?.gitDirty ?? false);
   const scanId = document.scanId ?? document.run?.id ?? metadata?.scanId ?? `scan-${Date.parse(reportGeneratedAt) || Date.now()}`;
   const scanMode = document.run?.mode ?? metadata?.mode ?? "online";
+  const assistMode = metadata?.assistMode ?? assist.mode;
+  const assistModeLabel = metadata?.assistModeLabel ?? assist.label;
 
   return {
     scan: {
@@ -255,6 +284,8 @@ export function buildDashboardReport(reportDir: string): DashboardReport {
       projectPath: targetPath,
       mode: scanMode,
       scanMode,
+      assistMode,
+      assistModeLabel,
       generatedAt: reportGeneratedAt,
       startedAt,
       finishedAt,
@@ -272,7 +303,7 @@ export function buildDashboardReport(reportDir: string): DashboardReport {
     posture: buildPosture(summary),
     scanners: normalizeScanners(document.tools ?? [], findings),
     findings: sortedFindings,
-    adjudications: buildAdjudications(sortedFindings),
+    adjudications: buildAdjudications(sortedFindings, document.explanations ?? {}),
     threatModel: buildThreatModel(sortedFindings, targetPath),
     intelligence: buildIntelligence(sortedFindings),
     fixPlan: buildFixPlan(sortedFindings),
@@ -293,6 +324,33 @@ export function buildDashboardReport(reportDir: string): DashboardReport {
         ? "Potential secrets were redacted in the evidence bundle."
         : "Hermsec did not apply additional redaction metadata for this run.",
     },
+    assist,
+  };
+}
+
+function readScanAssist(reportDir: string, metadata: LocalScanMetadata | null): DashboardReport["assist"] {
+  const artifact = readJson<ScanAssistArtifact>(path.join(reportDir, SCAN_ASSIST_FILE));
+  if (artifact) {
+    return { ...artifact, available: true };
+  }
+
+  const mode = metadata?.assistMode ?? "scanner-model-summary";
+  const label = metadata?.assistModeLabel ?? (mode === "deep-assisted" ? "Deep assisted scan" : "Scanner + model summary");
+  return {
+    schemaVersion: "1.0",
+    generatedAt: metadata?.reportGeneratedAt ?? new Date().toISOString(),
+    mode,
+    label,
+    available: false,
+    summary: {
+      groups: 0,
+      mergedGroups: 0,
+      singleScannerGroups: 0,
+      scannerEvidenceItems: 0,
+      note: "No scanner evidence merge artifact was written for this report.",
+    },
+    groups: [],
+    matchingPairs: [],
   };
 }
 
@@ -384,6 +442,8 @@ function normalizeFindings(findings: HermsecFinding[]): DashboardReport["finding
     const severity = normalizeSeverity(finding.severity);
     const category = finding.category || categoryFromFinding(finding);
     const file = finding.location?.file ?? "";
+    const packageName = packageNameForFinding(finding);
+    const packageVersion = packageVersionForFinding(finding);
     return {
       id: finding.id ?? `finding-${index + 1}`,
       title: finding.title ?? "Security finding",
@@ -393,11 +453,11 @@ function normalizeFindings(findings: HermsecFinding[]): DashboardReport["finding
       tool: finding.tool ?? "hermsec",
       ruleId: finding.ruleId ?? "hermsec.finding",
       cwe: arrayValue(finding.cwe),
-      cve: arrayValue(finding.cve),
-      ghsa: arrayValue(finding.ghsa),
-      osv: arrayValue(finding.osv),
-      package: finding.package ?? "",
-      version: finding.version ?? "",
+      cve: arrayValue(finding.cve ?? finding.identifiers?.cve),
+      ghsa: arrayValue(finding.ghsa ?? finding.identifiers?.ghsa),
+      osv: arrayValue(finding.osv ?? finding.identifiers?.osv),
+      package: packageName,
+      version: packageVersion,
       file,
       ...(finding.location?.startLine ? { line: finding.location.startLine } : {}),
       evidence: finding.evidence ?? "",
@@ -496,13 +556,19 @@ function buildPosture(summary: DashboardReport["summary"]): DashboardReport["pos
   };
 }
 
-function buildAdjudications(findings: DashboardReport["findings"]): DashboardReport["adjudications"] {
+function buildAdjudications(
+  findings: DashboardReport["findings"],
+  explanations: Record<string, ModelExplanation | undefined>,
+): DashboardReport["adjudications"] {
   return findings.slice(0, 12).map((finding) => {
     const fixFirst = finding.severity === "critical" || finding.severity === "high" || finding.category === "secret";
+    const explanation = explanations[finding.id];
     return {
       findingId: finding.id,
       verdict: finding.confidence === "confirmed" ? "confirmed" : fixFirst ? "likely exploitable" : "needs review",
       reasoning:
+        explanation?.evidenceSummary ||
+        explanation?.confidenceReason ||
         finding.description ||
         `Hermsec scanner evidence flagged ${finding.ruleId}. The raw evidence remains available in the appendix.`,
       priority: fixFirst ? "Fix before shipping" : finding.severity === "medium" ? "Fix this week" : "Monitor",
@@ -510,6 +576,9 @@ function buildAdjudications(findings: DashboardReport["findings"]): DashboardRep
       trustBoundary: trustBoundaryForFinding(finding),
       assumptions: [
         "Hermsec used scanner evidence from this run only.",
+        explanation
+          ? "Model explanation text was accepted only when supported by supplied scanner evidence."
+          : "No accepted model explanation was available for this finding.",
         "Human review should confirm business context before accepting residual risk.",
       ],
     };
@@ -642,6 +711,18 @@ function normalizeSeverity(value?: string): Severity {
 function arrayValue(value?: string[] | string): string[] {
   if (!value) return [];
   return Array.isArray(value) ? value.filter(Boolean) : [value].filter(Boolean);
+}
+
+function packageNameForFinding(finding: HermsecFinding): string {
+  if (!finding.package) return "";
+  if (typeof finding.package === "string") return finding.package;
+  return finding.package.name ?? "";
+}
+
+function packageVersionForFinding(finding: HermsecFinding): string {
+  if (finding.version) return finding.version;
+  if (!finding.package || typeof finding.package === "string") return "";
+  return finding.package.installedVersion ?? finding.package.version ?? "";
 }
 
 function categoryFromFinding(finding: HermsecFinding): string {

@@ -1,10 +1,13 @@
 import { Clock, Edit3, MoreHorizontal, Play, X } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
+import { normalizeScanAssistMode, scanModeLabel } from "@/lib/scanModes";
 import { useReportStore } from "@/store/reportStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useUiStore } from "@/store/uiStore";
+import { ScanModeSegmentedControl } from "@/components/scan/ScanModeSegmentedControl";
 import { Button } from "@/components/ui/Button";
+import type { HermsecScanAssistMode } from "@/types/scan";
 import type { AutomationFrequency } from "@/types/settings";
 
 export function AutomationsView() {
@@ -19,15 +22,18 @@ export function AutomationsView() {
   if (!settings) return null;
 
   const automation = settings.automation;
+  const currentScanMode = normalizeScanAssistMode(automation.scanMode ?? settings.general.scanMode);
   const projectName = settings.defaultProjectDir ? folderName(settings.defaultProjectDir) : "No project selected";
   const schedule = `${formatFrequency(automation)} at ${formatTime(automation.time)}`;
-  const statusLabel = automation.enabled ? schedule : "Disabled";
+  const statusLabel = automation.enabled ? `${schedule} - ${scanModeLabel(currentScanMode)}` : "Disabled";
 
-  const runNow = async () => {
+  const runNow = async (assistModeOverride?: HermsecScanAssistMode) => {
+    const assistMode = normalizeScanAssistMode(assistModeOverride ?? automation.scanMode ?? settings.general.scanMode);
     const result = await runScan({
       targetPath: settings.defaultProjectDir,
       reportDir: settings.defaultReportDir,
       mode: "online",
+      assistMode,
       useModel: true,
       skipIfUnchanged: true,
       previousProjectState: latestReport?.projectState,
@@ -35,6 +41,7 @@ export function AutomationsView() {
     await updateSettings({
       automation: {
         ...automation,
+        scanMode: assistMode,
         lastCheckedAt: new Date().toISOString(),
         lastResult: result.unchanged ? "No project changes since the last scan." : result.message,
         ...(result.projectState?.fingerprint
@@ -144,7 +151,7 @@ function AutomationEditorDialog({
   scanRunning,
 }: {
   onClose: () => void;
-  onRunNow: () => Promise<void>;
+  onRunNow: (assistMode?: HermsecScanAssistMode) => Promise<void>;
   scanRunning: boolean;
 }) {
   const settings = useSettingsStore((s) => s.settings);
@@ -155,6 +162,9 @@ function AutomationEditorDialog({
   const [intervalDays, setIntervalDays] = useState(settings?.automation.intervalDays ?? 1);
   const [time, setTime] = useState(settings?.automation.time ?? "09:00");
   const [enabled, setEnabled] = useState(settings?.automation.enabled ?? false);
+  const [scanMode, setScanMode] = useState<HermsecScanAssistMode>(
+    normalizeScanAssistMode(settings?.automation.scanMode ?? settings?.general.scanMode),
+  );
 
   if (!settings) return null;
 
@@ -166,6 +176,7 @@ function AutomationEditorDialog({
         frequency,
         intervalDays: normalizeIntervalDays(intervalDays),
         time,
+        scanMode,
       },
     });
     onClose();
@@ -173,7 +184,7 @@ function AutomationEditorDialog({
 
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/50 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-[360px] rounded-2xl border border-border bg-surface-elevated p-4 shadow-[0_22px_80px_rgba(0,0,0,0.48)]">
+      <div className="w-full max-w-[440px] rounded-2xl border border-border bg-surface-elevated p-4 shadow-[0_22px_80px_rgba(0,0,0,0.48)]">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
             <Clock className="mt-0.5 h-4 w-4 text-accent" />
@@ -256,12 +267,20 @@ function AutomationEditorDialog({
           />
         </label>
 
+        <div className="mb-4">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-xs text-muted">Scan assist mode</span>
+            <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted">per run</span>
+          </div>
+          <ScanModeSegmentedControl value={scanMode} onChange={setScanMode} />
+        </div>
+
         <div className="mb-4 rounded-lg border border-border bg-background p-3 text-xs text-muted">
           Last result: {settings.automation.lastResult ?? "No automation run yet."}
         </div>
 
         <div className="flex items-center justify-between gap-2">
-          <Button variant="outline" size="sm" disabled={scanRunning} onClick={() => void onRunNow()}>
+          <Button variant="outline" size="sm" disabled={scanRunning} onClick={() => void onRunNow(scanMode)}>
             <Play className="h-3.5 w-3.5" />
             Run now
           </Button>

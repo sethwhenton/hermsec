@@ -64,6 +64,7 @@ export function AppShell() {
           targetPath: settings.defaultProjectDir,
           reportDir: settings.defaultReportDir,
           mode: "online",
+          assistMode: settings.automation.scanMode ?? settings.general.scanMode,
           useModel: true,
           skipIfUnchanged: true,
           previousProjectState: latest?.projectState,

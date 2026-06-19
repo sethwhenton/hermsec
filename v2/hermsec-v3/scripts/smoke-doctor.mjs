@@ -17,15 +17,13 @@ if (!existsSync(electronBinary)) {
 
 const env = {
   ...process.env,
-  HERMSEC_HOME: process.env.HERMSEC_HOME ?? resolve(root, ".hermsec-v3", "smoke-home"),
-  HERMSEC_SMOKE_DASHBOARD: "true",
-  HERMSEC_SMOKE_DASHBOARD_OUT:
-    process.env.HERMSEC_SMOKE_DASHBOARD_OUT ?? resolve(root, "../..", ".hermsec", "v3-dashboard-smoke"),
+  HERMSEC_HOME: process.env.HERMSEC_HOME ?? resolve(root, ".hermsec-v3", "doctor-smoke-home"),
+  HERMSEC_SMOKE_DOCTOR: "true",
 };
 
 const child = spawn(electronBinary, [
   ".",
-  "--smoke-dashboard",
+  "--smoke-doctor",
   "--disable-gpu",
   "--disable-gpu-compositing",
   "--disable-software-rasterizer",
@@ -39,9 +37,9 @@ const child = spawn(electronBinary, [
 
 const timer = setTimeout(() => {
   child.kill("SIGKILL");
-  console.error("Hermsec dashboard smoke test timed out.");
+  console.error("Hermsec doctor smoke test timed out.");
   process.exit(1);
-}, 300_000);
+}, 120_000);
 
 child.on("exit", (code) => {
   clearTimeout(timer);

@@ -54,6 +54,7 @@
     const p = R.posture;
     const commitShort =
       scan.gitCommit && scan.gitCommit.length > 7 ? scan.gitCommit.slice(0, 7) : scan.gitCommit;
+    const assistLabel = R.assist?.label || scan.assistModeLabel || "Scanner + model summary";
 
     document.getElementById("op-cover").innerHTML = `
       <div class="op-cover-top">
@@ -74,7 +75,7 @@
       </div>
       <div class="op-meta-grid">
         <div class="op-meta-item"><span>Scan ID</span><strong>${esc(scan.scanId)}</strong></div>
-        <div class="op-meta-item"><span>Mode</span><strong>${esc(scan.scanMode)}</strong></div>
+        <div class="op-meta-item"><span>Assist mode</span><strong>${esc(assistLabel)}</strong></div>
         <div class="op-meta-item"><span>Duration</span><strong>${esc(scan.duration)}</strong></div>
         <div class="op-meta-item"><span>Branch</span><code>${esc(scan.gitBranch)}</code></div>
         <div class="op-meta-item"><span>Commit</span><code>${esc(commitShort)}</code></div>

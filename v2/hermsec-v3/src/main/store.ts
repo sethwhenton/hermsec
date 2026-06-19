@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { app } from "electron";
+import type { HermsecScanAssistMode } from "../renderer/src/types/scan";
 import type { AppSettings, AutomationFrequency, DeepPartial, ProviderConfig } from "../renderer/src/types/settings";
 import { getEnvDefaults } from "./env";
 import { defaultProjectDir } from "./scan";
@@ -39,7 +40,7 @@ function defaultSettings(): AppSettings {
       terminalShell: "Auto (Default)",
       showReasoning: true,
       privacyMode: false,
-      scanMode: "online",
+      scanMode: "scanner-model-summary",
       thinkingLevel: "balanced",
       contextWindow: "standard",
     },
@@ -51,6 +52,7 @@ function defaultSettings(): AppSettings {
       frequency: "custom-days",
       intervalDays: 1,
       time: "09:00",
+      scanMode: "scanner-model-summary",
     },
     providers: [defaultProvider(env)],
   };
@@ -170,6 +172,7 @@ function normalizeSettings(settings: AppSettings): AppSettings {
       frequency: normalizeAutomationFrequency(settings.automation?.frequency),
       intervalDays: normalizeAutomationIntervalDays(settings.automation),
       time: /^\d{2}:\d{2}$/.test(settings.automation?.time ?? "") ? settings.automation.time : "09:00",
+      scanMode: normalizeScanModeSetting(settings.automation?.scanMode),
       ...(settings.automation?.lastRunAt ? { lastRunAt: settings.automation.lastRunAt } : {}),
       ...(settings.automation?.lastCheckedAt ? { lastCheckedAt: settings.automation.lastCheckedAt } : {}),
       ...(settings.automation?.lastResult ? { lastResult: settings.automation.lastResult } : {}),
@@ -183,8 +186,9 @@ function normalizeSettings(settings: AppSettings): AppSettings {
   };
 }
 
-function normalizeScanModeSetting(mode: string): string {
-  return "online";
+function normalizeScanModeSetting(mode: string | undefined): HermsecScanAssistMode {
+  if (mode === "deep-assisted") return "deep-assisted";
+  return "scanner-model-summary";
 }
 
 function normalizeThinkingLevel(level: AppSettings["general"]["thinkingLevel"] | undefined): AppSettings["general"]["thinkingLevel"] {

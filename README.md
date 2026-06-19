@@ -4,16 +4,35 @@ Hermsec is a local-first security assistant for repositories. It scans project f
 
 ## Quick Start
 
-Hermsec now has a Synara-style Electron desktop app for local workspaces, scans, intel, reports, settings, and security chat. The CLI still exists for scriptable scans.
+Hermsec now has a complete Electron desktop app for local workspaces, scans, intel, reports, settings, automations, and security chat. The Windows app package bundles the Hermsec CLI plus the scanner runtime, so users do not need to separately install Semgrep, Gitleaks, Bandit, OSV-Scanner, pip-audit, or SafeDep PMG.
+
+### Windows App
 
 ```powershell
-pmg npm ci --ignore-scripts
-node node_modules\electron\install.js
-pmg npm test
-pmg npm run start:desktop
-hermsec doctor
-hermsec scan E:\path\to\repo --out .hermsec\reports --html --md --json
+cd v2\hermsec-v3
+npm.cmd run dist:win
 ```
+
+This creates:
+
+```text
+v2\hermsec-v3\release\Hermsec Setup 0.1.0.exe
+v2\hermsec-v3\release\Hermsec 0.1.0.exe
+```
+
+Use `Hermsec Setup 0.1.0.exe` as the installer and `Hermsec 0.1.0.exe` as the portable app. These files are about 200 MB because they include the scanner toolchain and should be uploaded as GitHub Release assets instead of committed directly to git.
+
+Bundled scanner/runtime contents:
+
+- Hermsec CLI/report engine
+- Semgrep
+- Gitleaks
+- Bandit
+- OSV-Scanner
+- pip-audit
+- SafeDep PMG npm audit
+
+After install, run Doctor from chat to confirm readiness. A verified packaged build reports required `7/7`, scanners `6/6`, internet `5/5`, providers `1/1`, and health score `100`.
 
 Inside the desktop composer:
 
@@ -29,6 +48,18 @@ Inside the desktop composer:
 For development linking and registry publishing notes, see [docs/npm-install.md](docs/npm-install.md).
 
 Hermsec does not install dependencies inside scanned repositories and does not run package lifecycle scripts during scans.
+
+### CLI Development
+
+The CLI still exists for scriptable scans and development checks:
+
+```powershell
+pmg npm ci --ignore-scripts
+node node_modules\electron\install.js
+pmg npm test
+node dist\src\bin\hermsec.js doctor --json
+node dist\src\bin\hermsec.js scan E:\path\to\repo --out .hermsec\reports --html --md --json
+```
 
 ## Provider Keys
 

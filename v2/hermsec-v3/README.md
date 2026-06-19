@@ -1,6 +1,6 @@
 # Hermsec V3
 
-Standalone Electron chat shell with Codex/Cursor-style UI. UI only; backend agent plugs in via typed IPC and chat item unions.
+Standalone Electron app for Hermsec chat, scans, Doctor readiness, dashboards, reports, settings, and automations. Packaged builds include the Hermsec CLI/report engine and the scanner runtime so installed users get the full scanner stack without separate setup.
 
 ## Run
 
@@ -9,6 +9,53 @@ cd hermsec-v3
 bun install
 bun run dev
 ```
+
+## Package Windows App
+
+```powershell
+cd v2\hermsec-v3
+npm.cmd run dist:win
+```
+
+The packaging script runs:
+
+- `prepare:cli-bundle` to copy the root Hermsec CLI into `resources/hermsec-cli`
+- `prepare:runtime-tools` to prepare bundled scanner tools under `resources/runtime-tools/<platform>-<arch>`
+- `electron-builder` to create installer and portable `.exe` files
+
+Generated outputs:
+
+```text
+release\Hermsec Setup 0.1.0.exe
+release\Hermsec 0.1.0.exe
+release\win-unpacked\Hermsec.exe
+```
+
+The installer and portable app include:
+
+- Hermsec CLI/report engine
+- Semgrep
+- Gitleaks
+- Bandit
+- OSV-Scanner
+- pip-audit
+- SafeDep PMG npm audit
+
+Do not commit the generated `.exe` files directly; upload them as GitHub Release assets.
+
+## Package Smoke Checks
+
+```powershell
+$env:HERMSEC_HOME = Join-Path $env:APPDATA 'hermsec-v3'
+Start-Process -FilePath '.\release\win-unpacked\Hermsec.exe' -ArgumentList '--smoke-doctor' -Wait -PassThru
+
+$env:HERMSEC_SMOKE_DASHBOARD='true'
+$env:HERMSEC_SMOKE_USE_MODEL='false'
+$env:HERMSEC_SMOKE_PROJECT='C:\path\to\repo'
+Start-Process -FilePath '.\release\win-unpacked\Hermsec.exe' -Wait -PassThru
+```
+
+The latest verified packaged Doctor smoke reports status `ready`, health score `100`, required `7/7`, scanners `6/6`, internet `5/5`, and providers `1/1`.
 
 If you see a blank window or stale `getElectronPath` errors, use a clean dev start (kills old Electron, rebuilds `out/`):
 

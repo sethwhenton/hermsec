@@ -5,12 +5,19 @@ import { loadEnvFile } from "./env";
 import { registerIpcHandlers } from "./ipc";
 import { dashboardBundle } from "./reportArtifacts";
 import { defaultProjectDir, findHermsecRoot, scanProject } from "./scan";
+import { runDoctor } from "./doctor";
+import { configureBundledRuntime } from "./runtimeBundle";
 
 const mainDir = import.meta.dirname;
 
 let mainWindow: BrowserWindow | null = null;
 
+const dashboardSmokeMode = isDashboardSmokeMode();
+const doctorSmokeMode = isDoctorSmokeMode();
+
+configureGraphicsMode();
 configureAppPaths();
+configureBundledRuntime();
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -59,14 +66,23 @@ function createWindow(): void {
 
 app.whenReady().then(async () => {
   loadEnvFile();
-  if (process.argv.includes("--smoke-dashboard")) {
+  if (dashboardSmokeMode) {
     try {
       await runDashboardSmoke();
       app.quit();
     } catch (error) {
       console.error(error);
-      process.exitCode = 1;
+      app.exit(1);
+    }
+    return;
+  }
+  if (doctorSmokeMode) {
+    try {
+      await runDoctorSmoke();
       app.quit();
+    } catch (error) {
+      console.error(error);
+      app.exit(1);
     }
     return;
   }
@@ -99,13 +115,14 @@ function appIconPath(): string | undefined {
 }
 
 async function runDashboardSmoke(): Promise<void> {
-  const root = findHermsecRoot();
   const projectPath = process.env.HERMSEC_SMOKE_PROJECT || defaultProjectDir();
-  const reportDir = process.env.HERMSEC_SMOKE_DASHBOARD_OUT || join(root, ".hermsec", "v3-dashboard-smoke");
+  const reportDir =
+    process.env.HERMSEC_SMOKE_DASHBOARD_OUT || join(app.getPath("documents"), "Hermsec", "smoke-reports");
   const result = await scanProject({
     targetPath: projectPath,
     reportDir,
     mode: "online",
+    assistMode: "scanner-model-summary",
     useModel: process.env.HERMSEC_SMOKE_USE_MODEL !== "false",
   });
 
@@ -122,6 +139,7 @@ async function runDashboardSmoke(): Promise<void> {
     targetPath: projectPath,
     reportDir,
     mode: "online",
+    assistMode: "scanner-model-summary",
     useModel: false,
     skipIfUnchanged: true,
     previousProjectState: result.projectState,
@@ -142,6 +160,34 @@ async function runDashboardSmoke(): Promise<void> {
   );
 }
 
+async function runDoctorSmoke(): Promise<void> {
+  const progress: unknown[] = [];
+  const result = await runDoctor((event) => progress.push(event));
+  assert(result.ok, `Doctor failed: ${result.message}`);
+
+  const required = result.groups.find((group) => group.id === "required");
+  const scanners = result.groups.find((group) => group.id === "scanners");
+  const internet = result.groups.find((group) => group.id === "internet");
+  assert(required?.status === "pass", `Required checks are not ready: ${required?.message ?? "missing group"}`);
+  assert(scanners?.status === "pass", `Scanner checks are not ready: ${scanners?.message ?? "missing group"}`);
+  assert(internet?.status !== "fail", `Internet checks failed: ${internet?.message ?? "missing group"}`);
+
+  console.log(
+    JSON.stringify(
+      {
+        ok: true,
+        status: result.status,
+        healthScore: result.healthScore,
+        groups: result.groups,
+        connectivity: result.connectivity,
+        progressEvents: progress.length,
+      },
+      null,
+      2,
+    ),
+  );
+}
+
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
@@ -153,8 +199,27 @@ function configureAppPaths(): void {
   }
 }
 
+function configureGraphicsMode(): void {
+  if (!dashboardSmokeMode && !doctorSmokeMode && process.env.HERMSEC_DISABLE_GPU !== "true") {
+    return;
+  }
+
+  app.disableHardwareAcceleration();
+  app.commandLine.appendSwitch("disable-gpu");
+  app.commandLine.appendSwitch("disable-gpu-compositing");
+  app.commandLine.appendSwitch("disable-software-rasterizer");
+}
+
 function argValue(name: string): string | undefined {
   const index = process.argv.indexOf(name);
   if (index < 0) return undefined;
   return process.argv[index + 1];
+}
+
+function isDashboardSmokeMode(): boolean {
+  return process.env.HERMSEC_SMOKE_DASHBOARD === "true" || process.argv.includes("--smoke-dashboard");
+}
+
+function isDoctorSmokeMode(): boolean {
+  return process.env.HERMSEC_SMOKE_DOCTOR === "true" || process.argv.includes("--smoke-doctor");
 }

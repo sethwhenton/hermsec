@@ -13,6 +13,8 @@ export interface ContextChip {
 export interface AgentQuestionOption {
   id: string;
   label: string;
+  description?: string;
+  meta?: string;
 }
 
 export interface AgentQuestion {

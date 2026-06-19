@@ -1,0 +1,84 @@
+import { motion } from "framer-motion";
+import { FileText, Radar } from "lucide-react";
+import { useId } from "react";
+import { cn } from "@/lib/cn";
+import { scanModeOptions } from "@/lib/scanModes";
+import type { HermsecScanAssistMode } from "@/types/scan";
+
+interface ScanModeSegmentedControlProps {
+  value: HermsecScanAssistMode;
+  onChange: (value: HermsecScanAssistMode) => void;
+  compact?: boolean;
+  disabled?: boolean;
+}
+
+const modeIcons = {
+  "scanner-model-summary": FileText,
+  "deep-assisted": Radar,
+} satisfies Record<HermsecScanAssistMode, typeof FileText>;
+
+export function ScanModeSegmentedControl({
+  value,
+  onChange,
+  compact = false,
+  disabled = false,
+}: ScanModeSegmentedControlProps) {
+  const controlId = useId();
+
+  return (
+    <div
+      className={cn(
+        "grid gap-1 rounded-xl border border-border bg-background p-1",
+        compact ? "grid-cols-2" : "grid-cols-2",
+      )}
+      role="radiogroup"
+      aria-label="Scan assist mode"
+    >
+      {scanModeOptions.map((option) => {
+        const Icon = modeIcons[option.id];
+        const selected = value === option.id;
+        return (
+          <button
+            key={option.id}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            disabled={disabled}
+            onClick={() => onChange(option.id)}
+            className={cn(
+              "relative min-w-0 rounded-lg px-2.5 py-2 text-left transition-colors duration-150 ease-out focus:outline-none focus:ring-2 focus:ring-accent/40",
+              selected ? "text-foreground" : "text-muted hover:bg-white/[0.04] hover:text-foreground",
+              disabled && "pointer-events-none opacity-60",
+            )}
+          >
+            {selected ? (
+              <motion.span
+                layoutId={`scan-mode-segment-${controlId}`}
+                className="absolute inset-0 rounded-lg border border-accent/35 bg-accent-muted shadow-[0_8px_24px_rgba(0,0,0,0.18)]"
+                transition={{ type: "spring", stiffness: 520, damping: 38 }}
+              />
+            ) : null}
+            <span className="relative flex items-start gap-2">
+              <span
+                className={cn(
+                  "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border",
+                  selected ? "border-accent/35 bg-accent/15 text-accent" : "border-border bg-surface-elevated",
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-xs font-semibold">
+                  {compact ? option.shortLabel : option.label}
+                </span>
+                {!compact ? (
+                  <span className="mt-0.5 block text-[11px] leading-4 text-muted">{option.status}</span>
+                ) : null}
+              </span>
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}

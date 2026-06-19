@@ -9,7 +9,7 @@ export function rootHelp(): string {
     "  hermsec agent providers [--json]",
     "  hermsec doctor [--json]",
     "  hermsec onboard",
-    "  hermsec scan <target> [--mode auto|offline|online] [--out <dir>] [--json] [--md] [--html] [--no-model]",
+    "  hermsec scan <target> [--mode auto|offline|online] [--assist-mode scanner-model-summary|deep-assisted] [--out <dir>] [--json] [--md] [--html] [--no-model]",
     "  hermsec config get [key]",
     "  hermsec config set <key> <value>",
     "  hermsec config path",
@@ -51,7 +51,7 @@ export function commandHelp(command: string): string {
     case "doctor":
       return "Usage: hermsec doctor [--json]";
     case "scan":
-      return "Usage: hermsec scan <target> [--mode auto|offline|online] [--out <dir>] [--json] [--md] [--html] [--no-model]";
+      return "Usage: hermsec scan <target> [--mode auto|offline|online] [--assist-mode scanner-model-summary|deep-assisted] [--out <dir>] [--json] [--md] [--html] [--no-model]";
     case "config":
       return [
         "Usage: hermsec config get [key] | set <key> <value> | path",

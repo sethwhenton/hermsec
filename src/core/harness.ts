@@ -13,6 +13,7 @@ export type HarnessScanOptions = {
   cwd: string;
   target: string;
   mode: ScanMode;
+  assistMode?: "scanner-model-summary" | "deep-assisted";
   outputDirectory?: string;
   formats: OutputFormat[];
   useModel: boolean;
@@ -82,7 +83,7 @@ async function explainScanRun(
   );
 
   const agentTurn = await runAgentTurn({
-    message: "Explain these scanner findings for the Hermsec report. Use only supplied scanner evidence.",
+    message: agentPromptForAssistMode(options.assistMode),
     findings,
     provider: selection.provider,
     providerConfig,
@@ -100,6 +101,19 @@ async function explainScanRun(
       priorityActions: agentTurn.priorityActions ?? [],
     },
   };
+}
+
+function agentPromptForAssistMode(assistMode: HarnessScanOptions["assistMode"]): string {
+  if (assistMode === "deep-assisted") {
+    return [
+      "Deep assisted scan: explain, prioritize, and connect these scanner findings for the Hermsec report.",
+      "Use only supplied scanner evidence.",
+      "Do not create findings, identifiers, files, packages, or line numbers that are not present in the scanner data.",
+      "When findings appear related, say so only through the supplied evidence in the explanation fields.",
+    ].join(" ");
+  }
+
+  return "Explain these scanner findings for the Hermsec report. Use only supplied scanner evidence.";
 }
 
 function mapFormats(formats: OutputFormat[]): ReportFormat[] {

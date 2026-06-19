@@ -41,6 +41,7 @@ export function DashboardView() {
       targetPath: settings?.defaultProjectDir,
       reportDir: settings?.defaultReportDir,
       mode: "online",
+      assistMode: settings?.general.scanMode,
       useModel: true,
       skipIfUnchanged: true,
       previousProjectState: latestReport?.projectState,

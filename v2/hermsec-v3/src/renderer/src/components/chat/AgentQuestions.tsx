@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Check } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 import type { AgentQuestion } from "@/types/chat";
@@ -53,7 +54,7 @@ export function AgentQuestions({
         {questions.map((question) => (
           <div key={question.id}>
             <p className="mb-2 text-sm text-foreground">{question.prompt}</p>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {question.options.map((option) => {
                 const selected = selections[question.id]?.includes(option.id) ?? false;
                 return (
@@ -63,22 +64,32 @@ export function AgentQuestions({
                     disabled={submitted || disabled}
                     onClick={() => toggleOption(question, option.id)}
                     className={cn(
-                      "flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors",
+                      "group flex w-full items-start gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-all duration-150 ease-out",
                       selected
-                        ? "border-accent/50 bg-accent-muted text-foreground"
-                        : "border-border bg-surface text-muted hover:border-foreground/20 hover:text-foreground",
+                        ? "border-accent/55 bg-accent-muted text-foreground shadow-[0_0_0_1px_rgba(255,255,255,0.03)]"
+                        : "border-border bg-surface text-muted hover:border-foreground/20 hover:bg-white/[0.03] hover:text-foreground",
                       (submitted || disabled) && "pointer-events-none opacity-70",
                     )}
                   >
                     <span
                       className={cn(
-                        "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
+                        "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
                         selected ? "border-accent bg-accent text-background" : "border-border",
                       )}
                     >
-                      {selected && <span className="text-[10px]">✓</span>}
+                      {selected && <Check className="h-3 w-3" strokeWidth={3} />}
                     </span>
-                    {option.label}
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium leading-5">{option.label}</span>
+                      {option.description ? (
+                        <span className="mt-0.5 block text-xs leading-4 text-muted">{option.description}</span>
+                      ) : null}
+                      {option.meta ? (
+                        <span className="mt-1 inline-flex rounded-full border border-border-subtle bg-background px-2 py-0.5 text-[10px] font-medium text-muted">
+                          {option.meta}
+                        </span>
+                      ) : null}
+                    </span>
                   </button>
                 );
               })}

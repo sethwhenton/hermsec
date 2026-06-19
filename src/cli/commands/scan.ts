@@ -11,6 +11,7 @@ type ScanOptions = {
   cwd: string;
   target: string;
   mode: ScanMode;
+  assistMode?: "scanner-model-summary" | "deep-assisted";
   outputDirectory?: string;
   formats: OutputFormat[];
   useModel: boolean;
@@ -19,7 +20,7 @@ type ScanOptions = {
 export async function runScanCommand(args: string[], context: CommandContext): Promise<CliOutcome> {
   const parsed = parseArgs(args, {
     booleanFlags: ["json", "md", "html", "no-model", "help"],
-    valueFlags: ["mode", "out"],
+    valueFlags: ["mode", "out", "assist-mode"],
   });
 
   const json = parsed.flags.json === true;
@@ -46,6 +47,7 @@ export async function runScanCommand(args: string[], context: CommandContext): P
     cwd: context.cwd,
     target: resolveLocalPath(targetInput, context.cwd),
     mode,
+    assistMode: parseAssistMode(getFlagString(parsed, "assist-mode")),
     formats: selectedFormats(parsed.flags),
     useModel: parsed.flags["no-model"] !== true,
   };
@@ -60,4 +62,9 @@ export async function runScanCommand(args: string[], context: CommandContext): P
     "Scan completed.",
   );
   return toOutcome(result, json);
+}
+
+function parseAssistMode(value: string | undefined): NonNullable<ScanOptions["assistMode"]> {
+  if (value === "deep-assisted") return "deep-assisted";
+  return "scanner-model-summary";
 }

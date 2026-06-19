@@ -1,6 +1,7 @@
 import { FolderOpen } from "lucide-react";
 import { getHermsecApi } from "@/lib/ipc";
 import { useSettingsStore } from "@/store/settingsStore";
+import { ScanModeSegmentedControl } from "@/components/scan/ScanModeSegmentedControl";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -104,11 +105,14 @@ export function GeneralSettings() {
       </SettingRow>
       <SettingRow
         title="Scan mode"
-        description="Hermsec V3 scans online-only for this MVP."
+        description="Default assistance level for chat and dashboard scans."
       >
-        <span className="rounded-md border border-border bg-surface-elevated px-3 py-1.5 text-xs text-foreground">
-          Online
-        </span>
+        <div className="w-[420px]">
+          <ScanModeSegmentedControl
+            value={general.scanMode}
+            onChange={(scanMode) => void update({ general: { ...general, scanMode } })}
+          />
+        </div>
       </SettingRow>
       <SettingRow
         title="Project directory"

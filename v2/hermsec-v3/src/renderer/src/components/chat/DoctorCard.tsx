@@ -47,12 +47,14 @@ const scannerRows: Array<{ id: string; label: string; icon: LucideIcon }> = [
   { id: "command-pmg", label: "PMG", icon: ShieldAlert },
 ];
 
+const scannerIds = new Set(scannerRows.map((scanner) => scanner.id));
+
 const connectivityRows: Array<{ id: string; label: string; url: string }> = [
   { id: "github", label: "GitHub", url: "https://github.com" },
   { id: "npm", label: "npm", url: "https://registry.npmjs.org" },
   { id: "osv", label: "OSV", url: "https://api.osv.dev" },
   { id: "cisa-kev", label: "CISA KEV", url: "https://www.cisa.gov" },
-  { id: "nvd", label: "NVD", url: "https://services.nvd.nist.gov" },
+  { id: "nvd", label: "NVD", url: "https://nvd.nist.gov" },
 ];
 
 const statIcons: Record<DoctorGroupSummary["id"], LucideIcon> = {
@@ -86,6 +88,7 @@ export function DoctorCard({ result, progress = [], running = false, error }: Do
   const ringStyle = healthRingStyle(healthScore, statusTone.hex);
   const generatedTime = result?.generatedAt ? formatTime(result.generatedAt) : "Live now";
   const attention = result ? mostImportantAttention(result) : mostImportantLiveAttention(progress, error);
+  const blockers = result ? readinessBlockers(result) : [];
   const internetReady = result ? internet?.status === "pass" : hasPassingInternet(progressById);
   const cliRunning = progressById.get("doctor-cli")?.status === "running";
   const visibleConnectivity = result?.connectivity ?? buildLiveConnectivity(progressById);
@@ -98,18 +101,18 @@ export function DoctorCard({ result, progress = [], running = false, error }: Do
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
-      <div className="relative max-w-[min(700px,96%)] overflow-hidden rounded-2xl border border-border/80 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(13,13,16,0.96))] text-foreground shadow-[0_22px_70px_rgba(0,0,0,0.36)]">
+      <div className="relative max-w-[min(700px,96%)] overflow-hidden rounded-[22px] border border-border/80 bg-surface-elevated/80 text-foreground shadow-[0_16px_50px_rgba(0,0,0,0.24)] backdrop-blur">
         <motion.div
           className={cn("absolute inset-x-0 top-0 h-px", statusTone.sweep, live ? "animate-pulse" : "")}
           initial={{ scaleX: 0, transformOrigin: "left" }}
           animate={{ scaleX: 1 }}
-          transition={{ duration: 0.9, ease: "easeOut" }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
         />
-        <div className="absolute inset-x-0 top-0 h-16 bg-[radial-gradient(circle_at_12%_0%,rgba(59,130,246,0.16),transparent_42%)]" />
+        <div className="absolute inset-x-0 top-0 h-16 bg-[linear-gradient(180deg,rgba(59,130,246,0.08),transparent)]" />
         <div className="relative p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-accent/30 bg-accent/10 text-accent shadow-[0_0_24px_rgba(59,130,246,0.18)]">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-background/70 text-accent shadow-[0_10px_28px_rgba(0,0,0,0.24)]">
                 <HermsecLogo className="h-5 w-5" mode="dark" />
               </div>
               <div className="min-w-0">
@@ -126,7 +129,7 @@ export function DoctorCard({ result, progress = [], running = false, error }: Do
                 </p>
               </div>
             </div>
-            <div className="flex shrink-0 items-center gap-1.5 rounded-md border border-border/70 bg-background/45 px-2 py-1 text-xs text-muted">
+            <div className="flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-background/70 px-2 py-1 text-xs text-muted">
               <span
                 className={cn(
                   "h-1.5 w-1.5 rounded-full",
@@ -137,20 +140,20 @@ export function DoctorCard({ result, progress = [], running = false, error }: Do
             </div>
           </div>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-[170px_1fr]">
+          <div className="mt-5 grid gap-4 md:grid-cols-[150px_1fr]">
             <div className="flex items-center justify-center md:justify-start">
               <motion.div
-                className="relative flex h-32 w-32 items-center justify-center rounded-full p-2"
+                className="relative flex h-28 w-28 items-center justify-center rounded-full p-2"
                 style={ringStyle}
-                initial={{ rotate: -12, scale: 0.94 }}
+                initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ rotate: 0, scale: 1 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
               >
-                <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-white/6 bg-background/90 shadow-inner">
+                <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-border bg-background/95 shadow-inner">
                   <span className={cn("text-sm font-semibold", statusTone.text)}>
                     {live ? "Checking" : statusLabel(cardStatus === "running" ? "attention" : cardStatus)}
                   </span>
-                  <span className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
+                  <span className="mt-1 text-[1.45rem] font-semibold tabular-nums text-foreground">
                     {healthScore}%
                   </span>
                   <span className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -181,7 +184,7 @@ export function DoctorCard({ result, progress = [], running = false, error }: Do
           </div>
 
           {latestEvents.length > 0 ? (
-            <div className="mt-4 overflow-hidden rounded-xl border border-border/70 bg-background/24">
+            <div className="mt-4 overflow-hidden rounded-xl border border-border bg-background/55">
               <div className="flex items-center justify-between border-b border-border/70 px-3 py-2">
                 <div className="flex items-center gap-2 text-xs font-medium text-muted">
                   <Activity className="h-3.5 w-3.5 text-accent" />
@@ -199,9 +202,28 @@ export function DoctorCard({ result, progress = [], running = false, error }: Do
             </div>
           ) : null}
 
+          {blockers.length > 0 ? (
+            <div className="mt-4 overflow-hidden rounded-xl border border-border bg-background/55">
+              <div className="flex items-center justify-between border-b border-border/70 px-3 py-2">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted">
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+                  Readiness blockers
+                </div>
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {blockers.length} item{blockers.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+              <div className="divide-y divide-border/60">
+                {blockers.slice(0, 6).map((check) => (
+                  <ReadinessBlockerRow key={check.id} check={check} />
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <div className="mt-5 border-t border-border/70 pt-4">
             <div className="mb-2 text-xs font-medium text-muted">Scanner stack</div>
-            <div className="overflow-hidden rounded-xl border border-border/70 bg-background/24">
+            <div className="overflow-hidden rounded-xl border border-border bg-background/55">
               <div className="grid sm:grid-cols-2">
                 {scannerRows.map((scanner, index) => (
                   <ScannerRow
@@ -245,7 +267,7 @@ export function DoctorCard({ result, progress = [], running = false, error }: Do
                 HTTPS checks
               </span>
             </div>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-border bg-background/55 px-3 py-2.5">
               {visibleConnectivity.map((check) => (
                 <ConnectivityChip key={check.id} check={check} />
               ))}
@@ -365,6 +387,25 @@ function LiveEventRow({ event }: { event: DoctorProgressEvent }) {
       </div>
       <span className={cn("rounded-md px-2 py-0.5 text-[10px] font-medium leading-5", eventTone.pill)}>
         {shortStatus(event.status)}
+      </span>
+    </div>
+  );
+}
+
+function ReadinessBlockerRow({ check }: { check: DoctorCheck }) {
+  const checkTone = tone(check.status);
+  return (
+    <div className="grid grid-cols-[18px_1fr_auto] items-start gap-2 px-3 py-2 text-xs">
+      <StatusIcon status={check.status} className="mt-0.5 h-3.5 w-3.5" />
+      <div className="min-w-0">
+        <div className="truncate font-medium text-foreground">{check.label}</div>
+        <div className="mt-0.5 line-clamp-2 text-muted">{check.message}</div>
+        {check.remediation ? (
+          <div className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{check.remediation}</div>
+        ) : null}
+      </div>
+      <span className={cn("rounded-md px-2 py-0.5 text-[10px] font-medium leading-5", checkTone.pill)}>
+        {shortStatus(check.status)}
       </span>
     </div>
   );
@@ -577,6 +618,50 @@ function mostImportantAttention(result: DoctorRunResult): DoctorCheck | undefine
     message: connectivityIssue.message,
     remediation: "Check the network connection or retry when the service is reachable.",
   };
+}
+
+function readinessBlockers(result: DoctorRunResult): DoctorCheck[] {
+  const byId = new Map<string, DoctorCheck>();
+
+  for (const check of result.checks) {
+    const providerEnvSkip = check.id.startsWith("provider-env-") && check.status === "skip";
+    if (providerEnvSkip) continue;
+    if (check.status === "fail" || check.status === "warn") {
+      byId.set(check.id, check);
+    }
+  }
+
+  for (const scanner of scannerRows) {
+    const check = findCheck(result.checks, scanner.id, scanner.label);
+    if (check.status === "skip") {
+      byId.set(check.id, check);
+    }
+  }
+
+  for (const check of result.connectivity) {
+    if (check.status !== "pass") {
+      byId.set(`connectivity-${check.id}`, {
+        id: `connectivity-${check.id}`,
+        label: check.label,
+        status: check.status,
+        requirement: "recommended",
+        message: check.message,
+        remediation:
+          check.status === "fail"
+            ? "Check the network connection or retry when the service is reachable."
+            : "Hermsec can continue, but this source should be reviewed before relying on full online intelligence.",
+      });
+    }
+  }
+
+  return Array.from(byId.values()).sort((left, right) => blockerRank(left) - blockerRank(right));
+}
+
+function blockerRank(check: DoctorCheck): number {
+  if (check.status === "fail") return 0;
+  if (check.status === "warn") return 1;
+  if (scannerIds.has(check.id)) return 2;
+  return 3;
 }
 
 function groupById(

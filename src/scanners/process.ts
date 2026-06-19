@@ -1,6 +1,6 @@
-import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
+import { findExecutableOnPath } from "../shared/executable.js";
 
 export type ScannerCommandId = "semgrep" | "osv-scanner" | "gitleaks" | "bandit" | "pip-audit" | "pmg";
 
@@ -60,26 +60,9 @@ const EXPECTED_EXECUTABLE_NAMES: Record<ScannerCommandId, readonly string[]> = {
 };
 
 export function discoverCommand(command: ScannerCommandId, env: NodeJS.ProcessEnv = process.env): CommandResolution | undefined {
-  const override = env[overrideEnvName(command)];
-  if (override && isFile(override) && isExpectedExecutable(command, override)) {
-    return { command, executablePath: override };
-  }
-
-  const pathValue = env.PATH;
-  if (!pathValue) {
-    return undefined;
-  }
-
-  for (const directory of pathValue.split(path.delimiter)) {
-    if (!directory) {
-      continue;
-    }
-    for (const suffix of executableSuffixes(command, env)) {
-      const candidate = path.join(directory, `${command}${suffix}`);
-      if (isFile(candidate) && isExpectedExecutable(command, candidate)) {
-        return { command, executablePath: candidate };
-      }
-    }
+  const executablePath = findExecutableOnPath(command, env);
+  if (executablePath && isExpectedExecutable(command, executablePath)) {
+    return { command, executablePath };
   }
 
   return undefined;
@@ -241,17 +224,6 @@ function scannerEnv(extra?: Record<string, string>): NodeJS.ProcessEnv {
   };
 }
 
-function overrideEnvName(command: ScannerCommandId): string {
-  return `HERMSEC_${command.replace(/-/g, "_").toUpperCase()}_BIN`;
-}
-
-function executableSuffixes(command: string, env: NodeJS.ProcessEnv): string[] {
-  if (path.extname(command) || process.platform !== "win32") {
-    return [""];
-  }
-  return ["", ...(env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD").split(";").filter(Boolean).map((item) => item.toLowerCase())];
-}
-
 function isExpectedExecutable(command: ScannerCommandId, executablePath: string): boolean {
   const stripped = stripExecutableExtension(path.basename(executablePath).toLowerCase());
   return EXPECTED_EXECUTABLE_NAMES[command].includes(stripped);
@@ -261,10 +233,3 @@ function stripExecutableExtension(value: string): string {
   return value.replace(/\.(?:exe|cmd|bat|com)$/i, "");
 }
 
-function isFile(candidate: string): boolean {
-  try {
-    return fs.statSync(candidate).isFile();
-  } catch {
-    return false;
-  }
-}

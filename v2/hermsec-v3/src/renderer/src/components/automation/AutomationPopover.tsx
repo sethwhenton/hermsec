@@ -1,8 +1,11 @@
 import { Clock, PlayCircle, X } from "lucide-react";
 import { useState } from "react";
+import { normalizeScanAssistMode } from "@/lib/scanModes";
 import { useReportStore } from "@/store/reportStore";
 import { useSettingsStore } from "@/store/settingsStore";
+import { ScanModeSegmentedControl } from "@/components/scan/ScanModeSegmentedControl";
 import { Button } from "@/components/ui/Button";
+import type { HermsecScanAssistMode } from "@/types/scan";
 import type { AutomationFrequency } from "@/types/settings";
 
 interface AutomationPopoverProps {
@@ -27,16 +30,21 @@ export function AutomationPopover({ open, onClose }: AutomationPopoverProps) {
   const [intervalDays, setIntervalDays] = useState(settings?.automation.intervalDays ?? 1);
   const [time, setTime] = useState(settings?.automation.time ?? "09:00");
   const [enabled, setEnabled] = useState(settings?.automation.enabled ?? false);
+  const [scanMode, setScanMode] = useState<HermsecScanAssistMode>(
+    normalizeScanAssistMode(settings?.automation.scanMode ?? settings?.general.scanMode),
+  );
 
   if (!open) return null;
 
   const save = async () => {
     await updateSettings({
       automation: {
+        ...settings?.automation,
         enabled,
         frequency,
         intervalDays: normalizeIntervalDays(intervalDays),
         time,
+        scanMode,
       },
     });
     onClose();
@@ -47,6 +55,7 @@ export function AutomationPopover({ open, onClose }: AutomationPopoverProps) {
       targetPath: settings?.defaultProjectDir,
       reportDir: settings?.defaultReportDir,
       mode: "online",
+      assistMode: scanMode,
       useModel: true,
       skipIfUnchanged: true,
       previousProjectState: latestReport?.projectState,
@@ -58,6 +67,7 @@ export function AutomationPopover({ open, onClose }: AutomationPopoverProps) {
         frequency,
         intervalDays: normalizeIntervalDays(intervalDays),
         time,
+        scanMode,
         lastCheckedAt: new Date().toISOString(),
         lastResult: result.unchanged ? "No project changes since the last scan." : result.message,
         ...(result.projectState?.fingerprint
@@ -147,6 +157,14 @@ export function AutomationPopover({ open, onClose }: AutomationPopoverProps) {
           className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-accent"
         />
       </label>
+
+      <div className="mb-4">
+        <div className="mb-1.5 flex items-center justify-between">
+          <span className="text-xs text-muted">Scan assist mode</span>
+          <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted">tokens vary</span>
+        </div>
+        <ScanModeSegmentedControl value={scanMode} onChange={setScanMode} compact />
+      </div>
 
       <div className="mb-4 rounded-lg border border-border bg-background p-3 text-xs text-muted">
         Last result: {settings?.automation.lastResult ?? "No automation run yet."}

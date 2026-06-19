@@ -10,11 +10,15 @@
     "dev": "node scripts/copy-report-templates.mjs && electron-vite dev",
     "dev:clean": "node scripts/dev-clean.mjs",
     "build": "electron-vite build && node scripts/copy-report-templates.mjs",
+    "prepare:cli-bundle": "node scripts/prepare-cli-bundle.mjs",
+    "prepare:runtime-tools": "node scripts/prepare-runtime-tools.mjs",
+    "build:packaged": "npm run prepare:cli-bundle && npm run prepare:runtime-tools && npm run build",
     "preview": "electron-vite preview",
+    "smoke:doctor": "node scripts/smoke-doctor.mjs",
     "smoke:dashboard": "node scripts/smoke-dashboard.mjs",
-    "dist:win": "bun run build && npx electron-builder --win nsis portable --x64 --publish never",
-    "dist:mac": "bun run build && npx electron-builder --mac dmg zip --publish never",
-    "dist:linux": "bun run build && npx electron-builder --linux AppImage --x64 --publish never",
+    "dist:win": "npm run build:packaged && npx electron-builder --win nsis portable --x64 --publish never",
+    "dist:mac": "npm run build:packaged && npx electron-builder --mac dmg zip --publish never",
+    "dist:linux": "npm run build:packaged && npx electron-builder --linux AppImage --x64 --publish never",
     "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",
     "postinstall": "node node_modules/electron/install.js",
     "setup:electron": "node node_modules/electron/install.js"
@@ -47,7 +51,6 @@
     },
     "files": [
       "out/**/*",
-      "resources/**/*",
       "package.json"
     ],
     "extraResources": [

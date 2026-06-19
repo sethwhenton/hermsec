@@ -1,8 +1,9 @@
-import { shell } from "electron";
+import { app, shell } from "electron";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import type {
+  HermsecScanAssistMode,
   OpenReportLocationRequest,
   OpenReportLocationResult,
   ScanControlResult,
@@ -13,6 +14,8 @@ import type {
 } from "../renderer/src/types/scan";
 import { generateReportArtifacts } from "./reportArtifacts";
 import { getProjectStateFingerprint, projectStateChanged } from "./projectState";
+import { assistModeLabel, writeScanAssistArtifact } from "./scanAssist";
+import { findBundledCliRoot } from "./runtimeBundle";
 import type { LocalScanMetadata } from "./scanMetadata";
 
 const CLI_RELATIVE_PATH = path.join("dist", "src", "bin", "hermsec.js");
@@ -60,12 +63,18 @@ const PROGRESS_STAGES = [
   { id: "pip-audit", label: "pip-audit" },
   { id: "pmg", label: "SafeDep PMG npm audit" },
   { id: "vuln-intel", label: "Online vulnerability intelligence" },
+  { id: "evidence-merge", label: "Scanner evidence merge" },
   { id: "agent-review", label: "Agent report review" },
   { id: "report-generation", label: "Report generation" },
   { id: "pdf-generation", label: "PDF generation" },
 ];
 
 export function findHermsecRoot(startDir = process.cwd()): string {
+  const bundledRoot = findBundledCliRoot();
+  if (bundledRoot) {
+    return bundledRoot;
+  }
+
   let current = path.resolve(startDir);
   for (let i = 0; i < 10; i += 1) {
     if (existsSync(path.join(current, CLI_RELATIVE_PATH))) {
@@ -92,6 +101,14 @@ export function defaultProjectDir(): string {
 
 function normalizeScanMode(_mode?: ScanProjectRequest["mode"]): "online" {
   return "online";
+}
+
+function defaultReportDir(): string {
+  return path.join(app.getPath("documents"), "Hermsec", "reports");
+}
+
+function normalizeAssistMode(mode?: ScanProjectRequest["assistMode"]): HermsecScanAssistMode {
+  return mode === "deep-assisted" ? "deep-assisted" : "scanner-model-summary";
 }
 
 function normalizeSummary(summary?: Partial<ScanSummary>): ScanSummary | undefined {
@@ -151,8 +168,9 @@ export async function scanProject(
     const root = findHermsecRoot();
     const cliPath = path.join(root, CLI_RELATIVE_PATH);
     const targetPath = path.resolve(root, request.targetPath || defaultProjectDir());
-    const reportDir = path.resolve(root, request.reportDir || path.join(root, ".hermsec", "v3-reports"));
+    const reportDir = path.resolve(request.reportDir || defaultReportDir());
     const mode = normalizeScanMode(request.mode);
+    const assistMode = normalizeAssistMode(request.assistMode);
 
     if (!existsSync(targetPath)) {
       return {
@@ -180,7 +198,7 @@ export async function scanProject(
 
     const scanStartedMs = Date.now();
     const scanStartedAt = new Date(scanStartedMs).toISOString();
-    emitInitialProgress(onProgress);
+    emitInitialProgress(onProgress, assistMode);
 
     const args = [
       cliPath,
@@ -188,6 +206,8 @@ export async function scanProject(
       targetPath,
       "--mode",
       mode,
+      "--assist-mode",
+      assistMode,
       "--out",
       reportDir,
       "--json",
@@ -198,13 +218,32 @@ export async function scanProject(
       args.push("--no-model");
     }
 
-    const cli = await runWithStageProgress(root, args, control, onProgress);
+    const cli = await runWithStageProgress(root, args, control, onProgress, assistMode);
     throwIfCanceled(control);
     const parsed = parseCliJson(cli.stdout);
     const summary = normalizeSummary(parsed.data?.scan?.summary);
     const htmlPath = parsed.data?.report?.htmlPath;
     const actualReportDir = htmlPath ? path.dirname(htmlPath) : latestReportDir(reportDir) ?? reportDir;
     emitToolProgressFromReport(actualReportDir, onProgress);
+    emitProgress(
+      onProgress,
+      "evidence-merge",
+      "Scanner evidence merge",
+      "running",
+      assistMode === "deep-assisted"
+        ? "Merging matching findings across scanners for deep assisted review."
+        : "Preparing scanner-confirmed evidence summary.",
+    );
+    const assistArtifactPath = writeScanAssistArtifact(actualReportDir, assistMode);
+    emitProgress(
+      onProgress,
+      "evidence-merge",
+      "Scanner evidence merge",
+      assistArtifactPath ? "completed" : "skipped",
+      assistArtifactPath
+        ? "Scanner evidence map was written for the report."
+        : "No scanner evidence map was needed for this report.",
+    );
     emitProgress(onProgress, "report-generation", "Report generation", "running", "Writing dashboard and one-page report artifacts.");
     const finishedAt = new Date().toISOString();
     const scanMetadata: LocalScanMetadata = {
@@ -212,6 +251,8 @@ export async function scanProject(
       reportDir: actualReportDir,
       scanId: parsed.data?.scan?.id ?? `scan-${scanStartedMs}`,
       mode,
+      assistMode,
+      assistModeLabel: assistModeLabel(assistMode),
       startedAt: scanStartedAt,
       finishedAt,
       reportGeneratedAt: finishedAt,
@@ -244,6 +285,9 @@ export async function scanProject(
       onepagerHtmlPath: artifacts.onepagerHtmlPath,
       ...(artifacts.onepagerPdfPath ? { onepagerPdfPath: artifacts.onepagerPdfPath } : {}),
       ...(parsed.data?.scan?.id ? { scanId: parsed.data.scan.id } : {}),
+      assistMode,
+      assistModeLabel: assistModeLabel(assistMode),
+      ...(assistArtifactPath ? { assistArtifactPath } : {}),
       ...(summary ? { summary } : {}),
       ...(parsed.data?.scan?.durationMs ? { durationMs: parsed.data.scan.durationMs } : {}),
       projectState: currentProjectState,
@@ -275,6 +319,7 @@ async function runWithStageProgress(
   args: string[],
   control: ActiveScanControl,
   onProgress?: ScanProgressCallback,
+  assistMode: HermsecScanAssistMode = "scanner-model-summary",
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   let index = 0;
   emitProgress(
@@ -282,7 +327,7 @@ async function runWithStageProgress(
     PROGRESS_STAGES[index].id,
     PROGRESS_STAGES[index].label,
     "running",
-    `${PROGRESS_STAGES[index].label} is running.`,
+    progressRunningMessage(PROGRESS_STAGES[index].id, PROGRESS_STAGES[index].label, assistMode),
   );
 
   const timer = setInterval(() => {
@@ -292,7 +337,7 @@ async function runWithStageProgress(
     }
     index = Math.min(index + 1, PROGRESS_STAGES.length - 3);
     const current = PROGRESS_STAGES[index];
-    emitProgress(onProgress, current.id, current.label, "running", `${current.label} is running.`);
+    emitProgress(onProgress, current.id, current.label, "running", progressRunningMessage(current.id, current.label, assistMode));
   }, 3500);
 
   try {
@@ -320,9 +365,9 @@ function throwIfCanceled(control: ActiveScanControl): void {
   }
 }
 
-function emitInitialProgress(onProgress?: ScanProgressCallback): void {
+function emitInitialProgress(onProgress?: ScanProgressCallback, assistMode: HermsecScanAssistMode = "scanner-model-summary"): void {
   for (const stage of PROGRESS_STAGES) {
-    emitProgress(onProgress, stage.id, stage.label, "waiting", `${stage.label} is queued.`);
+    emitProgress(onProgress, stage.id, stage.label, "waiting", progressQueuedMessage(stage.id, stage.label, assistMode));
   }
 }
 
@@ -340,6 +385,34 @@ function emitProgress(
     ...(message ? { message } : {}),
     timestamp: Date.now(),
   });
+}
+
+function progressQueuedMessage(id: string, label: string, assistMode: HermsecScanAssistMode): string {
+  if (id === "evidence-merge") {
+    return assistMode === "deep-assisted"
+      ? "Deep assisted evidence merge is queued."
+      : "Scanner evidence summary is queued.";
+  }
+  if (id === "agent-review") {
+    return assistMode === "deep-assisted"
+      ? "Deep model-supported triage is queued after scanner evidence."
+      : "Model summary is queued after scanner evidence.";
+  }
+  return `${label} is queued.`;
+}
+
+function progressRunningMessage(id: string, label: string, assistMode: HermsecScanAssistMode): string {
+  if (id === "evidence-merge") {
+    return assistMode === "deep-assisted"
+      ? "Matching scanner findings are being merged."
+      : "Scanner-confirmed evidence is being summarized.";
+  }
+  if (id === "agent-review") {
+    return assistMode === "deep-assisted"
+      ? "Model is supporting triage over scanner-confirmed groups."
+      : "Model is summarizing scanner-backed findings.";
+  }
+  return `${label} is running.`;
 }
 
 function emitCanceledProgress(onProgress?: ScanProgressCallback): void {

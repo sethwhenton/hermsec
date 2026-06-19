@@ -3,12 +3,14 @@ import { Clock, LayoutDashboard } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { requireHermsecApi } from "@/lib/ipc";
+import { normalizeScanAssistMode, scanModeLabel, scanModeOptions } from "@/lib/scanModes";
 import { useReportStore } from "@/store/reportStore";
 import { useSessionStore } from "@/store/sessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useUiStore } from "@/store/uiStore";
 import type { AgentQuestion, ChatItem, ChatMessage } from "@/types/chat";
 import type { DoctorProgressEvent } from "@/types/doctor";
+import type { HermsecScanAssistMode } from "@/types/scan";
 import type { AppSettings, AutomationFrequency, AutomationSettings } from "@/types/settings";
 import { AutomationPopover } from "@/components/automation/AutomationPopover";
 import { Button } from "@/components/ui/Button";
@@ -52,6 +54,7 @@ type AssistantAnswer = string | {
 type ParsedAutomation = Pick<AutomationSettings, "frequency" | "intervalDays" | "time">;
 type HermsecActionRoute = "scan" | "automation" | "capabilities" | "doctor" | "fix-prompt" | "chat";
 const DOCTOR_RUN_TIMEOUT_MS = 35_000;
+const SCAN_MODE_QUESTION_ID = "scan_mode";
 
 export function ChatView() {
   const chatItems = useUiStore((s) => s.chatItems);
@@ -200,38 +203,66 @@ export function ChatView() {
         id: "hermsec_action",
         prompt: "Choose what you want Hermsec to do next.",
         options: [
-          { id: "scan_repo", label: "Scan repo" },
-          { id: "set_automation", label: "Set an automation" },
+          { id: "scan_repo", label: "Scan repo", description: "Run Hermsec against the selected project." },
+          { id: "set_automation", label: "Set an automation", description: "Schedule recurring scans while the app is open." },
         ],
       },
     ]);
 
-  const runProjectScan = async () => {
-    const result = await runScan({
-      targetPath: settings?.defaultProjectDir,
-      reportDir: settings?.defaultReportDir,
-      mode: "online",
-      useModel: true,
-    });
+  const pushScanModeQuestions = () =>
+    pushQuestionItem([
+      {
+        id: SCAN_MODE_QUESTION_ID,
+        prompt: "Choose how Hermsec should assist this scan.",
+        options: scanModeOptions.map((option) => ({
+          id: option.id,
+          label: option.label,
+          description: option.description,
+          meta: option.status,
+        })),
+      },
+    ]);
 
-    if (!result.ok) {
-      await pushMessage("assistant", `Scan failed. ${result.message}`);
-      return;
-    }
-
-    const savedPath = result.reportDir ?? result.htmlPath;
-    await pushMessage(
-      "assistant",
-      savedPath
-        ? `Scan completed. The report has been saved in your specified file directory:\n${savedPath}`
-        : "Scan completed. The report has been saved in your specified file directory.",
-      savedPath
-        ? {
-            label: "Open report folder in File Explorer",
-            path: savedPath,
-          }
-        : undefined,
+  const runProjectScan = async (assistModeInput?: HermsecScanAssistMode) => {
+    const assistMode = normalizeScanAssistMode(assistModeInput ?? settings?.general.scanMode);
+    const label = scanModeLabel(assistMode);
+    setAgentThinking(true);
+    setAgentStatus(
+      assistMode === "deep-assisted"
+        ? "Starting deep assisted scan..."
+        : "Starting scanner + model summary scan...",
     );
+    try {
+      const result = await runScan({
+        targetPath: settings?.defaultProjectDir,
+        reportDir: settings?.defaultReportDir,
+        mode: "online",
+        assistMode,
+        useModel: true,
+      });
+
+      if (!result.ok) {
+        await pushMessage("assistant", `Scan failed. ${result.message}`);
+        return;
+      }
+
+      const savedPath = result.reportDir ?? result.htmlPath;
+      await pushMessage(
+        "assistant",
+        savedPath
+          ? `${label} completed. The report has been saved in your specified file directory:\n${savedPath}`
+          : `${label} completed. The report has been saved in your specified file directory.`,
+        savedPath
+          ? {
+              label: "Open report folder in File Explorer",
+              path: savedPath,
+            }
+          : undefined,
+      );
+    } finally {
+      setAgentThinking(false);
+      setAgentStatus("Thinking...");
+    }
   };
 
   const saveAutomation = async (partial: Partial<ParsedAutomation>) => {
@@ -305,8 +336,8 @@ export function ChatView() {
 
       const route = classifyHermsecAction(text, currentItems);
       if (route === "scan") {
-        setAgentStatus("Starting the online scan pipeline...");
-        await runProjectScan();
+        setAgentStatus("Preparing scan mode choices...");
+        await pushScanModeQuestions();
         return;
       }
 
@@ -358,12 +389,30 @@ export function ChatView() {
   const handleQuestionSubmit = (answers: Record<string, string[]>) => {
     const action = answers.hermsec_action?.[0];
     if (action === "scan_repo") {
-      void handleSend("Scan project");
+      void pushScanModeQuestions();
       return;
     }
     if (action === "set_automation") {
       void continueAutomationFlow({});
       setView("chat");
+      return;
+    }
+
+    const selectedScanMode = answers[SCAN_MODE_QUESTION_ID]?.[0];
+    if (selectedScanMode) {
+      const assistMode = normalizeScanAssistMode(selectedScanMode);
+      void (async () => {
+        const currentSettings = useSettingsStore.getState().settings;
+        if (currentSettings) {
+          await updateSettings({
+            general: {
+              ...currentSettings.general,
+              scanMode: assistMode,
+            },
+          });
+        }
+        await runProjectScan(assistMode);
+      })();
       return;
     }
 

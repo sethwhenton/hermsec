@@ -36,6 +36,11 @@ type ConnectivityTarget = {
   label: string;
   url: string;
   request?: RequestInit;
+  fallback?: {
+    label: string;
+    url: string;
+    request?: RequestInit;
+  };
 };
 
 type DoctorProgressEmitter = (event: DoctorProgressEvent) => void;
@@ -75,8 +80,8 @@ const CONNECTIVITY_TARGETS: ConnectivityTarget[] = [
   {
     id: "nvd",
     label: "NVD",
-    url: "https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=1",
-    request: { method: "GET" },
+    url: "https://nvd.nist.gov/vuln",
+    request: { method: "HEAD" },
   },
 ];
 
@@ -188,7 +193,8 @@ function runNodeCli(
   timeoutMs: number,
 ): Promise<{ stdout: string; stderr: string; exitCode: number; timedOut?: boolean }> {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, args, {
+    const nodeBinary = process.platform === "win32" ? "node.exe" : "node";
+    const child = spawn(nodeBinary, args, {
       cwd,
       env: process.env,
       windowsHide: true,
@@ -312,22 +318,70 @@ async function runConnectivityChecks(
 }
 
 async function checkConnectivity(target: ConnectivityTarget): Promise<DoctorConnectivityCheck> {
+  const primary = await requestConnectivityEndpoint(target.url, target.request);
+  if (primary.ok) {
+    return {
+      id: target.id,
+      label: target.label,
+      url: target.url,
+      status: primary.reachable ? "pass" : "warn",
+      latencyMs: primary.latencyMs,
+      ...(typeof primary.statusCode === "number" ? { statusCode: primary.statusCode } : {}),
+      message: primary.reachable
+        ? `HTTPS reachable in ${primary.latencyMs} ms with HTTP ${primary.statusCode}.`
+        : `Endpoint responded in ${primary.latencyMs} ms with HTTP ${primary.statusCode}.`,
+    };
+  }
+
+  if (target.fallback) {
+    const fallback = await requestConnectivityEndpoint(target.fallback.url, target.fallback.request);
+    if (fallback.ok && fallback.reachable) {
+      return {
+        id: target.id,
+        label: target.label,
+        url: target.url,
+        status: "warn",
+        latencyMs: fallback.latencyMs,
+        ...(typeof fallback.statusCode === "number" ? { statusCode: fallback.statusCode } : {}),
+        message: `${target.label} API did not respond (${primary.message}); ${target.fallback.label} is reachable in ${fallback.latencyMs} ms with HTTP ${fallback.statusCode}.`,
+      };
+    }
+  }
+
+  return {
+    id: target.id,
+    label: target.label,
+    url: target.url,
+    status: "fail",
+    latencyMs: primary.latencyMs,
+    message: primary.message,
+  };
+}
+
+async function requestConnectivityEndpoint(
+  url: string,
+  request?: RequestInit,
+): Promise<{
+  ok: boolean;
+  reachable: boolean;
+  latencyMs: number;
+  statusCode?: number;
+  message: string;
+}> {
   const started = Date.now();
   const controller = new AbortController();
   const timer = windowlessSetTimeout(() => controller.abort(), CONNECTIVITY_TIMEOUT_MS);
 
   try {
-    const response = await fetch(target.url, {
-      ...target.request,
+    const response = await fetch(url, {
+      ...request,
       signal: controller.signal,
     });
     const latencyMs = Date.now() - started;
     const reachable = response.ok || response.status < 500;
     return {
-      id: target.id,
-      label: target.label,
-      url: target.url,
-      status: reachable ? "pass" : "warn",
+      ok: true,
+      reachable,
       latencyMs,
       statusCode: response.status,
       message: reachable
@@ -337,10 +391,8 @@ async function checkConnectivity(target: ConnectivityTarget): Promise<DoctorConn
   } catch (error) {
     const latencyMs = Date.now() - started;
     return {
-      id: target.id,
-      label: target.label,
-      url: target.url,
-      status: "fail",
+      ok: false,
+      reachable: false,
       latencyMs,
       message:
         error instanceof Error && error.name === "AbortError"
