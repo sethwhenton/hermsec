@@ -91,6 +91,71 @@ test("offline scanner heuristics flag Java servlet security sinks", () => {
   assert.equal(ruleIds.has("hermsec.java.xss"), true);
 });
 
+test("Java servlet heuristics track aliases and respect response sanitizers", () => {
+  const findings = scanFile("src/main/java/ExampleServlet.java", `
+    import javax.servlet.http.*;
+    class ExampleServlet extends HttpServlet {
+      void doPost(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        String param = request.getParameter("q");
+        String bar = param;
+        String safe = org.owasp.encoder.Encode.forHtml(bar);
+        response.getWriter().println(safe);
+        String sql = "select * from users where name = '" + bar + "'";
+        java.sql.Connection connection = null;
+        connection.prepareStatement(sql).executeQuery();
+      }
+    }
+  `);
+  const ruleIds = new Set(findings.map((finding) => finding.ruleId));
+
+  assert.equal(ruleIds.has("hermsec.java.sqli"), true);
+  assert.equal(ruleIds.has("hermsec.java.xss"), false);
+});
+
+test("Java servlet heuristics do not flag untainted constants at sensitive sinks", () => {
+  const findings = scanFile("src/main/java/ExampleServlet.java", `
+    import javax.servlet.http.*;
+    class ExampleServlet extends HttpServlet {
+      void doPost(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        String sql = "select * from users where active = 1";
+        java.sql.Connection connection = null;
+        connection.prepareStatement(sql).executeQuery();
+        response.getWriter().println("ok");
+      }
+    }
+  `);
+  const ruleIds = new Set(findings.map((finding) => finding.ruleId));
+
+  assert.equal(ruleIds.has("hermsec.java.sqli"), false);
+  assert.equal(ruleIds.has("hermsec.java.xss"), false);
+});
+
+test("Java servlet heuristics track benchmark-style cookie values into file and session sinks", () => {
+  const findings = scanFile("src/main/java/BenchmarkTest00001.java", `
+    import javax.servlet.http.*;
+    class BenchmarkTest00001 extends HttpServlet {
+      void doPost(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        javax.servlet.http.Cookie[] theCookies = request.getCookies();
+        String param = "noCookieValueSupplied";
+        if (theCookies != null) {
+          for (javax.servlet.http.Cookie theCookie : theCookies) {
+            param = java.net.URLDecoder.decode(theCookie.getValue(), "UTF-8");
+          }
+        }
+        String fileName = "/tmp/" + param;
+        new java.io.FileInputStream(new java.io.File(fileName));
+        request.getSession().setAttribute(param, "value");
+        response.getWriter().println(org.owasp.benchmark.helpers.Utils.encodeForHTML(param));
+      }
+    }
+  `);
+  const ruleIds = new Set(findings.map((finding) => finding.ruleId));
+
+  assert.equal(ruleIds.has("hermsec.java.pathtraver"), true);
+  assert.equal(ruleIds.has("hermsec.java.trustbound"), true);
+  assert.equal(ruleIds.has("hermsec.java.xss"), false);
+});
+
 test("fixture package files do not define package scripts", () => {
   for (const packagePath of listFiles(fixturesRoot).filter((file) => path.basename(file) === "package.json")) {
     const parsed = JSON.parse(fs.readFileSync(packagePath, "utf8")) as { scripts?: unknown };

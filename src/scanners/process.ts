@@ -2,7 +2,28 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { findExecutableOnPath } from "../shared/executable.js";
 
-export type ScannerCommandId = "semgrep" | "osv-scanner" | "gitleaks" | "bandit" | "pip-audit" | "pmg";
+export type ScannerCommandId =
+  | "semgrep"
+  | "osv-scanner"
+  | "gitleaks"
+  | "trufflehog"
+  | "trivy"
+  | "checkov"
+  | "bandit"
+  | "pip-audit"
+  | "pmg"
+  | "retire"
+  | "spotbugs"
+  | "dependency-check"
+  | "psalm"
+  | "composer"
+  | "gosec"
+  | "govulncheck"
+  | "cargo"
+  | "brakeman"
+  | "flawfinder"
+  | "cppcheck"
+  | "dotnet";
 
 export type CommandResolution = {
   command: string;
@@ -54,9 +75,24 @@ const EXPECTED_EXECUTABLE_NAMES: Record<ScannerCommandId, readonly string[]> = {
   semgrep: ["semgrep"],
   "osv-scanner": ["osv-scanner"],
   gitleaks: ["gitleaks"],
+  trufflehog: ["trufflehog"],
+  trivy: ["trivy"],
+  checkov: ["checkov"],
   bandit: ["bandit"],
   "pip-audit": ["pip-audit"],
   pmg: ["pmg"],
+  retire: ["retire"],
+  spotbugs: ["spotbugs"],
+  "dependency-check": ["dependency-check"],
+  psalm: ["psalm"],
+  composer: ["composer"],
+  gosec: ["gosec"],
+  govulncheck: ["govulncheck"],
+  cargo: ["cargo"],
+  brakeman: ["brakeman"],
+  flawfinder: ["flawfinder"],
+  cppcheck: ["cppcheck"],
+  dotnet: ["dotnet"],
 };
 
 export function discoverCommand(command: ScannerCommandId, env: NodeJS.ProcessEnv = process.env): CommandResolution | undefined {
@@ -193,10 +229,64 @@ function validateRequest(request: SafeExecRequest): string | undefined {
     return "Scanner arguments may not contain NUL bytes.";
   }
 
-  if (request.tool === "pmg") {
-    return validatePmgArgs(request.args);
+  switch (request.tool) {
+    case "semgrep":
+      return requireArgs(request.args, ["scan", "--json", "--metrics"], "Semgrep");
+    case "gitleaks":
+      return requireArgs(request.args, ["dir", "--report-format"], "Gitleaks");
+    case "trufflehog":
+      return requireArgs(request.args, ["filesystem", "--json", "--no-verification"], "TruffleHog");
+    case "trivy":
+      return requireArgs(request.args, ["fs", "--format"], "Trivy");
+    case "checkov":
+      return requireArgs(request.args, ["-d", "-o"], "Checkov");
+    case "bandit":
+      return requireArgs(request.args, ["-r", "-f"], "Bandit");
+    case "osv-scanner":
+      return requireArgs(request.args, ["scan", "--format"], "OSV-Scanner");
+    case "pip-audit":
+      return requireArgs(request.args, ["--format", "json"], "pip-audit");
+    case "pmg":
+      return validatePmgArgs(request.args);
+    case "retire":
+      return requireArgs(request.args, ["--path", "--outputformat"], "Retire.js");
+    case "spotbugs":
+      return requireArgs(request.args, ["-textui", "-xml:withMessages"], "SpotBugs");
+    case "dependency-check":
+      return requireArgs(request.args, ["--scan", "--format"], "Dependency-Check");
+    case "psalm":
+      return requireArgs(request.args, ["--taint-analysis", "--output-format=json"], "Psalm");
+    case "composer":
+      return validateComposerArgs(request.args);
+    case "gosec":
+      return requireArgs(request.args, ["-fmt=json"], "gosec");
+    case "govulncheck":
+      return requireArgs(request.args, ["-json"], "govulncheck");
+    case "cargo":
+      return validateCargoArgs(request.args);
+    case "brakeman":
+      return requireArgs(request.args, ["-f", "json"], "Brakeman");
+    case "flawfinder":
+      return requireArgs(request.args, ["--sarif"], "Flawfinder");
+    case "cppcheck":
+      return requireArgs(request.args, ["--template={file}:{line}:{severity}:{id}:{message}"], "Cppcheck");
+    case "dotnet":
+      return validateDotnetArgs(request.args);
   }
 
+  return undefined;
+}
+
+function requireArgs(args: readonly string[], required: readonly string[], label: string): string | undefined {
+  const lowered = args.map((arg) => arg.toLowerCase());
+  for (const requiredArg of required) {
+    if (!lowered.includes(requiredArg.toLowerCase())) {
+      return `${label} scanner arguments do not match HermSec's safe allowlist.`;
+    }
+  }
+  if (lowered.some((arg) => ["install", "update", "build", "run", "test", "exec", "publish", "fix", "apply"].includes(arg))) {
+    return `${label} scanner arguments may not install, build, execute project code, publish, or apply fixes.`;
+  }
   return undefined;
 }
 
@@ -214,12 +304,47 @@ function validatePmgArgs(args: readonly string[]): string | undefined {
   return undefined;
 }
 
+function validateComposerArgs(args: readonly string[]): string | undefined {
+  if (args[0] !== "audit") {
+    return "Composer is only allowed to run `composer audit` in HermSec scans.";
+  }
+  const lowered = args.map((arg) => arg.toLowerCase());
+  if (lowered.some((arg) => ["install", "update", "require", "remove", "exec", "run-script", "create-project"].includes(arg))) {
+    return "Composer scanner arguments may not install, update, execute scripts, or modify dependencies.";
+  }
+  return undefined;
+}
+
+function validateCargoArgs(args: readonly string[]): string | undefined {
+  if (args[0] !== "audit") {
+    return "Cargo is only allowed to run `cargo audit` in HermSec scans.";
+  }
+  const lowered = args.map((arg) => arg.toLowerCase());
+  if (lowered.some((arg) => ["install", "build", "run", "test", "update", "publish"].includes(arg))) {
+    return "Cargo scanner arguments may not build, run, install, update, or publish.";
+  }
+  return undefined;
+}
+
+function validateDotnetArgs(args: readonly string[]): string | undefined {
+  if (args[0] !== "list" || !args.includes("package") || !args.includes("--vulnerable")) {
+    return "dotnet is only allowed to list vulnerable packages in HermSec scans.";
+  }
+  const lowered = args.map((arg) => arg.toLowerCase());
+  if (lowered.some((arg) => ["restore", "build", "run", "test", "publish", "add", "remove"].includes(arg))) {
+    return "dotnet scanner arguments may not restore, build, run, test, publish, add, or remove packages.";
+  }
+  return undefined;
+}
+
 function scannerEnv(extra?: Record<string, string>): NodeJS.ProcessEnv {
   return {
     ...process.env,
     NO_COLOR: "1",
     SEMGREP_SEND_METRICS: "off",
     PMG_DISABLE_TELEMETRY: "true",
+    CHECKOV_ENABLE_VERSION_CHECK: "false",
+    TRIVY_DISABLE_VEX_NOTICE: "true",
     ...extra,
   };
 }

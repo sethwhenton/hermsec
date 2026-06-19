@@ -1,4 +1,5 @@
 import path from "node:path";
+import fs from "node:fs/promises";
 import { runAgentTurn } from "../agent/runtime.js";
 import { providerCredentialEnv } from "../model/credentials.js";
 import { selectModelProvider } from "../model/providerRouter.js";
@@ -40,6 +41,7 @@ export async function runScan(options: HarnessScanOptions): Promise<CommandResul
     explanations: agent.explanations,
     agentSummary: agent.summary,
   });
+  await writeBenchmarkExportIfRequested(report.paths.reportDir, scanRun);
 
   return {
     ok: true,
@@ -49,6 +51,20 @@ export async function runScan(options: HarnessScanOptions): Promise<CommandResul
       report: report.artifacts,
     },
   };
+}
+
+async function writeBenchmarkExportIfRequested(reportDir: string, scanRun: Awaited<ReturnType<typeof runLocalScan>>): Promise<void> {
+  if (process.env.HERMSEC_BENCHMARK_EXPORT_RAW !== "1") {
+    return;
+  }
+  const exportPath = path.join(reportDir, "benchmark-findings.raw.json");
+  await fs.writeFile(exportPath, `${JSON.stringify({
+    schemaVersion: "1.0",
+    scanId: scanRun.id,
+    target: scanRun.target,
+    generatedAt: scanRun.finishedAt,
+    findings: scanRun.findings,
+  }, null, 2)}\n`, "utf8");
 }
 
 async function explainScanRun(
@@ -89,6 +105,7 @@ async function explainScanRun(
     providerConfig,
     privacyMode: userConfig.privacyMode,
     offlineMode: options.mode === "offline" && !selection.health.local,
+    forceIntent: "explain_findings",
   });
 
   const fallbackReason = [selection.fallbackReason, agentTurn.modelSkippedReason].filter(Boolean).join("; ");
@@ -106,7 +123,7 @@ async function explainScanRun(
 function agentPromptForAssistMode(assistMode: HarnessScanOptions["assistMode"]): string {
   if (assistMode === "deep-assisted") {
     return [
-      "Deep assisted scan: explain, prioritize, and connect these scanner findings for the Hermsec report.",
+      "Deep assisted report: explain, prioritize, and connect these completed scanner findings for the Hermsec report.",
       "Use only supplied scanner evidence.",
       "Do not create findings, identifiers, files, packages, or line numbers that are not present in the scanner data.",
       "When findings appear related, say so only through the supplied evidence in the explanation fields.",

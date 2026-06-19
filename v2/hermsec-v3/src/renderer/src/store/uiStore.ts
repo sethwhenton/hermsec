@@ -3,7 +3,7 @@ import type { ChatItem } from "@/types/chat";
 import type { ContextChip } from "@/types/chat";
 
 export type AppView = "chat" | "dashboard" | "automations" | "settings";
-export type SettingsSection = "general" | "providers" | "models";
+export type SettingsSection = "general" | "providers" | "models" | "scanners";
 
 interface UiState {
   view: AppView;

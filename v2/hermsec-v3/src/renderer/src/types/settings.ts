@@ -1,4 +1,5 @@
 import type { HermsecScanAssistMode } from "./scan";
+import type { ScannerSettings } from "./scanners";
 
 export type ProviderAuthKind = "api_key" | "custom" | "environment";
 
@@ -52,6 +53,7 @@ export interface AppSettings {
   activeModelId?: string;
   automation: AutomationSettings;
   providers: ProviderConfig[];
+  scanners: ScannerSettings;
 }
 
 export interface ProviderTestRequest {

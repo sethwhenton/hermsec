@@ -36,11 +36,14 @@ export function routeAgentIntent(input: string): RoutedIntent {
   if (lower === "/help" || /\bhelp\b/.test(lower)) {
     return { intent: "show_help", reason: "User asked for supported Hermsec commands." };
   }
+  if (
+    lower.startsWith("/explain") ||
+    /\b(why|explain|summari[sz]e|summary|prioriti[sz]e|impact|fix|remediate|findings?)\b/.test(lower)
+  ) {
+    return { intent: "explain_findings", reason: "User asked for explanation of scanner evidence.", ...(findingId ? { findingId } : {}) };
+  }
   if (lower.startsWith("/scan") || /\b(scan|check|review)\b/.test(lower)) {
     return { intent: "scan_target", reason: "User asked Hermsec to run scanners." };
-  }
-  if (lower.startsWith("/explain") || /\b(why|explain|impact|fix|remediate)\b/.test(lower)) {
-    return { intent: "explain_findings", reason: "User asked for explanation of scanner evidence.", ...(findingId ? { findingId } : {}) };
   }
   if (lower.startsWith("/reports") || /\b(report|open latest|show latest)\b/.test(lower)) {
     return { intent: "show_report", reason: "User asked for a report." };

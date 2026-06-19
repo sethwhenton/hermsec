@@ -96,11 +96,11 @@ export function MessageList({ onQuestionsSubmit }: MessageListProps) {
               />
             );
           })}
-          <ThinkingRow visible={isAgentThinking} status={agentStatus} />
+          <ThinkingRow visible={isAgentThinking && !scanRunning} status={agentStatus} />
           <ScanProgressDisclosure
             events={progress}
             running={scanRunning}
-            visible={isAgentThinking && (scanRunning || progress.length > 0)}
+            visible={scanRunning || (isAgentThinking && progress.length > 0)}
           />
           <div ref={bottomRef} />
         </div>

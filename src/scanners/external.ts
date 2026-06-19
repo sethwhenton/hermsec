@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import type { SourceFile } from "../core/files.js";
 import type { Finding, ScannerStatus } from "../shared/types.js";
+import { scannerCatalog } from "./catalog.js";
 import { parseScannerJson, type ParserContext } from "./parsers.js";
 import {
   discoverCommand,
@@ -53,12 +54,17 @@ type ScannerExecution = {
   cwd: string;
   allowedExitCodes: readonly number[];
   parserContext: ParserContext;
+  timeoutMs?: number;
+  maxOutputBytes?: number;
   outputFile?: string;
   cleanupDir?: string;
 };
 
-const DEFAULT_TIMEOUT_MS = 45_000;
-const DEFAULT_MAX_OUTPUT_BYTES = 2_000_000;
+const DEFAULT_TIMEOUT_MS = 60_000;
+const DEFAULT_MAX_OUTPUT_BYTES = 8_000_000;
+const SEMGREP_LARGE_REPO_FILE_THRESHOLD = 300;
+const SEMGREP_LARGE_REPO_CHUNK_SIZE = 75;
+const SEMGREP_LARGE_REPO_TIMEOUT_MS = 90_000;
 const LOCKFILES_FOR_OSV = new Set([
   "package-lock.json",
   "npm-shrinkwrap.json",
@@ -70,20 +76,46 @@ const LOCKFILES_FOR_OSV = new Set([
   "Pipfile.lock",
   "go.sum",
   "Cargo.lock",
+  "composer.lock",
+  "Gemfile.lock",
+  "packages.lock.json",
 ]);
 const NPM_LOCKFILES = new Set(["package-lock.json", "npm-shrinkwrap.json"]);
 const REQUIREMENTS_FILES = new Set(["requirements.txt", "requirements-dev.txt"]);
+const COMPOSER_LOCKFILES = new Set(["composer.lock"]);
+const CARGO_LOCKFILES = new Set(["Cargo.lock"]);
+const GO_MANIFESTS = new Set(["go.mod"]);
+const DOTNET_MANIFEST_EXTENSIONS = new Set([".csproj", ".sln"]);
+const IAC_LANGUAGES = new Set(["terraform", "yaml"]);
+const SEMGREP_LANGUAGES = new Set([
+  "javascript",
+  "typescript",
+  "python",
+  "java",
+  "jsp",
+  "php",
+  "go",
+  "rust",
+  "ruby",
+  "c",
+  "cpp",
+  "csharp",
+  "kotlin",
+  "swift",
+  "dart",
+  "html",
+  "vue",
+  "svelte",
+  "terraform",
+  "yaml",
+]);
 
 const EXTERNAL_SCANNERS: ScannerDefinition[] = [
   {
     id: "semgrep",
     label: "Semgrep",
     shouldRun: (files) => files.some((file) =>
-      file.language === "javascript" ||
-      file.language === "typescript" ||
-      file.language === "python" ||
-      file.language === "java" ||
-      file.language === "jsp"
+      SEMGREP_LANGUAGES.has(file.language)
     ),
     build: buildSemgrep,
   },
@@ -92,6 +124,24 @@ const EXTERNAL_SCANNERS: ScannerDefinition[] = [
     label: "Gitleaks",
     shouldRun: (files) => files.length > 0,
     build: buildGitleaks,
+  },
+  {
+    id: "trufflehog",
+    label: "TruffleHog",
+    shouldRun: (files) => files.length > 0,
+    build: buildTruffleHog,
+  },
+  {
+    id: "trivy",
+    label: "Trivy",
+    shouldRun: (files) => files.length > 0,
+    build: buildTrivy,
+  },
+  {
+    id: "checkov",
+    label: "Checkov",
+    shouldRun: (files) => files.some((file) => IAC_LANGUAGES.has(file.language) || isDockerOrWorkflow(file.relativePath, file.baseName)),
+    build: buildCheckov,
   },
   {
     id: "bandit",
@@ -117,6 +167,83 @@ const EXTERNAL_SCANNERS: ScannerDefinition[] = [
     shouldRun: (files) => files.some((file) => NPM_LOCKFILES.has(file.baseName)),
     build: buildPmgAudit,
   },
+  {
+    id: "retire",
+    label: "Retire.js",
+    shouldRun: (files) => files.some((file) =>
+      file.language === "javascript" ||
+      file.language === "typescript" ||
+      file.language === "html" ||
+      file.baseName === "package.json"
+    ),
+    build: buildRetire,
+  },
+  {
+    id: "spotbugs",
+    label: "FindSecBugs / SpotBugs",
+    shouldRun: (files) => files.some((file) => file.language === "java" || file.language === "jsp" || file.language === "kotlin"),
+    build: buildSpotBugs,
+  },
+  {
+    id: "dependency-check",
+    label: "OWASP Dependency-Check",
+    shouldRun: (files) => files.some((file) => file.kind === "manifest" || file.kind === "lockfile"),
+    build: buildDependencyCheck,
+  },
+  {
+    id: "psalm",
+    label: "Psalm taint analysis",
+    shouldRun: (files) => files.some((file) => file.language === "php"),
+    build: buildPsalm,
+  },
+  {
+    id: "composer",
+    label: "Composer audit",
+    shouldRun: (files) => files.some((file) => COMPOSER_LOCKFILES.has(file.baseName)),
+    build: buildComposerAudit,
+  },
+  {
+    id: "gosec",
+    label: "gosec",
+    shouldRun: (files) => files.some((file) => file.language === "go"),
+    build: buildGosec,
+  },
+  {
+    id: "govulncheck",
+    label: "govulncheck",
+    shouldRun: (files) => files.some((file) => GO_MANIFESTS.has(file.baseName)),
+    build: buildGovulncheck,
+  },
+  {
+    id: "cargo",
+    label: "cargo-audit",
+    shouldRun: (files) => files.some((file) => CARGO_LOCKFILES.has(file.baseName)),
+    build: buildCargoAudit,
+  },
+  {
+    id: "brakeman",
+    label: "Brakeman",
+    shouldRun: (files) => files.some((file) => file.language === "ruby") && files.some((file) => file.relativePath === "config/routes.rb" || file.relativePath === "config/application.rb"),
+    build: buildBrakeman,
+  },
+  {
+    id: "flawfinder",
+    label: "Flawfinder",
+    shouldRun: (files) => files.some((file) => file.language === "c" || file.language === "cpp"),
+    build: buildFlawfinder,
+  },
+  {
+    id: "cppcheck",
+    label: "Cppcheck",
+    shouldRun: (files) => files.some((file) => file.language === "c" || file.language === "cpp"),
+    build: buildCppcheck,
+  },
+  {
+    id: "dotnet",
+    label: ".NET vulnerable packages",
+    shouldRun: (files) => files.some((file) => DOTNET_MANIFEST_EXTENSIONS.has(file.extension) || file.baseName === "packages.lock.json"),
+    build: buildDotnetVulnerable,
+  },
 ];
 
 export async function runExternalScanners(
@@ -131,8 +258,13 @@ export async function runExternalScanners(
   const exec = runtime.exec ?? safeExec;
   const timeoutMs = runtime.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxOutputBytes = runtime.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES;
+  const enabledScanners = enabledScannerSet();
 
   for (const scanner of EXTERNAL_SCANNERS) {
+    if (enabledScanners && !enabledScanners.has(scanner.id)) {
+      continue;
+    }
+
     if (!repoRoot || !scanner.shouldRun(files)) {
       statuses.push(skipped(scanner, `${scanner.label} had no matching external scanner inputs.`));
       continue;
@@ -181,9 +313,9 @@ export async function runExternalScanners(
             executablePath: resolution.executablePath,
             args: execution.args,
             cwd: execution.cwd,
-            timeoutMs,
+            timeoutMs: execution.timeoutMs ?? timeoutMs,
             allowedExitCodes: execution.allowedExitCodes,
-            maxOutputBytes,
+            maxOutputBytes: execution.maxOutputBytes ?? maxOutputBytes,
           });
         } catch (error) {
           failures.push(`${scanner.label} execution threw: ${error instanceof Error ? error.message : String(error)}`);
@@ -193,7 +325,7 @@ export async function runExternalScanners(
           notes.push("scanner output was truncated to the configured cap");
         }
         if (result.status === "timed_out") {
-          failures.push(`${scanner.label} timed out after ${timeoutMs}ms.`);
+          failures.push(`${scanner.label} timed out after ${execution.timeoutMs ?? timeoutMs}ms.`);
           continue;
         }
         if (result.status === "failed") {
@@ -236,11 +368,71 @@ export async function runExternalScanners(
 }
 
 export function externalScannerCatalog(): ExternalScannerCatalogEntry[] {
-  return EXTERNAL_SCANNERS.map((scanner) => ({
-    id: scanner.id,
-    label: scanner.label,
-    executable: scanner.id,
-  }));
+  return EXTERNAL_SCANNERS.map((scanner) => {
+    const catalogEntry = scannerCatalog.find((item) => scannerIdToCommandId(item.command ?? item.id) === scanner.id);
+    return {
+      id: scanner.id,
+      label: scanner.label,
+      executable: catalogEntry?.command ?? scanner.id,
+    };
+  });
+}
+
+function enabledScannerSet(): Set<string> | undefined {
+  const raw = process.env.HERMSEC_ENABLED_SCANNERS;
+  if (raw === undefined) {
+    return new Set(
+      scannerCatalog
+        .filter((scanner) => scanner.defaultEnabled && scanner.command)
+        .map((scanner) => scannerIdToCommandId(scanner.command ?? scanner.id)),
+    );
+  }
+  const configured = raw.trim();
+  if (!configured) {
+    return new Set();
+  }
+  const values = configured.split(",").map((value) => value.trim()).filter(Boolean);
+  if (values.includes("__none__")) {
+    return new Set();
+  }
+  if (values.includes("all")) {
+    return undefined;
+  }
+  return new Set(values.map(scannerIdToCommandId));
+}
+
+function scannerOnlineUpdatesAllowed(): boolean {
+  return process.env.HERMSEC_SCANNER_ONLINE_UPDATES !== "false";
+}
+
+function scannerIdToCommandId(value: string): string {
+  switch (value) {
+    case "composer-audit":
+      return "composer";
+    case "cargo-audit":
+      return "cargo";
+    case "dotnet-vulnerable":
+      return "dotnet";
+    case "findsecbugs":
+      return "spotbugs";
+    default:
+      return value;
+  }
+}
+
+function scannerIdToCatalogId(value: string): string {
+  switch (value) {
+    case "composer":
+      return "composer-audit";
+    case "cargo":
+      return "cargo-audit";
+    case "dotnet":
+      return "dotnet-vulnerable";
+    case "spotbugs":
+      return "findsecbugs";
+    default:
+      return value;
+  }
 }
 
 export function inferRepositoryRoot(files: readonly SourceFile[]): string | undefined {
@@ -255,16 +447,51 @@ async function buildSemgrep(context: BuildContext): Promise<BuildResult> {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "hermsec-semgrep-"));
   const rulesPath = path.join(tempDir, "rules.yml");
   await fs.writeFile(rulesPath, defaultSemgrepRules(), "utf8");
+  const targets = context.files
+    .filter((file) => SEMGREP_LANGUAGES.has(file.language))
+    .map((file) => file.absolutePath)
+    .sort();
+  if (targets.length === 0) {
+    return { executions: [], skipReason: "Semgrep had no source file targets after filtering." };
+  }
+  if (targets.length > SEMGREP_LARGE_REPO_FILE_THRESHOLD) {
+    return {
+      executions: chunks(targets, SEMGREP_LARGE_REPO_CHUNK_SIZE).map((chunk, index) => {
+        const outputFile = path.join(tempDir, `semgrep-${index + 1}.json`);
+        return {
+          scanner: "semgrep",
+          args: ["scan", "--config", rulesPath, "--json", "--metrics", "off", "--output", outputFile, ...chunk],
+          cwd: context.repoRoot,
+          allowedExitCodes: [0, 1],
+          parserContext: { repoRoot: context.repoRoot },
+          cleanupDir: tempDir,
+          outputFile,
+          timeoutMs: Math.max(context.timeoutMs, SEMGREP_LARGE_REPO_TIMEOUT_MS),
+          maxOutputBytes: Math.max(context.maxOutputBytes, DEFAULT_MAX_OUTPUT_BYTES),
+        };
+      }),
+    };
+  }
+  const outputFile = path.join(tempDir, "semgrep.json");
   return {
     executions: [{
       scanner: "semgrep",
-      args: ["scan", "--config", rulesPath, "--json", "--metrics", "off", context.repoRoot],
+      args: ["scan", "--config", rulesPath, "--json", "--metrics", "off", "--output", outputFile, ...targets],
       cwd: context.repoRoot,
       allowedExitCodes: [0, 1],
       parserContext: { repoRoot: context.repoRoot },
+      outputFile,
       cleanupDir: tempDir,
     }],
   };
+}
+
+function chunks<T>(items: readonly T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    result.push(items.slice(index, index + size));
+  }
+  return result;
 }
 
 async function buildGitleaks(context: BuildContext): Promise<BuildResult> {
@@ -279,6 +506,62 @@ async function buildGitleaks(context: BuildContext): Promise<BuildResult> {
       parserContext: { repoRoot: context.repoRoot },
       outputFile,
       cleanupDir: tempDir,
+    }],
+  };
+}
+
+async function buildTruffleHog(context: BuildContext): Promise<BuildResult> {
+  return {
+    executions: [{
+      scanner: "trufflehog",
+      args: ["filesystem", context.repoRoot, "--json", "--no-update", "--no-verification"],
+      cwd: context.repoRoot,
+      allowedExitCodes: [0, 1, 183],
+      parserContext: { repoRoot: context.repoRoot },
+      timeoutMs: Math.max(context.timeoutMs, 120_000),
+      maxOutputBytes: Math.max(context.maxOutputBytes, DEFAULT_MAX_OUTPUT_BYTES),
+    }],
+  };
+}
+
+async function buildTrivy(context: BuildContext): Promise<BuildResult> {
+  const offlineArgs = scannerOnlineUpdatesAllowed() ? [] : ["--skip-db-update", "--skip-java-db-update"];
+  return {
+    executions: [{
+      scanner: "trivy",
+      args: [
+        "fs",
+        ...offlineArgs,
+        "--format",
+        "json",
+        "--quiet",
+        "--scanners",
+        "vuln,secret,misconfig",
+        "--skip-dirs",
+        ".git",
+        "--skip-dirs",
+        "node_modules",
+        context.repoRoot,
+      ],
+      cwd: context.repoRoot,
+      allowedExitCodes: [0, 1],
+      parserContext: { repoRoot: context.repoRoot },
+      timeoutMs: Math.max(context.timeoutMs, 180_000),
+      maxOutputBytes: Math.max(context.maxOutputBytes, DEFAULT_MAX_OUTPUT_BYTES),
+    }],
+  };
+}
+
+async function buildCheckov(context: BuildContext): Promise<BuildResult> {
+  return {
+    executions: [{
+      scanner: "checkov",
+      args: ["-d", context.repoRoot, "-o", "json", "--quiet", "--skip-download"],
+      cwd: context.repoRoot,
+      allowedExitCodes: [0, 1],
+      parserContext: { repoRoot: context.repoRoot },
+      timeoutMs: Math.max(context.timeoutMs, 120_000),
+      maxOutputBytes: Math.max(context.maxOutputBytes, DEFAULT_MAX_OUTPUT_BYTES),
     }],
   };
 }
@@ -356,6 +639,217 @@ async function buildPmgAudit(context: BuildContext): Promise<BuildResult> {
   };
 }
 
+async function buildRetire(context: BuildContext): Promise<BuildResult> {
+  return {
+    executions: [{
+      scanner: "retire",
+      args: ["--path", context.repoRoot, "--outputformat", "json"],
+      cwd: context.repoRoot,
+      allowedExitCodes: [0, 1, 13],
+      parserContext: { repoRoot: context.repoRoot },
+      maxOutputBytes: Math.max(context.maxOutputBytes, DEFAULT_MAX_OUTPUT_BYTES),
+    }],
+  };
+}
+
+async function buildSpotBugs(context: BuildContext): Promise<BuildResult> {
+  const candidates = [
+    path.join(context.repoRoot, "target", "classes"),
+    path.join(context.repoRoot, "build", "classes"),
+    path.join(context.repoRoot, "build", "classes", "java", "main"),
+    path.join(context.repoRoot, "out", "production"),
+  ];
+  const classRoots = (await Promise.all(candidates.map(async (candidate) => await isDirectory(candidate) ? candidate : undefined)))
+    .filter((candidate): candidate is string => candidate !== undefined)
+    .sort();
+  if (classRoots.length === 0) {
+    return {
+      executions: [],
+      skipReason: "FindSecBugs/SpotBugs skipped because no compiled class directory was found. HermSec does not build projects automatically.",
+    };
+  }
+  return {
+    executions: [{
+      scanner: "spotbugs",
+      args: ["-textui", "-xml:withMessages", "-effort:max", "-low", ...classRoots],
+      cwd: context.repoRoot,
+      allowedExitCodes: [0, 1],
+      parserContext: { repoRoot: context.repoRoot },
+      timeoutMs: Math.max(context.timeoutMs, 120_000),
+    }],
+  };
+}
+
+async function buildDependencyCheck(context: BuildContext): Promise<BuildResult> {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "hermsec-dependency-check-"));
+  const outputFile = path.join(tempDir, "dependency-check-report.json");
+  const offlineArgs = scannerOnlineUpdatesAllowed() ? [] : ["--noupdate"];
+  return {
+    executions: [{
+      scanner: "dependency-check",
+      args: ["--scan", context.repoRoot, "--format", "JSON", "--out", tempDir, "--disableAssembly", ...offlineArgs],
+      cwd: context.repoRoot,
+      allowedExitCodes: [0, 1, 14],
+      parserContext: { repoRoot: context.repoRoot },
+      outputFile,
+      cleanupDir: tempDir,
+      timeoutMs: Math.max(context.timeoutMs, 180_000),
+      maxOutputBytes: Math.max(context.maxOutputBytes, DEFAULT_MAX_OUTPUT_BYTES),
+    }],
+  };
+}
+
+async function buildPsalm(context: BuildContext): Promise<BuildResult> {
+  const hasConfig = context.files.some((file) => /^psalm(?:\.xml|\.xml\.dist)?$/i.test(file.baseName));
+  if (!hasConfig) {
+    return {
+      executions: [],
+      skipReason: "Psalm taint analysis skipped because no psalm.xml configuration was found.",
+    };
+  }
+  return {
+    executions: [{
+      scanner: "psalm",
+      args: ["--taint-analysis", "--output-format=json", "--no-cache"],
+      cwd: context.repoRoot,
+      allowedExitCodes: [0, 1, 2],
+      parserContext: { repoRoot: context.repoRoot },
+      timeoutMs: Math.max(context.timeoutMs, 120_000),
+      maxOutputBytes: Math.max(context.maxOutputBytes, DEFAULT_MAX_OUTPUT_BYTES),
+    }],
+  };
+}
+
+async function buildComposerAudit(context: BuildContext): Promise<BuildResult> {
+  const roots = [...new Set(context.files.filter((file) => COMPOSER_LOCKFILES.has(file.baseName)).map((file) => path.dirname(file.absolutePath)))].sort();
+  return {
+    executions: roots.map((root) => ({
+      scanner: "composer",
+      args: ["audit", "--format=json", "--locked", "--no-interaction"],
+      cwd: root,
+      allowedExitCodes: [0, 1],
+      parserContext: { repoRoot: context.repoRoot, sourcePath: path.join(root, "composer.lock") },
+    })),
+  };
+}
+
+async function buildGosec(context: BuildContext): Promise<BuildResult> {
+  return {
+    executions: [{
+      scanner: "gosec",
+      args: ["-fmt=json", "./..."],
+      cwd: context.repoRoot,
+      allowedExitCodes: [0, 1],
+      parserContext: { repoRoot: context.repoRoot },
+      timeoutMs: Math.max(context.timeoutMs, 120_000),
+      maxOutputBytes: Math.max(context.maxOutputBytes, DEFAULT_MAX_OUTPUT_BYTES),
+    }],
+  };
+}
+
+async function buildGovulncheck(context: BuildContext): Promise<BuildResult> {
+  return {
+    executions: [{
+      scanner: "govulncheck",
+      args: ["-json", "./..."],
+      cwd: context.repoRoot,
+      allowedExitCodes: [0, 1],
+      parserContext: { repoRoot: context.repoRoot },
+      timeoutMs: Math.max(context.timeoutMs, 120_000),
+      maxOutputBytes: Math.max(context.maxOutputBytes, DEFAULT_MAX_OUTPUT_BYTES),
+    }],
+  };
+}
+
+async function buildCargoAudit(context: BuildContext): Promise<BuildResult> {
+  const roots = [...new Set(context.files.filter((file) => CARGO_LOCKFILES.has(file.baseName)).map((file) => path.dirname(file.absolutePath)))].sort();
+  return {
+    executions: roots.map((root) => ({
+      scanner: "cargo",
+      args: ["audit", "--json"],
+      cwd: root,
+      allowedExitCodes: [0, 1],
+      parserContext: { repoRoot: context.repoRoot, sourcePath: path.join(root, "Cargo.lock") },
+      timeoutMs: Math.max(context.timeoutMs, 120_000),
+      maxOutputBytes: Math.max(context.maxOutputBytes, DEFAULT_MAX_OUTPUT_BYTES),
+    })),
+  };
+}
+
+async function buildBrakeman(context: BuildContext): Promise<BuildResult> {
+  return {
+    executions: [{
+      scanner: "brakeman",
+      args: ["-f", "json", "-q", context.repoRoot],
+      cwd: context.repoRoot,
+      allowedExitCodes: [0, 1, 3],
+      parserContext: { repoRoot: context.repoRoot },
+      timeoutMs: Math.max(context.timeoutMs, 120_000),
+      maxOutputBytes: Math.max(context.maxOutputBytes, DEFAULT_MAX_OUTPUT_BYTES),
+    }],
+  };
+}
+
+async function buildFlawfinder(context: BuildContext): Promise<BuildResult> {
+  return {
+    executions: [{
+      scanner: "flawfinder",
+      args: ["--sarif", "--dataonly", "--quiet", context.repoRoot],
+      cwd: context.repoRoot,
+      allowedExitCodes: [0, 1],
+      parserContext: { repoRoot: context.repoRoot },
+      maxOutputBytes: Math.max(context.maxOutputBytes, DEFAULT_MAX_OUTPUT_BYTES),
+    }],
+  };
+}
+
+async function buildCppcheck(context: BuildContext): Promise<BuildResult> {
+  const targets = context.files
+    .filter((file) => file.language === "c" || file.language === "cpp")
+    .map((file) => file.absolutePath)
+    .sort();
+  if (targets.length === 0) {
+    return { executions: [], skipReason: "Cppcheck had no C/C++ source targets." };
+  }
+  return {
+    executions: chunks(targets, 200).map((chunk) => ({
+      scanner: "cppcheck",
+      args: [
+        "--enable=warning,style,performance,portability,information",
+        "--template={file}:{line}:{severity}:{id}:{message}",
+        "--quiet",
+        ...chunk,
+      ],
+      cwd: context.repoRoot,
+      allowedExitCodes: [0, 1],
+      parserContext: { repoRoot: context.repoRoot },
+      timeoutMs: Math.max(context.timeoutMs, 120_000),
+      maxOutputBytes: Math.max(context.maxOutputBytes, DEFAULT_MAX_OUTPUT_BYTES),
+    })),
+  };
+}
+
+async function buildDotnetVulnerable(context: BuildContext): Promise<BuildResult> {
+  const projects = context.files.filter((file) => DOTNET_MANIFEST_EXTENSIONS.has(file.extension));
+  if (projects.length === 0) {
+    return {
+      executions: [],
+      skipReason: ".NET vulnerable package scan skipped because no .sln or .csproj file was found.",
+    };
+  }
+  return {
+    executions: projects.map((file) => ({
+      scanner: "dotnet",
+      args: ["list", file.absolutePath, "package", "--vulnerable", "--include-transitive", "--format", "json"],
+      cwd: context.repoRoot,
+      allowedExitCodes: [0, 1],
+      parserContext: { repoRoot: context.repoRoot, sourcePath: file.absolutePath },
+      timeoutMs: Math.max(context.timeoutMs, 120_000),
+      maxOutputBytes: Math.max(context.maxOutputBytes, DEFAULT_MAX_OUTPUT_BYTES),
+    })),
+  };
+}
+
 async function outputForExecution(execution: ScannerExecution, result: SafeExecResult): Promise<string> {
   if (execution.outputFile) {
     try {
@@ -366,6 +860,9 @@ async function outputForExecution(execution: ScannerExecution, result: SafeExecR
     } catch {
       // Some test doubles and older scanner versions emit JSON to stdout instead.
     }
+  }
+  if (execution.scanner === "cppcheck" && result.stderr.trim()) {
+    return result.stdout.trim() ? `${result.stdout}\n${result.stderr}` : result.stderr;
   }
   return result.stdout;
 }
@@ -384,6 +881,27 @@ function skipped(scanner: ScannerDefinition, message: string): ScannerStatus {
     status: "skipped",
     message,
   };
+}
+
+function isDockerOrWorkflow(relativePath: string, baseName: string): boolean {
+  const lower = relativePath.toLowerCase();
+  return (
+    baseName === "Dockerfile" ||
+    lower.endsWith("docker-compose.yml") ||
+    lower.endsWith("docker-compose.yaml") ||
+    lower.includes(".github/workflows/") ||
+    lower.includes("/k8s/") ||
+    lower.includes("/kubernetes/")
+  );
+}
+
+async function isDirectory(candidate: string): Promise<boolean> {
+  try {
+    const stats = await fs.stat(candidate);
+    return stats.isDirectory();
+  } catch {
+    return false;
+  }
 }
 
 function rootFromFile(file: SourceFile): string | undefined {
@@ -495,5 +1013,65 @@ function defaultSemgrepRules(): string {
       - pattern: response.getWriter().print(...)
       - pattern: response.getWriter().write(...)
       - pattern: response.getWriter().format(...)
+  - id: hermsec.go-command-exec
+    message: Go command execution
+    languages: [go]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-78"]
+      category: code
+    pattern-either:
+      - pattern: exec.Command(...)
+      - pattern: exec.CommandContext(...)
+  - id: hermsec.php-dynamic-code
+    message: PHP dynamic code execution
+    languages: [php]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-95"]
+      category: code
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: assert(...)
+  - id: hermsec.ruby-shell-exec
+    message: Ruby shell command execution
+    languages: [ruby]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-78"]
+      category: code
+    pattern-either:
+      - pattern: system(...)
+      - pattern: exec(...)
+  - id: hermsec.rust-command-exec
+    message: Rust process command construction
+    languages: [rust]
+    severity: WARNING
+    metadata:
+      cwe: ["CWE-78"]
+      category: code
+    pattern: std::process::Command::new(...)
+  - id: hermsec.c-dangerous-input
+    message: C/C++ dangerous input or copy function
+    languages: [c, cpp]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-120"]
+      category: code
+    pattern-either:
+      - pattern: gets(...)
+      - pattern: strcpy(...)
+      - pattern: strcat(...)
+      - pattern: sprintf(...)
+  - id: hermsec.csharp-process-start
+    message: .NET process execution
+    languages: [csharp]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-78"]
+      category: code
+    pattern-either:
+      - pattern: Process.Start(...)
+      - pattern: System.Diagnostics.Process.Start(...)
 `;
 }

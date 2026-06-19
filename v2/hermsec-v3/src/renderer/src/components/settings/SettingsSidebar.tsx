@@ -1,4 +1,4 @@
-import { Bot, Cog, Server } from "lucide-react";
+import { Bot, Cog, ScanSearch, Server } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { SettingsSection } from "@/store/uiStore";
 import { HermsecLogo } from "@/components/branding/HermsecLogo";
@@ -15,6 +15,7 @@ const desktopItems: Array<{ id: SettingsSection; label: string; icon: React.Reac
 const serverItems: Array<{ id: SettingsSection; label: string; icon: React.ReactNode }> = [
   { id: "providers", label: "Providers", icon: <Server className="h-4 w-4" /> },
   { id: "models", label: "Models", icon: <Bot className="h-4 w-4" /> },
+  { id: "scanners", label: "Scanners", icon: <ScanSearch className="h-4 w-4" /> },
 ];
 
 export function SettingsSidebar({ section, onSectionChange }: SettingsSidebarProps) {

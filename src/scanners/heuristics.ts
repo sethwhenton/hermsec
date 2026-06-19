@@ -298,6 +298,7 @@ function scanJavaContent(file: SourceFile, content: string): Candidate[] {
   }
 
   const flat = compactWhitespace(content);
+  const taint = analyzeJavaTaint(content);
   const add = (
     title: string,
     severity: Severity,
@@ -319,7 +320,7 @@ function scanJavaContent(file: SourceFile, content: string): Candidate[] {
     ));
   };
 
-  if (/(?:\b\w+\.exec\s*\(|Runtime\.getRuntime\(\)\.exec|new\s+(?:java\.lang\.)?ProcessBuilder\b|\bProcessBuilder\s+\w+|\.start\s*\(\s*\))/.test(content)) {
+  if (taint.lineFor(/(?:\b\w+\.exec\s*\(|Runtime\.getRuntime\(\)\.exec|new\s+(?:java\.lang\.)?ProcessBuilder\b|\bProcessBuilder\s+\w+|\.start\s*\(\s*\))/)) {
     add(
       "Java process execution reachable in servlet code",
       "high",
@@ -374,7 +375,7 @@ function scanJavaContent(file: SourceFile, content: string): Candidate[] {
     );
   }
 
-  if (/getSession\(\)\.(?:setAttribute|putValue)\s*\(/.test(content)) {
+  if (taint.lineFor(/(?:getSession\(\)|\bsession)\s*\.\s*(?:setAttribute|putValue)\s*\(/i)) {
     add(
       "Request data may cross into the Java session boundary",
       "medium",
@@ -385,7 +386,7 @@ function scanJavaContent(file: SourceFile, content: string): Candidate[] {
     );
   }
 
-  if (/String\s+(?:sql|query)\s*=.*\+.*(?:param|bar)/i.test(flat) && /\.(?:executeQuery|executeUpdate|execute|prepareCall|prepareStatement)\s*\(/.test(flat)) {
+  if (taint.lineFor(/\.(?:executeQuery|executeUpdate|executeLargeUpdate|execute|addBatch|prepareCall|prepareStatement|createQuery|createNativeQuery)\s*\(/)) {
     add(
       "Java SQL query uses dynamic string construction",
       "high",
@@ -396,7 +397,7 @@ function scanJavaContent(file: SourceFile, content: string): Candidate[] {
     );
   }
 
-  if (/String\s+filter\s*=.*\+.*(?:param|bar)/i.test(flat) && /\.search\s*\(/.test(flat)) {
+  if (taint.lineFor(/\.(?:search|lookup|list|listBindings)\s*\(/)) {
     add(
       "Java LDAP filter uses dynamic string construction",
       "high",
@@ -407,7 +408,7 @@ function scanJavaContent(file: SourceFile, content: string): Candidate[] {
     );
   }
 
-  if (/String\s+expression\s*=.*\+.*(?:param|bar)/i.test(flat) && /\.evaluate\s*\(/.test(flat)) {
+  if (taint.lineFor(/\.(?:evaluate|compile)\s*\(/)) {
     add(
       "Java XPath expression uses dynamic string construction",
       "high",
@@ -419,8 +420,8 @@ function scanJavaContent(file: SourceFile, content: string): Candidate[] {
   }
 
   if (
-    /(?:FileInputStream|FileOutputStream|FileReader|FileWriter|new\s+java\.io\.File|Paths\.get)\s*\(/.test(flat) &&
-    /(?:fileName\s*=.*\+.*(?:param|bar)|new\s+java\.io\.File\s*\([^)]*(?:param|bar)|FileInputStream\s*\([^)]*(?:param|bar))/i.test(flat)
+    /(?:FileInputStream|FileOutputStream|FileReader|FileWriter|RandomAccessFile|new\s+java\.io\.File|Paths\.get|Files\.(?:newInputStream|newOutputStream|readAllBytes|readString|write|copy|delete))\s*\(/.test(flat) &&
+    taint.lineFor(/(?:FileInputStream|FileOutputStream|FileReader|FileWriter|RandomAccessFile|new\s+java\.io\.File|Paths\.get|Files\.(?:newInputStream|newOutputStream|readAllBytes|readString|write|copy|delete))\s*\(/)
   ) {
     add(
       "Java file path uses request-influenced data",
@@ -433,8 +434,7 @@ function scanJavaContent(file: SourceFile, content: string): Candidate[] {
   }
 
   if (
-    /response\.getWriter\(\)\.(?:print|println|write|format)\s*\(.*(?:param|bar|query|input)/.test(flat) ||
-    /response\.getWriter\(\)\.format\s*\(\s*(?:param|bar)/.test(flat)
+    taint.lineFor(/(?:response\.getWriter\(\)\.(?:print|println|write|format)|response\.(?:sendRedirect|sendError|addHeader|setHeader|setDateHeader|setIntHeader))\s*\(/, { ignoreSanitizedLine: true })
   ) {
     add(
       "Java servlet response may include unsanitized input",
@@ -447,6 +447,128 @@ function scanJavaContent(file: SourceFile, content: string): Candidate[] {
   }
 
   return findings;
+}
+
+type JavaTaintContext = {
+  taintedVariables: Set<string>;
+  sanitizedVariables: Set<string>;
+  lineFor: (sink: RegExp, options?: { ignoreSanitizedLine?: boolean }) => number | undefined;
+};
+
+type JavaStatement = {
+  text: string;
+  startLine: number;
+};
+
+function analyzeJavaTaint(content: string): JavaTaintContext {
+  const taintedVariables = new Set<string>();
+  const sanitizedVariables = new Set<string>();
+  const sourceLikeVariables = new Set(["param", "bar", "input", "query", "cmd", "command", "fileName", "path", "sql", "filter", "expression"]);
+  const lines = linesOf(content);
+  const statements = javaStatements(lines);
+
+  for (const statement of statements) {
+    const assignment = assignmentParts(statement.text);
+    if (!assignment) {
+      const append = statement.text.match(/\b([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*(?:append|add|concat)\s*\((.+)\)/);
+      if (append?.[1] && append[2] && (isJavaRequestSourceExpression(append[2]) || expressionReferencesAny(append[2], taintedVariables))) {
+        taintedVariables.add(append[1]);
+        sanitizedVariables.delete(append[1]);
+      }
+      continue;
+    }
+    const { name, expression } = assignment;
+    if (isJavaSanitizerExpression(expression)) {
+      sanitizedVariables.add(name);
+      taintedVariables.delete(name);
+      continue;
+    }
+    if (isJavaRequestSourceExpression(expression) || expressionReferencesAny(expression, taintedVariables)) {
+      taintedVariables.add(name);
+      sanitizedVariables.delete(name);
+      continue;
+    }
+    if (sourceLikeVariables.has(name) && /(?:request|header|parameter|cookie|query|string|input|value)/i.test(expression)) {
+      taintedVariables.add(name);
+    }
+  }
+
+  const context: JavaTaintContext = {
+    taintedVariables,
+    sanitizedVariables,
+    lineFor: (sink, options) => {
+      for (const statement of statements) {
+        if (!sink.test(statement.text)) {
+          continue;
+        }
+        if (options?.ignoreSanitizedLine && isJavaSanitizerExpression(statement.text)) {
+          continue;
+        }
+        if (isJavaRequestSourceExpression(statement.text) || expressionReferencesAny(statement.text, taintedVariables)) {
+          return statement.startLine;
+        }
+      }
+      return undefined;
+    },
+  };
+  return context;
+}
+
+function assignmentParts(line: string): { name: string; expression: string } | undefined {
+  const match = compactWhitespace(line).match(/(?:^|[;\s])(?:final\s+)?(?:String|Object|File|Path|StringBuilder|StringBuffer|byte\[\]|char\[\]|java\.lang\.String|java\.io\.File|java\.nio\.file\.Path)?\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?);?\s*$/);
+  if (!match?.[1] || !match[2]) {
+    return undefined;
+  }
+  return { name: match[1], expression: match[2] };
+}
+
+function isJavaRequestSourceExpression(expression: string): boolean {
+  return /\brequest\.(?:getParameter|getParameterValues|getParameterMap|getHeader|getHeaders|getQueryString|getCookies|getInputStream|getReader|getAttribute|getPathInfo|getPathTranslated|getRequestURI|getRequestURL|getServletPath|getRemoteUser|getRequestedSessionId|getPart|getParts)\s*\(/.test(expression) ||
+    /\b(?:HttpServletRequest|ServletRequest)\b/.test(expression) ||
+    /\b[A-Za-z_][A-Za-z0-9_]*Cookie\.getValue\s*\(/.test(expression) ||
+    (/\bgetValue\s*\(/.test(expression) && /\bCookie\b|cookie/i.test(expression));
+}
+
+function isJavaSanitizerExpression(expression: string): boolean {
+  return /(?:ESAPI\.encoder\(\)\.encodeFor(?:HTML|HTMLAttribute|JavaScript|URL|LDAP|SQL|XPath)|Encode\.for(?:Html|HtmlContent|HtmlAttribute|JavaScript|UriComponent|Xml)|StringEscapeUtils\.escape(?:Html|Html4|Xml|EcmaScript|JavaScript|Sql)|HtmlUtils\.htmlEscape|Utils\.encodeForHTML|escapeHtml|htmlEscape|URLEncoder\.encode|Normalizer\.normalize)\s*\(/.test(expression);
+}
+
+function javaStatements(lines: Array<{ line: string; number: number }>): JavaStatement[] {
+  const statements: JavaStatement[] = [];
+  let current = "";
+  let startLine: number | undefined;
+
+  for (const { line, number } of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("//") || trimmed.startsWith("*")) {
+      continue;
+    }
+    startLine ??= number;
+    current = `${current} ${trimmed}`.trim();
+    if (/[;{}]\s*$/.test(trimmed)) {
+      statements.push({ text: current, startLine });
+      current = "";
+      startLine = undefined;
+    }
+  }
+
+  if (current && startLine !== undefined) {
+    statements.push({ text: current, startLine });
+  }
+  return statements;
+}
+
+function expressionReferencesAny(expression: string, variables: ReadonlySet<string>): boolean {
+  for (const variable of variables) {
+    if (new RegExp(`\\b${escapeRegExp(variable)}\\b`).test(expression)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 async function scanPackageFiles(files: SourceFile[], readText: (file: SourceFile) => Promise<string>): Promise<Finding[]> {

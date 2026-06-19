@@ -17,6 +17,8 @@ import { getProjectStateFingerprint, projectStateChanged } from "./projectState"
 import { assistModeLabel, writeScanAssistArtifact } from "./scanAssist";
 import { findBundledCliRoot } from "./runtimeBundle";
 import type { LocalScanMetadata } from "./scanMetadata";
+import { prepareScannersForProject, scannerEnvForCli, scannerStatuses } from "./scanners";
+import type { ScannerStatusItem } from "../renderer/src/types/scanners";
 
 const CLI_RELATIVE_PATH = path.join("dist", "src", "bin", "hermsec.js");
 const DEFAULT_SCAN_TIMEOUT_MS = 180_000;
@@ -45,6 +47,26 @@ type ActiveScanControl = {
   canceled: boolean;
 };
 
+type ProjectProfile = {
+  fileCount: number;
+  truncated: boolean;
+  languages: string[];
+  frameworks: string[];
+  manifests: string[];
+  lockfiles: string[];
+  iac: string[];
+};
+
+type ScannerPlanItem = {
+  id: string;
+  label: string;
+  reason: string;
+  status: ScanProgressEvent["status"];
+  message: string;
+  adapter: "current" | "planned";
+  command?: string;
+};
+
 class ScanCanceledError extends Error {
   constructor() {
     super("Scan stopped.");
@@ -54,20 +76,27 @@ class ScanCanceledError extends Error {
 
 let activeScan: ActiveScanControl | null = null;
 
-const PROGRESS_STAGES = [
-  { id: "hermsec-heuristics", label: "Hermsec heuristics" },
-  { id: "semgrep", label: "Semgrep" },
-  { id: "gitleaks", label: "Gitleaks" },
-  { id: "bandit", label: "Bandit" },
-  { id: "osv", label: "OSV dependency checks" },
-  { id: "pip-audit", label: "pip-audit" },
-  { id: "pmg", label: "SafeDep PMG npm audit" },
-  { id: "vuln-intel", label: "Online vulnerability intelligence" },
-  { id: "evidence-merge", label: "Scanner evidence merge" },
-  { id: "agent-review", label: "Agent report review" },
-  { id: "report-generation", label: "Report generation" },
-  { id: "pdf-generation", label: "PDF generation" },
-];
+const MAIN_PROGRESS_STAGES = [
+  { id: "inspect-project", label: "Inspecting project" },
+  { id: "choose-tools", label: "Choosing scanner tools" },
+  { id: "prepare-tools", label: "Preparing tools" },
+  { id: "running-scans", label: "Running scans" },
+  { id: "model-summary", label: "Model summary" },
+  { id: "report-ready", label: "Report ready" },
+] as const;
+
+const SCANNER_STAGE_LABELS: Record<string, string> = {
+  "hermsec-heuristics": "Hermsec heuristics",
+  semgrep: "Semgrep",
+  gitleaks: "Gitleaks",
+  bandit: "Bandit",
+  osv: "OSV dependency checks",
+  "pip-audit": "pip-audit",
+  pmg: "SafeDep PMG npm audit",
+  "vuln-intel": "Online vulnerability intelligence",
+};
+
+const MIN_VISIBLE_STAGE_MS = 2_000;
 
 export function findHermsecRoot(startDir = process.cwd()): string {
   const bundledRoot = findBundledCliRoot();
@@ -200,6 +229,48 @@ export async function scanProject(
     const scanStartedAt = new Date(scanStartedMs).toISOString();
     emitInitialProgress(onProgress, assistMode);
 
+    const profile = await timedStage(
+      onProgress,
+      "inspect-project",
+      "Inspecting project",
+      "Scanning to see which tools this project needs...",
+      async () => inspectProject(targetPath),
+      (inspected) => ({
+        message: profileSummary(inspected),
+        details: profileDetails(inspected),
+        chips: profileChips(inspected),
+      }),
+    );
+
+    let scannerPlan = await timedStage(
+      onProgress,
+      "choose-tools",
+      "Choosing scanner tools",
+      "Choosing scanners for the detected project shape...",
+      async () => buildScannerPlan(profile, targetPath),
+      (plan) => ({
+        message: `${plan.filter((item) => item.adapter === "current").length} runnable scanner tool${plan.filter((item) => item.adapter === "current").length === 1 ? "" : "s"} selected.`,
+        details: plan.map(planDetail),
+        chips: profileChips(profile),
+      }),
+    );
+
+    await timedStage(
+      onProgress,
+      "prepare-tools",
+      "Preparing tools",
+      "Preparing scanner tools for this project...",
+      async () => {
+        scannerPlan = scannerPlanFromStatuses(await prepareScannersForProject(targetPath));
+        return scannerPlan;
+      },
+      (plan) => ({
+        message: preparationSummary(plan),
+        details: plan.map(planDetail),
+        chips: toolChips(plan),
+      }),
+    );
+
     const args = [
       cliPath,
       "scan",
@@ -218,7 +289,7 @@ export async function scanProject(
       args.push("--no-model");
     }
 
-    const cli = await runWithStageProgress(root, args, control, onProgress, assistMode);
+    const cli = await runWithStageProgress(root, args, control, onProgress, assistMode, scannerPlan, targetPath);
     throwIfCanceled(control);
     const parsed = parseCliJson(cli.stdout);
     const summary = normalizeSummary(parsed.data?.scan?.summary);
@@ -227,24 +298,35 @@ export async function scanProject(
     emitToolProgressFromReport(actualReportDir, onProgress);
     emitProgress(
       onProgress,
-      "evidence-merge",
-      "Scanner evidence merge",
+      "model-summary",
+      "Model summary",
       "running",
       assistMode === "deep-assisted"
-        ? "Merging matching findings across scanners for deep assisted review."
-        : "Preparing scanner-confirmed evidence summary.",
+        ? "Reviewing model-supported scanner evidence."
+        : "Summarizing scanner-backed evidence.",
     );
     const assistArtifactPath = writeScanAssistArtifact(actualReportDir, assistMode);
     emitProgress(
       onProgress,
-      "evidence-merge",
-      "Scanner evidence merge",
+      "model-summary",
+      "Model summary",
       assistArtifactPath ? "completed" : "skipped",
       assistArtifactPath
         ? "Scanner evidence map was written for the report."
-        : "No scanner evidence map was needed for this report.",
+        : "No model summary artifact was needed for this report.",
+      {
+        details: [
+          {
+            label: assistModeLabel(assistMode),
+            status: assistArtifactPath ? "completed" : "skipped",
+            message: assistMode === "deep-assisted"
+              ? "Scanner-matched evidence is ready for deeper triage."
+              : "Scanner-backed summary is ready.",
+          },
+        ],
+      },
     );
-    emitProgress(onProgress, "report-generation", "Report generation", "running", "Writing dashboard and one-page report artifacts.");
+    emitProgress(onProgress, "report-ready", "Report ready", "running", "Writing dashboard and one-page report artifacts.");
     const finishedAt = new Date().toISOString();
     const scanMetadata: LocalScanMetadata = {
       projectPath: parsed.data?.scan?.target ?? targetPath,
@@ -266,13 +348,23 @@ export async function scanProject(
     throwIfCanceled(control);
     const artifacts = await generateReportArtifacts(actualReportDir, currentProjectState, scanMetadata);
     throwIfCanceled(control);
-    emitProgress(onProgress, "report-generation", "Report generation", "completed", "Dashboard artifacts were written.");
+    emitProgress(onProgress, "report-ready", "Report ready", "completed", "Dashboard artifacts were written.", {
+      details: [
+        { label: "Dashboard", status: "completed", message: "Interactive report bundle was written." },
+        {
+          label: "One-page PDF",
+          status: artifacts.onepagerPdfPath ? "completed" : "skipped",
+          message: artifacts.onepagerPdfPath ? "PDF was generated." : "PDF generation was skipped by Electron.",
+        },
+      ],
+    });
     emitProgress(
       onProgress,
-      "pdf-generation",
+      "report-pdf",
       "PDF generation",
       artifacts.onepagerPdfPath ? "completed" : "skipped",
       artifacts.onepagerPdfPath ? "One-page PDF was generated." : "PDF generation was skipped by Electron.",
+      { parentId: "report-ready" },
     );
 
     return {
@@ -320,28 +412,66 @@ async function runWithStageProgress(
   control: ActiveScanControl,
   onProgress?: ScanProgressCallback,
   assistMode: HermsecScanAssistMode = "scanner-model-summary",
+  scannerPlan: ScannerPlanItem[] = [],
+  targetPath?: string,
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   let index = 0;
+  const runnablePlan = scannerPlan.filter((item) => item.adapter === "current" && item.status === "completed");
   emitProgress(
     onProgress,
-    PROGRESS_STAGES[index].id,
-    PROGRESS_STAGES[index].label,
+    "running-scans",
+    "Running scans",
     "running",
-    progressRunningMessage(PROGRESS_STAGES[index].id, PROGRESS_STAGES[index].label, assistMode),
+    "Running selected scanner tools...",
+    {
+      details: runnablePlan.length > 0
+        ? runnablePlan.map((item, itemIndex) => ({
+            label: item.label,
+            status: itemIndex === 0 ? "running" : "waiting",
+            message: itemIndex === 0 ? item.reason : "Waiting for this scanner lane.",
+          }))
+        : [{ label: "Hermsec heuristics", status: "running", message: "Running built-in deterministic checks." }],
+    },
   );
 
   const timer = setInterval(() => {
-    const previous = PROGRESS_STAGES[index];
-    if (previous && index < PROGRESS_STAGES.length - 3) {
-      emitProgress(onProgress, previous.id, previous.label, "completed", `${previous.label} stage finished or moved forward.`);
+    if (runnablePlan.length === 0) {
+      emitProgress(onProgress, "running-scans", "Running scans", "running", "Running built-in deterministic checks.");
+      return;
     }
-    index = Math.min(index + 1, PROGRESS_STAGES.length - 3);
-    const current = PROGRESS_STAGES[index];
-    emitProgress(onProgress, current.id, current.label, "running", progressRunningMessage(current.id, current.label, assistMode));
+    index = (index + 1) % runnablePlan.length;
+    const active = runnablePlan[index];
+    emitProgress(
+      onProgress,
+      "running-scans",
+      "Running scans",
+      "running",
+      `${active.label} is running.`,
+      {
+        details: runnablePlan.map((item, itemIndex) => ({
+          label: item.label,
+          status: itemIndex < index ? "completed" : itemIndex === index ? "running" : "waiting",
+          message: itemIndex === index ? item.reason : item.message,
+        })),
+      },
+    );
   }, 3500);
 
   try {
-    return await runNodeCli(cwd, args, control);
+    const result = await runNodeCli(cwd, args, control, targetPath ? scannerEnvForCli(targetPath) : undefined);
+    emitProgress(
+      onProgress,
+      "running-scans",
+      "Running scans",
+      "completed",
+      "Scanner execution completed.",
+      {
+        details: runnablePlan.length > 0
+          ? runnablePlan.map((item) => ({ label: item.label, status: "completed", message: item.reason }))
+          : [{ label: "Hermsec heuristics", status: "completed", message: "Built-in deterministic checks completed." }],
+      },
+    );
+    return result;
   } finally {
     clearInterval(timer);
   }
@@ -366,7 +496,7 @@ function throwIfCanceled(control: ActiveScanControl): void {
 }
 
 function emitInitialProgress(onProgress?: ScanProgressCallback, assistMode: HermsecScanAssistMode = "scanner-model-summary"): void {
-  for (const stage of PROGRESS_STAGES) {
+  for (const stage of MAIN_PROGRESS_STAGES) {
     emitProgress(onProgress, stage.id, stage.label, "waiting", progressQueuedMessage(stage.id, stage.label, assistMode));
   }
 }
@@ -377,23 +507,26 @@ function emitProgress(
   label: string,
   status: ScanProgressEvent["status"],
   message?: string,
+  options: {
+    parentId?: string;
+    details?: ScanProgressEvent["details"];
+    chips?: string[];
+  } = {},
 ): void {
   onProgress?.({
     id,
     label,
     status,
     ...(message ? { message } : {}),
+    ...(options.parentId ? { parentId: options.parentId } : {}),
+    ...(options.details ? { details: options.details } : {}),
+    ...(options.chips ? { chips: options.chips } : {}),
     timestamp: Date.now(),
   });
 }
 
 function progressQueuedMessage(id: string, label: string, assistMode: HermsecScanAssistMode): string {
-  if (id === "evidence-merge") {
-    return assistMode === "deep-assisted"
-      ? "Deep assisted evidence merge is queued."
-      : "Scanner evidence summary is queued.";
-  }
-  if (id === "agent-review") {
+  if (id === "model-summary") {
     return assistMode === "deep-assisted"
       ? "Deep model-supported triage is queued after scanner evidence."
       : "Model summary is queued after scanner evidence.";
@@ -402,12 +535,7 @@ function progressQueuedMessage(id: string, label: string, assistMode: HermsecSca
 }
 
 function progressRunningMessage(id: string, label: string, assistMode: HermsecScanAssistMode): string {
-  if (id === "evidence-merge") {
-    return assistMode === "deep-assisted"
-      ? "Matching scanner findings are being merged."
-      : "Scanner-confirmed evidence is being summarized.";
-  }
-  if (id === "agent-review") {
+  if (id === "model-summary") {
     return assistMode === "deep-assisted"
       ? "Model is supporting triage over scanner-confirmed groups."
       : "Model is summarizing scanner-backed findings.";
@@ -415,8 +543,397 @@ function progressRunningMessage(id: string, label: string, assistMode: HermsecSc
   return `${label} is running.`;
 }
 
+async function timedStage<T>(
+  onProgress: ScanProgressCallback | undefined,
+  id: string,
+  label: string,
+  runningMessage: string,
+  task: () => Promise<T> | T,
+  completed: (value: T) => {
+    message?: string;
+    details?: ScanProgressEvent["details"];
+    chips?: string[];
+  },
+): Promise<T> {
+  const started = Date.now();
+  emitProgress(onProgress, id, label, "running", runningMessage);
+  const value = await task();
+  const remaining = MIN_VISIBLE_STAGE_MS - (Date.now() - started);
+  if (remaining > 0) {
+    await delay(remaining);
+  }
+  const payload = completed(value);
+  emitProgress(onProgress, id, label, "completed", payload.message, {
+    details: payload.details,
+    chips: payload.chips,
+  });
+  return value;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function inspectProject(targetPath: string): ProjectProfile {
+  const files: string[] = [];
+  const maxFiles = 4_000;
+  const ignored = new Set([
+    ".git",
+    "node_modules",
+    "vendor",
+    "dist",
+    "build",
+    "coverage",
+    ".next",
+    ".nuxt",
+    ".cache",
+    ".hermsec",
+    "__pycache__",
+  ]);
+  const pending = [targetPath];
+  let truncated = false;
+
+  while (pending.length > 0 && files.length < maxFiles) {
+    const directory = pending.pop();
+    if (!directory) continue;
+    let entries;
+    try {
+      entries = readdirSync(directory, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+
+    for (const entry of entries) {
+      const absolutePath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (!ignored.has(entry.name)) {
+          pending.push(absolutePath);
+        }
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      files.push(path.relative(targetPath, absolutePath).replace(/\\/g, "/"));
+      if (files.length >= maxFiles) {
+        truncated = true;
+        break;
+      }
+    }
+  }
+
+  const names = new Set(files.map((file) => path.basename(file)));
+  const lowerNames = new Set(files.map((file) => file.toLowerCase()));
+  const languages = new Set<string>();
+  const frameworks = new Set<string>();
+  const manifests = new Set<string>();
+  const lockfiles = new Set<string>();
+  const iac = new Set<string>();
+
+  for (const file of files) {
+    const base = path.basename(file);
+    const ext = path.extname(file).toLowerCase();
+    const lower = file.toLowerCase();
+    const language = languageForExtension(ext, base);
+    if (language) languages.add(language);
+    if (isManifest(base)) manifests.add(base);
+    if (isLockfile(base)) lockfiles.add(base);
+    if (isIacFile(lower, base, ext)) iac.add(iacLabel(lower, base, ext));
+  }
+
+  if (names.has("package.json")) {
+    const packageJson = readJsonFile(path.join(targetPath, "package.json"));
+    const deps = {
+      ...(recordValue(packageJson?.dependencies)),
+      ...(recordValue(packageJson?.devDependencies)),
+    };
+    if (deps.react) frameworks.add("React");
+    if (deps.next) frameworks.add("Next.js");
+    if (deps.vue) frameworks.add("Vue");
+    if (deps.svelte) frameworks.add("Svelte");
+    if (deps.vite || names.has("vite.config.ts") || names.has("vite.config.js")) frameworks.add("Vite");
+  }
+
+  if (names.has("pom.xml")) frameworks.add("Maven");
+  if ([...lowerNames].some((file) => file.endsWith("build.gradle") || file.endsWith("build.gradle.kts"))) {
+    frameworks.add("Gradle");
+  }
+  if (names.has("Cargo.toml")) frameworks.add("Cargo");
+  if (names.has("composer.json")) frameworks.add("Composer");
+
+  return {
+    fileCount: files.length,
+    truncated,
+    languages: sorted(languages),
+    frameworks: sorted(frameworks),
+    manifests: sorted(manifests),
+    lockfiles: sorted(lockfiles),
+    iac: sorted(iac),
+  };
+}
+
+function buildScannerPlan(_profile: ProjectProfile, targetPath: string): ScannerPlanItem[] {
+  return scannerPlanFromStatuses(scannerStatuses({ projectPath: targetPath }));
+}
+
+function scannerPlanFromStatuses(statuses: ScannerStatusItem[]): ScannerPlanItem[] {
+  return statuses
+    .filter((scanner) => scanner.enabled && scanner.usedByCurrentProject !== false)
+    .map((scanner) => {
+      const ready = scanner.status === "installed" || scanner.status === "built-in";
+      const failed = scanner.status === "failed";
+      return {
+        id: scanner.id,
+        label: scanner.label,
+        reason: scanner.riskNotes,
+        status: ready ? "completed" : failed ? "failed" : "skipped",
+        message: ready ? scanner.message : failed ? scanner.message : `${scanner.label} is not installed; HermSec will continue with ready scanners.`,
+        adapter: "current",
+        ...(scanner.command ? { command: scanner.command } : {}),
+      };
+    });
+}
+
+function currentScanner(id: string, label: string, reason: string, command: string | undefined): ScannerPlanItem {
+  if (!command) {
+    return {
+      id,
+      label,
+      reason,
+      status: "completed",
+      message: "Built into Hermsec.",
+      adapter: "current",
+    };
+  }
+  const ready = commandReady(command);
+  return {
+    id,
+    label,
+    reason,
+    status: ready ? "completed" : "skipped",
+    message: ready ? "Tool ready." : "Tool missing; scan will continue with remaining coverage.",
+    adapter: "current",
+    command,
+  };
+}
+
+function plannedScanner(id: string, label: string, message: string): ScannerPlanItem {
+  return {
+    id,
+    label,
+    reason: message,
+    status: "skipped",
+    message,
+    adapter: "planned",
+  };
+}
+
+function planDetail(item: ScannerPlanItem): NonNullable<ScanProgressEvent["details"]>[number] {
+  return {
+    id: item.id,
+    label: item.label,
+    status: item.status,
+    message: item.message,
+    value: item.adapter === "planned" ? "planned" : item.status === "completed" ? "ready" : item.status === "failed" ? "failed" : "skipped",
+  };
+}
+
+function profileDetails(profile: ProjectProfile): NonNullable<ScanProgressEvent["details"]> {
+  return [
+    {
+      label: "Files inspected",
+      status: "completed",
+      value: profile.truncated ? `${profile.fileCount}+` : String(profile.fileCount),
+      message: profile.truncated ? "Inspection hit the preview limit." : "Repository profile completed.",
+    },
+    {
+      label: "Languages",
+      status: profile.languages.length > 0 ? "completed" : "skipped",
+      value: profile.languages.slice(0, 5).join(", ") || "none",
+    },
+    {
+      label: "Frameworks",
+      status: profile.frameworks.length > 0 ? "completed" : "skipped",
+      value: profile.frameworks.slice(0, 5).join(", ") || "none",
+    },
+    {
+      label: "Lockfiles",
+      status: profile.lockfiles.length > 0 ? "completed" : "skipped",
+      value: profile.lockfiles.slice(0, 4).join(", ") || "none",
+    },
+  ];
+}
+
+function profileSummary(profile: ProjectProfile): string {
+  const languageText = profile.languages.slice(0, 3).join(", ") || "source files";
+  const frameworkText = profile.frameworks.length > 0 ? ` with ${profile.frameworks.slice(0, 2).join(", ")}` : "";
+  return `Detected ${languageText}${frameworkText}.`;
+}
+
+function preparationSummary(plan: ScannerPlanItem[]): string {
+  const ready = plan.filter((item) => item.adapter === "current" && item.status === "completed").length;
+  const skipped = plan.filter((item) => item.status === "skipped").length;
+  const failed = plan.filter((item) => item.status === "failed").length;
+  return `${ready} tool${ready === 1 ? "" : "s"} ready${failed ? `, ${failed} need attention` : ""}${skipped ? `, ${skipped} skipped/planned` : ""}.`;
+}
+
+function profileChips(profile: ProjectProfile): string[] {
+  return [...profile.frameworks, ...profile.languages, ...profile.lockfiles].slice(0, 8);
+}
+
+function toolChips(plan: ScannerPlanItem[]): string[] {
+  return plan.slice(0, 8).map((item) => item.label);
+}
+
+function languageForExtension(extension: string, baseName: string): string | undefined {
+  if (baseName.endsWith(".gradle.kts")) return "Gradle";
+  switch (extension) {
+    case ".js":
+    case ".jsx":
+    case ".mjs":
+    case ".cjs":
+      return "JavaScript";
+    case ".ts":
+    case ".tsx":
+    case ".mts":
+    case ".cts":
+      return "TypeScript";
+    case ".py":
+      return "Python";
+    case ".java":
+      return "Java";
+    case ".jsp":
+      return "JSP";
+    case ".php":
+      return "PHP";
+    case ".rs":
+      return "Rust";
+    case ".go":
+      return "Go";
+    case ".rb":
+      return "Ruby";
+    case ".cs":
+      return "C#";
+    case ".kt":
+    case ".kts":
+      return "Kotlin";
+    case ".swift":
+      return "Swift";
+    case ".dart":
+      return "Dart";
+    case ".html":
+    case ".htm":
+      return "HTML";
+    case ".vue":
+      return "Vue";
+    case ".svelte":
+      return "Svelte";
+    default:
+      return undefined;
+  }
+}
+
+function isManifest(baseName: string): boolean {
+  return [
+    "package.json",
+    "pyproject.toml",
+    "requirements.txt",
+    "requirements-dev.txt",
+    "Pipfile",
+    "go.mod",
+    "Cargo.toml",
+    "composer.json",
+    "Gemfile",
+    "pom.xml",
+    "build.gradle",
+    "settings.gradle",
+    "build.gradle.kts",
+    "settings.gradle.kts",
+  ].includes(baseName);
+}
+
+function isLockfile(baseName: string): boolean {
+  return [
+    "package-lock.json",
+    "npm-shrinkwrap.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "bun.lock",
+    "bun.lockb",
+    "poetry.lock",
+    "uv.lock",
+    "Pipfile.lock",
+    "go.sum",
+    "Cargo.lock",
+    "composer.lock",
+    "Gemfile.lock",
+    "gradle.lockfile",
+    "packages.lock.json",
+  ].includes(baseName);
+}
+
+function isIacFile(lowerPath: string, baseName: string, extension: string): boolean {
+  return (
+    extension === ".tf" ||
+    extension === ".tfvars" ||
+    baseName === "Dockerfile" ||
+    lowerPath.includes(".github/workflows/") ||
+    lowerPath.includes("k8s/") ||
+    lowerPath.includes("kubernetes/") ||
+    lowerPath.endsWith("docker-compose.yml") ||
+    lowerPath.endsWith("docker-compose.yaml")
+  );
+}
+
+function iacLabel(lowerPath: string, baseName: string, extension: string): string {
+  if (extension === ".tf" || extension === ".tfvars") return "Terraform";
+  if (baseName === "Dockerfile" || lowerPath.includes("docker-compose")) return "Docker";
+  if (lowerPath.includes(".github/workflows/")) return "GitHub Actions";
+  if (lowerPath.includes("k8s/") || lowerPath.includes("kubernetes/")) return "Kubernetes";
+  return "IaC";
+}
+
+function commandReady(command: string): boolean {
+  const override = process.env[`HERMSEC_${command.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}_BIN`];
+  if (override && existsSync(override)) return true;
+  return executableOnPath(command);
+}
+
+function executableOnPath(command: string): boolean {
+  const suffixes = process.platform === "win32" ? ["", ".exe", ".cmd", ".bat", ".com"] : [""];
+  const entries = (process.env.PATH ?? "").split(path.delimiter).filter(Boolean);
+  return entries.some((entry) => suffixes.some((suffix) => existsSync(path.join(entry, `${command}${suffix}`))));
+}
+
+function readJsonFile(filePath: string): Record<string, unknown> | undefined {
+  try {
+    return JSON.parse(readFileSync(filePath, "utf8")) as Record<string, unknown>;
+  } catch {
+    return undefined;
+  }
+}
+
+function recordValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function sorted(values: Set<string>): string[] {
+  return Array.from(values).sort((left, right) => left.localeCompare(right));
+}
+
+function hasAny(values: Set<string>, expected: string[]): boolean {
+  return expected.some((value) => values.has(value));
+}
+
+function dedupePlan(plan: ScannerPlanItem[]): ScannerPlanItem[] {
+  const seen = new Set<string>();
+  return plan.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
 function emitCanceledProgress(onProgress?: ScanProgressCallback): void {
-  for (const stage of PROGRESS_STAGES) {
+  for (const stage of MAIN_PROGRESS_STAGES) {
     emitProgress(onProgress, stage.id, stage.label, "canceled", "Scan was stopped by the user.");
   }
 }
@@ -444,7 +961,9 @@ function emitToolProgressFromReport(reportDir: string, onProgress?: ScanProgress
     for (const [pattern, id, label] of mappings) {
       const matches = tools.filter((tool) => pattern.test(`${tool.id ?? ""} ${tool.label ?? ""}`));
       if (matches.length === 0) {
-        emitProgress(onProgress, id, label, "skipped", `${label} had no matching inputs in this project.`);
+        emitProgress(onProgress, id, label, "skipped", `${label} had no matching inputs in this project.`, {
+          parentId: "running-scans",
+        });
         continue;
       }
       const failed = matches.find((tool) => tool.status === "failed");
@@ -452,7 +971,7 @@ function emitToolProgressFromReport(reportDir: string, onProgress?: ScanProgress
       const skipped = matches.every((tool) => tool.status === "skipped");
       const status = failed ? "failed" : completed ? "completed" : skipped ? "skipped" : "completed";
       const message = failed?.message ?? completed?.message ?? matches[0]?.message ?? `${label} status recorded.`;
-      emitProgress(onProgress, id, label, status, message);
+      emitProgress(onProgress, id, label, status, message, { parentId: "running-scans" });
     }
   } catch {
     // Progress is helpful, but never allowed to fail the scan.
@@ -476,12 +995,13 @@ function runNodeCli(
   cwd: string,
   args: string[],
   control: ActiveScanControl,
+  extraEnv?: Record<string, string>,
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return new Promise((resolve, reject) => {
     const nodeBinary = process.platform === "win32" ? "node.exe" : "node";
     const child = spawn(nodeBinary, args, {
       cwd,
-      env: process.env,
+      env: { ...process.env, ...extraEnv },
       windowsHide: true,
     });
     control.child = child;

@@ -15,6 +15,11 @@ import type {
 import type { ProjectActionResult, ProjectDirectory } from "../renderer/src/types/projects";
 import type { DoctorProgressEvent, DoctorRunResult } from "../renderer/src/types/doctor";
 import type {
+  ScannerActionResult,
+  ScannerListRequest,
+  ScannerStatusItem,
+} from "../renderer/src/types/scanners";
+import type {
   ChatSessionRecord,
   ChatSessionSummary,
   CreateChatSessionRequest,
@@ -46,6 +51,13 @@ export interface HermsecApi {
   doctor: {
     run: (runId?: string) => Promise<DoctorRunResult>;
     onProgress: (listener: (event: DoctorProgressEvent) => void) => () => void;
+  };
+  scanners: {
+    list: (request?: ScannerListRequest) => Promise<ScannerStatusItem[]>;
+    status: (request?: ScannerListRequest) => Promise<ScannerStatusItem[]>;
+    install: (scannerId: string) => Promise<ScannerActionResult>;
+    uninstall: (scannerId: string) => Promise<ScannerActionResult>;
+    update: (scannerId: string) => Promise<ScannerActionResult>;
   };
   projects: {
     list: () => Promise<ProjectDirectory[]>;

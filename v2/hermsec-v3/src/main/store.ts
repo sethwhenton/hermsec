@@ -4,7 +4,7 @@ import { app } from "electron";
 import type { HermsecScanAssistMode } from "../renderer/src/types/scan";
 import type { AppSettings, AutomationFrequency, DeepPartial, ProviderConfig } from "../renderer/src/types/settings";
 import { getEnvDefaults } from "./env";
-import { defaultProjectDir } from "./scan";
+import { defaultScannerSettings, normalizeScannerSettings } from "./scannerDefaults";
 
 const SETTINGS_FILE = "settings.json";
 
@@ -44,7 +44,7 @@ function defaultSettings(): AppSettings {
       thinkingLevel: "balanced",
       contextWindow: "standard",
     },
-    defaultProjectDir: defaultProjectDir(),
+    defaultProjectDir: defaultProjectDirSetting(),
     defaultReportDir: join(app.getPath("documents"), "Hermsec", "reports"),
     activeModelId: env.model,
     automation: {
@@ -55,7 +55,14 @@ function defaultSettings(): AppSettings {
       scanMode: "scanner-model-summary",
     },
     providers: [defaultProvider(env)],
+    scanners: defaultScannerSettings(),
   };
+}
+
+function defaultProjectDirSetting(): string {
+  const root = process.cwd();
+  const labProject = join(root, "Test projects", "hermsec-node-express-vuln-lab");
+  return existsSync(labProject) ? labProject : root;
 }
 
 function deepMerge<T extends object>(target: T, source: DeepPartial<T>): T {
@@ -182,6 +189,7 @@ function normalizeSettings(settings: AppSettings): AppSettings {
         : {}),
     },
     providers,
+    scanners: normalizeScannerSettings(settings.scanners),
     ...(activeModelId ? { activeModelId } : {}),
   };
 }

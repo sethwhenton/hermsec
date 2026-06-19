@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { CheckCircle2, ChevronDown, ChevronRight, Circle, MinusCircle, XCircle } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Check, ChevronDown, ChevronRight, Circle, Minus, X } from "lucide-react";
 import { cn } from "@/lib/cn";
-import type { ScanProgressEvent, ScanProgressStatus } from "@/types/scan";
+import type { ScanProgressDetail, ScanProgressEvent, ScanProgressStatus } from "@/types/scan";
 import Spiral5x5 from "@/components/ui/Spiral5x5";
 
 interface ScanProgressPanelProps {
@@ -9,6 +9,15 @@ interface ScanProgressPanelProps {
   compact?: boolean;
   embedded?: boolean;
 }
+
+const timelineStages = [
+  { id: "inspect-project", label: "Inspecting project" },
+  { id: "choose-tools", label: "Choosing scanner tools" },
+  { id: "prepare-tools", label: "Preparing tools" },
+  { id: "running-scans", label: "Running scans" },
+  { id: "model-summary", label: "Model summary" },
+  { id: "report-ready", label: "Report ready" },
+] as const;
 
 export function ScanProgressDisclosure({
   events,
@@ -19,60 +28,104 @@ export function ScanProgressDisclosure({
   running?: boolean;
   visible?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const model = useMemo(() => buildTimelineModel(events), [events]);
+  const activeStage = model.stages.find((stage) => stage.status === "running");
+  const firstExpandable = activeStage?.id ?? model.stages.find((stage) => stage.details.length > 0)?.id;
+  const [manuallyOpen, setManuallyOpen] = useState<string | null>(null);
+  const openStageId = manuallyOpen ?? firstExpandable ?? null;
 
   if (!visible || events.length === 0) return null;
 
-  const completed = events.filter((event) => event.status === "completed").length;
-  const failed = events.filter((event) => event.status === "failed").length;
-  const canceled = events.some((event) => event.status === "canceled");
-  const active = [...events].reverse().find((event) => event.status === "running");
-  const summary = canceled
-    ? "Stopped"
-    : failed
-      ? `${failed} failed`
-      : running
-        ? active
-        ? `${active.label} running`
-        : "Running"
-      : `${completed}/${events.length} complete`;
+  const statusLine = activeStage?.message
+    ?? model.stages.find((stage) => stage.status === "completed")?.message
+    ?? "Scanning to see which tools this project needs...";
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-surface-elevated/75 shadow-[0_16px_45px_rgba(0,0,0,0.24)]">
-      <button
-        type="button"
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors duration-150 ease-out active:scale-[0.995] hover:bg-surface-hover/60"
-        onClick={() => setOpen((current) => !current)}
-      >
-        <div className="flex min-w-0 items-center gap-3">
-          {running ? (
-            <Spiral5x5 glow size={14} gap={1} className="shrink-0 text-accent" />
-          ) : canceled ? (
-            <MinusCircle className="h-4 w-4 shrink-0 text-muted" />
-          ) : failed ? (
-            <XCircle className="h-4 w-4 shrink-0 text-danger" />
-          ) : (
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
-          )}
-          <div className="min-w-0">
-            <div className="text-sm font-medium text-foreground">Scan progress</div>
-            <div className="truncate text-xs text-muted-foreground">{summary}</div>
+    <div className="flex w-full justify-start">
+      <div className="w-full max-w-[min(680px,96%)] overflow-hidden rounded-[22px] border border-border/80 bg-surface-elevated/80 text-foreground shadow-[0_16px_50px_rgba(0,0,0,0.24)] backdrop-blur">
+        <div className="scan-buffer-line" aria-hidden />
+        <div className="px-5 py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm text-foreground">{statusLine}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {model.chips.slice(0, 7).map((chip) => (
+                  <span
+                    key={chip}
+                    className="rounded-md border border-border/75 bg-background/45 px-2 py-0.5 text-[11px] text-muted"
+                  >
+                    {chip}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <span className="shrink-0 rounded-md border border-border/75 bg-background/45 px-2 py-1 text-[11px] text-muted">
+              {running ? "Running" : model.done ? "Done" : "Queued"}
+            </span>
+          </div>
+
+          <div className="mt-5">
+            {model.stages.map((stage, index) => {
+              const open = openStageId === stage.id && stage.details.length > 0;
+              return (
+                <div key={stage.id} className="relative grid grid-cols-[28px_1fr] gap-3">
+                  {index < model.stages.length - 1 ? (
+                    <div
+                      className={cn(
+                        "absolute left-[13px] top-7 h-[calc(100%-10px)] w-px",
+                        stage.status === "completed" ? "bg-zinc-500/60" : "bg-border",
+                      )}
+                    />
+                  ) : null}
+                  <StageIcon status={stage.status} active={stage.status === "running"} />
+                  <div className="min-w-0 pb-4">
+                    <button
+                      type="button"
+                      className="group flex w-full min-w-0 items-center justify-between gap-3 rounded-md px-1 py-0.5 text-left transition-colors duration-150 ease-out hover:bg-white/[0.03] active:scale-[0.995]"
+                      onClick={() => {
+                        if (stage.details.length === 0) return;
+                        setManuallyOpen((current) => (current === stage.id ? "" : stage.id));
+                      }}
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span
+                          className={cn(
+                            "truncate text-sm",
+                            stage.status === "running" ? "font-semibold text-foreground" : "text-muted",
+                            stage.status === "completed" ? "text-foreground" : "",
+                          )}
+                        >
+                          {index + 1}. {stage.label}
+                        </span>
+                        {stage.details.length > 0 ? (
+                          open ? (
+                            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          ) : (
+                            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          )
+                        ) : null}
+                      </div>
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                        {stage.value ?? stageDuration(stage)}
+                      </span>
+                    </button>
+                    {open ? <StageDetails details={stage.details} /> : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 border-t border-border/70 pt-3">
+            <span className="rounded-md border border-border/75 bg-background/45 px-2 py-1 text-[11px] text-muted">
+              {model.mode}
+            </span>
+            <span className="rounded-md border border-border/75 bg-background/45 px-2 py-1 text-[11px] text-muted">
+              {model.tokenLabel}
+            </span>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <span className="text-[10px] uppercase tracking-wide text-muted">online</span>
-          {open ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          )}
-        </div>
-      </button>
-      {open ? (
-        <div className="border-t border-border/70 px-3 pb-3 pt-2">
-          <ScanProgressPanel events={events} compact embedded />
-        </div>
-      ) : null}
+      </div>
     </div>
   );
 }
@@ -101,16 +154,14 @@ export function ScanProgressPanel({ events, compact, embedded }: ScanProgressPan
             key={event.id}
             className="grid grid-cols-[18px_1fr_auto] items-center gap-2 rounded-md px-1.5 py-1 text-xs"
           >
-            <ProgressIcon status={event.status} />
+            <SmallStatusIcon status={event.status} />
             <div className="min-w-0">
               <div className="truncate text-foreground">{event.label}</div>
               {event.message ? (
                 <div className="truncate text-[11px] text-muted-foreground">{event.message}</div>
               ) : null}
             </div>
-            <span className={cn("text-[10px] uppercase", statusColor(event.status))}>
-              {event.status}
-            </span>
+            <span className="text-[10px] uppercase text-muted">{event.status}</span>
           </div>
         ))}
       </div>
@@ -118,19 +169,140 @@ export function ScanProgressPanel({ events, compact, embedded }: ScanProgressPan
   );
 }
 
-function ProgressIcon({ status }: { status: ScanProgressStatus }) {
-  if (status === "running") return <Spiral5x5 glow size={12} gap={1} className="text-accent" />;
-  if (status === "completed") return <CheckCircle2 className="h-3.5 w-3.5 text-success" />;
-  if (status === "failed") return <XCircle className="h-3.5 w-3.5 text-danger" />;
-  if (status === "canceled") return <MinusCircle className="h-3.5 w-3.5 text-muted" />;
-  if (status === "skipped") return <MinusCircle className="h-3.5 w-3.5 text-muted" />;
-  return <Circle className="h-3.5 w-3.5 text-muted-foreground" />;
+function StageDetails({ details }: { details: ScanProgressDetail[] }) {
+  return (
+    <div className="mt-2 space-y-1 border-l border-border/80 pl-3">
+      {details.map((detail, index) => (
+        <div key={detail.id ?? `${detail.label}-${index}`} className="grid grid-cols-[18px_1fr_auto] items-start gap-2 py-1 text-xs">
+          <SmallStatusIcon status={detail.status} />
+          <div className="min-w-0">
+            <div className="truncate text-foreground/90">{detail.label}</div>
+            {detail.message ? <div className="mt-0.5 line-clamp-2 text-muted-foreground">{detail.message}</div> : null}
+          </div>
+          {detail.value ? (
+            <span className="max-w-[120px] truncate rounded-md border border-border/70 bg-background/40 px-1.5 py-0.5 text-[10px] text-muted">
+              {detail.value}
+            </span>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
 }
 
-function statusColor(status: ScanProgressStatus): string {
-  if (status === "running") return "text-accent";
-  if (status === "completed") return "text-success";
-  if (status === "failed") return "text-danger";
-  if (status === "canceled") return "text-muted";
-  return "text-muted";
+function StageIcon({ status, active }: { status: ScanProgressStatus; active?: boolean }) {
+  if (status === "completed") {
+    return (
+      <span className="relative z-10 mt-0.5 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-500/70 bg-zinc-800 text-zinc-100">
+        <Check className="h-3.5 w-3.5" />
+      </span>
+    );
+  }
+  if (status === "running") {
+    return (
+      <span className="relative z-10 mt-0.5 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-400/80 bg-zinc-900 text-zinc-100">
+        <Spiral5x5 size={13} gap={1} className={cn(active ? "opacity-100" : "opacity-70")} />
+      </span>
+    );
+  }
+  if (status === "failed") {
+    return (
+      <span className="relative z-10 mt-0.5 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-600 bg-zinc-900 text-zinc-300">
+        <X className="h-3.5 w-3.5" />
+      </span>
+    );
+  }
+  if (status === "skipped" || status === "canceled") {
+    return (
+      <span className="relative z-10 mt-0.5 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-700 bg-zinc-950 text-zinc-500">
+        <Minus className="h-3.5 w-3.5" />
+      </span>
+    );
+  }
+  return (
+    <span className="relative z-10 mt-0.5 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-700 bg-zinc-950 text-zinc-500">
+      <Circle className="h-3.5 w-3.5" />
+    </span>
+  );
+}
+
+function SmallStatusIcon({ status }: { status: ScanProgressStatus }) {
+  if (status === "running") return <Spiral5x5 size={11} gap={1} className="mt-0.5 text-zinc-200" />;
+  if (status === "completed") return <Check className="mt-0.5 h-3.5 w-3.5 text-zinc-200" />;
+  if (status === "failed") return <X className="mt-0.5 h-3.5 w-3.5 text-zinc-300" />;
+  if (status === "skipped" || status === "canceled") return <Minus className="mt-0.5 h-3.5 w-3.5 text-zinc-500" />;
+  return <Circle className="mt-0.5 h-3.5 w-3.5 text-zinc-500" />;
+}
+
+function buildTimelineModel(events: ScanProgressEvent[]) {
+  const byId = new Map(events.map((event) => [event.id, event]));
+  const childrenByParent = new Map<string, ScanProgressEvent[]>();
+  const chips = new Set<string>();
+
+  for (const event of events) {
+    event.chips?.forEach((chip) => chips.add(chip));
+    if (event.parentId) {
+      const current = childrenByParent.get(event.parentId) ?? [];
+      current.push(event);
+      childrenByParent.set(event.parentId, current);
+    }
+  }
+
+  const stages = timelineStages.map((stage) => {
+    const event = byId.get(stage.id);
+    const childDetails = (childrenByParent.get(stage.id) ?? []).map(eventToDetail);
+    const details = [...(event?.details ?? []), ...childDetails];
+    return {
+      id: stage.id,
+      label: event?.label ?? stage.label,
+      status: event?.status ?? "waiting",
+      message: event?.message,
+      timestamp: event?.timestamp,
+      details: dedupeDetails(details),
+      value: valueForStage(event),
+    };
+  });
+
+  const mode = events.some((event) => /deep/i.test(`${event.message ?? ""} ${event.label}`))
+    ? "Deep assisted scan"
+    : "Scanner + model summary";
+
+  return {
+    stages,
+    chips: Array.from(chips),
+    mode,
+    tokenLabel: mode === "Deep assisted scan" ? "Model tokens after scanners" : "Lowest token use",
+    done: stages.every((stage) => ["completed", "skipped"].includes(stage.status)),
+  };
+}
+
+function eventToDetail(event: ScanProgressEvent): ScanProgressDetail {
+  return {
+    id: event.id,
+    label: event.label,
+    status: event.status,
+    message: event.message,
+  };
+}
+
+function dedupeDetails(details: ScanProgressDetail[]): ScanProgressDetail[] {
+  const byKey = new Map<string, ScanProgressDetail>();
+  for (const detail of details) {
+    byKey.set(detail.id ?? detail.label, detail);
+  }
+  return Array.from(byKey.values());
+}
+
+function valueForStage(event: ScanProgressEvent | undefined): string | undefined {
+  if (!event) return undefined;
+  if (event.status === "running") return "now";
+  if (event.status === "completed") return "done";
+  if (event.status === "skipped") return "skipped";
+  if (event.status === "failed") return "failed";
+  return undefined;
+}
+
+function stageDuration(stage: { timestamp?: number; status: ScanProgressStatus }) {
+  if (!stage.timestamp || stage.status === "waiting") return "";
+  return new Date(stage.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }

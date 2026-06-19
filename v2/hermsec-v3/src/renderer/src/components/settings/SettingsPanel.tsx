@@ -3,6 +3,7 @@ import { useUiStore } from "@/store/uiStore";
 import { GeneralSettings } from "./GeneralSettings";
 import { ModelsSettings } from "./ModelsSettings";
 import { ProvidersSettings } from "./ProvidersSettings";
+import { ScannersSettings } from "./ScannersSettings";
 import { SettingsSidebar } from "./SettingsSidebar";
 
 export function SettingsPanel() {
@@ -25,6 +26,7 @@ export function SettingsPanel() {
             {section === "general" && <GeneralSettings />}
             {section === "providers" && <ProvidersSettings />}
             {section === "models" && <ModelsSettings />}
+            {section === "scanners" && <ScannersSettings />}
           </motion.div>
         </AnimatePresence>
       </div>

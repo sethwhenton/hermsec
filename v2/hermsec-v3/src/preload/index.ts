@@ -16,6 +16,11 @@ import type {
 import type { ProjectActionResult, ProjectDirectory } from "../renderer/src/types/projects";
 import type { DoctorProgressEvent, DoctorRunResult } from "../renderer/src/types/doctor";
 import type {
+  ScannerActionResult,
+  ScannerListRequest,
+  ScannerStatusItem,
+} from "../renderer/src/types/scanners";
+import type {
   ChatSessionRecord,
   ChatSessionSummary,
   CreateChatSessionRequest,
@@ -55,6 +60,18 @@ const hermsecApi = {
       ipcRenderer.on("doctor:progress", handler);
       return () => ipcRenderer.removeListener("doctor:progress", handler);
     },
+  },
+  scanners: {
+    list: (request?: ScannerListRequest): Promise<ScannerStatusItem[]> =>
+      ipcRenderer.invoke("scanners:list", request),
+    status: (request?: ScannerListRequest): Promise<ScannerStatusItem[]> =>
+      ipcRenderer.invoke("scanners:status", request),
+    install: (scannerId: string): Promise<ScannerActionResult> =>
+      ipcRenderer.invoke("scanners:install", scannerId),
+    uninstall: (scannerId: string): Promise<ScannerActionResult> =>
+      ipcRenderer.invoke("scanners:uninstall", scannerId),
+    update: (scannerId: string): Promise<ScannerActionResult> =>
+      ipcRenderer.invoke("scanners:update", scannerId),
   },
   projects: {
     list: (): Promise<ProjectDirectory[]> => ipcRenderer.invoke("projects:list"),

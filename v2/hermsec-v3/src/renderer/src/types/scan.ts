@@ -14,11 +14,22 @@ export interface ProjectStateFingerprint {
 
 export type ScanProgressStatus = "waiting" | "running" | "completed" | "skipped" | "failed" | "canceled";
 
+export interface ScanProgressDetail {
+  id?: string;
+  label: string;
+  status: ScanProgressStatus;
+  message?: string;
+  value?: string;
+}
+
 export interface ScanProgressEvent {
   id: string;
   label: string;
   status: ScanProgressStatus;
   message?: string;
+  parentId?: string;
+  details?: ScanProgressDetail[];
+  chips?: string[];
   timestamp: number;
 }
 

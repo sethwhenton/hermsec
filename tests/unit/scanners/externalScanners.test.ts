@@ -16,14 +16,16 @@ test("external scanner suite normalizes mocked real JSON outputs", async () => {
     sourceFile(repoRoot, "requirements.txt", "text", "manifest"),
   ];
   const executed: SafeExecRequest[] = [];
-  const result = await runExternalScanners(files, readFixtureText, {
-    commandResolver: fakeResolver,
-    exec: async (request) => {
-      executed.push(request);
-      return fakeExecResult(request, repoRoot);
-    },
-    timeoutMs: 1000,
-  });
+  const result = await withEnabledScanners("semgrep,gitleaks,bandit,osv-scanner,pip-audit,pmg", async () =>
+    runExternalScanners(files, readFixtureText, {
+      commandResolver: fakeResolver,
+      exec: async (request) => {
+        executed.push(request);
+        return fakeExecResult(request, repoRoot);
+      },
+      timeoutMs: 1000,
+    })
+  );
 
   assert.deepEqual(result.statuses.map((status) => [status.id, status.status]), [
     ["semgrep-run", "completed"],
@@ -60,9 +62,11 @@ test("external scanner suite records deterministic skipped statuses when binarie
     sourceFile(repoRoot, "requirements.txt", "text", "manifest"),
   ];
 
-  const result = await runExternalScanners(files, readFixtureText, {
-    commandResolver: () => undefined,
-  });
+  const result = await withEnabledScanners("semgrep,gitleaks,bandit,osv-scanner,pip-audit,pmg", async () =>
+    runExternalScanners(files, readFixtureText, {
+      commandResolver: () => undefined,
+    })
+  );
 
   assert.equal(result.findings.length, 0);
   assert.equal(result.statuses.length, 6);
@@ -70,28 +74,113 @@ test("external scanner suite records deterministic skipped statuses when binarie
   assert.equal(result.statuses.every((status) => /not found|missing|no matching/i.test(status.message)), true);
 });
 
+test("external scanner selection honors none, explicit, default, and all env modes", async () => {
+  const repoRoot = path.join(os.tmpdir(), "Hermsec Scanner Selection Repo");
+  const files = [
+    sourceFile(repoRoot, "src/server.js", "javascript", "source"),
+    sourceFile(repoRoot, "package-lock.json", "json", "lockfile"),
+  ];
+
+  const noneExecuted: ScannerCommandId[] = [];
+  const none = await withEnabledScanners("__none__", async () =>
+    runExternalScanners(files, readFixtureText, {
+      commandResolver: fakeResolver,
+      exec: async (request) => {
+        noneExecuted.push(request.tool);
+        return fakeExecResult(request, repoRoot);
+      },
+    })
+  );
+  assert.equal(none.statuses.length, 0);
+  assert.equal(noneExecuted.length, 0);
+
+  const explicitExecuted: ScannerCommandId[] = [];
+  await withEnabledScanners("semgrep,gitleaks", async () =>
+    runExternalScanners(files, readFixtureText, {
+      commandResolver: fakeResolver,
+      exec: async (request) => {
+        explicitExecuted.push(request.tool);
+        return fakeExecResult(request, repoRoot);
+      },
+    })
+  );
+  assert.deepEqual(explicitExecuted.sort(), ["gitleaks", "semgrep"]);
+
+  const defaultExecuted: ScannerCommandId[] = [];
+  await withEnabledScanners(undefined, async () =>
+    runExternalScanners(files, readFixtureText, {
+      commandResolver: fakeResolver,
+      exec: async (request) => {
+        defaultExecuted.push(request.tool);
+        return fakeExecResult(request, repoRoot);
+      },
+    })
+  );
+  assert.equal(defaultExecuted.includes("trufflehog"), false);
+  assert.equal(defaultExecuted.includes("semgrep"), true);
+  assert.equal(defaultExecuted.includes("gitleaks"), true);
+
+  const allExecuted: ScannerCommandId[] = [];
+  await withEnabledScanners("all", async () =>
+    runExternalScanners(files, readFixtureText, {
+      commandResolver: fakeResolver,
+      exec: async (request) => {
+        allExecuted.push(request.tool);
+        return fakeExecResult(request, repoRoot);
+      },
+    })
+  );
+  assert.equal(allExecuted.includes("trufflehog"), true);
+});
+
 test("external scanner suite fails one malformed scanner without throwing", async () => {
   const repoRoot = path.join(os.tmpdir(), "Hermsec Malformed Scanner Repo");
   const files = [sourceFile(repoRoot, "src/server.js", "javascript", "source")];
-  const result = await runExternalScanners(files, readFixtureText, {
-    commandResolver: (command) => command === "semgrep" ? fakeResolver(command) : undefined,
-    exec: async (request) => ({
-      tool: request.tool,
-      status: "completed",
-      exitCode: 0,
-      stdout: "{not-json",
-      stderr: "",
-      durationMs: 1,
-      timedOut: false,
-      stdoutTruncated: false,
-      stderrTruncated: false,
-    }),
-  });
+  const result = await withEnabledScanners("semgrep", async () =>
+    runExternalScanners(files, readFixtureText, {
+      commandResolver: (command) => command === "semgrep" ? fakeResolver(command) : undefined,
+      exec: async (request) => ({
+        tool: request.tool,
+        status: "completed",
+        exitCode: 0,
+        stdout: "{not-json",
+        stderr: "",
+        durationMs: 1,
+        timedOut: false,
+        stdoutTruncated: false,
+        stderrTruncated: false,
+      }),
+    })
+  );
 
   const semgrep = result.statuses.find((status) => status.id === "semgrep-run");
   assert.equal(semgrep?.status, "failed");
   assert.match(semgrep?.message ?? "", /invalid JSON/);
   assert.equal(result.findings.length, 0);
+});
+
+test("semgrep scanner chunks large Java repositories", async () => {
+  const repoRoot = path.join(os.tmpdir(), "Hermsec Large Java Repo");
+  const files = Array.from({ length: 301 }, (_, index) =>
+    sourceFile(repoRoot, `src/main/java/BenchmarkTest${String(index).padStart(5, "0")}.java`, "java", "source"),
+  );
+  const executed: SafeExecRequest[] = [];
+  const result = await withEnabledScanners("semgrep", async () =>
+    runExternalScanners(files, readFixtureText, {
+      commandResolver: (command) => command === "semgrep" ? fakeResolver(command) : undefined,
+      exec: async (request) => {
+        executed.push(request);
+        return fakeExecResult(request, repoRoot);
+      },
+      timeoutMs: 1000,
+    })
+  );
+
+  const semgrepRequests = executed.filter((request) => request.tool === "semgrep");
+  assert.equal(semgrepRequests.length > 1, true);
+  assert.equal(semgrepRequests.every((request) => request.timeoutMs >= 90_000), true);
+  assert.equal(semgrepRequests.every((request) => request.args.includes("--output")), true);
+  assert.equal(result.statuses.find((status) => status.id === "semgrep-run")?.status, "completed");
 });
 
 test("command discovery supports PATH and scanner-specific overrides", () => {
@@ -251,6 +340,26 @@ function scannerOutput(scanner: ScannerCommandId, repoRoot: string): string {
           },
         },
       });
+    default:
+      return "{}";
+  }
+}
+
+async function withEnabledScanners<T>(value: string | undefined, run: () => Promise<T>): Promise<T> {
+  const previous = process.env.HERMSEC_ENABLED_SCANNERS;
+  if (value === undefined) {
+    delete process.env.HERMSEC_ENABLED_SCANNERS;
+  } else {
+    process.env.HERMSEC_ENABLED_SCANNERS = value;
+  }
+  try {
+    return await run();
+  } finally {
+    if (previous === undefined) {
+      delete process.env.HERMSEC_ENABLED_SCANNERS;
+    } else {
+      process.env.HERMSEC_ENABLED_SCANNERS = previous;
+    }
   }
 }
 

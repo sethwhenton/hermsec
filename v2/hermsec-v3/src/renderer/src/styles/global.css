@@ -62,6 +62,37 @@ body {
   -webkit-app-region: no-drag;
 }
 
+.scan-buffer-line {
+  position: relative;
+  height: 2px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.scan-buffer-line::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: -35%;
+  width: 35%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.42),
+    transparent
+  );
+  animation: scan-buffer-sweep 1.45s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+}
+
+@keyframes scan-buffer-sweep {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(390%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

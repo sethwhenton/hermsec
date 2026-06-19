@@ -374,6 +374,286 @@ This file is the running engineering ledger for Hermsec. Use it to record meanin
 - Current benchmark clone/artifacts live under ignored local paths and should not be treated as committed source.
 - Scanner binary availability is machine-local. Doctor remains the source of truth for each device.
 
+## 2026-06-19 - Real Deep-Assisted BenchmarkJava Validation
+
+### Changes / Runs
+
+- Re-ran OWASP BenchmarkJava in online deep-assisted mode with OpenCode Go and DeepSeek Flash after the routing/chunking fixes.
+- Used process-only model environment variables and kept the repo/config free of raw credential values.
+- Enabled `HERMSEC_BENCHMARK_EXPORT_RAW=1` for the successful run so benchmark scoring could use raw, unredacted testcase identifiers without weakening normal user-facing report redaction.
+- Successful output directory: `.hermsec\benchmark-runs\BenchmarkJava-deep-assisted-model-real-20260619-155145\benchmarkjava\2026-06-19T13-56-07-856Z\`.
+- Saved scorer output to `benchmark-score.json` in that output directory.
+
+### Verification
+
+- Successful full scan summary: `9384` findings, `1784` high, `7600` medium, `0` scanner failures.
+- Model report status: `generatedWithModel=true`, provider `opencode-go`.
+- Model explanation scope: top `10` prioritized findings were model-explained; the remaining `9374` findings used fallback evidence-bound explanations.
+- Tool counts: Semgrep `6572`, Hermsec offline heuristics `2810`, Gitleaks `2`.
+- OWASP BenchmarkJava metrics: TP `1238`, FP `728`, FN `177`, TN `597`, precision `0.6297`, recall `0.8749`, F1 `0.7323`, accuracy `0.6697`.
+- CLI config was restored afterward: `preferredModelProvider=none`, `privacyMode=local-only`.
+
+### Issues Encountered
+
+- First full model-backed attempt completed static scanning but model generation fell back with `provider-failed`; the first model chunk was too large/slow for the original settings.
+- Plain text provider smoke returned no message content, while JSON-mode completion succeeded. Hermsec's structured JSON explanation path is the reliable path for OpenCode Go.
+- A relaunch failed because Windows `Start-Process` split the BenchmarkJava path at the space in `Personal Proj`; quoting the target and output paths fixed the launch.
+
+### Follow-Ups
+
+- Add a clearer provider failure detail field so future reports do not collapse first-chunk model errors into only `provider-failed`.
+- Keep deep-assisted top-N configurable and cost-visible in the UI/CLI.
+- Continue Java precision work: command injection, LDAP, XPath, path traversal, SQLi, trust boundary, and XSS still produce high false positives.
+
+## 2026-06-19 - Planned Adaptive Scanner Harness And Scan Tracker
+
+### Direction
+
+- Add an adaptive scanner harness before the scan starts.
+- The harness should inspect the repository, infer languages/frameworks/manifests/lockfiles, choose the minimum scanner set needed for that project, verify or install missing scanner tools into the Hermsec-managed runtime, and then run only the relevant scanners.
+- The UI should use the simpler Hermsec theme: no extra logo/title inside the card, no green/blue glow, and no decorative visual treatment. Use the quiet dark card style from the current mode-selection card.
+- Keep the richer information density from the detailed concept: tool readiness, install state, scanner plan, detected languages, skipped-tool reasons, live scanner lanes, finding counts, and logs should be available from expandable step details.
+
+### Proposed Flow
+
+1. Inspecting project.
+2. Choosing scanner tools.
+3. Preparing tools.
+4. Running scans.
+5. Model summary.
+6. Report ready.
+
+### UI Rules
+
+- Keep the existing top buffer/spinner animation as the main motion element.
+- The comment beside or under the buffer should update by stage, for example: `Scanning to see which tools this project needs...`.
+- Very fast steps should still remain visible for about `2s` so progress feels readable rather than flickery.
+- Each timeline step can expand inline to show details. Avoid nested floating cards.
+- Completed/active/inactive states should use neutral Hermsec styling, not colored glow.
+
+### Harness Rules
+
+- Do not install every scanner for every user.
+- Do not install scanner tools inside the scanned project.
+- Do not run package lifecycle scripts.
+- Prefer lockfile and manifest scanning where possible.
+- Install optional scanners only into a versioned Hermsec runtime directory.
+- Scanner selection should be capability-driven: languages, manifests, lockfiles, IaC files, and user scan mode decide which tools run.
+- If a scanner is unavailable or skipped, the scan should continue with remaining tools and the card should explain why.
+
+### Initial Scanner Targets
+
+- Always consider secrets: Gitleaks.
+- JS/TS/React: Semgrep, OSV/Trivy, npm audit where lockfiles exist.
+- Java: Semgrep, Hermsec Java taint heuristics, OSV/Trivy or Dependency-Check for Maven/Gradle.
+- Rust: Semgrep where supported plus OSV/Trivy/cargo-audit for Cargo files.
+- PHP: Semgrep plus Composer audit/OSV/Trivy for Composer files.
+- Go: gosec, govulncheck, OSV/Trivy for Go modules.
+- IaC/config: Checkov and/or Trivy when Terraform/Kubernetes/Docker/GitHub Actions files are detected.
+
+### Implemented First Pass
+
+- Added the V3 adaptive pre-scan phase to inspect the selected project before launching the CLI scan.
+- Added project profiling for languages, frameworks, manifests, lockfiles, and IaC markers.
+- Added scanner planning/readiness rows for current runnable tools and planned/skipped future tools.
+- Replaced the old chat progress disclosure with the simple neutral six-step timeline card.
+- Added expandable inline step details and the neutral top buffer strip.
+- Preserved honesty: future scanners are shown as planned/skipped until their adapters/installers exist.
+
+## 2026-06-19 - Scanner-Managed Harness Expansion
+
+### Changes
+
+- Introduced a scanner catalog model for the root harness with each scanner's id, label, category, command, version, install kind, supported languages, input types, parser, default enabled state, auto-install behavior, and risk notes.
+- Mirrored that catalog shape in V3 main-process scanner management so the desktop app can list scanner status, track per-scanner settings, and manage installs outside scanned repositories.
+- Added scanner settings to V3 app settings:
+  - `autoInstallMissing`
+  - `allowOnlineUpdates`
+  - `labInstallAll`
+  - per-scanner `enabled`
+  - per-scanner `autoInstall`
+- Added V3 main-process scanner handlers for list/status/install/uninstall/update flows.
+- Added managed scanner tool roots under Electron `userData\managed-scanners\<platform>-<arch>`, with managed `bin`, Python tool, npm prefix, and Go `GOBIN` locations.
+- Expanded root external scanner coverage and parser coverage beyond the original baseline. The current catalog includes Hermsec heuristics, Semgrep, Gitleaks, TruffleHog, OSV-Scanner, Trivy, Checkov, Bandit, pip-audit, SafeDep PMG npm audit, Retire.js, FindSecBugs/SpotBugs, OWASP Dependency-Check, Psalm, Composer audit, gosec, govulncheck, cargo-audit, Brakeman, Flawfinder, Cppcheck, and .NET vulnerable package checks.
+- Root scanner execution now respects `HERMSEC_ENABLED_SCANNERS`, allowing V3 settings to narrow which external scanners run for the selected project.
+- The adaptive scan tracker from the previous pass remains the user-facing progress surface and should receive richer scanner-managed details: selected tools, managed/PATH readiness, install attempts, skipped reasons, failure messages, and finding counts.
+
+### Adaptive Workflow
+
+1. Inspect the selected project without running dependency installs or build scripts.
+2. Detect languages, frameworks, manifests, lockfiles, Docker/IaC/workflow markers, and benchmark/lab profile needs.
+3. Match the project profile against scanner capabilities from the catalog.
+4. Verify each selected scanner from Hermsec managed tools first, then PATH/system locations.
+5. If the user enabled auto-install and the scanner has a safe installer, install it into the Hermsec managed scanner root, not the scanned project.
+6. Pass scanner enablement and managed executable paths into the root CLI.
+7. Run only relevant scanners; continue on optional scanner skips/failures and record why.
+8. Generate reports with scanner status, assist mode, model summary/deep-assisted metadata, and scanner-confirmed merge evidence.
+
+### Settings > Scanners Handoff
+
+- Intended user surface: `Settings > Scanners` should show the catalog, status, managed/system path, enable toggle, auto-install toggle, install/update/uninstall actions, and whether each scanner applies to the current project.
+- Current source state observed by this documentation pass: V3 settings data, main-process IPC handlers, preload scanner APIs, Settings sidebar entry, and `ScannersSettings` renderer panel are wired in the current tree.
+- Treat the visible Settings > Scanners tab as the next verification/polish task: run typecheck/build, open the UI, exercise list/status/filter/toggle/install/update/remove paths, and confirm scan launches receive the expected scanner env.
+
+### Benchmark Plan
+
+- Keep OWASP BenchmarkJava as the standing Java recall/precision gate.
+- Add OpenSSF CVE Benchmark for JS/TS dependency and application vulnerability coverage.
+- Add focused small fixture projects for Go, Rust, PHP, Ruby/Rails, C/C++, .NET, Terraform, Kubernetes, Docker, and GitHub Actions where possible.
+- Track scanner-specific runtime, status, skipped reasons, failed command details, finding counts, TP/FP/FN/TN, precision, recall, F1, and duplicate-noise rates.
+- Keep benchmark raw exports opt-in with `HERMSEC_BENCHMARK_EXPORT_RAW=1`; normal app reports should remain redacted.
+- Start new scanner gates as advisory/non-blocking until managed installs and platform behavior stabilize on Windows, macOS, and Linux.
+
+### Known Limitations And Struggles
+
+- Root and V3 currently duplicate scanner catalog content. This can drift unless V3 consumes the root catalog or code generation is added.
+- Managed installers are partial. Python/npm/Go install paths exist, but native release download/checksum installers still need durable implementation for tools such as Trivy and other binaries.
+- The Settings > Scanners user interface is newly wired and still needs runtime UI verification.
+- Some tools have intrinsic setup constraints: FindSecBugs/SpotBugs needs compiled classes, Dependency-Check needs database/cache strategy, Psalm needs project config, Composer audit needs Composer available, and Checkov/Trivy may require online data setup.
+- Large scans can still be slow or noisy. Semgrep chunking helps, but scanner timeouts/output caps need per-tool tuning.
+- PATH versus managed-tool precedence must stay predictable and visible in the UI.
+- macOS/Linux managed scanner behavior has not yet been verified.
+
+### Next Steps
+
+- Verify the renderer Settings > Scanners tab and preload scanner API with typecheck/build plus a manual UI pass.
+- Deduplicate scanner catalog data between root and V3.
+- Feed scanner settings and managed executable overrides into every V3 scan launch path, including manual scans, dashboard Scan again, automation Run Now, and scheduled due checks.
+- Add checksum-backed native installers and update/uninstall tests.
+- Add unit tests for scanner enable/disable filtering, install failure handling, managed path precedence, and parser coverage for the expanded scanner stack.
+- Run root typecheck/tests and V3 typecheck/build after the scanner-managed flow is fully wired.
+
+## 2026-06-19 - Scanner Harness Verification And Prep Wiring
+
+### Changes
+
+- Fixed root TypeScript blockers introduced by the expanded scanner stack:
+  - added source counters for the expanded language union
+  - corrected Cargo audit parser typing
+  - corrected SARIF parser exact-optional-property typing
+  - parsed .NET transitive package vulnerabilities
+  - routed cppcheck stderr into parser normalization
+- Tightened scanner command validation for the expanded tool list so each scanner only runs the safe argument shape HermSec builds.
+- Changed disabled scanner behavior so disabled tools are omitted from scanner statuses instead of showing as skipped lanes.
+- Clarified scanner env semantics:
+  - unset `HERMSEC_ENABLED_SCANNERS` uses default-enabled catalog tools
+  - `all` enables lab/all-scanners mode
+  - `__none__` or empty means no external scanners
+- Wired V3 scan preparation to `prepareScannersForProject()` so auto-install can run during the Preparing tools stage and failed installs show as failed detail rows.
+- Added row-level action messages in Settings > Scanners so failed/manual install attempts are visible.
+- Expanded packaged runtime scanner command lookup to include the new scanner command names.
+- Made Trivy and OWASP Dependency-Check respect `HERMSEC_SCANNER_ONLINE_UPDATES=false` with no-update flags.
+
+### Issues Encountered
+
+- Root typecheck initially failed from exact TypeScript typing issues after adding new parsers and languages.
+- External scanner tests still assumed the old six-scanner world.
+- The first `npm test -- tests/...` command ran the compiled suite and then tried to execute source `.ts` test files directly, causing extra module-resolution failures unrelated to the implementation.
+- V3 initially only displayed scanner readiness but did not actually consume auto-install settings in the scan prep stage.
+
+### How We Solved Them
+
+- Fixed the TypeScript errors and parser shapes directly.
+- Pinned legacy scanner tests with a six-scanner `HERMSEC_ENABLED_SCANNERS` control group.
+- Ran scanner tests directly from `dist` after build to avoid direct source `.ts` execution.
+- Added the V3 prep function and re-rendered the plan after install attempts.
+
+### Verification
+
+- `npm.cmd run typecheck` passed at the root.
+- `npm.cmd run typecheck` passed in `v2\hermsec-v3`.
+- `npm.cmd run build` passed at the root.
+- `npm.cmd run build` passed in `v2\hermsec-v3`.
+- `node --test dist\tests\unit\scanners\externalScanners.test.js` passed `7/7`.
+- `node --test dist\tests\unit\scanners\scannerHeuristics.test.js` passed `10/10`.
+- CLI smoke scan completed with `10` findings and wrote artifacts under `.hermsec\smoke-runs\scanner-harness-expansion\node-express-vulnerable\2026-06-19T15-25-00-868Z`.
+
+### Remaining Work
+
+- Deduplicate root/V3 scanner catalog data.
+- Add checksum-backed native binary installers.
+- Manually verify Settings > Scanners in the running V3 app.
+- Add tests for scanner settings persistence, installer failure rows, managed path precedence, and automation scan launch env.
+- Add ecosystem benchmarks beyond OWASP BenchmarkJava.
+
+## 2026-06-19 - End-To-End Verification Goal Run
+
+### What Was Verified
+
+- Root full suite passed after rebuild: `70/70`.
+- Root typecheck passed.
+- V3 typecheck passed.
+- V3 production build passed.
+- V3 Doctor smoke passed with healthScore `100`, required `7/7`, scanners `6/6`, internet `5/5`, provider warning tolerated.
+- V3 dashboard smoke passed, generated dashboard HTML and a non-empty one-page PDF.
+- Real Electron Settings > Scanners UI was opened through Chrome DevTools Protocol with the actual preload API present.
+- Electron UI scanner catalog returned `22` scanner rows and rendered auto-install, online update, benchmark lab, filters, status chips, project chips, and scanner rows.
+- Browser renderer shell loaded at `http://localhost:5173`; only browser console error was missing `favicon.ico`.
+- CLI scan fallbacks passed for no external scanners, deep-assisted without model, and all/lab scanner selection with advisory updates disabled.
+
+### Added Coverage
+
+- Added a regression test in `tests\unit\scanners\externalScanners.test.ts` for scanner env selection:
+  - unset/default scanner set
+  - `__none__`
+  - explicit scanner list
+  - `all` lab scanner set
+
+### Artifacts
+
+- Electron UI screenshot: `output\playwright\v3-electron-scanners-verified.png`.
+- Dashboard smoke artifact: `.hermsec\v3-dashboard-smoke\hermsec-node-express-vuln-lab\2026-06-19T15-30-41-878Z\dashboard\index.html`.
+- No-external scan artifacts: `.hermsec\e2e-runs\none-scanners`.
+- Deep-assisted no-model artifacts: `.hermsec\e2e-runs\deep-no-model`.
+- All/lab offline-update artifacts: `.hermsec\e2e-runs\all-offline-updates`.
+
+### Issues And Resolutions
+
+- Playwright browser binary was missing; installed Chrome for Testing and reran the probe.
+- Browser-only renderer cannot validate Electron preload; used real Electron CDP automation for Settings > Scanners.
+- First CDP cleanup waited on a browser-close response too long; reran with strict cleanup and verified successfully.
+
+### Remaining Caveats
+
+- Doctor scanner group still checks the legacy six scanner commands, not all `22` Settings scanner catalog entries.
+- Provider readiness warning does not fail Doctor smoke in isolated smoke homes.
+- `scanners:list` may create managed scanner directories while checking status.
+- Native checksum-backed installers and direct parser fixtures for the full expanded scanner stack are still future work.
+
+## 2026-06-19 - Desktop Release CI And macOS Installer Link
+
+### Changes
+
+- Added `.github\workflows\desktop-release.yml`.
+- Workflow triggers:
+  - `push` tags matching `v*`
+  - manual `workflow_dispatch` with `tag_name`
+- Workflow builds:
+  - Windows x64 via `npm run dist:win`
+  - macOS via `npm run dist:mac`
+- Workflow uploads desktop artifacts and creates or updates a GitHub Release with those assets.
+- Root README now links macOS users to `https://github.com/sethwhenton/hermsec/releases/latest`.
+- Root README documents local macOS packaging with `npm run dist:mac`.
+- V3 README documents macOS packaging and the release workflow.
+
+### Verification
+
+- Root `npm.cmd run typecheck` passed.
+- V3 `npm.cmd run typecheck` passed.
+
+### Caveats
+
+- macOS builds are unsigned until Apple Developer ID signing and notarization secrets are configured.
+- The actual macOS package build must run on GitHub's macOS runner; it cannot be validated from this Windows machine.
+- No live GitHub Release was created locally because `gh` is not installed and the workflow is not on GitHub until committed/pushed.
+
+### Publish Flow
+
+1. Commit and push the release workflow and app changes to `main`.
+2. Push a version tag, for example `git tag v0.1.0 && git push origin v0.1.0`.
+3. GitHub Actions builds Windows and macOS packages.
+4. The release job creates or updates the GitHub Release for that tag.
+
 ## Update Rules For This File
 
 - Add a new dated section for every meaningful milestone.

@@ -28,6 +28,27 @@ const TEXT_EXTENSIONS = new Set([
   ".py",
   ".java",
   ".jsp",
+  ".php",
+  ".go",
+  ".rs",
+  ".rb",
+  ".c",
+  ".cc",
+  ".cpp",
+  ".cxx",
+  ".h",
+  ".hpp",
+  ".cs",
+  ".kt",
+  ".kts",
+  ".swift",
+  ".dart",
+  ".html",
+  ".htm",
+  ".vue",
+  ".svelte",
+  ".tf",
+  ".tfvars",
   ".json",
   ".xml",
   ".yml",
@@ -53,7 +74,10 @@ const LOCKFILE_NAMES = new Set([
   "Pipfile.lock",
   "Cargo.lock",
   "go.sum",
+  "composer.lock",
+  "Gemfile.lock",
   "gradle.lockfile",
+  "packages.lock.json",
 ]);
 
 export type SourceLanguage =
@@ -62,6 +86,20 @@ export type SourceLanguage =
   | "python"
   | "java"
   | "jsp"
+  | "php"
+  | "go"
+  | "rust"
+  | "ruby"
+  | "c"
+  | "cpp"
+  | "csharp"
+  | "kotlin"
+  | "swift"
+  | "dart"
+  | "html"
+  | "vue"
+  | "svelte"
+  | "terraform"
   | "json"
   | "xml"
   | "yaml"
@@ -231,6 +269,41 @@ function languageFor(baseName: string, extension: string): SourceLanguage {
       return "java";
     case ".jsp":
       return "jsp";
+    case ".php":
+      return "php";
+    case ".go":
+      return "go";
+    case ".rs":
+      return "rust";
+    case ".rb":
+      return "ruby";
+    case ".c":
+    case ".h":
+      return "c";
+    case ".cc":
+    case ".cpp":
+    case ".cxx":
+    case ".hpp":
+      return "cpp";
+    case ".cs":
+      return "csharp";
+    case ".kt":
+    case ".kts":
+      return "kotlin";
+    case ".swift":
+      return "swift";
+    case ".dart":
+      return "dart";
+    case ".html":
+    case ".htm":
+      return "html";
+    case ".vue":
+      return "vue";
+    case ".svelte":
+      return "svelte";
+    case ".tf":
+    case ".tfvars":
+      return "terraform";
     case ".json":
       return "json";
     case ".xml":
@@ -256,6 +329,9 @@ function kindFor(baseName: string, language: SourceLanguage): SourceFile["kind"]
   if (LOCKFILE_NAMES.has(baseName)) {
     return "lockfile";
   }
+  if (baseName.endsWith(".csproj") || baseName.endsWith(".sln")) {
+    return "manifest";
+  }
   if ([
     "package.json",
     "pyproject.toml",
@@ -264,6 +340,8 @@ function kindFor(baseName: string, language: SourceLanguage): SourceFile["kind"]
     "Pipfile",
     "go.mod",
     "Cargo.toml",
+    "composer.json",
+    "Gemfile",
     "pom.xml",
     "build.gradle",
     "settings.gradle",
@@ -280,11 +358,31 @@ function kindFor(baseName: string, language: SourceLanguage): SourceFile["kind"]
     language === "json" ||
     language === "xml" ||
     language === "properties" ||
-    language === "gradle"
+    language === "gradle" ||
+    language === "terraform"
   ) {
     return "config";
   }
-  if (language === "javascript" || language === "typescript" || language === "python" || language === "java" || language === "jsp") {
+  if (
+    language === "javascript" ||
+    language === "typescript" ||
+    language === "python" ||
+    language === "java" ||
+    language === "jsp" ||
+    language === "php" ||
+    language === "go" ||
+    language === "rust" ||
+    language === "ruby" ||
+    language === "c" ||
+    language === "cpp" ||
+    language === "csharp" ||
+    language === "kotlin" ||
+    language === "swift" ||
+    language === "dart" ||
+    language === "html" ||
+    language === "vue" ||
+    language === "svelte"
+  ) {
     return "source";
   }
   return "text";

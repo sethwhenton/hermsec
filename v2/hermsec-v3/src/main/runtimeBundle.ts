@@ -4,7 +4,29 @@ import path from "node:path";
 
 const mainDir = import.meta.dirname;
 const CLI_RELATIVE_PATH = path.join("dist", "src", "bin", "hermsec.js");
-const scannerCommands = ["semgrep", "gitleaks", "bandit", "osv-scanner", "pip-audit", "pmg"] as const;
+const scannerCommands = [
+  "semgrep",
+  "gitleaks",
+  "trufflehog",
+  "trivy",
+  "checkov",
+  "bandit",
+  "osv-scanner",
+  "pip-audit",
+  "pmg",
+  "retire",
+  "spotbugs",
+  "dependency-check",
+  "psalm",
+  "composer",
+  "gosec",
+  "govulncheck",
+  "cargo",
+  "brakeman",
+  "flawfinder",
+  "cppcheck",
+  "dotnet",
+] as const;
 
 type ScannerCommand = (typeof scannerCommands)[number];
 

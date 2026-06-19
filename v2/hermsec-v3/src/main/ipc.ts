@@ -9,12 +9,14 @@ import type {
   OpenArtifactRequest,
 } from "../renderer/src/types/reports";
 import type { OpenReportLocationRequest, ScanProjectRequest } from "../renderer/src/types/scan";
+import type { ScannerListRequest } from "../renderer/src/types/scanners";
 import type { CreateChatSessionRequest, UpdateChatSessionRequest } from "../renderer/src/types/sessions";
 import { runDoctor } from "./doctor";
 import { testProvider } from "./providerTest";
 import { archiveProjectDirectory, deleteProjectDirectory, listProjectDirectories } from "./projects";
 import { converseReport, explainReport, getDashboardBundle, latestReport, openArtifact } from "./reports";
 import { cancelActiveScan, openReportLocation, scanProject } from "./scan";
+import { installScanner, scannerStatuses, uninstallScanner, updateScanner } from "./scanners";
 import {
   archiveChatSession,
   createChatSession,
@@ -67,6 +69,26 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("doctor:run", (event, runId?: string) =>
     runDoctor((progress) => event.sender.send("doctor:progress", { ...progress, runId })),
+  );
+
+  ipcMain.handle("scanners:list", (_event, request?: ScannerListRequest) =>
+    scannerStatuses(request),
+  );
+
+  ipcMain.handle("scanners:status", (_event, request?: ScannerListRequest) =>
+    scannerStatuses(request),
+  );
+
+  ipcMain.handle("scanners:install", (_event, scannerId: string) =>
+    installScanner(scannerId),
+  );
+
+  ipcMain.handle("scanners:uninstall", (_event, scannerId: string) =>
+    uninstallScanner(scannerId),
+  );
+
+  ipcMain.handle("scanners:update", (_event, scannerId: string) =>
+    updateScanner(scannerId),
   );
 
   ipcMain.handle("projects:list", () => listProjectDirectories());

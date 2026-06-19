@@ -6,7 +6,16 @@ Hermsec is a local-first security assistant for repositories. It scans project f
 
 Hermsec now has a complete Electron desktop app for local workspaces, scans, intel, reports, settings, automations, and security chat. The Windows app package bundles the Hermsec CLI plus the scanner runtime, so users do not need to separately install Semgrep, Gitleaks, Bandit, OSV-Scanner, pip-audit, or SafeDep PMG.
 
-### Windows App
+### Desktop Installers
+
+Download the latest desktop installers from the [Hermsec GitHub Releases page](https://github.com/sethwhenton/hermsec/releases/latest).
+
+- [macOS installer download](https://github.com/sethwhenton/hermsec/releases/latest) - download the `.dmg`, open it, and drag Hermsec into Applications.
+- [Windows installer download](https://github.com/sethwhenton/hermsec/releases/latest) - download `Hermsec Setup *.exe`, or use `Hermsec *.exe` for portable mode.
+
+The release pipeline publishes Windows and macOS assets whenever a `v*` tag is pushed, and it can also be run manually from GitHub Actions with a release tag.
+
+### Local Windows App Build
 
 ```powershell
 cd v2\hermsec-v3
@@ -21,6 +30,15 @@ v2\hermsec-v3\release\Hermsec 0.1.0.exe
 ```
 
 Use `Hermsec Setup 0.1.0.exe` as the installer and `Hermsec 0.1.0.exe` as the portable app. These files are about 200 MB because they include the scanner toolchain and should be uploaded as GitHub Release assets instead of committed directly to git.
+
+### Local macOS App Build
+
+```bash
+cd v2/hermsec-v3
+npm run dist:mac
+```
+
+This creates a `.dmg` and `.zip` under `v2/hermsec-v3/release/`. Current CI builds are unsigned unless Apple signing certificates are configured, so macOS may ask you to approve the app from System Settings > Privacy & Security the first time it launches.
 
 Bundled scanner/runtime contents:
 
@@ -70,3 +88,9 @@ For OpenCode Go, copy `.env.example` to `.env.local`, set `OPENCODE_GO_API_KEY`,
 ## V2 Synara Fork
 
 `v2/` is a whole-source Synara fork for the next desktop direction. It is rebranded as Hermsec V2, removes Synara's marketing app, uses the selected H/keyhole mark, and adds a first Hermsec bridge for Doctor, Scan, and Intel actions. See `v2/docs/HERMSEC_V2_SCOPE.md`.
+
+## Scanner-Managed Harness - 2026-06-19
+
+Hermsec is being expanded from a fixed scanner bundle into a scanner-managed harness. The catalog now tracks each scanner's category, install kind, supported languages, inputs, parser, default enablement, and risk notes. The target V3 flow is Settings > Scanners for enable/install controls, adaptive project profiling before scans, managed tool installs outside the scanned repo, and scanner execution narrowed to the current project's languages, manifests, lockfiles, and IaC markers.
+
+Expanded scanner coverage now includes the existing bundled stack plus optional lanes such as Trivy, Checkov, TruffleHog, Retire.js, FindSecBugs/SpotBugs, Dependency-Check, Psalm, Composer audit, gosec, govulncheck, cargo-audit, Brakeman, Flawfinder, Cppcheck, and .NET vulnerable package checks. Root/V3 typechecks, root/V3 builds, scanner unit tests, and a vulnerable fixture CLI smoke scan now pass. Native checksum-backed installers still need implementation for several binary tools.

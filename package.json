@@ -25,6 +25,7 @@
     "dev:desktop": "npm run build && electron dist/src/desktop/main.js",
     "start:desktop": "electron dist/src/desktop/main.js",
     "test:desktop": "npm run build && electron dist/src/desktop/main.js --smoke",
+    "eval:owasp": "npm run build:core && node scripts/eval-owasp-benchmark.mjs --skip-if-missing",
     "start": "node dist/src/bin/hermsec.js",
     "prepack": "npm run build",
     "pack:dry-run": "npm pack --dry-run --ignore-scripts"

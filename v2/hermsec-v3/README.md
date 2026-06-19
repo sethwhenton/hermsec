@@ -43,6 +43,17 @@ The installer and portable app include:
 
 Do not commit the generated `.exe` files directly; upload them as GitHub Release assets.
 
+## Package macOS App
+
+```bash
+cd v2/hermsec-v3
+npm run dist:mac
+```
+
+This creates a `.dmg` and `.zip` under `release/`. GitHub release builds are configured in `.github/workflows/desktop-release.yml`: push a `v*` tag, or run the workflow manually with a tag, to build Windows and macOS packages and publish them to the [latest Hermsec release](https://github.com/sethwhenton/hermsec/releases/latest).
+
+macOS CI builds are unsigned until Apple signing certificates are configured. On first launch, users may need to approve Hermsec from System Settings > Privacy & Security.
+
 ## Package Smoke Checks
 
 ```powershell
@@ -95,3 +106,9 @@ Provider **Test** validates connectivity from the main process against `{baseUrl
 ## Settings persistence
 
 `userData/settings.json` via main process store (`src/main/store.ts`).
+
+## Scanner Management - 2026-06-19
+
+V3 is moving toward a scanner-managed harness. The intended Settings > Scanners surface should show scanner catalog entries, enabled state, auto-install preference, install/update/uninstall actions, managed/system path status, and whether a scanner applies to the current project profile.
+
+The main-process scanner manager now tracks the expanded catalog and installs eligible tools into Electron `userData\managed-scanners\<platform>-<arch>` rather than the scanned project. The renderer Settings > Scanners tab and preload scanner API are wired, V3 typecheck/build pass, and scan preparation now consumes auto-install/settings state before launching the CLI. Native checksum-backed installers are still the next packaging gap.
