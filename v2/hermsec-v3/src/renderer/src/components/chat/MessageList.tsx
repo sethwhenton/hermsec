@@ -4,6 +4,7 @@ import { ScanProgressDisclosure } from "@/components/scan/ScanProgressPanel";
 import { useReportStore } from "@/store/reportStore";
 import { useUiStore } from "@/store/uiStore";
 import { AgentQuestions } from "./AgentQuestions";
+import { DoctorCard } from "./DoctorCard";
 import { MessageBubble } from "./MessageBubble";
 import { ThinkingRow } from "./ThinkingRow";
 
@@ -66,6 +67,17 @@ export function MessageList({ onQuestionsSubmit }: MessageListProps) {
           {chatItems.map((item) => {
             if (item.kind === "message") {
               return <MessageBubble key={item.id} message={item.message} />;
+            }
+            if (item.kind === "doctor") {
+              return (
+                <DoctorCard
+                  key={item.id}
+                  result={item.result}
+                  progress={item.progress}
+                  running={item.running}
+                  error={item.error}
+                />
+              );
             }
             return (
               <AgentQuestions

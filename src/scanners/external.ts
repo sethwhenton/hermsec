@@ -78,7 +78,13 @@ const EXTERNAL_SCANNERS: ScannerDefinition[] = [
   {
     id: "semgrep",
     label: "Semgrep",
-    shouldRun: (files) => files.some((file) => file.language === "javascript" || file.language === "typescript" || file.language === "python"),
+    shouldRun: (files) => files.some((file) =>
+      file.language === "javascript" ||
+      file.language === "typescript" ||
+      file.language === "python" ||
+      file.language === "java" ||
+      file.language === "jsp"
+    ),
     build: buildSemgrep,
   },
   {
@@ -450,5 +456,44 @@ function defaultSemgrepRules(): string {
     pattern-either:
       - pattern: eval(...)
       - pattern: exec(...)
+  - id: hermsec.java-process-exec
+    message: Java process execution
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-78"]
+      category: code
+    pattern-either:
+      - pattern: Runtime.getRuntime().exec(...)
+      - pattern: $R.exec(...)
+      - pattern: new ProcessBuilder(...)
+  - id: hermsec.java-sql-dynamic
+    message: Java SQL execution uses dynamic query construction
+    languages: [java]
+    severity: ERROR
+    metadata:
+      cwe: ["CWE-89"]
+      category: code
+    pattern-either:
+      - pattern: |
+          $SQL = $A + $B;
+          ...
+          $STMT.executeQuery($SQL);
+      - pattern: |
+          $SQL = $A + $B;
+          ...
+          $CONN.prepareStatement($SQL);
+  - id: hermsec.java-xss-writer
+    message: Java servlet response writes dynamic content
+    languages: [java]
+    severity: WARNING
+    metadata:
+      cwe: ["CWE-79"]
+      category: code
+    pattern-either:
+      - pattern: response.getWriter().println(...)
+      - pattern: response.getWriter().print(...)
+      - pattern: response.getWriter().write(...)
+      - pattern: response.getWriter().format(...)
 `;
 }

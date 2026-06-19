@@ -71,9 +71,14 @@ export async function discoverRepositoryMetadata(
     javascript: 0,
     typescript: 0,
     python: 0,
+    java: 0,
+    jsp: 0,
     json: 0,
+    xml: 0,
     yaml: 0,
     toml: 0,
+    properties: 0,
+    gradle: 0,
     text: 0,
     unknown: 0,
   };
@@ -142,6 +147,16 @@ function detectPackageManager(file: SourceFile, packageManagers: Set<string>): v
       break;
     case "uv.lock":
       packageManagers.add("uv");
+      break;
+    case "pom.xml":
+      packageManagers.add("maven");
+      break;
+    case "build.gradle":
+    case "settings.gradle":
+    case "build.gradle.kts":
+    case "settings.gradle.kts":
+    case "gradle.lockfile":
+      packageManagers.add("gradle");
       break;
   }
 }

@@ -10,6 +10,7 @@ import type {
 } from "../renderer/src/types/reports";
 import type { OpenReportLocationRequest, ScanProjectRequest } from "../renderer/src/types/scan";
 import type { CreateChatSessionRequest, UpdateChatSessionRequest } from "../renderer/src/types/sessions";
+import { runDoctor } from "./doctor";
 import { testProvider } from "./providerTest";
 import { archiveProjectDirectory, deleteProjectDirectory, listProjectDirectories } from "./projects";
 import { converseReport, explainReport, getDashboardBundle, latestReport, openArtifact } from "./reports";
@@ -62,6 +63,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("provider:test", async (_event, request: ProviderTestRequest) =>
     testProvider(request),
+  );
+
+  ipcMain.handle("doctor:run", (event, runId?: string) =>
+    runDoctor((progress) => event.sender.send("doctor:progress", { ...progress, runId })),
   );
 
   ipcMain.handle("projects:list", () => listProjectDirectories());

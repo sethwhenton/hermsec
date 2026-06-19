@@ -8,6 +8,7 @@ import { useSessionStore } from "@/store/sessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useUiStore } from "@/store/uiStore";
 import type { AgentQuestion, ChatItem, ChatMessage } from "@/types/chat";
+import type { DoctorProgressEvent } from "@/types/doctor";
 import type { AppSettings, AutomationFrequency, AutomationSettings } from "@/types/settings";
 import { AutomationPopover } from "@/components/automation/AutomationPopover";
 import { Button } from "@/components/ui/Button";
@@ -19,13 +20,38 @@ function createId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        window.clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
+function progressStatusText(event: DoctorProgressEvent): string {
+  if (event.status === "running") return event.message;
+  if (event.status === "pass") return `${event.label} is ready.`;
+  if (event.status === "warn") return `${event.label} needs attention.`;
+  if (event.status === "fail") return `${event.label} failed its check.`;
+  return `${event.label} is not configured.`;
+}
+
 type AssistantAnswer = string | {
   content: string;
   copyAction?: ChatMessage["copyAction"];
   reportLink?: ChatMessage["reportLink"];
 };
 type ParsedAutomation = Pick<AutomationSettings, "frequency" | "intervalDays" | "time">;
-type HermsecActionRoute = "scan" | "automation" | "capabilities" | "fix-prompt" | "chat";
+type HermsecActionRoute = "scan" | "automation" | "capabilities" | "doctor" | "fix-prompt" | "chat";
+const DOCTOR_RUN_TIMEOUT_MS = 35_000;
 
 export function ChatView() {
   const chatItems = useUiStore((s) => s.chatItems);
@@ -89,6 +115,83 @@ export function ChatView() {
     const nextItems = [...useUiStore.getState().chatItems, item];
     setChatItems(nextItems);
     await persistCurrentSession(settings?.defaultProjectDir ?? "", nextItems);
+  };
+
+  const pushDoctorItem = async () => {
+    const api = requireHermsecApi();
+    const id = createId();
+    const item: ChatItem = {
+      kind: "doctor",
+      id,
+      running: true,
+      progress: [],
+    };
+    const nextItems = [...useUiStore.getState().chatItems, item];
+    setChatItems(nextItems);
+
+    const updateDoctorItem = (updater: (item: ChatItem) => ChatItem): ChatItem[] => {
+      const updatedItems = useUiStore
+        .getState()
+        .chatItems.map((current) => (current.id === id ? updater(current) : current));
+      setChatItems(updatedItems);
+      return updatedItems;
+    };
+
+    const unsubscribe = api.doctor.onProgress((event) => {
+      if (event.runId !== id) return;
+      setAgentStatus(progressStatusText(event));
+      updateDoctorItem((current) => {
+        if (current.kind !== "doctor") return current;
+        return {
+          ...current,
+          running: true,
+          progress: [...(current.progress ?? []), event].slice(-48),
+        };
+      });
+    });
+
+    try {
+      const result = await withTimeout(
+        api.doctor.run(id),
+        DOCTOR_RUN_TIMEOUT_MS,
+        `Doctor did not finish within ${Math.round(DOCTOR_RUN_TIMEOUT_MS / 1000)} seconds. The run was stopped in the chat so it cannot loop forever.`,
+      );
+      const completedItems = updateDoctorItem((current) =>
+        current.kind === "doctor"
+          ? { ...current, result, running: false, error: undefined }
+          : current,
+      );
+      setAgentStatus(result.ok ? "Doctor checks completed." : "Doctor finished with items to review.");
+      await persistCurrentSession(settings?.defaultProjectDir ?? "", completedItems);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Doctor could not complete.";
+      const failedItems = updateDoctorItem((current) =>
+        current.kind === "doctor"
+          ? {
+              ...current,
+              running: false,
+              error: message,
+              progress: [
+                ...(current.progress ?? []),
+                {
+                  id: "doctor-timeout",
+                  runId: id,
+                  groupId: "required",
+                  label: "Doctor watchdog",
+                  status: "fail",
+                  requirement: "required",
+                  message,
+                  at: Date.now(),
+                },
+              ],
+            }
+          : current,
+      );
+      setAgentStatus("Doctor stopped before it could complete.");
+      await persistCurrentSession(settings?.defaultProjectDir ?? "", failedItems);
+    } finally {
+      unsubscribe();
+    }
   };
 
   const pushCapabilityQuestions = () =>
@@ -223,6 +326,12 @@ export function ChatView() {
         return;
       }
 
+      if (route === "doctor") {
+        setAgentStatus("Checking scanner tools and internet sources...");
+        await pushDoctorItem();
+        return;
+      }
+
       setAgentStatus(route === "fix-prompt" ? "Preparing a scanner-backed fix prompt..." : agentModelStatus(settings));
       const response = await answerSecurityQuestion(text, latestReportPath, settings?.defaultProjectDir, currentItems);
       const answer = normalizeAssistantAnswer(response);
@@ -239,6 +348,10 @@ export function ChatView() {
   };
 
   const handleQuickAction = (action: string) => {
+    if (action === "Doctor") {
+      void handleSend("Run Hermsec Doctor checks");
+      return;
+    }
     void handleSend(`Run ${action.toLowerCase()} for the current project`);
   };
 
@@ -326,6 +439,7 @@ export function ChatView() {
 
 function classifyHermsecAction(text: string, chatItems: ChatItem[]): HermsecActionRoute {
   const lower = text.toLowerCase();
+  if (isDoctorRequest(lower)) return "doctor";
   if (isScanRequestText(lower)) return "scan";
   if (isAutomationRequest(lower)) return "automation";
   if (wantsCapabilities(lower)) return "capabilities";
@@ -338,6 +452,10 @@ function isScanRequestText(lower: string): boolean {
     return false;
   }
   return /\b(scan|rescan)\b/.test(lower) || /\b(run|start|perform)\s+(a\s+)?scan\b/.test(lower);
+}
+
+function isDoctorRequest(lower: string): boolean {
+  return /\b(doctor|readiness|tool readiness|scanner readiness|check tools|internet connectivity|network check)\b/.test(lower);
 }
 
 function findLatestReportPath(chatItems: ChatItem[]): string | undefined {

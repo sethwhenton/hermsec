@@ -25,8 +25,10 @@ coverage/
 .hermsec/queue/
 .hermsec/tmp/
 .hermsec/secrets/
+.hermsec-benchmarks/
 .hermsec-v2/
 .hermsec-v3/
+v2/hermsec-v3/.dev-logs/
 
 # Logs and editor noise
 *.log

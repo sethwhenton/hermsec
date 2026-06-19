@@ -199,12 +199,11 @@ function normalizeContextWindow(window: AppSettings["general"]["contextWindow"] 
 
 function normalizeProviderApiKeyEnv(provider: ProviderConfig, defaultProvider: ProviderConfig): string {
   const current = provider.apiKeyEnvVar?.trim();
-  if (!current) return defaultProvider.apiKeyEnvVar;
+  const defaultEnv = defaultProvider.apiKeyEnvVar?.trim() || "OPENCODE_GO_API_KEY";
+  if (!current) return defaultEnv;
 
-  const defaultEnv = defaultProvider.apiKeyEnvVar?.trim();
   if (
     provider.id === defaultProvider.id &&
-    defaultEnv &&
     current !== defaultEnv &&
     !process.env[current] &&
     process.env[defaultEnv]

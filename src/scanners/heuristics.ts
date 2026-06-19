@@ -40,6 +40,12 @@ const OFFLINE_SCANNERS: OfflineScanner[] = [
     scan: scanPython,
   },
   {
+    id: "hermsec-java",
+    label: "Hermsec Java servlet heuristics",
+    shouldRun: (files) => files.some((file) => file.language === "java" || file.language === "jsp"),
+    scan: scanJava,
+  },
+  {
     id: "hermsec-packages",
     label: "Hermsec package manifest heuristics",
     shouldRun: (files) => files.some((file) => file.kind === "manifest" || file.kind === "lockfile"),
@@ -114,6 +120,7 @@ export function scanFile(relativePath: string, content: string): Finding[] {
     ...scanSecretContent(file, content),
     ...scanCodeContent(file, content),
     ...scanPythonContent(file, content),
+    ...scanJavaContent(file, content),
     ...scanConfigContent(file, content),
   ].map(finalizeFinding);
 }
@@ -187,7 +194,7 @@ function scanSecretContent(file: SourceFile, content: string): Candidate[] {
 async function scanJavaScriptAndTypeScript(files: SourceFile[], readText: (file: SourceFile) => Promise<string>): Promise<Finding[]> {
   const candidates: Candidate[] = [];
   for (const file of files.filter((item) => item.language === "javascript" || item.language === "typescript")) {
-    if (file.relativePath.endsWith(".d.ts")) {
+    if (file.relativePath.endsWith(".d.ts") || isMinifiedJavaScriptAsset(file)) {
       continue;
     }
     candidates.push(...scanCodeContent(file, await readText(file)));
@@ -273,6 +280,172 @@ function scanPythonContent(file: SourceFile, content: string): Candidate[] {
       findings.push(codeFinding("Debug mode enabled", "medium", "CWE-489", file, number, line, "Disable debug mode outside local development.", "hermsec.python.debug-true"));
     }
   }
+  return findings;
+}
+
+async function scanJava(files: SourceFile[], readText: (file: SourceFile) => Promise<string>): Promise<Finding[]> {
+  const candidates: Candidate[] = [];
+  for (const file of files.filter((item) => item.language === "java" || item.language === "jsp")) {
+    candidates.push(...scanJavaContent(file, await readText(file)));
+  }
+  return candidates.map(finalizeFinding);
+}
+
+function scanJavaContent(file: SourceFile, content: string): Candidate[] {
+  const findings: Candidate[] = [];
+  if (file.language !== "java" && file.language !== "jsp") {
+    return findings;
+  }
+
+  const flat = compactWhitespace(content);
+  const add = (
+    title: string,
+    severity: Severity,
+    cwe: string,
+    linePattern: RegExp,
+    remediation: string,
+    ruleId: string,
+  ): void => {
+    const line = firstLineMatching(content, linePattern);
+    findings.push(codeFinding(
+      title,
+      severity,
+      cwe,
+      file,
+      line,
+      line === undefined ? `Matched Java sink pattern for ${ruleId}.` : lineAt(content, line),
+      remediation,
+      ruleId,
+    ));
+  };
+
+  if (/(?:\b\w+\.exec\s*\(|Runtime\.getRuntime\(\)\.exec|new\s+(?:java\.lang\.)?ProcessBuilder\b|\bProcessBuilder\s+\w+|\.start\s*\(\s*\))/.test(content)) {
+    add(
+      "Java process execution reachable in servlet code",
+      "high",
+      "CWE-78",
+      /(?:\b\w+\.exec\s*\(|Runtime\.getRuntime\(\)\.exec|ProcessBuilder|\.start\s*\()/,
+      "Avoid shell/process execution with request-influenced data; use fixed command allowlists and fixed argument arrays.",
+      "hermsec.java.cmdi",
+    );
+  }
+
+  if (/(?:Cipher|KeyGenerator)\.getInstance\s*\(\s*"(?:DES|DESede|RC[24]|AES\/ECB|AES\/CBC|RSA\/ECB)/i.test(content)) {
+    add(
+      "Weak Java cryptographic primitive or mode",
+      "high",
+      "CWE-327",
+      /(?:Cipher|KeyGenerator)\.getInstance/,
+      "Use modern authenticated encryption such as AES-GCM with unique nonces and project-approved key management.",
+      "hermsec.java.crypto",
+    );
+  }
+
+  if (/MessageDigest\.getInstance\s*\(\s*(?:"(?:MD2|MD4|MD5|SHA-?1)"|algorithm)/i.test(content) || /getProperty\("hashAlg1"/.test(content)) {
+    add(
+      "Weak Java message digest for security-sensitive data",
+      "high",
+      "CWE-328",
+      /MessageDigest\.getInstance|getProperty\("hashAlg1"/,
+      "Use a strong password hashing or digest strategy appropriate to the data, such as Argon2/bcrypt for passwords.",
+      "hermsec.java.hash",
+    );
+  }
+
+  if (/(?:new\s+java\.util\.Random\s*\(|new\s+Random\s*\(|Math\.random\s*\(|java\.util\.Random\s+\w+)/.test(content)) {
+    add(
+      "Predictable random value used in Java code",
+      "medium",
+      "CWE-330",
+      /(?:new\s+java\.util\.Random\s*\(|new\s+Random\s*\(|Math\.random\s*\(|java\.util\.Random\s+\w+)/,
+      "Use java.security.SecureRandom for tokens, cookies, keys, and other security-sensitive randomness.",
+      "hermsec.java.weakrand",
+    );
+  }
+
+  if (/new\s+(?:javax\.servlet\.http\.)?Cookie\s*\(/.test(content) && !/\.setSecure\s*\(\s*true\s*\)/.test(content)) {
+    add(
+      "Servlet cookie is added without Secure flag",
+      "medium",
+      "CWE-614",
+      /new\s+(?:javax\.servlet\.http\.)?Cookie\s*\(/,
+      "Set Secure and HttpOnly on sensitive cookies, and review SameSite/path/domain scope.",
+      "hermsec.java.securecookie",
+    );
+  }
+
+  if (/getSession\(\)\.(?:setAttribute|putValue)\s*\(/.test(content)) {
+    add(
+      "Request data may cross into the Java session boundary",
+      "medium",
+      "CWE-501",
+      /getSession\(\)\.(?:setAttribute|putValue)\s*\(/,
+      "Validate and constrain request-derived session keys and values before storing them in the session.",
+      "hermsec.java.trustbound",
+    );
+  }
+
+  if (/String\s+(?:sql|query)\s*=.*\+.*(?:param|bar)/i.test(flat) && /\.(?:executeQuery|executeUpdate|execute|prepareCall|prepareStatement)\s*\(/.test(flat)) {
+    add(
+      "Java SQL query uses dynamic string construction",
+      "high",
+      "CWE-89",
+      /(?:prepareCall|prepareStatement|executeQuery|executeUpdate|execute)\s*\(/,
+      "Use parameterized queries with placeholders and keep untrusted input out of SQL structure.",
+      "hermsec.java.sqli",
+    );
+  }
+
+  if (/String\s+filter\s*=.*\+.*(?:param|bar)/i.test(flat) && /\.search\s*\(/.test(flat)) {
+    add(
+      "Java LDAP filter uses dynamic string construction",
+      "high",
+      "CWE-90",
+      /\.search\s*\(/,
+      "Build LDAP filters with safe escaping or parameterized APIs for every untrusted value.",
+      "hermsec.java.ldapi",
+    );
+  }
+
+  if (/String\s+expression\s*=.*\+.*(?:param|bar)/i.test(flat) && /\.evaluate\s*\(/.test(flat)) {
+    add(
+      "Java XPath expression uses dynamic string construction",
+      "high",
+      "CWE-643",
+      /\.evaluate\s*\(/,
+      "Avoid concatenating untrusted input into XPath expressions; escape values or use a safe query construction API.",
+      "hermsec.java.xpathi",
+    );
+  }
+
+  if (
+    /(?:FileInputStream|FileOutputStream|FileReader|FileWriter|new\s+java\.io\.File|Paths\.get)\s*\(/.test(flat) &&
+    /(?:fileName\s*=.*\+.*(?:param|bar)|new\s+java\.io\.File\s*\([^)]*(?:param|bar)|FileInputStream\s*\([^)]*(?:param|bar))/i.test(flat)
+  ) {
+    add(
+      "Java file path uses request-influenced data",
+      "high",
+      "CWE-22",
+      /(?:FileInputStream|FileOutputStream|FileReader|FileWriter|new\s+java\.io\.File|Paths\.get)\s*\(/,
+      "Resolve paths against an allowlisted base directory, normalize, and reject paths that escape the expected root.",
+      "hermsec.java.pathtraver",
+    );
+  }
+
+  if (
+    /response\.getWriter\(\)\.(?:print|println|write|format)\s*\(.*(?:param|bar|query|input)/.test(flat) ||
+    /response\.getWriter\(\)\.format\s*\(\s*(?:param|bar)/.test(flat)
+  ) {
+    add(
+      "Java servlet response may include unsanitized input",
+      "medium",
+      "CWE-79",
+      /response\.getWriter\(\)\.(?:print|println|write|format)\s*\(/,
+      "HTML-encode untrusted values before writing them to servlet responses, or render through an escaping template engine.",
+      "hermsec.java.xss",
+    );
+  }
+
   return findings;
 }
 
@@ -590,7 +763,7 @@ function secretFinding(
   };
 }
 
-function codeFinding(title: string, severity: Severity, cwe: string, file: SourceFile, lineNumber: number, evidence: string, remediation: string, ruleId: string): Candidate {
+function codeFinding(title: string, severity: Severity, cwe: string, file: SourceFile, lineNumber: number | undefined, evidence: string, remediation: string, ruleId: string): Candidate {
   return {
     title,
     category: "code",
@@ -683,6 +856,10 @@ function isSecretCandidate(file: SourceFile): boolean {
   return file.kind === "source" || file.kind === "config" || file.kind === "text";
 }
 
+function isMinifiedJavaScriptAsset(file: SourceFile): boolean {
+  return file.baseName.endsWith(".min.js") || file.baseName.endsWith(".min.cjs") || file.baseName.endsWith(".min.mjs");
+}
+
 function isConfigCandidate(file: SourceFile): boolean {
   return file.kind === "config" || isDockerfile(file) || isComposeFile(file) || isGitHubWorkflow(file);
 }
@@ -748,6 +925,10 @@ function isVersionBelow(version: string, floor: string): boolean {
   return false;
 }
 
+function compactWhitespace(content: string): string {
+  return content.replace(/\s+/g, " ");
+}
+
 function linesOf(content: string): Array<{ line: string; number: number }> {
   return content.split(/\r?\n/).map((line, index) => ({ line, number: index + 1 }));
 }
@@ -769,6 +950,10 @@ function lineNumberContaining(content: string, needle: string): number | undefin
     }
   }
   return undefined;
+}
+
+function lineAt(content: string, lineNumber: number): string {
+  return content.split(/\r?\n/)[lineNumber - 1] ?? "";
 }
 
 function locationFor(file: SourceFile, lineNumber?: number): NonNullable<Finding["location"]> {
@@ -798,14 +983,29 @@ function languageFromPath(relativePath: string): SourceFile["language"] {
   if (extension === ".py") {
     return "python";
   }
+  if (extension === ".java") {
+    return "java";
+  }
+  if (extension === ".jsp") {
+    return "jsp";
+  }
   if (extension === ".json") {
     return "json";
+  }
+  if (extension === ".xml") {
+    return "xml";
   }
   if (extension === ".yml" || extension === ".yaml") {
     return "yaml";
   }
   if (extension === ".toml") {
     return "toml";
+  }
+  if (extension === ".properties") {
+    return "properties";
+  }
+  if (extension === ".gradle" || relativePath.endsWith(".gradle.kts")) {
+    return "gradle";
   }
   return "text";
 }

@@ -14,6 +14,7 @@ import type {
   ScanProjectResult,
 } from "../renderer/src/types/scan";
 import type { ProjectActionResult, ProjectDirectory } from "../renderer/src/types/projects";
+import type { DoctorProgressEvent, DoctorRunResult } from "../renderer/src/types/doctor";
 import type {
   ChatSessionRecord,
   ChatSessionSummary,
@@ -46,6 +47,14 @@ const hermsecApi = {
   provider: {
     test: (request: ProviderTestRequest): Promise<ProviderTestResult> =>
       ipcRenderer.invoke("provider:test", request),
+  },
+  doctor: {
+    run: (runId?: string): Promise<DoctorRunResult> => ipcRenderer.invoke("doctor:run", runId),
+    onProgress: (listener: (event: DoctorProgressEvent) => void): (() => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, progress: DoctorProgressEvent) => listener(progress);
+      ipcRenderer.on("doctor:progress", handler);
+      return () => ipcRenderer.removeListener("doctor:progress", handler);
+    },
   },
   projects: {
     list: (): Promise<ProjectDirectory[]> => ipcRenderer.invoke("projects:list"),

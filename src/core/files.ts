@@ -26,10 +26,15 @@ const TEXT_EXTENSIONS = new Set([
   ".mjs",
   ".cjs",
   ".py",
+  ".java",
+  ".jsp",
   ".json",
+  ".xml",
   ".yml",
   ".yaml",
   ".toml",
+  ".properties",
+  ".gradle",
   ".ini",
   ".conf",
   ".md",
@@ -48,9 +53,23 @@ const LOCKFILE_NAMES = new Set([
   "Pipfile.lock",
   "Cargo.lock",
   "go.sum",
+  "gradle.lockfile",
 ]);
 
-export type SourceLanguage = "javascript" | "typescript" | "python" | "json" | "yaml" | "toml" | "text" | "unknown";
+export type SourceLanguage =
+  | "javascript"
+  | "typescript"
+  | "python"
+  | "java"
+  | "jsp"
+  | "json"
+  | "xml"
+  | "yaml"
+  | "toml"
+  | "properties"
+  | "gradle"
+  | "text"
+  | "unknown";
 
 export type SourceFile = {
   absolutePath: string;
@@ -192,6 +211,9 @@ function languageFor(baseName: string, extension: string): SourceLanguage {
   if (baseName.startsWith(".env") || baseName === "Dockerfile" || baseName.endsWith(".conf") || baseName.endsWith(".ini")) {
     return "text";
   }
+  if (baseName.endsWith(".gradle.kts")) {
+    return "gradle";
+  }
   switch (extension) {
     case ".js":
     case ".jsx":
@@ -205,13 +227,23 @@ function languageFor(baseName: string, extension: string): SourceLanguage {
       return "typescript";
     case ".py":
       return "python";
+    case ".java":
+      return "java";
+    case ".jsp":
+      return "jsp";
     case ".json":
       return "json";
+    case ".xml":
+      return "xml";
     case ".yml":
     case ".yaml":
       return "yaml";
     case ".toml":
       return "toml";
+    case ".properties":
+      return "properties";
+    case ".gradle":
+      return "gradle";
     case ".md":
     case ".txt":
       return "text";
@@ -224,13 +256,35 @@ function kindFor(baseName: string, language: SourceLanguage): SourceFile["kind"]
   if (LOCKFILE_NAMES.has(baseName)) {
     return "lockfile";
   }
-  if (["package.json", "pyproject.toml", "requirements.txt", "requirements-dev.txt", "Pipfile", "go.mod", "Cargo.toml"].includes(baseName)) {
+  if ([
+    "package.json",
+    "pyproject.toml",
+    "requirements.txt",
+    "requirements-dev.txt",
+    "Pipfile",
+    "go.mod",
+    "Cargo.toml",
+    "pom.xml",
+    "build.gradle",
+    "settings.gradle",
+    "build.gradle.kts",
+    "settings.gradle.kts",
+  ].includes(baseName)) {
     return "manifest";
   }
-  if (baseName.startsWith(".env") || baseName === "Dockerfile" || language === "yaml" || language === "toml" || language === "json") {
+  if (
+    baseName.startsWith(".env") ||
+    baseName === "Dockerfile" ||
+    language === "yaml" ||
+    language === "toml" ||
+    language === "json" ||
+    language === "xml" ||
+    language === "properties" ||
+    language === "gradle"
+  ) {
     return "config";
   }
-  if (language === "javascript" || language === "typescript" || language === "python") {
+  if (language === "javascript" || language === "typescript" || language === "python" || language === "java" || language === "jsp") {
     return "source";
   }
   return "text";

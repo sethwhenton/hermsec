@@ -13,6 +13,7 @@ import type {
   ScanProjectResult,
 } from "../renderer/src/types/scan";
 import type { ProjectActionResult, ProjectDirectory } from "../renderer/src/types/projects";
+import type { DoctorProgressEvent, DoctorRunResult } from "../renderer/src/types/doctor";
 import type {
   ChatSessionRecord,
   ChatSessionSummary,
@@ -41,6 +42,10 @@ export interface HermsecApi {
   };
   provider: {
     test: (request: ProviderTestRequest) => Promise<ProviderTestResult>;
+  };
+  doctor: {
+    run: (runId?: string) => Promise<DoctorRunResult>;
+    onProgress: (listener: (event: DoctorProgressEvent) => void) => () => void;
   };
   projects: {
     list: () => Promise<ProjectDirectory[]>;

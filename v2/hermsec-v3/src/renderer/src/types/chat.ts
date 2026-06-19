@@ -1,3 +1,5 @@
+import type { DoctorProgressEvent, DoctorRunResult } from "./doctor";
+
 export type ContextChipKind = "project" | "file" | "folder" | "url" | "selection";
 
 export interface ContextChip {
@@ -49,4 +51,13 @@ export interface ChatMessageItem {
   message: ChatMessage;
 }
 
-export type ChatItem = ChatMessageItem | ChatQuestionsItem;
+export interface ChatDoctorItem {
+  kind: "doctor";
+  id: string;
+  result?: DoctorRunResult;
+  progress?: DoctorProgressEvent[];
+  running?: boolean;
+  error?: string;
+}
+
+export type ChatItem = ChatMessageItem | ChatQuestionsItem | ChatDoctorItem;

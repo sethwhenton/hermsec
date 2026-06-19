@@ -77,20 +77,22 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const api = requireHermsecApi();
     const ui = useUiStore.getState();
     const current = get().currentSession;
+    const currentSessionId = ui.currentSessionId;
     const mustCreate =
-      !ui.currentSessionId ||
+      !currentSessionId ||
       !current ||
-      current.id !== ui.currentSessionId ||
+      current.id !== currentSessionId ||
       normalizePath(current.projectPath) !== normalizePath(projectPath);
 
-    const session = mustCreate
-      ? await api.sessions.create({ projectPath, title: titleSeed, chatItems })
-      : await api.sessions.update({
-          id: ui.currentSessionId,
-          projectPath,
-          title: titleSeed,
-          chatItems,
-        });
+    const session =
+      mustCreate || !currentSessionId
+        ? await api.sessions.create({ projectPath, title: titleSeed, chatItems })
+        : await api.sessions.update({
+            id: currentSessionId,
+            projectPath,
+            title: titleSeed,
+            chatItems,
+          });
 
     useUiStore.getState().setCurrentSessionId(session.id);
     set((state) => ({

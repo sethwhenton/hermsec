@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { walkSourceTree } from "../../../src/core/files.js";
 import { scanFile } from "../../../src/scanners/heuristics.js";
 
 const fixturesRoot = path.join(process.cwd(), "tests", "fixtures", "repos");
@@ -53,6 +55,40 @@ test("offline scanner heuristics keep clean fixture noise low", () => {
   const highOrCritical = findings.filter((finding) => finding.severity === "high" || finding.severity === "critical");
 
   assert.deepEqual(highOrCritical, []);
+});
+
+test("source walker includes Java and Maven project files", async () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), "hermsec-java-fixture-"));
+  fs.mkdirSync(path.join(repo, "src", "main", "java"), { recursive: true });
+  fs.writeFileSync(path.join(repo, "pom.xml"), "<project></project>\n");
+  fs.writeFileSync(path.join(repo, "src", "main", "java", "Example.java"), "class Example {}\n");
+
+  const walk = await walkSourceTree(repo);
+  const byName = new Map(walk.files.map((file) => [file.baseName, file]));
+
+  assert.equal(byName.get("pom.xml")?.kind, "manifest");
+  assert.equal(byName.get("pom.xml")?.language, "xml");
+  assert.equal(byName.get("Example.java")?.kind, "source");
+  assert.equal(byName.get("Example.java")?.language, "java");
+});
+
+test("offline scanner heuristics flag Java servlet security sinks", () => {
+  const findings = scanFile("src/main/java/ExampleServlet.java", `
+    import javax.servlet.http.*;
+    class ExampleServlet extends HttpServlet {
+      void doPost(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        String param = request.getParameter("q");
+        String sql = "select * from users where name = '" + param + "'";
+        java.sql.Connection connection = null;
+        connection.prepareStatement(sql).executeQuery();
+        response.getWriter().println("hello " + param);
+      }
+    }
+  `);
+  const ruleIds = new Set(findings.map((finding) => finding.ruleId));
+
+  assert.equal(ruleIds.has("hermsec.java.sqli"), true);
+  assert.equal(ruleIds.has("hermsec.java.xss"), true);
 });
 
 test("fixture package files do not define package scripts", () => {

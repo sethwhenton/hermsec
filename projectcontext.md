@@ -65,6 +65,7 @@ Hermsec now has a hardened local production-readiness milestone plus a desktop s
 - Hermsec V3 now also tolerates older saved provider settings that still point OpenCode Go at `HERMSEC_MODEL_API_KEY`: the model resolver tries the saved env var, the configured `HERMSEC_MODEL_API_KEY_ENV` target, `OPENCODE_GO_API_KEY`, and then `HERMSEC_MODEL_API_KEY`. This fixes the scripted fallback behavior when a valid OpenCode Go key exists but the local settings file was stale.
 - Hermsec V3 chat no longer forces the transcript to the bottom while the user is reading older messages. When the user scrolls away from the latest message, a small centered down-arrow appears and smoothly returns to the current messages.
 - Hermsec V3 chat auto-follow now suppresses the jump-to-latest affordance during programmatic message insertion, avoiding the previous blue-button flash and jumpy scroll behavior while normal send/response messages arrive.
+- Hermsec V3 Doctor now renders as a live chat dashboard immediately when the run starts. Electron main streams Doctor progress events for the CLI readiness command, internet connectivity targets, scanner/tool rows, and desktop provider checks; the card updates in place with checking/ready/warn/fail states and has both main-process and renderer-side timeout fallbacks so it cannot spin forever.
 - Hermsec V3 chat composer has two states: the empty-chat composer remains large for the first prompt, while active conversations use a slimmer follow-up composer with a smaller radius, tighter padding, `Ask for follow-up changes` placeholder, and bottom-row project/model/send controls.
 - Hermsec V3 chat bubbles render safe lightweight Markdown from model output: fenced code blocks appear as code panels, inline backtick code appears as code chips, bullet lists render as lists, and `**bold**` / `__bold__` render as bold text without allowing arbitrary HTML.
 - Hermsec V3's custom title bar now has real File/Edit/View/Window/Help dropdown menus. File omits Quick Chat and Log Out, View omits terminal/file-tree/browser entries and adds Open Dashboard, Window exposes minimize/zoom/close, and Help contains a scrollable About Hermsec modal describing the product, scanner stack, reports, automations, local state, and model/provider behavior.
@@ -107,7 +108,10 @@ cd v2\packages\contracts && pmg bun --no-install run build
 cd v2\hermsec-v3 && pmg bun --no-install run build
 cd v2\hermsec-v3 && pmg bun --no-install run smoke:dashboard
 cd v2\hermsec-v3 && pmg npx electron-builder --win nsis portable --x64 --publish never
+cd v2\hermsec-v3 && npm.cmd run typecheck
+cd v2\hermsec-v3 && npm.cmd run build
 node dist\src\bin\hermsec.js scan "Test projects\hermsec-node-express-vuln-lab" --mode auto --out ".hermsec\v3-smoke" --json --html --no-model
+node dist\src\bin\hermsec.js doctor --json
 ```
 
 Current verified scanner/tool status on this PC: Semgrep, Gitleaks, Bandit, OSV-Scanner, pip-audit, and SafeDep PMG are installed and detected by `doctor`. PMG was installed from the official SafeDep GitHub release binary `v0.17.4`; the Windows zip SHA-256 matched the release `checksums.txt`, and `pmg version` reports `0.17.4`.
@@ -125,6 +129,34 @@ Known local constraints:
 - External scanner binaries are machine-local prerequisites, not repository contents; `doctor` is the source of truth for a specific laptop/VPS.
 - EPSS, RSS/security-news feeds beyond GitHub/NVD recency, deps.dev, Scorecard, Socket, Phylum, and official OWASP/NIST benchmark acquisition remain future integrations.
 - OS-level schedule registration remains a future adapter; current scheduler storage, manual `schedule run`, and watch mode work locally.
+
+## Recent Work Log - June 9, 2026
+
+- V3 Doctor is now a first-class chat action. The Doctor quick action routes through Electron IPC, runs scanner/tool/network/provider readiness checks, and renders a compact Hermsec-themed summary card in chat instead of plain text only.
+- V3 Doctor now understands desktop provider settings. OpenCode Go can be marked ready from the saved V3 settings/API key path even when the root CLI environment alone would fall back to scanner-only mode. Secrets remain redacted and are not printed.
+- Root scan harness now sees Java/Maven projects. File discovery includes Java, JSP, XML, properties, Gradle files, `pom.xml`, Gradle manifests, and `gradle.lockfile`; repository discovery now reports Maven/Gradle instead of `package managers: none`.
+- Root scan harness now has Java servlet/security heuristics for BenchmarkJava-style categories: command injection, SQL injection, XSS, LDAP injection, XPath injection, path traversal, weak crypto, weak hash, weak randomness, insecure cookies, and trust-boundary/session issues.
+- Optional Semgrep execution now considers Java/JSP inputs, and the default local Semgrep rule bundle includes starter Java process, SQL, and servlet response rules.
+- Added `scripts/benchmark-java-score.mjs`, which scores Hermsec scan JSON against OWASP BenchmarkJava `expectedresults-1.2.csv` and reports TP/FP/FN/TN, precision, recall, F1, per-category metrics, and ignored/extra predictions.
+- Added regression tests for Java/Maven file discovery and Java servlet heuristic findings.
+- OWASP BenchmarkJava was cloned under `.hermsec-benchmarks/BenchmarkJava` for local evaluation. Baseline before Java support found `0 / 1415` labeled vulnerable Java cases because Java files were invisible to the harness.
+- Post-Java BenchmarkJava run found `1220` true positives, `708` false positives, `195` false negatives, and `617` true negatives. Overall precision is `0.6328`, recall is `0.8622`, and F1 is `0.7299`. Scan wall time was about `11.3s`; Hermsec scan duration was about `9.8s`.
+- Current BenchmarkJava artifacts: `.hermsec/benchmark-java-after-java-result.json`, `.hermsec/benchmark-java-after-java-score.json`, and `.hermsec/benchmark-java-after-java/benchmarkjava/2026-06-09T17-30-45-803Z/report.html`.
+- Full root test suite passed after the Java harness work: `npm test` ran `61` tests with `61` passing.
+- Root `node_modules/electron` was missing Electron's generated `path.txt`, which broke the desktop smoke test. The local generated dependency state was repaired by supplying a local Electron executable/path so tests could run; no source behavior depends on this repair.
+- Initial BenchmarkJava scan produced JS/support-file noise from minified/bootstrap assets. The JS/TS heuristic scanner now skips minified JS assets such as `.min.js`.
+- Current harness roadmap from Grok/comparison analysis: keep Semgrep, Gitleaks, and OSV-Scanner as the lightweight base; next add Java taint tracking plus BenchmarkJava CI gates, then Trivy and Checkov, then broader OSV ecosystem coverage, then optional deep scanners such as TruffleHog, Syft/Grype, Dependency-Check, and SonarQube CE.
+- Next best accuracy improvement is Java taint tracking. It should model servlet request sources, aliases such as `param -> bar`, simple transformations, sanitizers such as ESAPI encoders and prepared-statement value binding, and sinks for SQL/LDAP/XPath/file/response/session/process APIs. Goal: preserve Java recall at or above the current `86%` while raising precision from `63%` toward `75%+`.
+- A dedicated root tracker now lives at `project-report-track.md`. Use it as the ongoing changelog, issue log, benchmark ledger, and decision record for future Hermsec work.
+
+## Recent Work Log - June 19, 2026
+
+- V3 Doctor live dashboard: the Doctor card is inserted into chat immediately instead of waiting for the run to finish.
+- Added typed Doctor progress events over Electron IPC/preload with per-run ids, so progress updates hydrate only the matching chat card.
+- Added live card states for scanner stack rows, internet connectivity chips, summary groups, and a compact live-check trace.
+- Added safety fallback behavior: the root Doctor child process is capped at `20s`, connectivity requests retain their `7s` aborts, and the renderer stops a Doctor chat run after `35s` with a watchdog error card instead of leaving the UI stuck.
+- Verification on this change: `cd v2\hermsec-v3 && npm.cmd run typecheck` passed, `cd v2\hermsec-v3 && npm.cmd run build` passed after running outside the sandbox for Electron/Vite config resolution, and `node dist\src\bin\hermsec.js doctor --json` returned valid Doctor JSON.
+- Local note from the June 19 Doctor smoke: PMG was not found on PATH in that shell and was reported as a warning. Other machine-local scanner availability should still be trusted through the live Doctor result for the current process environment.
 
 ## Current Decision
 
