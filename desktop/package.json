@@ -18,6 +18,8 @@
     "smoke:dashboard": "node scripts/smoke-dashboard.mjs",
     "dist:win": "npm run build:packaged && npx electron-builder --win nsis portable --x64 --publish never",
     "dist:mac": "npm run build:packaged && npx electron-builder --mac dmg zip --publish never",
+    "dist:mac:x64": "npm run build:packaged && npx electron-builder --mac dmg zip --x64 --publish never",
+    "dist:mac:arm64": "npm run build:packaged && npx electron-builder --mac dmg zip --arm64 --publish never",
     "dist:linux": "npm run build:packaged && npx electron-builder --linux AppImage --x64 --publish never",
     "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",
     "setup:electron": "node node_modules/electron/install.js"

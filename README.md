@@ -21,10 +21,11 @@ docs/          Current install and CLI notes
 
 Download the latest desktop installers from the [Hermsec GitHub Releases page](https://github.com/sethwhenton/hermsec/releases/latest).
 
-- [macOS installer download](https://github.com/sethwhenton/hermsec/releases/latest): download the `.dmg`, open it, and drag Hermsec into Applications.
-- [Windows installer download](https://github.com/sethwhenton/hermsec/releases/latest): download `Hermsec Setup *.exe`, or use `Hermsec *.exe` for portable mode.
+- [macOS Apple Silicon download](https://github.com/sethwhenton/hermsec/releases/latest): download `Hermsec-macos-arm64.dmg`, open it, and drag Hermsec into Applications.
+- [macOS Intel download](https://github.com/sethwhenton/hermsec/releases/latest): download `Hermsec-macos-x64.dmg`, open it, and drag Hermsec into Applications.
+- [Windows installer download](https://github.com/sethwhenton/hermsec/releases/latest): download `Hermsec-Setup-Windows-x64.exe`, or use `Hermsec-Portable-Windows-x64.exe` for portable mode.
 
-The release workflow publishes Windows and macOS assets whenever a `v*` tag is pushed. It can also be run manually from GitHub Actions with a release tag.
+The Windows and macOS release workflows publish assets whenever a `v*` tag is pushed. They can also be run manually from GitHub Actions with an optional release tag.
 
 ## Development
 
@@ -63,6 +64,9 @@ Build macOS locally:
 
 ```bash
 npm run desktop:dist:mac
+# or target one architecture on macOS:
+npm --prefix desktop run dist:mac:arm64
+npm --prefix desktop run dist:mac:x64
 ```
 
 Generated desktop packages land in `desktop/release/`. The installer and portable builds include the Hermsec CLI/report engine plus the bundled scanner runtime. Do not commit generated packages directly; attach them to GitHub Releases.

@@ -45,7 +45,19 @@ desktop\release\win-unpacked\Hermsec.exe
 npm run desktop:dist:mac
 ```
 
-This creates a `.dmg` and `.zip` under `desktop/release/`. GitHub release builds are configured in `.github/workflows/desktop-release.yml`: push a `v*` tag, or run the workflow manually with a tag, to build Windows and macOS packages and publish them to the [latest Hermsec release](https://github.com/sethwhenton/hermsec/releases/latest).
+This creates a `.dmg` and `.zip` under `desktop/release/`. GitHub release builds are split by platform: push a `v*` tag, or run the Windows/macOS workflows manually with an optional tag, to publish packages to the [latest Hermsec release](https://github.com/sethwhenton/hermsec/releases/latest).
+
+Architecture-specific macOS package scripts are also available for CI:
+
+```bash
+npm run dist:mac:arm64
+npm run dist:mac:x64
+```
+
+GitHub release builds are split by platform:
+
+- `.github/workflows/macos-release.yml` builds Apple Silicon and Intel DMGs.
+- `.github/workflows/windows-release.yml` builds the Windows installer and portable executable.
 
 macOS CI builds are unsigned until Apple signing certificates are configured. On first launch, users may need to approve Hermsec from System Settings > Privacy & Security.
 

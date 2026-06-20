@@ -1,0 +1,199 @@
+name: Build Windows Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag to create or update. Defaults to package version."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Windows Installer
+    runs-on: windows-latest
+    timeout-minutes: 75
+    permissions:
+      contents: read
+
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      ELECTRON_CACHE: ${{ github.workspace }}\.electron-cache
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}\.electron-builder-cache
+      npm_config_audit: "false"
+      npm_config_fund: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: |
+            package-lock.json
+            desktop/package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv runtime bundler
+        run: python -m pip install --upgrade uv
+
+      - name: Install dependencies without lifecycle scripts
+        run: |
+          npm ci --ignore-scripts
+          npm --prefix desktop ci --ignore-scripts
+
+      - name: Rebuild approved install-script dependencies
+        shell: pwsh
+        run: |
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            npm --prefix desktop rebuild esbuild --ignore-scripts=false
+            if ($LASTEXITCODE -eq 0) {
+              npm --prefix desktop run setup:electron
+            }
+            if ($LASTEXITCODE -eq 0) {
+              exit 0
+            }
+            $status = $LASTEXITCODE
+            Write-Host "approved dependency rebuild failed with exit code $status on attempt $attempt."
+            if ($attempt -eq 3) {
+              exit $status
+            }
+            Start-Sleep -Seconds ($attempt * 15)
+          }
+
+      - name: Typecheck root harness
+        run: npm run typecheck
+
+      - name: Typecheck desktop app
+        run: npm --prefix desktop run typecheck
+
+      - name: Run root tests
+        run: npm test
+
+      - name: Build Windows app
+        run: npm --prefix desktop run dist:win
+
+      - name: Run desktop smoke checks
+        run: |
+          npm --prefix desktop run smoke:doctor
+          npm --prefix desktop run smoke:dashboard
+
+      - name: Normalize Windows filenames
+        shell: pwsh
+        run: |
+          $releaseDir = "desktop\release"
+          $installer = Get-ChildItem -Path $releaseDir -Filter "Hermsec Setup *.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $installer) {
+            throw "No Windows installer was produced."
+          }
+          Copy-Item -LiteralPath $installer.FullName -Destination "$releaseDir\Hermsec-Setup-Windows-x64.exe" -Force
+
+          $portable = Get-ChildItem -Path $releaseDir -Filter "Hermsec *.exe" |
+            Where-Object { $_.Name -notlike "Hermsec Setup *" -and $_.Name -notlike "Hermsec-Setup-*" -and $_.Name -notlike "Hermsec-Portable-*" } |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          if ($portable) {
+            Copy-Item -LiteralPath $portable.FullName -Destination "$releaseDir\Hermsec-Portable-Windows-x64.exe" -Force
+          }
+
+          Get-ChildItem $releaseDir | Format-Table Name, Length, LastWriteTime
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: Hermsec-Windows-x64
+          path: |
+            desktop/release/Hermsec-Setup-Windows-x64.exe
+            desktop/release/Hermsec-Portable-Windows-x64.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish Windows Release Assets
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.tag_name }}" ]]; then
+            tag="${{ inputs.tag_name }}"
+          elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            tag="${GITHUB_REF_NAME}"
+          else
+            tag="v$(node -p "require('./package.json').version")"
+          fi
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: release-assets
+
+      - name: Create release notes
+        shell: bash
+        run: |
+          cat > release-notes.md <<'NOTES'
+          ## Hermsec Desktop
+
+          Download the installer for your platform from the release assets.
+
+          - **Windows:** use `Hermsec-Setup-Windows-x64.exe`, or `Hermsec-Portable-Windows-x64.exe` for portable mode.
+          - **macOS Apple Silicon:** use `Hermsec-macos-arm64.dmg` from the macOS release workflow.
+          - **macOS Intel:** use `Hermsec-macos-x64.dmg` from the macOS release workflow.
+
+          After installing, open Hermsec and run `/doctor` from chat to verify bundled scanners, internet connectivity, and provider configuration.
+          NOTES
+
+      - name: Upload to GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        shell: bash
+        run: |
+          mapfile -t assets < <(find release-assets -type f -name '*.exe' | sort)
+          if [[ "${#assets[@]}" -eq 0 ]]; then
+            echo "No Windows release assets found."
+            exit 1
+          fi
+
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release upload "${RELEASE_TAG}" "${assets[@]}" --clobber
+            gh release edit "${RELEASE_TAG}" --notes-file release-notes.md --title "Hermsec ${RELEASE_TAG}"
+          else
+            gh release create "${RELEASE_TAG}" "${assets[@]}" --title "Hermsec ${RELEASE_TAG}" --notes-file release-notes.md
+          fi

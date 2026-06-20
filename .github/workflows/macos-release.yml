@@ -1,0 +1,198 @@
+name: Build macOS Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag to create or update. Defaults to package version."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build ${{ matrix.label }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 75
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Apple Silicon
+            arch: arm64
+            runner: macos-15
+            package_script: dist:mac:arm64
+            asset_name: Hermsec-macos-arm64.dmg
+          - label: Intel
+            arch: x64
+            runner: macos-15-intel
+            package_script: dist:mac:x64
+            asset_name: Hermsec-macos-x64.dmg
+
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      ELECTRON_CACHE: ${{ github.workspace }}/.electron-cache
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.electron-builder-cache
+      npm_config_audit: "false"
+      npm_config_fund: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: |
+            package-lock.json
+            desktop/package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv runtime bundler
+        run: python -m pip install --upgrade uv
+
+      - name: Install dependencies without lifecycle scripts
+        run: |
+          npm ci --ignore-scripts
+          npm --prefix desktop ci --ignore-scripts
+
+      - name: Rebuild approved install-script dependencies
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            npm --prefix desktop rebuild esbuild --ignore-scripts=false && npm --prefix desktop run setup:electron && exit 0
+            status=$?
+            echo "approved dependency rebuild failed with exit code ${status} on attempt ${attempt}."
+            if [[ "${attempt}" == "3" ]]; then
+              exit "${status}"
+            fi
+            sleep $((attempt * 15))
+          done
+
+      - name: Typecheck root harness
+        run: npm run typecheck
+
+      - name: Typecheck desktop app
+        run: npm --prefix desktop run typecheck
+
+      - name: Run root tests
+        run: npm test
+
+      - name: Build macOS app
+        run: npm --prefix desktop run ${{ matrix.package_script }}
+
+      - name: Run desktop smoke checks
+        run: |
+          npm --prefix desktop run smoke:doctor
+          npm --prefix desktop run smoke:dashboard
+
+      - name: Normalize DMG filename
+        shell: bash
+        run: |
+          dmg="$(find desktop/release -maxdepth 1 -name '*.dmg' -print -quit)"
+          if [[ -z "${dmg}" ]]; then
+            echo "No DMG was produced."
+            exit 1
+          fi
+          cp "${dmg}" "desktop/release/${{ matrix.asset_name }}"
+          ls -lh desktop/release
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.asset_name }}
+          path: desktop/release/${{ matrix.asset_name }}
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish macOS Release Assets
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.tag_name }}" ]]; then
+            tag="${{ inputs.tag_name }}"
+          elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            tag="${GITHUB_REF_NAME}"
+          else
+            tag="v$(node -p "require('./package.json').version")"
+          fi
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: release-assets
+
+      - name: Create release notes
+        shell: bash
+        run: |
+          cat > release-notes.md <<'NOTES'
+          ## Hermsec Desktop
+
+          Download the installer for your platform from the release assets.
+
+          - **macOS Apple Silicon:** use `Hermsec-macos-arm64.dmg`.
+          - **macOS Intel:** use `Hermsec-macos-x64.dmg`.
+          - **Windows:** use `Hermsec-Setup-Windows-x64.exe` from the Windows release workflow.
+
+          macOS builds are currently unsigned unless signing secrets are configured. On first launch, approve Hermsec from System Settings > Privacy & Security if macOS blocks it.
+
+          After installing, open Hermsec and run `/doctor` from chat to verify bundled scanners, internet connectivity, and provider configuration.
+          NOTES
+
+      - name: Upload to GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        shell: bash
+        run: |
+          mapfile -t assets < <(find release-assets -type f -name '*.dmg' | sort)
+          if [[ "${#assets[@]}" -eq 0 ]]; then
+            echo "No macOS release assets found."
+            exit 1
+          fi
+
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release upload "${RELEASE_TAG}" "${assets[@]}" --clobber
+            gh release edit "${RELEASE_TAG}" --notes-file release-notes.md --title "Hermsec ${RELEASE_TAG}"
+          else
+            gh release create "${RELEASE_TAG}" "${assets[@]}" --title "Hermsec ${RELEASE_TAG}" --notes-file release-notes.md
+          fi
