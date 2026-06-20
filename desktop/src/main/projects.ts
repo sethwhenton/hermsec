@@ -1,40 +1,47 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { app } from "electron";
 import type { ProjectDirectory } from "../renderer/src/types/projects";
-import { findHermsecRoot } from "./scan";
 
-const TEST_PROJECTS_DIR = "Test projects";
 const PROJECT_STATE_FILE = "projects.json";
 
 interface ProjectStateFile {
+  projectPaths: string[];
   archivedPaths: string[];
   deletedPaths: string[];
 }
 
-export function testProjectsRoot(): string {
-  return path.join(findHermsecRoot(), TEST_PROJECTS_DIR);
-}
-
 export function listProjectDirectories(): ProjectDirectory[] {
-  const root = testProjectsRoot();
-  if (!existsSync(root)) return [];
   const state = readProjectState();
   const hidden = new Set([...state.archivedPaths, ...state.deletedPaths].map(normalizePath));
 
-  return readdirSync(root, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => {
-      const projectPath = path.join(root, entry.name);
-      return {
-        id: projectPath,
-        name: entry.name,
-        path: projectPath,
-        root,
-      };
-    })
+  return uniquePaths(state.projectPaths)
+    .filter((projectPath) => existsSync(projectPath) && statSync(projectPath).isDirectory())
+    .map(projectDirectoryFromPath)
     .filter((project) => !hidden.has(normalizePath(project.path)))
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function registerProjectDirectory(projectPath: string): { ok: boolean; message: string } {
+  const trimmed = projectPath.trim();
+  if (!trimmed) {
+    return { ok: false, message: "Choose a project folder before adding it to Hermsec." };
+  }
+
+  const normalizedPath = path.resolve(trimmed);
+  if (!existsSync(normalizedPath) || !statSync(normalizedPath).isDirectory()) {
+    return { ok: false, message: "Project folder was not found." };
+  }
+
+  const state = readProjectState();
+  const normalized = normalizePath(normalizedPath);
+  if (!state.projectPaths.map(normalizePath).includes(normalized)) {
+    state.projectPaths.push(normalizedPath);
+  }
+  state.archivedPaths = state.archivedPaths.filter((item) => normalizePath(item) !== normalized);
+  state.deletedPaths = state.deletedPaths.filter((item) => normalizePath(item) !== normalized);
+  writeProjectState(state);
+  return { ok: true, message: "Project added to Hermsec." };
 }
 
 export function archiveProjectDirectory(projectPath: string): { ok: boolean; message: string } {
@@ -67,15 +74,16 @@ function projectStatePath(): string {
 
 function readProjectState(): ProjectStateFile {
   const filePath = projectStatePath();
-  if (!existsSync(filePath)) return { archivedPaths: [], deletedPaths: [] };
+  if (!existsSync(filePath)) return emptyProjectState();
   try {
     const parsed = JSON.parse(readFileSync(filePath, "utf8")) as Partial<ProjectStateFile>;
     return {
+      projectPaths: Array.isArray(parsed.projectPaths) ? parsed.projectPaths.map(String) : [],
       archivedPaths: Array.isArray(parsed.archivedPaths) ? parsed.archivedPaths.map(String) : [],
       deletedPaths: Array.isArray(parsed.deletedPaths) ? parsed.deletedPaths.map(String) : [],
     };
   } catch {
-    return { archivedPaths: [], deletedPaths: [] };
+    return emptyProjectState();
   }
 }
 
@@ -88,4 +96,30 @@ function writeProjectState(state: ProjectStateFile): void {
 
 function normalizePath(filePath: string): string {
   return path.resolve(filePath).toLowerCase();
+}
+
+function emptyProjectState(): ProjectStateFile {
+  return { projectPaths: [], archivedPaths: [], deletedPaths: [] };
+}
+
+function uniquePaths(paths: string[]): string[] {
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const projectPath of paths) {
+    const normalized = normalizePath(projectPath);
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    unique.push(path.resolve(projectPath));
+  }
+  return unique;
+}
+
+function projectDirectoryFromPath(projectPath: string): ProjectDirectory {
+  const resolved = path.resolve(projectPath);
+  return {
+    id: resolved,
+    name: path.basename(resolved) || resolved,
+    path: resolved,
+    root: path.dirname(resolved),
+  };
 }

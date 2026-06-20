@@ -9,10 +9,15 @@ import { SettingsSidebar } from "./SettingsSidebar";
 export function SettingsPanel() {
   const section = useUiStore((s) => s.settingsSection);
   const setSettingsSection = useUiStore((s) => s.setSettingsSection);
+  const setView = useUiStore((s) => s.setView);
 
   return (
     <div className="flex h-full bg-background">
-      <SettingsSidebar section={section} onSectionChange={setSettingsSection} />
+      <SettingsSidebar
+        section={section}
+        onBack={() => setView("chat")}
+        onSectionChange={setSettingsSection}
+      />
       <div className="min-w-0 flex-1 overflow-y-auto px-8 py-6">
         <AnimatePresence mode="wait">
           <motion.div

@@ -61,6 +61,7 @@ export interface HermsecApi {
   };
   projects: {
     list: () => Promise<ProjectDirectory[]>;
+    add: (projectPath: string) => Promise<ProjectActionResult>;
     archive: (projectPath: string) => Promise<ProjectActionResult>;
     delete: (projectPath: string) => Promise<ProjectActionResult>;
   };

@@ -23,11 +23,18 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
     set({ loading: true });
     const settings = await api.settings.get();
+    if (settings.defaultProjectDir?.trim()) {
+      await api.projects.add(settings.defaultProjectDir);
+    }
     set({ settings, loading: false, hydrated: true });
   },
   update: async (partial) => {
     set({ loading: true });
-    const settings = await requireHermsecApi().settings.set(partial);
+    const api = requireHermsecApi();
+    const settings = await api.settings.set(partial);
+    if (partial.defaultProjectDir?.trim()) {
+      await api.projects.add(partial.defaultProjectDir);
+    }
     set({ settings, loading: false, hydrated: true });
   },
 }));

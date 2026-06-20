@@ -13,7 +13,7 @@ import type { ScannerListRequest } from "../renderer/src/types/scanners";
 import type { CreateChatSessionRequest, UpdateChatSessionRequest } from "../renderer/src/types/sessions";
 import { runDoctor } from "./doctor";
 import { testProvider } from "./providerTest";
-import { archiveProjectDirectory, deleteProjectDirectory, listProjectDirectories } from "./projects";
+import { archiveProjectDirectory, deleteProjectDirectory, listProjectDirectories, registerProjectDirectory } from "./projects";
 import { converseReport, explainReport, getDashboardBundle, latestReport, openArtifact } from "./reports";
 import { cancelActiveScan, openReportLocation, scanProject } from "./scan";
 import { installScanner, scannerStatuses, uninstallScanner, updateScanner } from "./scanners";
@@ -92,6 +92,10 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle("projects:list", () => listProjectDirectories());
+
+  ipcMain.handle("projects:add", (_event, projectPath: string) =>
+    registerProjectDirectory(projectPath),
+  );
 
   ipcMain.handle("projects:archive", (_event, projectPath: string) =>
     archiveProjectDirectory(projectPath),

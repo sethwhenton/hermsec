@@ -46,7 +46,9 @@ function createWindow(): void {
   });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
+    if (isSafeExternalUrl(url)) {
+      void shell.openExternal(url);
+    }
     return { action: "deny" };
   });
 
@@ -214,6 +216,15 @@ function argValue(name: string): string | undefined {
   const index = process.argv.indexOf(name);
   if (index < 0) return undefined;
   return process.argv[index + 1];
+}
+
+function isSafeExternalUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:", "mailto:"].includes(url.protocol);
+  } catch {
+    return false;
+  }
 }
 
 function isDashboardSmokeMode(): boolean {

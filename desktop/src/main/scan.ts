@@ -208,7 +208,16 @@ export async function scanProject(
   try {
     const root = findHermsecRoot();
     const cliPath = path.join(root, CLI_RELATIVE_PATH);
-    const targetPath = path.resolve(root, request.targetPath || defaultProjectDir());
+    const targetInput = request.targetPath?.trim();
+    if (!targetInput) {
+      return {
+        ok: false,
+        message: "Choose a project folder before starting a scan.",
+        reportDir: path.resolve(request.reportDir || defaultReportDir()),
+        error: "target-required",
+      };
+    }
+    const targetPath = path.resolve(root, targetInput);
     const reportDir = path.resolve(request.reportDir || defaultReportDir());
     const mode = normalizeScanMode(request.mode);
     const assistMode = normalizeAssistMode(request.assistMode);

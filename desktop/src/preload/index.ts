@@ -75,6 +75,8 @@ const hermsecApi = {
   },
   projects: {
     list: (): Promise<ProjectDirectory[]> => ipcRenderer.invoke("projects:list"),
+    add: (projectPath: string): Promise<ProjectActionResult> =>
+      ipcRenderer.invoke("projects:add", projectPath),
     archive: (projectPath: string): Promise<ProjectActionResult> =>
       ipcRenderer.invoke("projects:archive", projectPath),
     delete: (projectPath: string): Promise<ProjectActionResult> =>

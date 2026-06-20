@@ -274,6 +274,14 @@ export function ChatView() {
     ]);
 
   const runProjectScan = async (assistModeInput?: HermsecScanAssistMode) => {
+    if (!settings?.defaultProjectDir?.trim()) {
+      await pushMessage(
+        "assistant",
+        "Choose a project folder first, then I can scan it. Use **New chat** or the **+** button in Projects to select the repository you want Hermsec to inspect.",
+      );
+      return;
+    }
+
     const assistMode = normalizeScanAssistMode(assistModeInput ?? settings?.general.scanMode);
     const label = scanModeLabel(assistMode);
     setAgentThinking(true);

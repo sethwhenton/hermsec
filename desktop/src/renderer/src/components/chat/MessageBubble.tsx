@@ -41,7 +41,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             : "max-w-[min(680px,92%)] border border-border/80 bg-surface-elevated/78 text-foreground backdrop-blur",
         )}
       >
-        <FormattedMessageContent content={message.content} />
+        <FormattedMessageContent content={message.content} rich />
         {!isUser && message.copyAction ? (
           <div className="mt-3 flex items-center gap-2 border-t border-border/60 pt-2">
             <button
@@ -78,104 +78,243 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   );
 }
 
-function FormattedMessageContent({ content }: { content: string }) {
-  const parts = splitCodeFences(content);
+function FormattedMessageContent({
+  content,
+  rich,
+}: {
+  content: string;
+  rich: boolean;
+}) {
+  const parts = rich ? parseRichBlocks(content) : parsePlainBlocks(content);
+
   return (
-    <div className="space-y-3">
-      {parts.map((part, index) =>
-        part.kind === "code" ? (
-          <pre
-            key={`${part.kind}-${index}`}
-            className="max-h-[360px] overflow-auto rounded-xl border border-border/70 bg-background/70 p-3 font-mono text-[11px] leading-relaxed text-foreground/90 shadow-inner"
-          >
-            <code>{part.text}</code>
-          </pre>
-        ) : part.text.trim() ? (
-          <FormattedText key={`${part.kind}-${index}`} text={part.text} />
-        ) : null,
-      )}
+    <div className="space-y-3 break-words">
+      {parts.map((part, index) => (
+        <RichBlockView key={`${part.kind}-${index}`} block={part} />
+      ))}
     </div>
   );
 }
 
-function FormattedText({ text }: { text: string }) {
-  const blocks = splitTextBlocks(text);
-  return (
-    <>
-      {blocks.map((block, index) => {
-        if (block.kind === "list") {
-          return (
-            <ul key={`${block.kind}-${index}`} className="list-disc space-y-1 pl-5">
-              {block.items.map((item, itemIndex) => (
-                <li key={`${block.kind}-${index}-${itemIndex}`} className="whitespace-pre-wrap">
-                  {renderInlineMarkdown(item)}
-                </li>
-              ))}
-            </ul>
-          );
-        }
+type RichBlock =
+  | { kind: "paragraph"; text: string }
+  | { kind: "heading"; level: 1 | 2 | 3; text: string }
+  | { kind: "code"; text: string; language?: string }
+  | { kind: "list"; ordered: boolean; items: Array<{ text: string; checked?: boolean }> }
+  | { kind: "blockquote"; text: string }
+  | { kind: "table"; headers: string[]; rows: string[][] }
+  | { kind: "rule" };
 
-        return (
-          <p key={`${block.kind}-${index}`} className="whitespace-pre-wrap">
-            {renderInlineMarkdown(block.text)}
-          </p>
-        );
-      })}
-    </>
-  );
+function RichBlockView({ block }: { block: RichBlock }) {
+  switch (block.kind) {
+    case "heading": {
+      const HeadingTag = block.level === 1 ? "h3" : block.level === 2 ? "h4" : "h5";
+      return (
+        <HeadingTag className={cn("font-semibold text-foreground", block.level === 1 ? "text-base" : "text-sm")}>
+          {renderInlineMarkdown(block.text)}
+        </HeadingTag>
+      );
+    }
+    case "code":
+      return (
+        <div className="overflow-hidden rounded-xl border border-border/70 bg-background/70 shadow-inner">
+          {block.language ? (
+            <div className="border-b border-border/60 px-3 py-1.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+              {block.language}
+            </div>
+          ) : null}
+          <pre className="max-h-[360px] overflow-auto p-3 font-mono text-[11px] leading-relaxed text-foreground/90">
+            <code>{block.text}</code>
+          </pre>
+        </div>
+      );
+    case "list": {
+      const ListTag = block.ordered ? "ol" : "ul";
+      return (
+        <ListTag className={cn("space-y-1 pl-5", block.ordered ? "list-decimal" : "list-disc")}>
+          {block.items.map((item, itemIndex) => (
+            <li key={`${item.text}-${itemIndex}`} className="pl-0.5">
+              {item.checked !== undefined ? (
+                <span className="mr-2 inline-flex h-3.5 w-3.5 translate-y-0.5 items-center justify-center rounded-sm border border-border/80 bg-background/70 text-[9px] text-foreground">
+                  {item.checked ? <Check className="h-2.5 w-2.5" /> : null}
+                </span>
+              ) : null}
+              {renderInlineMarkdown(item.text)}
+            </li>
+          ))}
+        </ListTag>
+      );
+    }
+    case "blockquote":
+      return (
+        <blockquote className="border-l-2 border-border pl-3 text-muted">
+          {block.text.split(/\r?\n/).map((line, index) => (
+            <Fragment key={`${line}-${index}`}>
+              {index > 0 ? <br /> : null}
+              {renderInlineMarkdown(line)}
+            </Fragment>
+          ))}
+        </blockquote>
+      );
+    case "table":
+      return (
+        <div className="max-w-full overflow-x-auto rounded-xl border border-border/70">
+          <table className="min-w-full border-collapse text-left text-xs">
+            <thead className="bg-background/60 text-muted">
+              <tr>
+                {block.headers.map((header, index) => (
+                  <th key={`${header}-${index}`} className="border-b border-border/70 px-3 py-2 font-medium">
+                    {renderInlineMarkdown(header)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {block.rows.map((row, rowIndex) => (
+                <tr key={`row-${rowIndex}`} className="border-t border-border/50 first:border-t-0">
+                  {block.headers.map((_, cellIndex) => (
+                    <td key={`${rowIndex}-${cellIndex}`} className="px-3 py-2 align-top text-foreground/90">
+                      {renderInlineMarkdown(row[cellIndex] ?? "")}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    case "rule":
+      return <div className="h-px bg-border/70" />;
+    case "paragraph":
+    default:
+      return (
+        <p className="whitespace-pre-wrap">
+          {renderInlineMarkdown(block.text)}
+        </p>
+      );
+  }
 }
 
-type TextBlock =
-  | { kind: "paragraph"; text: string }
-  | { kind: "list"; items: string[] };
+function parsePlainBlocks(content: string): RichBlock[] {
+  const text = content.trim();
+  return text ? [{ kind: "paragraph", text }] : [];
+}
 
-function splitTextBlocks(text: string): TextBlock[] {
-  const blocks: TextBlock[] = [];
-  let paragraph: string[] = [];
-  let list: string[] = [];
+function parseRichBlocks(content: string): RichBlock[] {
+  const blocks: RichBlock[] = [];
+  const lines = content.replace(/\r\n/g, "\n").split("\n");
+  let index = 0;
 
-  const flushParagraph = () => {
-    if (!paragraph.length) return;
-    blocks.push({ kind: "paragraph", text: paragraph.join("\n") });
-    paragraph = [];
+  const pushParagraph = (paragraphLines: string[]) => {
+    const text = paragraphLines.join("\n").trim();
+    if (text) blocks.push({ kind: "paragraph", text });
   };
 
-  const flushList = () => {
-    if (!list.length) return;
-    blocks.push({ kind: "list", items: list });
-    list = [];
-  };
-
-  for (const line of text.split(/\r?\n/)) {
-    const listMatch = line.match(/^\s*[-*]\s+(.+)$/);
-    if (listMatch) {
-      flushParagraph();
-      list.push(listMatch[1]);
-      continue;
-    }
+  while (index < lines.length) {
+    const line = lines[index];
 
     if (!line.trim()) {
-      flushParagraph();
-      flushList();
+      index += 1;
       continue;
     }
 
-    flushList();
-    paragraph.push(line);
+    const fence = line.match(/^```([a-zA-Z0-9_+.-]+)?\s*$/);
+    if (fence) {
+      const codeLines: string[] = [];
+      index += 1;
+      while (index < lines.length && !lines[index].startsWith("```")) {
+        codeLines.push(lines[index]);
+        index += 1;
+      }
+      if (index < lines.length) index += 1;
+      blocks.push({
+        kind: "code",
+        text: trimTrailingBlankLines(codeLines).join("\n"),
+        language: fence[1],
+      });
+      continue;
+    }
+
+    const heading = line.match(/^(#{1,3})\s+(.+)$/);
+    if (heading) {
+      blocks.push({
+        kind: "heading",
+        level: heading[1].length as 1 | 2 | 3,
+        text: heading[2].trim(),
+      });
+      index += 1;
+      continue;
+    }
+
+    if (/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
+      blocks.push({ kind: "rule" });
+      index += 1;
+      continue;
+    }
+
+    if (/^\s*>\s?/.test(line)) {
+      const quoteLines: string[] = [];
+      while (index < lines.length && /^\s*>\s?/.test(lines[index])) {
+        quoteLines.push(lines[index].replace(/^\s*>\s?/, ""));
+        index += 1;
+      }
+      blocks.push({ kind: "blockquote", text: quoteLines.join("\n").trim() });
+      continue;
+    }
+
+    if (isTableStart(lines, index)) {
+      const { block, nextIndex } = parseTable(lines, index);
+      blocks.push(block);
+      index = nextIndex;
+      continue;
+    }
+
+    const listMatch = parseListMarker(line);
+    if (listMatch) {
+      const ordered = listMatch.ordered;
+      const items: Array<{ text: string; checked?: boolean }> = [];
+      while (index < lines.length) {
+        const item = parseListMarker(lines[index]);
+        if (!item || item.ordered !== ordered) break;
+        items.push({ text: item.text, checked: item.checked });
+        index += 1;
+      }
+      blocks.push({ kind: "list", ordered, items });
+      continue;
+    }
+
+    const paragraphLines = [line];
+    index += 1;
+    while (
+      index < lines.length &&
+      lines[index].trim() &&
+      !lines[index].match(/^```/) &&
+      !lines[index].match(/^(#{1,3})\s+/) &&
+      !lines[index].match(/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/) &&
+      !lines[index].match(/^\s*>\s?/) &&
+      !isTableStart(lines, index) &&
+      !parseListMarker(lines[index])
+    ) {
+      paragraphLines.push(lines[index]);
+      index += 1;
+    }
+    pushParagraph(paragraphLines);
   }
 
-  flushParagraph();
-  flushList();
   return blocks;
 }
 
-function renderInlineMarkdown(text: string): ReactNode[] {
+function renderInlineMarkdown(text: string, depth = 0): ReactNode[] {
+  if (!text) return [];
+  if (depth > 3) return [text];
+
   const nodes: ReactNode[] = [];
-  const pattern = /(`[^`\n]+`|\*\*[^*\n][\s\S]*?[^*\n]\*\*|__[^_\n][\s\S]*?[^_\n]__)/g;
+  const tokenPattern =
+    /(`[^`\n]+`|\[[^\]\n]+\]\((?:<[^>\n]+>|[^)\n]+)\)|https?:\/\/[^\s<>()]+|~~[^~\n][\s\S]*?[^~\n]~~|\*\*[^*\n][\s\S]*?[^*\n]\*\*|__[^_\n][\s\S]*?[^_\n]__|\*[^*\s][^*\n]*\*|_[^_\s][^_\n]*_)/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
-  while ((match = pattern.exec(text))) {
+  while ((match = tokenPattern.exec(text))) {
     if (match.index > lastIndex) {
       nodes.push(text.slice(lastIndex, match.index));
     }
@@ -190,15 +329,38 @@ function renderInlineMarkdown(text: string): ReactNode[] {
           {token.slice(1, -1)}
         </code>,
       );
-    } else {
+    } else if (token.startsWith("[") && token.includes("](")) {
+      const parsed = parseMarkdownLink(token);
+      nodes.push(
+        parsed ? (
+          <RichLink key={`link-${match.index}`} label={parsed.label} target={parsed.target} />
+        ) : (
+          token
+        ),
+      );
+    } else if (token.startsWith("http://") || token.startsWith("https://")) {
+      nodes.push(<RichLink key={`url-${match.index}`} label={token} target={token} />);
+    } else if (token.startsWith("~~")) {
+      nodes.push(
+        <del key={`del-${match.index}`} className="text-muted-foreground">
+          {renderInlineMarkdown(token.slice(2, -2), depth + 1)}
+        </del>,
+      );
+    } else if (token.startsWith("**") || token.startsWith("__")) {
       nodes.push(
         <strong key={`strong-${match.index}`} className="font-semibold text-foreground">
-          {token.slice(2, -2)}
+          {renderInlineMarkdown(token.slice(2, -2), depth + 1)}
         </strong>,
+      );
+    } else {
+      nodes.push(
+        <em key={`em-${match.index}`} className="text-foreground/95">
+          {renderInlineMarkdown(token.slice(1, -1), depth + 1)}
+        </em>,
       );
     }
 
-    lastIndex = pattern.lastIndex;
+    lastIndex = tokenPattern.lastIndex;
   }
 
   if (lastIndex < text.length) {
@@ -208,23 +370,97 @@ function renderInlineMarkdown(text: string): ReactNode[] {
   return nodes.map((node, index) => <Fragment key={index}>{node}</Fragment>);
 }
 
-function splitCodeFences(content: string): Array<{ kind: "text" | "code"; text: string }> {
-  const parts: Array<{ kind: "text" | "code"; text: string }> = [];
-  const pattern = /```(?:[a-zA-Z0-9_-]+)?\r?\n([\s\S]*?)```/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
+function RichLink({ label, target }: { label: string; target: string }) {
+  const safeTarget = safeRichLinkTarget(target);
 
-  while ((match = pattern.exec(content))) {
-    if (match.index > lastIndex) {
-      parts.push({ kind: "text", text: content.slice(lastIndex, match.index).trimEnd() });
-    }
-    parts.push({ kind: "code", text: match[1].trim() });
-    lastIndex = pattern.lastIndex;
+  if (!safeTarget) {
+    return <span>{label}</span>;
   }
 
-  if (lastIndex < content.length) {
-    parts.push({ kind: "text", text: content.slice(lastIndex).trimStart() });
+  return (
+    <button
+      type="button"
+      className="inline break-all text-accent underline decoration-accent/40 underline-offset-4 transition-colors duration-150 ease-out hover:decoration-accent active:scale-[0.97]"
+      title={safeTarget}
+      onClick={() => {
+        window.open(safeTarget, "_blank", "noopener,noreferrer");
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function parseMarkdownLink(token: string): { label: string; target: string } | null {
+  const match = token.match(/^\[([^\]\n]+)\]\((<[^>\n]+>|[^)\n]+)\)$/);
+  if (!match) return null;
+  return {
+    label: match[1],
+    target: match[2].replace(/^<|>$/g, "").trim(),
+  };
+}
+
+function safeRichLinkTarget(target: string): string | null {
+  const value = target.trim();
+  if (!value || /[\u0000-\u001f]/.test(value)) return null;
+  try {
+    const url = new URL(value);
+    return ["http:", "https:", "mailto:"].includes(url.protocol) ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseListMarker(line: string): { ordered: boolean; text: string; checked?: boolean } | null {
+  const unordered = line.match(/^\s*[-*+]\s+(?:\[([ xX])\]\s+)?(.+)$/);
+  if (unordered) {
+    return {
+      ordered: false,
+      checked: unordered[1] ? unordered[1].toLowerCase() === "x" : undefined,
+      text: unordered[2].trim(),
+    };
   }
 
-  return parts.length ? parts : [{ kind: "text", text: content }];
+  const ordered = line.match(/^\s*\d+[.)]\s+(.+)$/);
+  return ordered ? { ordered: true, text: ordered[1].trim() } : null;
+}
+
+function isTableStart(lines: string[], index: number): boolean {
+  const header = lines[index];
+  const separator = lines[index + 1];
+  return Boolean(
+    header?.includes("|") &&
+      separator &&
+      /^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(separator),
+  );
+}
+
+function parseTable(lines: string[], index: number): { block: Extract<RichBlock, { kind: "table" }>; nextIndex: number } {
+  const headers = splitTableCells(lines[index]);
+  const rows: string[][] = [];
+  index += 2;
+
+  while (index < lines.length && lines[index].includes("|") && lines[index].trim()) {
+    rows.push(splitTableCells(lines[index]));
+    index += 1;
+  }
+
+  return { block: { kind: "table", headers, rows }, nextIndex: index };
+}
+
+function splitTableCells(line: string): string[] {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => cell.trim());
+}
+
+function trimTrailingBlankLines(lines: string[]): string[] {
+  const next = [...lines];
+  while (next.length > 0 && !next[next.length - 1].trim()) {
+    next.pop();
+  }
+  return next;
 }

@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { app } from "electron";
 import type { HermsecScanAssistMode } from "../renderer/src/types/scan";
@@ -44,7 +44,7 @@ function defaultSettings(): AppSettings {
       thinkingLevel: "balanced",
       contextWindow: "standard",
     },
-    defaultProjectDir: defaultProjectDirSetting(),
+    defaultProjectDir: "",
     defaultReportDir: join(app.getPath("documents"), "Hermsec", "reports"),
     activeModelId: env.model,
     automation: {
@@ -57,12 +57,6 @@ function defaultSettings(): AppSettings {
     providers: [defaultProvider(env)],
     scanners: defaultScannerSettings(),
   };
-}
-
-function defaultProjectDirSetting(): string {
-  const root = process.cwd();
-  const labProject = join(root, "Test projects", "hermsec-node-express-vuln-lab");
-  return existsSync(labProject) ? labProject : root;
 }
 
 function deepMerge<T extends object>(target: T, source: DeepPartial<T>): T {
@@ -168,6 +162,7 @@ function normalizeSettings(settings: AppSettings): AppSettings {
 
   return {
     ...settings,
+    defaultProjectDir: normalizeDefaultProjectDir(settings.defaultProjectDir),
     general: {
       ...settings.general,
       scanMode: normalizeScanModeSetting(settings.general.scanMode),
@@ -192,6 +187,19 @@ function normalizeSettings(settings: AppSettings): AppSettings {
     scanners: normalizeScannerSettings(settings.scanners),
     ...(activeModelId ? { activeModelId } : {}),
   };
+}
+
+function normalizeDefaultProjectDir(projectDir: string | undefined): string {
+  const value = String(projectDir ?? "").trim();
+  if (!value) return "";
+  const normalized = value.replace(/\\/g, "/").toLowerCase();
+  if (
+    normalized.includes("/test projects/hermsec-node-express-vuln-lab") ||
+    normalized.includes("/test projects/hermsec-python-flask-vuln-lab")
+  ) {
+    return "";
+  }
+  return value;
 }
 
 function normalizeScanModeSetting(mode: string | undefined): HermsecScanAssistMode {

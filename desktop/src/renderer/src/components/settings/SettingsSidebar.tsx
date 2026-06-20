@@ -1,10 +1,11 @@
-import { Bot, Cog, ScanSearch, Server } from "lucide-react";
+import { ArrowLeft, Bot, Cog, ScanSearch, Server } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { SettingsSection } from "@/store/uiStore";
 import { HermsecLogo } from "@/components/branding/HermsecLogo";
 
 interface SettingsSidebarProps {
   section: SettingsSection;
+  onBack: () => void;
   onSectionChange: (section: SettingsSection) => void;
 }
 
@@ -18,9 +19,18 @@ const serverItems: Array<{ id: SettingsSection; label: string; icon: React.React
   { id: "scanners", label: "Scanners", icon: <ScanSearch className="h-4 w-4" /> },
 ];
 
-export function SettingsSidebar({ section, onSectionChange }: SettingsSidebarProps) {
+export function SettingsSidebar({ section, onBack, onSectionChange }: SettingsSidebarProps) {
   return (
     <aside className="flex w-52 shrink-0 flex-col border-r border-border-subtle bg-surface px-2 py-4">
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-4 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted transition-colors duration-150 ease-out hover:bg-white/5 hover:text-foreground active:scale-[0.97]"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to chat
+      </button>
+
       <div className="mb-2 px-2 text-[10px] uppercase tracking-wider text-muted">Desktop</div>
       {desktopItems.map((item) => (
         <SettingsNavButton

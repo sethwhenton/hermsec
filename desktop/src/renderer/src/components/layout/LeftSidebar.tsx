@@ -69,7 +69,7 @@ export function LeftSidebar() {
 
   useEffect(() => {
     void loadProjects();
-  }, [loadProjects]);
+  }, [loadProjects, settings?.defaultProjectDir]);
 
   useEffect(() => {
     const close = () => setOpenActions(null);
@@ -97,6 +97,7 @@ export function LeftSidebar() {
   const handleNewChatProject = async (projectPath: string) => {
     await updateSettings({ defaultProjectDir: projectPath });
     startNewSession();
+    await loadProjects();
     setView("chat");
   };
 
@@ -131,6 +132,7 @@ export function LeftSidebar() {
     if (!api) return;
     await api.projects.archive(project.path);
     if (settings?.defaultProjectDir.toLowerCase() === project.path.toLowerCase()) {
+      await updateSettings({ defaultProjectDir: "" });
       startNewSession();
     }
     await loadProjects();
@@ -142,6 +144,7 @@ export function LeftSidebar() {
     if (!api) return;
     await api.projects.delete(project.path);
     if (settings?.defaultProjectDir.toLowerCase() === project.path.toLowerCase()) {
+      await updateSettings({ defaultProjectDir: "" });
       startNewSession();
     }
     await loadProjects();
