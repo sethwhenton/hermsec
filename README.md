@@ -102,6 +102,14 @@ Hermsec V3 exposes two user-facing scan modes:
 
 Scanner-only runs remain an internal benchmark control.
 
+## Live Progress And Evidence
+
+Scans stream structured progress from the root engine into the desktop chat card. The card is driven by real scan events, including repository inspection, scanner selection, tool preparation, individual scanner starts/completions/failures, model summary status, and report generation. The CLI exposes the same stream in JSON mode as `HERMSEC_PROGRESS` JSONL lines on stderr while keeping the final JSON result on stdout.
+
+Every scanner result crosses a normalization boundary before reporting. Hermsec fills stable fields such as tool, rule id, severity, confidence, category, evidence, remediation, and fingerprint, then normalizes paths relative to the scanned repository. User reports stay redacted, while benchmark-safe raw exports are kept separately so testcase matching is not broken.
+
+Deep assisted mode is evidence-bound. Model output can group, prioritize, explain impact, and suggest remediation, but it is rejected if it invents unsupported file paths, line numbers, packages, CVEs, CWEs, scanner ids, or finding ids.
+
 ## Scanner Harness
 
 The root harness never installs dependencies inside scanned repositories and does not run package lifecycle scripts. It normalizes scanner output into Hermsec findings and report artifacts. V3 uses Settings > Scanners to show supported scanners, install/readiness state, enablement, auto-install preferences, and project applicability.
@@ -109,6 +117,12 @@ The root harness never installs dependencies inside scanned repositories and doe
 Fresh desktop installs default to adaptive scanner auto-install. Supported tools are installed into Hermsec-managed storage, not globally and not into the scanned project. System-only scanners are detected and used when already available.
 
 Expanded scanner coverage includes Semgrep, Gitleaks, TruffleHog, OSV-Scanner, Trivy, Checkov, Retire.js, FindSecBugs/SpotBugs, OWASP Dependency-Check, Bandit, pip-audit, Psalm, Composer audit, gosec, govulncheck, cargo-audit, Brakeman, Flawfinder, Cppcheck, and .NET vulnerable package checks. Some optional scanners still require native runtime support before they can be bundled everywhere.
+
+Java coverage includes Hermsec's lightweight servlet taint heuristics for request parameters, headers, cookies, body readers, path/query data, multipart filenames, session attributes, aliases, string concatenation, and `StringBuilder`/`StringBuffer` flows. It recognizes common sanitizer families and checks SQL, LDAP, XPath, file/path, process, servlet response, and session-write sinks.
+
+## Benchmarking
+
+Benchmark work is supported from the root CLI and CI. The current Java gate targets OWASP BenchmarkJava, with benchmark artifacts written under `.hermsec/benchmark-runs` when local suites are available. Recommended expansion suites remain OpenSSF CVE Benchmark for JS/TS, CASTLE and a Juliet subset for C/C++, OWASP BenchmarkPython plus curated fixtures for Python, and labeled dependency/secrets fixtures for SCA and secret scanning.
 
 ## Provider Keys
 
@@ -132,7 +146,7 @@ The root CLI remains available for automation and benchmarks:
 
 ```powershell
 node dist\src\bin\hermsec.js doctor --json
-node dist\src\bin\hermsec.js scan C:\path\to\repo --out .hermsec\reports --html --md --json
+node dist\src\bin\hermsec.js scan C:\path\to\repo --assist-mode deep-assisted --out .hermsec\reports --html --md --json
 npm run eval:owasp
 ```
 
