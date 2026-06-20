@@ -20,7 +20,6 @@
     "dist:mac": "npm run build:packaged && npx electron-builder --mac dmg zip --publish never",
     "dist:linux": "npm run build:packaged && npx electron-builder --linux AppImage --x64 --publish never",
     "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",
-    "postinstall": "node node_modules/electron/install.js",
     "setup:electron": "node node_modules/electron/install.js"
   },
   "dependencies": {
