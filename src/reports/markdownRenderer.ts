@@ -1,4 +1,5 @@
 import type { Finding } from "../shared/types.js";
+import { displayScannerName } from "./displayNames.js";
 import type { ReportDocument } from "./schema.js";
 import { compareFindings, severityOrder } from "./schema.js";
 
@@ -111,7 +112,7 @@ function renderFinding(document: ReportDocument, finding: Finding): string {
     `#### ${escapeMarkdown(finding.title)}`,
     "",
     `- ID: \`${escapeMarkdown(finding.id)}\``,
-    `- Tool: ${escapeMarkdown(finding.tool)}`,
+    `- Tool: ${escapeMarkdown(displayScannerName(finding.tool))}`,
     `- Confidence: ${escapeMarkdown(finding.confidence)}`,
     `- Location: \`${escapeMarkdown(location)}\``,
     identifiers.length > 0 ? `- Identifiers from evidence: ${identifiers.map((id) => `\`${escapeMarkdown(id)}\``).join(", ")}` : undefined,
@@ -130,14 +131,14 @@ function renderFinding(document: ReportDocument, finding: Finding): string {
 
 function renderScannerStatus(document: ReportDocument): string {
   const rows = document.tools.map((tool) => {
-    return `| ${escapeTable(tool.label)} | ${escapeTable(tool.status)} | ${tool.durationMs ?? ""} | ${escapeTable(tool.message)} |`;
+    return `| ${escapeTable(displayScannerName(tool.label))} | ${escapeTable(tool.status)} | ${tool.durationMs ?? ""} | ${escapeTable(tool.message)} |`;
   });
   return ["## Scanner Status", "", "| Tool | Status | Duration ms | Message |", "| --- | --- | ---: | --- |", ...rows].join("\n");
 }
 
 function renderEvidenceBundle(document: ReportDocument): string {
   const rows = document.evidence.rawArtifacts.map((artifact) => {
-    return `| ${escapeTable(artifact.scanner)} | ${escapeTable(artifact.path)} | ${escapeTable(artifact.status)} | ${artifact.sizeBytes} | \`${artifact.sha256}\` |`;
+    return `| ${escapeTable(displayScannerName(artifact.scanner))} | ${escapeTable(artifact.path)} | ${escapeTable(artifact.status)} | ${artifact.sizeBytes} | \`${artifact.sha256}\` |`;
   });
   return [
     "## Evidence Bundle",

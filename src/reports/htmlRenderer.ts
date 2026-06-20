@@ -1,4 +1,5 @@
 import type { Finding } from "../shared/types.js";
+import { displayScannerName } from "./displayNames.js";
 import type { ReportDocument } from "./schema.js";
 import { compareFindings, severityOrder } from "./schema.js";
 
@@ -717,7 +718,7 @@ function renderFinding(document: ReportDocument, finding: Finding): string {
   const metadata = [
     renderDetail("ID", `<code>${escapeHtml(finding.id)}</code>`),
     renderDetail("Category", escapeHtml(titleCase(finding.category))),
-    renderDetail("Tool", `<code>${escapeHtml(finding.tool)}</code>`),
+    renderDetail("Tool", escapeHtml(displayScannerName(finding.tool))),
     renderDetail("Confidence", escapeHtml(finding.confidence)),
     renderDetail("Location", `<code>${escapeHtml(formatLocation(finding))}</code>`),
     finding.ruleId ? renderDetail("Rule", `<code>${escapeHtml(finding.ruleId)}</code>`) : "",
@@ -793,7 +794,7 @@ function renderDelta(document: ReportDocument): string {
 function renderScannerStatus(document: ReportDocument): string {
   const rows = document.tools
     .map((tool) => `<tr>
-        <td>${escapeHtml(tool.label)}</td>
+        <td>${escapeHtml(displayScannerName(tool.label))}</td>
         <td><span class="status-pill ${tool.status}">${escapeHtml(tool.status)}</span></td>
         <td class="duration">${escapeHtml(formatDuration(tool.durationMs))}</td>
         <td>${escapeHtml(tool.message)}</td>
@@ -813,7 +814,7 @@ function renderScannerStatus(document: ReportDocument): string {
 function renderEvidenceBundle(document: ReportDocument): string {
   const artifactRows = document.evidence.rawArtifacts
     .map((artifact) => `<tr>
-      <td>${escapeHtml(artifact.scanner)}</td>
+      <td>${escapeHtml(displayScannerName(artifact.scanner))}</td>
       <td><code>${escapeHtml(artifact.path)}</code></td>
       <td>${escapeHtml(artifact.status)}</td>
       <td>${escapeHtml(String(artifact.sizeBytes))}</td>

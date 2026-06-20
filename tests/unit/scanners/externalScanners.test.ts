@@ -5,6 +5,8 @@ import path from "node:path";
 import test from "node:test";
 import type { SourceFile } from "../../../src/core/files.js";
 import { inferRepositoryRoot, runExternalScanners } from "../../../src/scanners/external.js";
+import { normalizeFindings } from "../../../src/scanners/normalization.js";
+import { parseScannerJson } from "../../../src/scanners/parsers.js";
 import { discoverCommand, safeExec, type CommandResolution, type SafeExecRequest, type SafeExecResult, type ScannerCommandId } from "../../../src/scanners/process.js";
 
 test("external scanner suite normalizes mocked real JSON outputs", async () => {
@@ -72,6 +74,28 @@ test("external scanner suite records deterministic skipped statuses when binarie
   assert.equal(result.statuses.length, 6);
   assert.equal(result.statuses.every((status) => status.status === "skipped"), true);
   assert.equal(result.statuses.every((status) => /not found|missing|no matching/i.test(status.message)), true);
+});
+
+test("external scanner suite emits structured per-scanner progress", async () => {
+  const repoRoot = path.join(os.tmpdir(), "Hermsec External Progress Repo");
+  const files = [sourceFile(repoRoot, "src/server.js", "javascript", "source")];
+  const events: Array<{ scannerId?: string; status: string; findingCount?: number }> = [];
+
+  const result = await withEnabledScanners("semgrep", async () =>
+    runExternalScanners(files, readFixtureText, {
+      commandResolver: fakeResolver,
+      exec: async (request) => fakeExecResult(request, repoRoot),
+      onProgress: (event) => events.push({
+        status: event.status,
+        ...(event.scannerId ? { scannerId: event.scannerId } : {}),
+        ...(event.findingCount !== undefined ? { findingCount: event.findingCount } : {}),
+      }),
+    })
+  );
+
+  assert.equal(result.statuses.find((status) => status.id === "semgrep-run")?.status, "completed");
+  assert.equal(events.some((event) => event.scannerId === "semgrep" && event.status === "running"), true);
+  assert.equal(events.some((event) => event.scannerId === "semgrep" && event.status === "completed" && event.findingCount === 1), true);
 });
 
 test("external scanner selection honors none, explicit, default, and all env modes", async () => {
@@ -227,6 +251,114 @@ test("repository root inference handles paths with spaces", () => {
     sourceFile(repoRoot, "src/server.js", "javascript", "source"),
     sourceFile(repoRoot, "requirements.txt", "text", "manifest"),
   ]), repoRoot);
+});
+
+test("cataloged external scanner parsers normalize required finding fields", () => {
+  const repoRoot = path.join(os.tmpdir(), "Hermsec Parser Fixture Repo");
+  const cases: Array<{ scanner: ScannerCommandId; output: string; sourcePath?: string; expectedTool: string }> = [
+    {
+      scanner: "trivy",
+      expectedTool: "trivy",
+      output: JSON.stringify({
+        Results: [{
+          Target: "package-lock.json",
+          Vulnerabilities: [{
+            VulnerabilityID: "CVE-2021-23337",
+            PkgName: "lodash",
+            PkgType: "npm",
+            InstalledVersion: "4.17.20",
+            FixedVersion: "4.17.21",
+            Severity: "HIGH",
+            Title: "Command Injection in lodash",
+          }],
+          Secrets: [{ RuleID: "aws-access-key", Title: "AWS key", Severity: "HIGH", StartLine: 7 }],
+          Misconfigurations: [{ ID: "AVD-DS-0002", Title: "Docker misconfiguration", Severity: "MEDIUM", Message: "Root user", Resolution: "Set USER." }],
+        }],
+      }),
+    },
+    {
+      scanner: "checkov",
+      expectedTool: "checkov",
+      output: JSON.stringify({
+        failed_checks: [{
+          check_id: "CKV_DOCKER_2",
+          check_name: "Ensure healthcheck exists",
+          file_path: "Dockerfile",
+          file_line_range: [3, 5],
+          guideline: "Add a HEALTHCHECK.",
+        }],
+      }),
+    },
+    {
+      scanner: "retire",
+      expectedTool: "retire",
+      output: JSON.stringify([{ file: "public/jquery.js", results: [{ component: "jquery", version: "1.8.0", vulnerabilities: [{ severity: "high", summary: "Old jQuery", identifiers: { CVE: ["CVE-2012-6708"] } }] }] }]),
+    },
+    {
+      scanner: "spotbugs",
+      expectedTool: "spotbugs",
+      output: `<BugCollection><BugInstance type="SQL_INJECTION_JDBC" rank="4"><LongMessage>SQL injection risk</LongMessage><SourceLine sourcepath="src/main/java/App.java" start="42"/></BugInstance></BugCollection>`,
+    },
+    {
+      scanner: "dependency-check",
+      expectedTool: "dependency-check",
+      output: JSON.stringify({ dependencies: [{ filePath: path.join(repoRoot, "pom.xml"), fileName: "spring-core.jar", vulnerabilities: [{ name: "CVE-2022-22965", severity: "CRITICAL", title: "Spring vulnerability" }] }] }),
+    },
+    {
+      scanner: "gosec",
+      expectedTool: "gosec",
+      output: JSON.stringify({ Issues: [{ file: path.join(repoRoot, "main.go"), line: "9", rule_id: "G204", details: "Subprocess launched with variable", severity: "HIGH", confidence: "HIGH", cwe: "CWE-78" }] }),
+    },
+    {
+      scanner: "cargo",
+      expectedTool: "cargo",
+      sourcePath: path.join(repoRoot, "Cargo.lock"),
+      output: JSON.stringify({ vulnerabilities: { list: [{ advisory: { id: "RUSTSEC-2020-0071", aliases: ["CVE-2020-26235"], title: "time localtime segfault" }, package: { name: "time" }, versions: { patched: ">=0.2.23" } }] } }),
+    },
+    {
+      scanner: "brakeman",
+      expectedTool: "brakeman",
+      output: JSON.stringify({ warnings: [{ warning_type: "SQL Injection", message: "Possible SQL injection", file: "app/models/user.rb", line: 12, confidence: 0, cwe_id: "CWE-89" }] }),
+    },
+    {
+      scanner: "flawfinder",
+      expectedTool: "flawfinder",
+      output: JSON.stringify({ runs: [{ tool: { driver: { rules: [{ id: "FF101", fullDescription: { text: "Unsafe copy" }, properties: { severity: "high", tags: ["CWE-120"] } }] } }, results: [{ ruleId: "FF101", level: "error", message: { text: "strcpy risk" }, locations: [{ physicalLocation: { artifactLocation: { uri: "src/main.c" }, region: { startLine: 12 } } }] }] }] }),
+    },
+    {
+      scanner: "cppcheck",
+      expectedTool: "cppcheck",
+      output: "src/main.c:12:error:bufferAccessOutOfBounds:Buffer is accessed out of bounds",
+    },
+    {
+      scanner: "dotnet",
+      expectedTool: "dotnet",
+      sourcePath: path.join(repoRoot, "packages.lock.json"),
+      output: JSON.stringify({ projects: [{ frameworks: [{ topLevelPackages: [{ id: "Newtonsoft.Json", resolvedVersion: "12.0.1", vulnerabilities: [{ severity: "high", advisoryUrl: "https://github.com/advisories/GHSA-5crp-9r3c-p9vr" }] }] }] }] }),
+    },
+  ];
+
+  for (const item of cases) {
+    const parsed = parseScannerJson(item.scanner, item.output, {
+      repoRoot,
+      ...(item.sourcePath ? { sourcePath: item.sourcePath } : {}),
+    });
+    assert.deepEqual(parsed.errors, [], `${item.scanner} should parse without errors`);
+    const findings = normalizeFindings(parsed.findings, repoRoot);
+    assert.equal(findings.length > 0, true, `${item.scanner} should produce findings`);
+    for (const finding of findings) {
+      assert.equal(finding.tool, item.expectedTool);
+      assert.ok(finding.ruleId, `${item.scanner} missing ruleId`);
+      assert.ok(finding.title, `${item.scanner} missing title`);
+      assert.ok(finding.description, `${item.scanner} missing description`);
+      assert.ok(finding.evidence, `${item.scanner} missing evidence`);
+      assert.ok(finding.remediation, `${item.scanner} missing remediation`);
+      assert.ok(finding.fingerprint, `${item.scanner} missing fingerprint`);
+      if (finding.location?.file) {
+        assert.equal(finding.location.file.includes(repoRoot), false, `${item.scanner} path should be repo-relative`);
+      }
+    }
+  }
 });
 
 function fakeResolver(command: ScannerCommandId): CommandResolution {

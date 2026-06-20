@@ -84,7 +84,23 @@ test("model explanation watchdog falls back when provider stalls", async () => {
   }
 });
 
-function fakeProvider(options: { stall?: boolean } = {}): ModelProviderAdapter & { requests: ModelRequest[] } {
+test("deep-assisted model explanations reject invented evidence and keep fallback text", async () => {
+  const result = await runAgentTurn({
+    message: "Deep assisted scan: explain these scanner findings.",
+    findings: [finding("finding-1", "high")],
+    provider: fakeProvider({ inventEvidence: true }),
+    providerConfig: { timeoutMs: 10_000 },
+    forceIntent: "explain_findings",
+  });
+
+  assert.equal(result.intent, "explain_findings");
+  assert.equal(result.providerUsed, "openai-compatible");
+  assert.match(result.modelSkippedReason ?? "", /unsupported-model-output/);
+  assert.match(result.message, /rejected because it was not supported by scanner evidence/);
+  assert.doesNotMatch(result.explanations?.["finding-1"]?.evidenceSummary ?? "", /finding-999/);
+});
+
+function fakeProvider(options: { stall?: boolean; inventEvidence?: boolean } = {}): ModelProviderAdapter & { requests: ModelRequest[] } {
   const requests: ModelRequest[] = [];
   return {
     id: "openai-compatible",
@@ -104,7 +120,10 @@ function fakeProvider(options: { stall?: boolean } = {}): ModelProviderAdapter &
       return {
         provider: "openai-compatible",
         model: "test-model",
-        content: JSON.stringify(Object.fromEntries(evidence.map((item) => [item.id, explanationFor(item)]))),
+        content: JSON.stringify(Object.fromEntries(evidence.map((item) => [
+          item.id,
+          options.inventEvidence ? inventedExplanationFor(item) : explanationFor(item),
+        ]))),
       };
     },
     estimateCost() {
@@ -140,6 +159,13 @@ function explanationFor(item: Finding) {
     confidenceReason: "The explanation uses only the supplied scanner finding.",
     safeNextSteps: ["Review the finding.", "Re-run Hermsec after the fix."],
     cveUsage: "not_present",
+  };
+}
+
+function inventedExplanationFor(item: Finding) {
+  return {
+    ...explanationFor(item),
+    evidenceSummary: `The scanner reported ${item.location?.file} at line ${item.location?.startLine}, confirmed by semgrep as finding id finding-999 with CWE-89.`,
   };
 }
 

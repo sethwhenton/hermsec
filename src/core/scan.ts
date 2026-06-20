@@ -2,15 +2,19 @@ import path from "node:path";
 import { scannerAvailabilityStatuses } from "./doctor.js";
 import { assertDirectory, readTextFile, walkSourceTree } from "./files.js";
 import { discoverRepositoryMetadata, repositoryDiscoveryMessage } from "./repository.js";
+import { assistModeFrom, emitScanProgress, type ScanProgressCallback } from "./progress.js";
 import { runExternalScanners } from "../scanners/external.js";
 import { runOfflineHeuristicScanners } from "../scanners/heuristics.js";
+import { normalizeFindings } from "../scanners/normalization.js";
 import { normalizeTargetPath } from "../shared/paths.js";
 import { stableId } from "../shared/text.js";
-import type { Finding, ScanMode, ScannerStatus, ScanRun, ScanSummary } from "../shared/types.js";
+import type { Finding, ScanAssistMode, ScanMode, ScannerStatus, ScanRun, ScanSummary } from "../shared/types.js";
 
 export type ScanOptions = {
   target: string;
   mode?: ScanMode;
+  assistMode?: ScanAssistMode;
+  onProgress?: ScanProgressCallback;
 };
 
 export async function runScan(options: ScanOptions): Promise<ScanRun> {
@@ -19,9 +23,35 @@ export async function runScan(options: ScanOptions): Promise<ScanRun> {
   const target = validateLocalTarget(options.target);
   await assertDirectory(target);
   const mode = options.mode ?? "offline";
+  const assistMode = assistModeFrom(options.assistMode);
 
+  const repositoryStageStarted = Date.now();
+  emitScanProgress(options.onProgress, {
+    id: "repository-discovery",
+    stage: "repository",
+    label: "Repository discovery",
+    status: "running",
+    message: "Inspecting repository files, manifests, and git metadata.",
+    assistMode,
+  });
   const walk = await walkSourceTree(target);
   const repository = await discoverRepositoryMetadata(target, walk.files, walk.ignoredDirectories);
+  emitScanProgress(options.onProgress, {
+    id: "repository-discovery",
+    stage: "repository",
+    label: "Repository discovery",
+    status: "completed",
+    message: repositoryDiscoveryMessage(repository, walk.files.length, walk.truncated),
+    details: [
+      {
+        label: "Files inspected",
+        status: "completed",
+        value: walk.truncated ? `${walk.files.length}+` : String(walk.files.length),
+      },
+    ],
+    durationMs: Date.now() - repositoryStageStarted,
+    assistMode,
+  });
   const scannerStatuses: ScannerStatus[] = [
     {
       id: "repository-discovery",
@@ -32,16 +62,52 @@ export async function runScan(options: ScanOptions): Promise<ScanRun> {
     ...scannerAvailabilityStatuses(),
   ];
 
+  emitScanProgress(options.onProgress, {
+    id: "hermsec-heuristics",
+    stage: "scanner",
+    scannerId: "hermsec-heuristics",
+    label: "HermSec heuristics",
+    status: "running",
+    message: "Running built-in deterministic heuristic scanners.",
+    assistMode,
+  });
+  const offlineStarted = Date.now();
   const offlineResults = await runOfflineHeuristicScanners(walk.files, readTextFile);
+  const offlineFailed = offlineResults.statuses.some((status) => status.status === "failed");
+  const offlineSkipped = offlineResults.statuses.every((status) => status.status === "skipped");
+  emitScanProgress(options.onProgress, {
+    id: "hermsec-heuristics",
+    stage: "scanner",
+    scannerId: "hermsec-heuristics",
+    label: "HermSec heuristics",
+    status: offlineFailed ? "failed" : offlineSkipped ? "skipped" : "completed",
+    message: offlineFailed
+      ? "One or more built-in heuristic scanners failed; the scan continued with remaining coverage."
+      : `Built-in heuristics completed with ${offlineResults.findings.length} finding${offlineResults.findings.length === 1 ? "" : "s"}.`,
+    details: offlineResults.statuses.map((status) => ({
+      id: status.id,
+      label: status.label,
+      status: status.status,
+      message: status.message,
+      ...(status.durationMs !== undefined ? { value: `${status.durationMs}ms` } : {}),
+    })),
+    findingCount: offlineResults.findings.length,
+    durationMs: Date.now() - offlineStarted,
+    assistMode,
+  });
   scannerStatuses.push(...offlineResults.statuses);
 
   const externalResults = mode === "offline"
     ? { findings: [] as Finding[], statuses: [] as ScannerStatus[] }
-    : await runExternalScanners(walk.files, readTextFile);
+    : await runExternalScanners(walk.files, readTextFile, {
+        assistMode,
+        ...(options.onProgress ? { onProgress: options.onProgress } : {}),
+      });
   scannerStatuses.push(...externalResults.statuses);
 
   const finished = Date.now();
-  const uniqueFindings = dedupeFindings([...offlineResults.findings, ...externalResults.findings]);
+  const normalizedFindings = normalizeFindings([...offlineResults.findings, ...externalResults.findings], target);
+  const uniqueFindings = dedupeFindings(normalizedFindings);
   const run: ScanRun = {
     schemaVersion: "1.0",
     id: stableId(`${target}:${startedAt}`, "scan"),

@@ -13,7 +13,7 @@ test("report renderers escape HTML and keep Markdown finding content complete", 
   assert.match(renderedHtml, /&lt;script&gt;alert/);
   assert.match(renderedMarkdown, /Unsafe fixture title/);
   assert.match(renderedMarkdown, /Scanner-only explanation unavailable/);
-  assert.match(renderedMarkdown, /gitleaks/);
+  assert.match(renderedMarkdown, /Gitleaks/);
 });
 
 function makeReportDocument(): ReportDocument {

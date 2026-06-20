@@ -386,7 +386,7 @@ function scanJavaContent(file: SourceFile, content: string): Candidate[] {
     );
   }
 
-  if (taint.lineFor(/\.(?:executeQuery|executeUpdate|executeLargeUpdate|execute|addBatch|prepareCall|prepareStatement|createQuery|createNativeQuery)\s*\(/)) {
+  if (taint.lineFor(/\.(?:executeQuery|executeUpdate|executeLargeUpdate|execute|addBatch|prepareCall|prepareStatement|createQuery|createNativeQuery)\s*\(/, { sanitizerFamily: "sql" })) {
     add(
       "Java SQL query uses dynamic string construction",
       "high",
@@ -397,7 +397,7 @@ function scanJavaContent(file: SourceFile, content: string): Candidate[] {
     );
   }
 
-  if (taint.lineFor(/\.(?:search|lookup|list|listBindings)\s*\(/)) {
+  if (taint.lineFor(/\.(?:search|lookup|list|listBindings)\s*\(/, { sanitizerFamily: "ldap" })) {
     add(
       "Java LDAP filter uses dynamic string construction",
       "high",
@@ -408,7 +408,7 @@ function scanJavaContent(file: SourceFile, content: string): Candidate[] {
     );
   }
 
-  if (taint.lineFor(/\.(?:evaluate|compile)\s*\(/)) {
+  if (taint.lineFor(/\.(?:evaluate|compile)\s*\(/, { sanitizerFamily: "xpath" })) {
     add(
       "Java XPath expression uses dynamic string construction",
       "high",
@@ -434,7 +434,7 @@ function scanJavaContent(file: SourceFile, content: string): Candidate[] {
   }
 
   if (
-    taint.lineFor(/(?:response\.getWriter\(\)\.(?:print|println|write|format)|response\.(?:sendRedirect|sendError|addHeader|setHeader|setDateHeader|setIntHeader))\s*\(/, { ignoreSanitizedLine: true })
+    taint.lineFor(/(?:response\.getWriter\(\)\.(?:print|println|write|format)|response\.(?:sendRedirect|sendError|addHeader|setHeader|setDateHeader|setIntHeader))\s*\(/, { ignoreSanitizedLine: true, sanitizerFamily: ["html", "url"] })
   ) {
     add(
       "Java servlet response may include unsanitized input",
@@ -452,8 +452,10 @@ function scanJavaContent(file: SourceFile, content: string): Candidate[] {
 type JavaTaintContext = {
   taintedVariables: Set<string>;
   sanitizedVariables: Set<string>;
-  lineFor: (sink: RegExp, options?: { ignoreSanitizedLine?: boolean }) => number | undefined;
+  lineFor: (sink: RegExp, options?: { ignoreSanitizedLine?: boolean; sanitizerFamily?: JavaSanitizerFamily | JavaSanitizerFamily[] }) => number | undefined;
 };
+
+type JavaSanitizerFamily = "html" | "javascript" | "url" | "ldap" | "sql" | "xpath" | "xml";
 
 type JavaStatement = {
   text: string;
@@ -463,33 +465,50 @@ type JavaStatement = {
 function analyzeJavaTaint(content: string): JavaTaintContext {
   const taintedVariables = new Set<string>();
   const sanitizedVariables = new Set<string>();
+  const sanitizedFamiliesByVariable = new Map<string, Set<JavaSanitizerFamily>>();
   const sourceLikeVariables = new Set(["param", "bar", "input", "query", "cmd", "command", "fileName", "path", "sql", "filter", "expression"]);
   const lines = linesOf(content);
   const statements = javaStatements(lines);
 
   for (const statement of statements) {
+    const enhancedFor = enhancedForParts(statement.text);
+    if (enhancedFor && (isJavaRequestSourceExpression(enhancedFor.iterable) || expressionReferencesAny(enhancedFor.iterable, taintedVariables))) {
+      taintedVariables.add(enhancedFor.name);
+      sanitizedVariables.delete(enhancedFor.name);
+      sanitizedFamiliesByVariable.delete(enhancedFor.name);
+    }
+
     const assignment = assignmentParts(statement.text);
     if (!assignment) {
       const append = statement.text.match(/\b([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*(?:append|add|concat)\s*\((.+)\)/);
       if (append?.[1] && append[2] && (isJavaRequestSourceExpression(append[2]) || expressionReferencesAny(append[2], taintedVariables))) {
         taintedVariables.add(append[1]);
         sanitizedVariables.delete(append[1]);
+        sanitizedFamiliesByVariable.delete(append[1]);
       }
       continue;
     }
     const { name, expression } = assignment;
-    if (isJavaSanitizerExpression(expression)) {
+    const sanitizerFamilies = javaSanitizerFamilies(expression);
+    if (sanitizerFamilies.size > 0) {
       sanitizedVariables.add(name);
-      taintedVariables.delete(name);
+      sanitizedFamiliesByVariable.set(name, sanitizerFamilies);
+      if (isJavaRequestSourceExpression(expression) || expressionReferencesAny(expression, taintedVariables)) {
+        taintedVariables.add(name);
+      } else {
+        taintedVariables.delete(name);
+      }
       continue;
     }
     if (isJavaRequestSourceExpression(expression) || expressionReferencesAny(expression, taintedVariables)) {
       taintedVariables.add(name);
       sanitizedVariables.delete(name);
+      sanitizedFamiliesByVariable.delete(name);
       continue;
     }
     if (sourceLikeVariables.has(name) && /(?:request|header|parameter|cookie|query|string|input|value)/i.test(expression)) {
       taintedVariables.add(name);
+      sanitizedFamiliesByVariable.delete(name);
     }
   }
 
@@ -504,6 +523,14 @@ function analyzeJavaTaint(content: string): JavaTaintContext {
         if (options?.ignoreSanitizedLine && isJavaSanitizerExpression(statement.text)) {
           continue;
         }
+        if (options?.sanitizerFamily && isStatementSanitizedFor(
+          statement.text,
+          taintedVariables,
+          sanitizedFamiliesByVariable,
+          options.sanitizerFamily,
+        )) {
+          continue;
+        }
         if (isJavaRequestSourceExpression(statement.text) || expressionReferencesAny(statement.text, taintedVariables)) {
           return statement.startLine;
         }
@@ -515,22 +542,82 @@ function analyzeJavaTaint(content: string): JavaTaintContext {
 }
 
 function assignmentParts(line: string): { name: string; expression: string } | undefined {
-  const match = compactWhitespace(line).match(/(?:^|[;\s])(?:final\s+)?(?:String|Object|File|Path|StringBuilder|StringBuffer|byte\[\]|char\[\]|java\.lang\.String|java\.io\.File|java\.nio\.file\.Path)?\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?);?\s*$/);
+  const match = compactWhitespace(line).match(/(?:^|[;\s])(?:final\s+)?(?:(?:[\w$.]+(?:<[^;=]+>)?(?:\[\])?\s+|var\s+)+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+?);?\s*$/);
   if (!match?.[1] || !match[2]) {
     return undefined;
   }
   return { name: match[1], expression: match[2] };
 }
 
+function enhancedForParts(line: string): { name: string; iterable: string } | undefined {
+  const match = compactWhitespace(line).match(/\bfor\s*\(\s*(?:final\s+)?(?:[\w$.]+(?:<[^)]*>)?(?:\[\])?\s+)+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.+?)\s*\)/);
+  if (!match?.[1] || !match[2]) {
+    return undefined;
+  }
+  return { name: match[1], iterable: match[2] };
+}
+
 function isJavaRequestSourceExpression(expression: string): boolean {
-  return /\brequest\.(?:getParameter|getParameterValues|getParameterMap|getHeader|getHeaders|getQueryString|getCookies|getInputStream|getReader|getAttribute|getPathInfo|getPathTranslated|getRequestURI|getRequestURL|getServletPath|getRemoteUser|getRequestedSessionId|getPart|getParts)\s*\(/.test(expression) ||
+  return /\brequest\.(?:getParameter|getParameterNames|getParameterValues|getParameterMap|getHeader|getHeaders|getQueryString|getCookies|getInputStream|getReader|getAttribute|getPathInfo|getPathTranslated|getRequestURI|getRequestURL|getServletPath|getRemoteUser|getRequestedSessionId|getPart|getParts)\s*\(/.test(expression) ||
+    /\b(?:request\.)?getSession\s*\(\s*\)\s*\.\s*(?:getAttribute|getValue)\s*\(/.test(expression) ||
+    /\bsession\s*\.\s*(?:getAttribute|getValue)\s*\(/.test(expression) ||
     /\b(?:HttpServletRequest|ServletRequest)\b/.test(expression) ||
     /\b[A-Za-z_][A-Za-z0-9_]*Cookie\.getValue\s*\(/.test(expression) ||
     (/\bgetValue\s*\(/.test(expression) && /\bCookie\b|cookie/i.test(expression));
 }
 
 function isJavaSanitizerExpression(expression: string): boolean {
-  return /(?:ESAPI\.encoder\(\)\.encodeFor(?:HTML|HTMLAttribute|JavaScript|URL|LDAP|SQL|XPath)|Encode\.for(?:Html|HtmlContent|HtmlAttribute|JavaScript|UriComponent|Xml)|StringEscapeUtils\.escape(?:Html|Html4|Xml|EcmaScript|JavaScript|Sql)|HtmlUtils\.htmlEscape|Utils\.encodeForHTML|escapeHtml|htmlEscape|URLEncoder\.encode|Normalizer\.normalize)\s*\(/.test(expression);
+  return javaSanitizerFamilies(expression).size > 0;
+}
+
+function javaSanitizerFamilies(expression: string): Set<JavaSanitizerFamily> {
+  const families = new Set<JavaSanitizerFamily>();
+  if (/(?:ESAPI\.encoder\(\)\.encodeFor(?:HTML|HTMLAttribute)|Encode\.for(?:Html|HtmlContent|HtmlAttribute)|StringEscapeUtils\.escape(?:Html|Html4)|HtmlUtils\.htmlEscape|Utils\.encodeForHTML|escapeHtml|htmlEscape)\s*\(/.test(expression)) {
+    families.add("html");
+  }
+  if (/(?:ESAPI\.encoder\(\)\.encodeForJavaScript|Encode\.for(?:JavaScript|JavaScriptBlock)|StringEscapeUtils\.escape(?:EcmaScript|JavaScript)|Utils\.encodeForJavaScript)\s*\(/.test(expression)) {
+    families.add("javascript");
+  }
+  if (/(?:ESAPI\.encoder\(\)\.encodeForURL|Encode\.forUriComponent|URLEncoder\.encode|Utils\.encodeForURL)\s*\(/.test(expression)) {
+    families.add("url");
+  }
+  if (/(?:ESAPI\.encoder\(\)\.encodeForLDAP|Utils\.encodeForLDAP)\s*\(/.test(expression)) {
+    families.add("ldap");
+  }
+  if (/(?:ESAPI\.encoder\(\)\.encodeForSQL|StringEscapeUtils\.escapeSql|Utils\.encodeForSQL)\s*\(/.test(expression)) {
+    families.add("sql");
+  }
+  if (/(?:ESAPI\.encoder\(\)\.encodeForXPath|Utils\.encodeForXPath)\s*\(/.test(expression)) {
+    families.add("xpath");
+  }
+  if (/(?:ESAPI\.encoder\(\)\.encodeForXML|Encode\.forXml|StringEscapeUtils\.escapeXml|Utils\.encodeForXML)\s*\(/.test(expression)) {
+    families.add("xml");
+  }
+  if (/Normalizer\.normalize\s*\(/.test(expression)) {
+    families.add("url");
+  }
+  return families;
+}
+
+function isStatementSanitizedFor(
+  statement: string,
+  taintedVariables: ReadonlySet<string>,
+  sanitizedFamiliesByVariable: ReadonlyMap<string, ReadonlySet<JavaSanitizerFamily>>,
+  family: JavaSanitizerFamily | JavaSanitizerFamily[],
+): boolean {
+  const families = Array.isArray(family) ? family : [family];
+  const directFamilies = javaSanitizerFamilies(statement);
+  if (families.some((item) => directFamilies.has(item))) {
+    return true;
+  }
+  const referenced = [...taintedVariables].filter((variable) => new RegExp(`\\b${escapeRegExp(variable)}\\b`).test(statement));
+  if (referenced.length === 0) {
+    return false;
+  }
+  return referenced.every((variable) => {
+    const variableFamilies = sanitizedFamiliesByVariable.get(variable);
+    return families.some((item) => variableFamilies?.has(item));
+  });
 }
 
 function javaStatements(lines: Array<{ line: string; number: number }>): JavaStatement[] {
@@ -927,7 +1014,7 @@ function finalizeFinding(candidate: Candidate): Finding {
   const fingerprint = stableId(fingerprintSource, "fp");
   return {
     ...candidate,
-    tool: candidate.tool ?? "hermsec-offline",
+    tool: candidate.tool ?? "hermsec-heuristics",
     evidence: redactSensitiveEvidence(clampText(candidate.evidence, 500)),
     id: stableId(fingerprintSource, "finding"),
     fingerprint,

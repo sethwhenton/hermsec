@@ -3,12 +3,10 @@ export function rootHelp(): string {
     "Hermsec CLI",
     "",
     "Usage:",
-    "  hermsec",
-    "  hermsec chat",
+    "  hermsec --help",
     "  hermsec agent ask <message> [--target <path>] [--mode auto|offline|online] [--json] [--no-model]",
     "  hermsec agent providers [--json]",
     "  hermsec doctor [--json]",
-    "  hermsec onboard",
     "  hermsec scan <target> [--mode auto|offline|online] [--assist-mode scanner-model-summary|deep-assisted] [--out <dir>] [--json] [--md] [--html] [--no-model]",
     "  hermsec config get [key]",
     "  hermsec config set <key> <value>",
@@ -36,8 +34,6 @@ export function rootHelp(): string {
 
 export function commandHelp(command: string): string {
   switch (command) {
-    case "chat":
-      return "Usage: hermsec chat";
     case "agent":
       return [
         "Usage:",
@@ -46,8 +42,6 @@ export function commandHelp(command: string): string {
         "",
         "Agent chat is provider-agnostic and uses the provider/model configured in Hermsec settings.",
       ].join("\n");
-    case "onboard":
-      return "Usage: hermsec onboard";
     case "doctor":
       return "Usage: hermsec doctor [--json]";
     case "scan":

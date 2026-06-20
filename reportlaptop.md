@@ -2,7 +2,7 @@
 
 Date: 2026-06-19
 Workspace: `C:\Users\whent\Documents\Personal Proj\Hermsec`
-Active app: `v2\hermsec-v3`
+Active app: `desktop`
 Current committed context: prior commit `42d87c9` (`Bundle scanner runtime with V3 app`) was pushed to `main`. No new commit is documented here.
 
 ## Executive Summary
@@ -386,3 +386,96 @@ This section is append-only. New work should be added as another iteration inste
 | Verification | Root `npm.cmd run typecheck` passed. V3 `npm.cmd run typecheck` passed. The actual macOS package build must run on a macOS GitHub runner after this workflow is pushed. |
 | Local release limitation | The GitHub CLI is not installed locally, and the workflow is not on GitHub until committed/pushed. No live GitHub Release was created from the current local worktree. The configured workflow will create/update releases once pushed and triggered by a tag or manual run. |
 | Next release command | After committing/pushing to `main`, publish with a tag such as `git tag v0.1.0 && git push origin v0.1.0`, or run the Desktop Release workflow manually with `tag_name=v0.1.0`. |
+
+### Iteration 13 - V3-Only Repository Cleanup And Desktop Promotion
+
+| Item | Notes |
+| --- | --- |
+| Goal | Make the repository speak and build around Hermsec V3 only, remove the old fork/experimental UI files, and promote the active app to a clearer top-level `desktop` folder. |
+| Desktop app path | Promoted the active V3 Electron app from the old nested `v2\hermsec-v3` path to top-level `desktop`. |
+| Old fork cleanup | Removed the tracked old `v2` source tree and earlier experimental UI surfaces from the active repo. |
+| Root app cleanup | Removed the legacy root Electron renderer and terminal UI modules so root `src` is now the reusable scanner/CLI/report engine. |
+| Root package scripts | Simplified root build/test scripts to the scanner CLI engine and added `desktop:*` convenience scripts for V3 app work. |
+| Documentation | Rewrote the root README, desktop README, npm install notes, CLI usage notes, and project context to speak about V3 and `desktop`. |
+| Release CI | Updated desktop release workflow paths from `v2/hermsec-v3` to `desktop`. |
+| Runtime ignores | Updated ignore rules for `desktop/out`, `desktop/release`, bundled CLI resources, bundled scanner tools, and local V3 runtime state. |
+| What went wrong | The cleanup pass removed `reportlaptop.md` and `project-report-track.md` temporarily. A parallel cleanup pass then removed them a second time. |
+| How it was solved | Restored both tracking files from git and appended this iteration instead of losing history. |
+| Historical path note | Older report entries still mention previous paths as historical audit records. Current headers and this iteration now mark `desktop` as the active app. |
+| Verification | Root `npm.cmd run typecheck` passed. Root `npm.cmd test` passed with `59/59`. Desktop `npm.cmd run typecheck` passed. Desktop `npm.cmd run build` passed. Desktop `npm.cmd run smoke:doctor` passed with health score `100`. Desktop `npm.cmd run smoke:dashboard` passed and generated dashboard HTML plus a one-page PDF. Desktop `npm.cmd run prepare:cli-bundle` passed. Desktop `npm.cmd run prepare:runtime-tools` passed. Desktop `npm.cmd run dist:win` passed and produced installer/portable artifacts under `desktop\release`. Packaged `release\win-unpacked\Hermsec.exe --smoke-doctor` passed at health score `100`. Packaged dashboard smoke exited cleanly and generated dashboard/PDF artifacts under `.hermsec\packaged-dashboard-smoke`. Desktop `npm.cmd audit --omit=dev` reported `0` vulnerabilities. |
+| Remaining caveat | Full desktop dev audit can still report a low-severity dev-only advisory through Vite/esbuild; production dependency audit is clean. |
+
+### Iteration 14 - Fresh End-To-End Verification After V3 Cleanup
+
+| Item | Notes |
+| --- | --- |
+| Goal | Re-run the strongest available end-to-end verification from the staged V3-only project state and identify what is broken or still missing. |
+| Root verification | `npm.cmd run typecheck` passed. `npm.cmd run test` rebuilt the CLI engine and passed `59/59` tests. `npm.cmd audit --omit=dev` reported `0` production vulnerabilities. |
+| Desktop verification | `npm.cmd run typecheck` passed. `npm.cmd run build` passed for main, preload, and renderer bundles. `npm.cmd audit --omit=dev` reported `0` production vulnerabilities. |
+| Doctor smoke | `npm.cmd run smoke:doctor` passed with `ok: true`, status `attention`, health score `100`, required `7/7`, scanners `6/6`, internet `5/5`, and `49` progress events. Provider readiness was `0/1 warn` in the isolated smoke environment, which is expected when no provider credential is configured there. |
+| Dashboard smoke | `npm.cmd run smoke:dashboard` passed and generated dashboard HTML plus a one-page PDF under `.hermsec\v3-dashboard-smoke\hermsec-node-express-vuln-lab\2026-06-19T16-14-03-052Z`. |
+| Packaged Windows build | `npm.cmd run dist:win` passed. It rebuilt the CLI bundle, prepared runtime scanner tools, built the Electron app, and produced `desktop\release\Hermsec Setup 0.1.0.exe` plus `desktop\release\Hermsec 0.1.0.exe`. |
+| Packaged Doctor | `desktop\release\win-unpacked\Hermsec.exe --smoke-doctor` passed with status `ready`, health score `100`, required `7/7`, scanners `6/6`, internet `5/5`, and providers `1/1`. |
+| Packaged dashboard | Packaged dashboard smoke exited successfully and generated current artifacts under `.hermsec\packaged-dashboard-smoke\hermsec-cli\2026-06-19T16-19-28-215Z`, including `dashboard\index.html` and `onepager\report.pdf`. |
+| Packaged startup smoke | Launched `desktop\release\win-unpacked\Hermsec.exe --disable-gpu` with isolated `HERMSEC_HOME`; the process was still alive after `8` seconds and was then terminated cleanly. |
+| Broken or risky | Full desktop dev audit still reports one low-severity dev-only advisory: Vite depends on `esbuild@0.27.7`, which is flagged for a Windows dev-server arbitrary file read issue. `npm.cmd audit fix` did not move the dependency. Production audit remains clean. |
+| Missing coverage | The current repo has smoke-level desktop verification, but no committed interactive UI automation suite after the V3-only cleanup. Earlier manual/CDP validation proved the Settings > Scanners surface, but it is not yet a repeatable tracked test. |
+| Recommended next steps | Add a committed Playwright/Electron UI smoke for launch, scan mode selection, Doctor live card, Settings > Scanners, and dashboard open. Upgrade or override Vite/esbuild once a compatible fixed release is available. Expand Doctor to report all managed scanner catalog entries, not only the six bundled/runtime scanners. Add macOS release verification in GitHub Actions after pushing the release workflow. |
+
+### Iteration 15 - Scanner Auto-Install Defaults And Final PDF Chat Link
+
+| Item | Notes |
+| --- | --- |
+| Goal | Make adaptive scanner auto-install the default harness behavior, show the final one-page PDF path in chat as a local file link, and double-check the app does not blank after scanning. |
+| Scanner default | Fresh desktop settings now default `scanners.autoInstallMissing` to `true`. Per-scanner auto-install toggles still control which supported scanner installers can run, and system-only tools remain manual/path-detected. |
+| Chat report link | Scan completion now prefers `onepagerPdfPath` when Electron generates the final PDF. The assistant message shows the final PDF path, includes the report folder, and renders a quiet local-file hyperlink that opens the PDF location in File Explorer. If PDF generation is skipped, the chat falls back to linking the report folder. |
+| Black-screen hardening | Dashboard bundle loading is now non-fatal. If dashboard hydration fails after a successful scan, Hermsec keeps the scan result and PDF/report link instead of turning the scan into an uncaught renderer failure. |
+| Error handling | Chat scan execution now catches unexpected renderer/IPC errors and writes a visible assistant failure message instead of leaving the interface in a stuck state. |
+| Verification | Root `npm.cmd run typecheck` passed. Desktop `npm.cmd run typecheck` passed. Desktop `npm.cmd run build` passed. Desktop `npm.cmd run smoke:doctor` passed with health score `100`. Desktop `npm.cmd run smoke:dashboard` passed and generated a current PDF under `.hermsec\v3-dashboard-smoke\...\onepager\report.pdf`. |
+| Default proof | Launched Electron with isolated `HERMSEC_HOME`; generated `settings.json` showed `scanners.autoInstallMissing: true` and the supported default scanner rows set to auto-install. |
+| Visual smoke | Launched the real Electron app with remote debugging. The renderer had non-empty DOM text, `window.hermsec` preload was present, and screenshot `output\playwright\electron-v3-startup-smoke.png` was captured. |
+| After-scan smoke | From the Electron renderer, invoked `window.hermsec.scan.project()` with `useModel: false` against the Node vulnerable lab. It completed with `10` findings, generated `dashboard\index.html` and `onepager\report.pdf`, and the renderer still had non-empty DOM text plus `window.hermsec` after the scan. Screenshot: `output\playwright\electron-v3-after-scan-smoke.png`. |
+| Remaining caveat | The visual after-scan smoke uses the app IPC from the renderer rather than clicking the full chat flow. A committed click-through Playwright/Electron test is still recommended so this stays guarded in CI. |
+
+### Iteration 16 - Report Labels And Chat Scan Handoff Cleanup
+
+| Item | Notes |
+| --- | --- |
+| Goal | Remove confusing internal scanner names from user-facing reports, make the scan progress card reflect real scan phases, and keep the completed progress card in chat before the final summary. |
+| What went wrong | Reports could show `hermsec-offline`, which was an old internal id for built-in heuristic findings. Deep-assisted scan progress also appeared to loop through HermSec heuristics because the UI estimated scanner activity while the CLI was still running. |
+| How we solved labels | Added a scanner display-name mapper and changed the built-in heuristic default tool id to `hermsec-heuristics`. Old reports that still contain `hermsec-offline` now render as `HermSec heuristics` in Markdown, HTML, dashboard data, raw-output tables, and one-page data. |
+| How we solved progress | Removed the fake scanner-label rotation from the desktop scan runner. The live card now shows a real scanner-engine running row and waits for recorded scanner statuses from `report-document.json` before showing per-tool completion/failure/skipped results. Missing tool rows are no longer invented after the scan. |
+| Chat handoff | Scan completion now persists the final progress card as a chat item, then posts a concise assistant summary with the severity hook and two local actions: `Open final PDF location` and `Open report folder`. The assistant bubble no longer prints raw PDF/report paths in the message body. |
+| UI detail | The completed progress card headline now uses the latest non-waiting stage, so the persisted card reads like a finished scan instead of falling back to the first completed stage. |
+| Regression coverage | Added a report regression test proving legacy `hermsec-offline` does not appear in rendered Markdown/HTML and renders as `HermSec heuristics` instead. Updated an integration assertion to expect friendly scanner display names like `Gitleaks`. |
+| Verification | Root `npm.cmd run typecheck` passed. Desktop `npm.cmd run typecheck` passed. Root `npm.cmd test` passed with `60/60`. Desktop `npm.cmd run build` passed. Desktop `npm.cmd run smoke:dashboard` passed and generated `.hermsec\v3-dashboard-smoke\hermsec-node-express-vuln-lab\2026-06-19T20-11-51-595Z\onepager\report.pdf`. Desktop `npm.cmd run smoke:doctor` passed with healthScore `100`, scanners `6/6`, internet `5/5`, and provider warning expected in the isolated shell. |
+| Artifact check | Searched the generated dashboard/report output: no `hermsec-offline` remained in user-facing smoke artifacts, while `HermSec heuristics` appeared in dashboard, one-page, and HTML report data. |
+| Remaining caveat | The progress card is now truthful at the Electron orchestration level, but scanner-level live updates still arrive after the root CLI writes its report. Streaming per-tool status during the CLI run would require the root scanner engine to emit structured progress events while each adapter runs. |
+
+### Iteration 17 - Deep Scan Progress Mode Label Fix
+
+| Item | Notes |
+| --- | --- |
+| Goal | Fix the completed scan progress card showing `Scanner + model summary` after the user selected `Deep assisted scan`. |
+| What went wrong | The progress card inferred the mode by scanning event text. Later completed events overwrote the earlier deep-mode text, so the bottom chip could fall back to the wrong mode even when the actual scan request used `deep-assisted`. |
+| Fix | Progress events now carry explicit `assistMode` and `assistModeLabel` metadata, and the run emits a `scan-assist-mode` marker event. The card reads that metadata first instead of guessing from strings. |
+| UI cleanup | For deep runs, step 5 now renders as `Deep model triage`, and the bottom token chip renders `More context, more tokens` instead of `Lowest token use`. |
+| Verification | Root `npm.cmd run typecheck` passed. Desktop `npm.cmd run typecheck` passed. Desktop `npm.cmd run build` passed. Desktop `npm.cmd run smoke:dashboard` passed and generated `.hermsec\v3-dashboard-smoke\hermsec-node-express-vuln-lab\2026-06-19T20-44-59-575Z\onepager\report.pdf`. The V3 dev app was restarted successfully after the change. |
+
+### Iteration 18 - Structured Root Progress, Normalization, Java Taint, And Evidence-Bound Deep Mode
+
+| Item | Notes |
+| --- | --- |
+| Goal | Implement plan items 1-4: truthful structured progress from root scanner events, stricter finding normalization, stronger Java taint tracking, and model explanations that cannot invent evidence. |
+| Structured progress | Added root `ScanProgressEvent` typing, a shared progress emitter, callbacks through root scan, external scanner execution, harness model/report phases, CLI JSON mode, and desktop scan runner. |
+| CLI behavior | `hermsec scan --json` now streams `HERMSEC_PROGRESS <json>` lines on stderr while keeping the final command result as normal JSON on stdout. |
+| Desktop behavior | Desktop now parses progress lines live from stdout/stderr, maps root stages into the existing chat card, nests scanner rows under `Running scans`, and strips any leftover progress lines before final JSON parsing. |
+| Finding normalization | Added a single normalization boundary after all scanner parsers/heuristics and before dedupe/reporting. It fills required fields, normalizes repo-relative paths, clamps/redacts evidence, and keeps stable ids/fingerprints. |
+| Parser fixtures | Added parser/normalization coverage for Trivy, Checkov, Retire.js, SpotBugs XML, OWASP Dependency-Check, gosec, cargo-audit, Brakeman, Flawfinder SARIF, Cppcheck text, and dotnet vulnerable package JSON. |
+| Java taint | Expanded lightweight Java taint to cover request/body/session/cookie/multipart flows, enhanced-for aliases, local aliases, StringBuilder/StringBuffer propagation, LDAP/XPath/file/response/session sinks, and sanitizer families for HTML/URL/SQL/LDAP/XPath/XML/JavaScript. |
+| Deep mode guardrails | Deep-assisted explanations now reject invented CWEs, scanner/tool ids, and finding ids, in addition to prior checks for invented file paths, line numbers, packages, CVEs, GHSAs, and OSV ids. Rejected model text falls back to scanner-backed explanations. |
+| What went wrong | TypeScript strict optional properties rejected a few newly passed `undefined` option values. A first focused test run also tried to run multiple `build:core` commands in parallel, causing a Windows `EPERM` race while deleting `dist`. One assertion used an unavailable assert helper name. |
+| How we solved it | Only include optional fields when present, widened one internal maybe-value options type, switched from parallel builds to one build plus sequential compiled tests, and replaced the assertion with the supported helper. |
+| Verification | Root `npm.cmd run typecheck` passed. Root `npm.cmd test` passed with `73/73`. Desktop `npm.cmd run typecheck` passed. Desktop `npm.cmd run smoke:dashboard` passed and generated a dashboard plus one-page PDF. Desktop `npm.cmd run smoke:doctor` passed with healthScore `100`, required `7/7`, scanners `6/6`, internet `5/5`, and `49` progress events. |
+| Current result | The scan progress card is now fed by real root scan/scanner/model/report events instead of desktop-side guessing. The app still keeps final report reconciliation as fallback only. |
+| Next | Add a committed Electron UI smoke that clicks through mode selection and asserts streamed card updates; continue BenchmarkJava taint precision tuning; deduplicate root/desktop scanner catalog metadata. |

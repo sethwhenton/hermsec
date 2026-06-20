@@ -1,44 +1,71 @@
 # Hermsec
 
-Hermsec is a local-first security assistant for repositories. It scans project files with a defensive harness, writes local reports, and can optionally use a bring-your-own model provider to explain grounded findings.
+Hermsec V3 is a local-first desktop security assistant for repositories. It inspects a project, chooses the right defensive scanners, auto-prepares supported missing tools by default, runs static analysis, shows live progress in chat, and writes local dashboard plus final PDF reports.
 
-## Quick Start
+The app is built for "scan my project and tell me what matters" workflows. It keeps the source repository safe: Hermsec does not install dependencies inside scanned projects, does not run package lifecycle scripts, and keeps model assistance grounded in scanner evidence.
 
-Hermsec now has a complete Electron desktop app for local workspaces, scans, intel, reports, settings, automations, and security chat. The Windows app package bundles the Hermsec CLI plus the scanner runtime, so users do not need to separately install Semgrep, Gitleaks, Bandit, OSV-Scanner, pip-audit, or SafeDep PMG.
+The current product is V3 only. Earlier experimental UI surfaces have been removed from the active tree.
 
-### Desktop Installers
+## Repository Layout
+
+```text
+desktop/       Electron + React V3 desktop app
+src/           Root scanner, report, doctor, model, intel, scheduler, and CLI engine
+tests/         Root scanner/CLI/unit/integration tests
+scripts/       Benchmark and maintenance scripts
+docs/          Current install and CLI notes
+.github/       Benchmark and desktop release workflows
+```
+
+## Installers
 
 Download the latest desktop installers from the [Hermsec GitHub Releases page](https://github.com/sethwhenton/hermsec/releases/latest).
 
-- [macOS installer download](https://github.com/sethwhenton/hermsec/releases/latest) - download the `.dmg`, open it, and drag Hermsec into Applications.
-- [Windows installer download](https://github.com/sethwhenton/hermsec/releases/latest) - download `Hermsec Setup *.exe`, or use `Hermsec *.exe` for portable mode.
+- [macOS installer download](https://github.com/sethwhenton/hermsec/releases/latest): download the `.dmg`, open it, and drag Hermsec into Applications.
+- [Windows installer download](https://github.com/sethwhenton/hermsec/releases/latest): download `Hermsec Setup *.exe`, or use `Hermsec *.exe` for portable mode.
 
-The release pipeline publishes Windows and macOS assets whenever a `v*` tag is pushed, and it can also be run manually from GitHub Actions with a release tag.
+The release workflow publishes Windows and macOS assets whenever a `v*` tag is pushed. It can also be run manually from GitHub Actions with a release tag.
 
-### Local Windows App Build
+## Development
+
+Install and verify the root scanner engine:
 
 ```powershell
-cd v2\hermsec-v3
-npm.cmd run dist:win
+npm ci
+npm run typecheck
+npm test
 ```
 
-This creates:
+Install and run the V3 desktop app:
 
-```text
-v2\hermsec-v3\release\Hermsec Setup 0.1.0.exe
-v2\hermsec-v3\release\Hermsec 0.1.0.exe
+```powershell
+npm run desktop:install
+npm run desktop:dev
 ```
 
-Use `Hermsec Setup 0.1.0.exe` as the installer and `Hermsec 0.1.0.exe` as the portable app. These files are about 200 MB because they include the scanner toolchain and should be uploaded as GitHub Release assets instead of committed directly to git.
+Equivalent direct desktop commands:
 
-### Local macOS App Build
+```powershell
+cd desktop
+npm ci
+npm run dev
+```
+
+## Packaging
+
+Build Windows locally:
+
+```powershell
+npm run desktop:dist:win
+```
+
+Build macOS locally:
 
 ```bash
-cd v2/hermsec-v3
-npm run dist:mac
+npm run desktop:dist:mac
 ```
 
-This creates a `.dmg` and `.zip` under `v2/hermsec-v3/release/`. Current CI builds are unsigned unless Apple signing certificates are configured, so macOS may ask you to approve the app from System Settings > Privacy & Security the first time it launches.
+Generated desktop packages land in `desktop/release/`. The installer and portable builds include the Hermsec CLI/report engine plus the bundled scanner runtime. Do not commit generated packages directly; attach them to GitHub Releases.
 
 Bundled scanner/runtime contents:
 
@@ -50,47 +77,63 @@ Bundled scanner/runtime contents:
 - pip-audit
 - SafeDep PMG npm audit
 
-After install, run Doctor from chat to confirm readiness. A verified packaged build reports required `7/7`, scanners `6/6`, internet `5/5`, providers `1/1`, and health score `100`.
+After installing, run Doctor from chat to confirm bundled scanners, internet connectivity, and provider readiness.
 
-Inside the desktop composer:
+## App Workflow
 
-```text
-/help or /commands    Show available commands
-/doctor               Check local readiness
-/scan <path>          Run the approved scan harness
-/intel                Refresh security-update summaries
-/reports              Show local reports
-/settings             Edit privacy, report, model, and provider settings
-```
+Hermsec's normal scan flow is:
 
-For development linking and registry publishing notes, see [docs/npm-install.md](docs/npm-install.md).
+1. Inspect the selected repository for languages, manifests, lockfiles, IaC, and framework signals.
+2. Select only the scanner lanes that match the project.
+3. Auto-install supported missing scanner tools into Hermsec-managed storage when the default auto-install setting is enabled.
+4. Run the scanner stack with live progress in chat.
+5. Merge scanner evidence and apply the selected model mode.
+6. Write local artifacts: HTML report, dashboard bundle, JSON/Markdown data, and a one-page PDF.
+7. Show the final PDF path in chat as a local hyperlink so the report location can be opened immediately.
 
-Hermsec does not install dependencies inside scanned repositories and does not run package lifecycle scripts during scans.
+Doctor is available from chat to check the app environment before scanning. It verifies required runtime pieces, bundled scanner readiness, internet connectivity to security/advisory sources, and model/provider readiness.
 
-### CLI Development
+## Scan Modes
 
-The CLI still exists for scriptable scans and development checks:
+Hermsec V3 exposes two user-facing scan modes:
 
-```powershell
-pmg npm ci --ignore-scripts
-node node_modules\electron\install.js
-pmg npm test
-node dist\src\bin\hermsec.js doctor --json
-node dist\src\bin\hermsec.js scan E:\path\to\repo --out .hermsec\reports --html --md --json
-```
+- `Scanner + model summary`: runs the scanner stack first, then uses the selected model only to summarize scanner-backed evidence.
+- `Deep assisted scan`: runs scanners, merges matching findings across tools, and gives the model more context for deeper triage while still requiring scanner-supported evidence.
+
+Scanner-only runs remain an internal benchmark control.
+
+## Scanner Harness
+
+The root harness never installs dependencies inside scanned repositories and does not run package lifecycle scripts. It normalizes scanner output into Hermsec findings and report artifacts. V3 uses Settings > Scanners to show supported scanners, install/readiness state, enablement, auto-install preferences, and project applicability.
+
+Fresh desktop installs default to adaptive scanner auto-install. Supported tools are installed into Hermsec-managed storage, not globally and not into the scanned project. System-only scanners are detected and used when already available.
+
+Expanded scanner coverage includes Semgrep, Gitleaks, TruffleHog, OSV-Scanner, Trivy, Checkov, Retire.js, FindSecBugs/SpotBugs, OWASP Dependency-Check, Bandit, pip-audit, Psalm, Composer audit, gosec, govulncheck, cargo-audit, Brakeman, Flawfinder, Cppcheck, and .NET vulnerable package checks. Some optional scanners still require native runtime support before they can be bundled everywhere.
 
 ## Provider Keys
 
-Provider keys are read from environment variables such as `OPENCODE_GO_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, and `OPENROUTER_API_KEY`. Keep real keys out of git.
+Provider keys are read from environment variables or desktop settings that reference environment variables. Keep real keys out of git.
 
-For OpenCode Go, copy `.env.example` to `.env.local`, set `OPENCODE_GO_API_KEY`, keep `HERMSEC_MODEL=deepseek-v4-flash`, then enable remote model calls from Settings when you want model-backed explanations.
+Common variables:
 
-## V2 Synara Fork
+```text
+OPENCODE_GO_API_KEY
+OPENAI_API_KEY
+ANTHROPIC_API_KEY
+GEMINI_API_KEY
+OPENROUTER_API_KEY
+```
 
-`v2/` is a whole-source Synara fork for the next desktop direction. It is rebranded as Hermsec V2, removes Synara's marketing app, uses the selected H/keyhole mark, and adds a first Hermsec bridge for Doctor, Scan, and Intel actions. See `v2/docs/HERMSEC_V2_SCOPE.md`.
+For OpenCode Go, set `OPENCODE_GO_API_KEY`, keep `HERMSEC_MODEL=deepseek-v4-flash`, then enable remote model calls from Settings when model-backed explanations are wanted.
 
-## Scanner-Managed Harness - 2026-06-19
+## Scriptable CLI
 
-Hermsec is being expanded from a fixed scanner bundle into a scanner-managed harness. The catalog now tracks each scanner's category, install kind, supported languages, inputs, parser, default enablement, and risk notes. The target V3 flow is Settings > Scanners for enable/install controls, adaptive project profiling before scans, managed tool installs outside the scanned repo, and scanner execution narrowed to the current project's languages, manifests, lockfiles, and IaC markers.
+The root CLI remains available for automation and benchmarks:
 
-Expanded scanner coverage now includes the existing bundled stack plus optional lanes such as Trivy, Checkov, TruffleHog, Retire.js, FindSecBugs/SpotBugs, Dependency-Check, Psalm, Composer audit, gosec, govulncheck, cargo-audit, Brakeman, Flawfinder, Cppcheck, and .NET vulnerable package checks. Root/V3 typechecks, root/V3 builds, scanner unit tests, and a vulnerable fixture CLI smoke scan now pass. Native checksum-backed installers still need implementation for several binary tools.
+```powershell
+node dist\src\bin\hermsec.js doctor --json
+node dist\src\bin\hermsec.js scan C:\path\to\repo --out .hermsec\reports --html --md --json
+npm run eval:owasp
+```
+
+For more detail, see [docs/cli-usage.md](docs/cli-usage.md) and [docs/npm-install.md](docs/npm-install.md).

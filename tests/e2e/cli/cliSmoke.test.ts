@@ -28,10 +28,10 @@ test("compiled CLI help returns a bounded smoke response", () => {
   }
 });
 
-test("compiled CLI defaults to the TUI entrypoint without hanging in non-interactive mode", () => {
+test("compiled CLI without a command prints help and exits cleanly", () => {
   const compiledRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
   const cliPath = path.join(compiledRoot, "src", "bin", "hermsec.js");
-  const hermsecHome = fs.mkdtempSync(path.join(os.tmpdir(), "hermsec-cli-tui-"));
+  const hermsecHome = fs.mkdtempSync(path.join(os.tmpdir(), "hermsec-cli-help-"));
 
   try {
     const result = spawnSync(process.execPath, [cliPath], {
@@ -43,7 +43,8 @@ test("compiled CLI defaults to the TUI entrypoint without hanging in non-interac
     const output = `${result.stdout}\n${result.stderr}`;
 
     assert.equal(result.status, 0, output);
-    assert.match(output, /Hermsec TUI detected a non-interactive terminal/);
+    assert.match(output, /Hermsec CLI/);
+    assert.match(output, /hermsec scan <target>/);
     assert.doesNotMatch(output, /HERMSEC_FAKE_TEST_TOKEN_DO_NOT_USE/);
   } finally {
     fs.rmSync(hermsecHome, { recursive: true, force: true });

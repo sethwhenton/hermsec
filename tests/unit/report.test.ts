@@ -63,3 +63,13 @@ test("reports render redacted fake secret values", () => {
   assert.equal(renderMarkdownReport(document).includes("DO_NOT_USE_123"), false);
   assert.equal(renderHtmlReport(document).includes("DO_NOT_USE_123"), false);
 });
+
+test("reports hide legacy internal scanner ids", () => {
+  const markdown = renderMarkdownReport(document);
+  const html = renderHtmlReport(document);
+
+  assert.equal(markdown.includes("hermsec-offline"), false);
+  assert.equal(html.includes("hermsec-offline"), false);
+  assert.equal(markdown.includes("HermSec heuristics"), true);
+  assert.equal(html.includes("HermSec heuristics"), true);
+});

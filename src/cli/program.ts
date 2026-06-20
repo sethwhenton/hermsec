@@ -1,6 +1,5 @@
 import process from "node:process";
 import { runAgentCommand } from "./commands/agent.js";
-import { runChatCommand, runOnboardCommand } from "./commands/chat.js";
 import { runConfigCommand } from "./commands/config.js";
 import { runDoctorCommand } from "./commands/doctor.js";
 import { runEvalCommand } from "./commands/eval.js";
@@ -28,7 +27,7 @@ export async function dispatchCli(
   const [command, ...rest] = argv;
 
   if (command === undefined) {
-    return runChatCommand([], context, true);
+    return toOutcome(helpResult(rootHelp()));
   }
 
   if (command === "--help" || command === "-h" || command === "help") {
@@ -40,14 +39,10 @@ export async function dispatchCli(
   }
 
   switch (command) {
-    case "chat":
-      return runChatCommand(rest, context);
     case "agent":
       return runAgentCommand(rest, context);
     case "doctor":
       return runDoctorCommand(rest, context);
-    case "onboard":
-      return runOnboardCommand(rest, context);
     case "scan":
       return runScanCommand(rest, context);
     case "config":

@@ -50,7 +50,6 @@ export function getHermsecPlatformPaths(env: NodeJS.ProcessEnv = process.env): H
 
 export type HermsecAppDataLayout = HermsecPlatformPaths & {
   configFile: string;
-  onboardingFile: string;
   workspacesFile: string;
   schedulesFile: string;
   sessionsDir: string;
@@ -69,7 +68,6 @@ export function getHermsecAppDataLayout(env: NodeJS.ProcessEnv = process.env): H
   return {
     ...roots,
     configFile: path.join(roots.appDataDir, "config.json"),
-    onboardingFile: path.join(roots.appDataDir, "onboarding.json"),
     workspacesFile: path.join(roots.appDataDir, "workspaces.json"),
     schedulesFile: path.join(roots.appDataDir, "schedules.json"),
     sessionsDir: path.join(roots.appDataDir, "sessions"),

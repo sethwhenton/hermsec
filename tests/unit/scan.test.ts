@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { runScan } from "../../src/core/scan.js";
-import type { Finding } from "../../src/shared/types.js";
+import type { Finding, ScanProgressEvent } from "../../src/shared/types.js";
 
 const fixtureRoot = path.resolve("tests/fixtures/repos");
 
@@ -42,6 +42,21 @@ test("offline scan covers Hermsec MVP vulnerable test projects with measurable r
       `${path.basename(lab)} recall ${recall.toFixed(2)} was below MVP threshold`,
     );
   }
+});
+
+test("offline scan emits structured repository and heuristic progress", async () => {
+  const events: ScanProgressEvent[] = [];
+  const run = await runScan({
+    target: path.join(fixtureRoot, "node-express-vulnerable"),
+    mode: "offline",
+    onProgress: (event) => events.push(event),
+  });
+
+  assert.equal(run.summary.total > 0, true);
+  assert.equal(events.some((event) => event.schemaVersion === "1.0" && event.stage === "repository" && event.status === "running"), true);
+  assert.equal(events.some((event) => event.stage === "repository" && event.status === "completed"), true);
+  assert.equal(events.some((event) => event.stage === "scanner" && event.scannerId === "hermsec-heuristics" && event.status === "completed"), true);
+  assert.equal(events.every((event) => typeof event.timestamp === "string" && event.timestamp.length > 0), true);
 });
 
 type ExpectedFinding = {

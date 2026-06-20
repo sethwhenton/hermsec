@@ -10,21 +10,25 @@
   },
   "files": [
     "dist/src",
-    "dist/renderer",
     "README.md",
     "docs/npm-install.md",
     "docs/pmg-setup.md"
   ],
   "scripts": {
-    "build": "npm run build:core && npm run build:renderer",
-    "build:core": "tsc -p tsconfig.json",
-    "build:renderer": "vite build",
+    "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
+    "build": "npm run build:core",
+    "build:core": "npm run clean && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test \"dist/tests/**/*.test.js\"",
     "dev": "npm run build && node dist/src/bin/hermsec.js",
-    "dev:desktop": "npm run build && electron dist/src/desktop/main.js",
-    "start:desktop": "electron dist/src/desktop/main.js",
-    "test:desktop": "npm run build && electron dist/src/desktop/main.js --smoke",
+    "desktop:install": "npm --prefix desktop ci",
+    "desktop:dev": "npm --prefix desktop run dev",
+    "desktop:typecheck": "npm --prefix desktop run typecheck",
+    "desktop:build": "npm --prefix desktop run build",
+    "desktop:smoke:doctor": "npm --prefix desktop run smoke:doctor",
+    "desktop:smoke:dashboard": "npm --prefix desktop run smoke:dashboard",
+    "desktop:dist:win": "npm --prefix desktop run dist:win",
+    "desktop:dist:mac": "npm --prefix desktop run dist:mac",
     "eval:owasp": "npm run build:core && node scripts/eval-owasp-benchmark.mjs --skip-if-missing",
     "start": "node dist/src/bin/hermsec.js",
     "prepack": "npm run build",
@@ -35,19 +39,7 @@
     "npm": ">=10.0.0"
   },
   "devDependencies": {
-    "@types/blessed": "0.1.27",
     "@types/node": "22.12.0",
-    "@types/react": "19.0.0",
-    "@types/react-dom": "19.0.0",
-    "@vitejs/plugin-react": "6.0.0",
-    "electron": "40.10.2",
-    "typescript": "5.7.2",
-    "vite": "8.0.14"
-  },
-  "dependencies": {
-    "blessed": "0.1.81",
-    "lucide-react": "0.475.0",
-    "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "typescript": "5.7.2"
   }
 }

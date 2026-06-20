@@ -9,6 +9,44 @@ export type FindingCategory =
 
 export type ScanMode = "auto" | "offline" | "online";
 
+export type ScanAssistMode = "scanner-model-summary" | "deep-assisted";
+
+export type ScanProgressStage =
+  | "repository"
+  | "scanner"
+  | "model"
+  | "report";
+
+export type ScanProgressStatus =
+  | "waiting"
+  | "running"
+  | "completed"
+  | "skipped"
+  | "failed";
+
+export type ScanProgressDetail = {
+  id?: string;
+  label: string;
+  status?: ScanProgressStatus | ScannerStatus["status"];
+  message?: string;
+  value?: string;
+};
+
+export type ScanProgressEvent = {
+  schemaVersion: "1.0";
+  id: string;
+  stage: ScanProgressStage;
+  scannerId?: string;
+  label: string;
+  status: ScanProgressStatus;
+  message: string;
+  details?: ScanProgressDetail[];
+  findingCount?: number;
+  durationMs?: number;
+  assistMode?: ScanAssistMode;
+  timestamp: string;
+};
+
 export type OutputFormat = "json" | "md" | "html";
 
 export type CommandResult<T = unknown> =

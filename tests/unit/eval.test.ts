@@ -12,7 +12,7 @@ const finding: Finding = {
   description: "test",
   evidence: "SELECT + req.query",
   remediation: "parameterize",
-  tool: "hermsec-offline",
+  tool: "hermsec-heuristics",
   cwe: ["CWE-89"],
   location: { file: "src/app.js", startLine: 8 },
   fingerprint: "fp-1",

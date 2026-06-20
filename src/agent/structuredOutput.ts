@@ -17,8 +17,11 @@ export type ExplanationValidationResult =
 const cvePattern = /\bCVE-\d{4}-\d{4,8}\b/gi;
 const ghsaPattern = /\bGHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}\b/gi;
 const osvPattern = /\b(?:OSV|PYSEC|GO|RUSTSEC)-\d{4}-\d+\b/gi;
+const cwePattern = /\bCWE-\d+\b/gi;
 const pathPattern = /(?:[A-Za-z]:\\|\.{1,2}[\\/]|[A-Za-z0-9_.-]+[\\/])(?:[A-Za-z0-9_.@()+-]+[\\/])*[A-Za-z0-9_.@()+-]+\.[A-Za-z0-9]{1,12}\b/g;
 const linePattern = /\bline\s+(\d{1,8})\b/gi;
+const findingIdPattern = /\bfinding\s+id\s+["'`]?([A-Za-z0-9_.:-]+)["'`]?\b/gi;
+const quotedFindingIdPattern = /["'`]([A-Za-z0-9_.:-]*finding[A-Za-z0-9_.:-]*)["'`]/gi;
 const unsafeRemediationPattern = /\b(?:exploit|payload|reverse shell|curl\s+[^|]+\|\s*sh|wget\s+[^|]+\|\s*sh|npm\s+install|pnpm\s+install|yarn\s+install|bun\s+install|pip\s+install)\b/gi;
 const genericPackageWords = new Set([
   "audit",
@@ -39,6 +42,24 @@ const genericPackageWords = new Set([
   "source",
   "version",
   "versions",
+]);
+const genericScannerWords = new Set([
+  "analysis",
+  "data",
+  "evidence",
+  "finding",
+  "findings",
+  "output",
+  "report",
+  "reported",
+  "rule",
+  "rules",
+  "scanner",
+  "scanners",
+  "the",
+  "this",
+  "tool",
+  "tools",
 ]);
 
 export function parseModelExplanation(raw: string): ModelExplanation | undefined {
@@ -77,6 +98,11 @@ export function validateModelExplanation(
       violations.push(`invented OSV identifier: ${osv}`);
     }
   }
+  for (const cwe of uniqueMatches(text, cwePattern)) {
+    if (!allowed.cwes.has(cwe.toUpperCase())) {
+      violations.push(`invented CWE identifier: ${cwe}`);
+    }
+  }
   for (const filePath of uniqueMatches(text, pathPattern)) {
     const normalizedPath = filePath.replace(/\\/g, "/");
     if (!allowed.files.has(normalizedPath)) {
@@ -90,6 +116,16 @@ export function validateModelExplanation(
   }
   for (const packageName of allowed.disallowedPackageMentions(text)) {
     violations.push(`invented package name: ${packageName}`);
+  }
+  for (const scannerId of scannerMentionCandidates(text)) {
+    if (!allowed.scannerIds.has(scannerId.toLowerCase())) {
+      violations.push(`invented scanner id: ${scannerId}`);
+    }
+  }
+  for (const findingId of findingIdCandidates(text)) {
+    if (!allowed.findingIds.has(findingId)) {
+      violations.push(`invented finding id: ${findingId}`);
+    }
   }
 
   normalized.suggestedFix = clampUnsafeRemediation(normalized.suggestedFix);
@@ -116,6 +152,9 @@ export function normalizeExplanation(value: Partial<ModelExplanation>): ModelExp
 
 function collectAllowedEvidence(finding: Finding): {
   identifiers: Set<string>;
+  cwes: Set<string>;
+  scannerIds: Set<string>;
+  findingIds: Set<string>;
   files: Set<string>;
   lines: Set<number>;
   disallowedPackageMentions(text: string): string[];
@@ -130,6 +169,10 @@ function collectAllowedEvidence(finding: Finding): {
   for (const value of finding.identifiers?.osv ?? []) {
     identifiers.add(value.toUpperCase());
   }
+
+  const cwes = new Set((finding.cwe ?? []).map((value) => value.toUpperCase()));
+  const scannerIds = new Set([finding.tool.toLowerCase(), finding.ruleId?.toLowerCase()].filter((value): value is string => Boolean(value)));
+  const findingIds = new Set([finding.id, finding.fingerprint].filter(Boolean));
 
   const files = new Set<string>();
   if (finding.location?.file) {
@@ -147,6 +190,9 @@ function collectAllowedEvidence(finding: Finding): {
   const knownPackage = finding.package?.name;
   return {
     identifiers,
+    cwes,
+    scannerIds,
+    findingIds,
     files,
     lines,
     disallowedPackageMentions(text: string): string[] {
@@ -204,6 +250,40 @@ function packageMentionCandidates(text: string): Array<{ raw: string; packageNam
     }
   }
   return [...matches.values()].sort((left, right) => left.raw.localeCompare(right.raw));
+}
+
+function scannerMentionCandidates(text: string): string[] {
+  const scanners = new Set<string>();
+  const patterns = [
+    /\b(?:scanner|tool)\s+id\s+["'`]?([A-Za-z0-9_.-]+)["'`]?\b/gi,
+    /\b(?:scanner|tool)\s+["'`]([A-Za-z0-9_.-]+)["'`]/gi,
+    /\b(?:reported|found|confirmed)\s+by\s+([A-Za-z0-9_.-]+)\b/gi,
+    /\bfrom\s+([A-Za-z0-9_.-]+)\s+(?:scanner|tool)\b/gi,
+  ];
+  for (const pattern of patterns) {
+    for (const match of text.matchAll(pattern)) {
+      const value = match[1];
+      if (value && !genericScannerWords.has(value.toLowerCase())) {
+        scanners.add(value);
+      }
+    }
+  }
+  return [...scanners].sort((left, right) => left.localeCompare(right));
+}
+
+function findingIdCandidates(text: string): string[] {
+  const ids = new Set<string>();
+  for (const match of text.matchAll(findingIdPattern)) {
+    if (match[1]) {
+      ids.add(match[1]);
+    }
+  }
+  for (const match of text.matchAll(quotedFindingIdPattern)) {
+    if (match[1]) {
+      ids.add(match[1]);
+    }
+  }
+  return [...ids].sort((left, right) => left.localeCompare(right));
 }
 
 function isGenericPackageWord(packageName: string): boolean {

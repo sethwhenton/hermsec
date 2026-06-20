@@ -1,22 +1,6 @@
 import type { OptionalModuleSpec } from "./types.js";
 
 export const moduleSpecs = {
-  chat: {
-    modulePath: "../tui/cli.js",
-    exportName: "launchChat",
-    expectedShape:
-      "export async function launchChat(options: { cwd: string; args: string[]; firstRun: boolean }): Promise<CommandResult>",
-    unavailableMessage: "The chat TUI is not available yet.",
-    remediation: "Implement the TUI CLI facade before using `hermsec` or `hermsec chat`.",
-  },
-  onboard: {
-    modulePath: "../tui/cli.js",
-    exportName: "runOnboarding",
-    expectedShape:
-      "export async function runOnboarding(options: { cwd: string; args: string[] }): Promise<CommandResult>",
-    unavailableMessage: "The onboarding flow is not available yet.",
-    remediation: "Implement the TUI onboarding facade before using `hermsec onboard`.",
-  },
   doctor: {
     modulePath: "../doctor/checks.js",
     exportName: "runDoctor",

@@ -13,6 +13,8 @@ const baseFinding: Finding = {
   evidence: "npm audit reported CVE-2021-23337 for lodash.",
   remediation: "Upgrade lodash to a fixed version.",
   tool: "npm-audit",
+  ruleId: "npm-audit:lodash",
+  cwe: ["CWE-79"],
   identifiers: {
     cve: ["CVE-2021-23337"],
   },
@@ -57,6 +59,36 @@ test("model explanation validation rejects invented package mentions", () => {
 
   assert.equal(result.ok, false);
   assert.ok(result.violations.includes("invented package name: package express"));
+});
+
+test("model explanation validation rejects invented CWE identifiers", () => {
+  const result = validateModelExplanation(baseFinding, {
+    ...baseExplanation,
+    evidenceSummary: "The scanner reported CVE-2021-23337 and CWE-89 for lodash.",
+  });
+
+  assert.equal(result.ok, false);
+  assert.ok(result.violations.includes("invented CWE identifier: CWE-89"));
+});
+
+test("model explanation validation rejects invented scanner ids", () => {
+  const result = validateModelExplanation(baseFinding, {
+    ...baseExplanation,
+    confidenceReason: "This was confirmed by semgrep.",
+  });
+
+  assert.equal(result.ok, false);
+  assert.ok(result.violations.includes("invented scanner id: semgrep"));
+});
+
+test("model explanation validation rejects invented finding ids", () => {
+  const result = validateModelExplanation(baseFinding, {
+    ...baseExplanation,
+    evidenceSummary: "This explanation applies to finding id finding-999.",
+  });
+
+  assert.equal(result.ok, false);
+  assert.ok(result.violations.includes("invented finding id: finding-999"));
 });
 
 test("model explanation validation does not treat defensive slash phrases as file paths", () => {

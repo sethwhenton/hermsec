@@ -1,4 +1,4 @@
-import type { OutputFormat, ScanMode } from "../../shared/types.js";
+import type { OutputFormat, ScanMode, ScanProgressEvent } from "../../shared/types.js";
 import { getFlagString, parseArgs, resolveLocalPath, resolveOutputPath, unknownFlagResult } from "../args.js";
 import { commandHelp, helpResult, usageError } from "../help.js";
 import { moduleSpecs } from "../moduleSpecs.js";
@@ -15,6 +15,7 @@ type ScanOptions = {
   outputDirectory?: string;
   formats: OutputFormat[];
   useModel: boolean;
+  onProgress?: (event: ScanProgressEvent) => void;
 };
 
 export async function runScanCommand(args: string[], context: CommandContext): Promise<CliOutcome> {
@@ -50,6 +51,7 @@ export async function runScanCommand(args: string[], context: CommandContext): P
     assistMode: parseAssistMode(getFlagString(parsed, "assist-mode")),
     formats: selectedFormats(parsed.flags),
     useModel: parsed.flags["no-model"] !== true,
+    ...(json ? { onProgress: writeProgressJsonl } : {}),
   };
   const outputDirectory = resolveOutputPath(getFlagString(parsed, "out"), context.cwd);
   if (outputDirectory !== undefined) {
@@ -62,6 +64,10 @@ export async function runScanCommand(args: string[], context: CommandContext): P
     "Scan completed.",
   );
   return toOutcome(result, json);
+}
+
+function writeProgressJsonl(event: ScanProgressEvent): void {
+  process.stderr.write(`HERMSEC_PROGRESS ${JSON.stringify(event)}\n`);
 }
 
 function parseAssistMode(value: string | undefined): NonNullable<ScanOptions["assistMode"]> {

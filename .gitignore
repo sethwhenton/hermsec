@@ -1,15 +1,14 @@
 # Dependencies and build output
 node_modules/
-v2/node_modules/
-v2/**/node_modules/
 dist/
 build/
 out/
 release/
-v2/**/out/
-v2/**/release/
 coverage/
 output/
+desktop/resources/hermsec-cli/
+desktop/resources/runtime-tools/
+desktop/.runtime-tools-cache/
 
 # Local environment and secrets
 .env
@@ -27,9 +26,9 @@ output/
 .hermsec/tmp/
 .hermsec/secrets/
 .hermsec-benchmarks/
-.hermsec-v2/
 .hermsec-v3/
-v2/hermsec-v3/.dev-logs/
+desktop/.dev-logs/
+desktop/.hermsec-v3/
 
 # Logs and editor noise
 *.log

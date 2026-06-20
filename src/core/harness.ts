@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import { runAgentTurn } from "../agent/runtime.js";
 import { providerCredentialEnv } from "../model/credentials.js";
 import { selectModelProvider } from "../model/providerRouter.js";
+import { assistModeFrom, emitScanProgress, type ScanProgressCallback } from "./progress.js";
 import { runScan as runLocalScan } from "./scan.js";
 import { renderReport } from "../reports/reportRenderer.js";
 import { stableId } from "../shared/text.js";
@@ -18,15 +19,66 @@ export type HarnessScanOptions = {
   outputDirectory?: string;
   formats: OutputFormat[];
   useModel: boolean;
+  onProgress?: ScanProgressCallback;
 };
 
 export async function runScan(options: HarnessScanOptions): Promise<CommandResult> {
+  const assistMode = assistModeFrom(options.assistMode);
   const scanRun = await runLocalScan({
     target: options.target,
     mode: options.mode,
+    assistMode,
+    ...(options.onProgress ? { onProgress: options.onProgress } : {}),
   });
   const workspaceName = path.basename(scanRun.target) || "workspace";
-  const agent = await explainScanRun(scanRun.findings, options);
+  const modelStarted = Date.now();
+  if (options.useModel) {
+    emitScanProgress(options.onProgress, {
+      id: "model-summary",
+      stage: "model",
+      label: assistMode === "deep-assisted" ? "Deep model triage" : "Model summary",
+      status: "running",
+      message: assistMode === "deep-assisted"
+        ? "Model is supporting triage over scanner-confirmed evidence."
+        : "Model is summarizing scanner-backed evidence.",
+      findingCount: scanRun.findings.length,
+      assistMode,
+    });
+  } else {
+    emitScanProgress(options.onProgress, {
+      id: "model-summary",
+      stage: "model",
+      label: assistMode === "deep-assisted" ? "Deep model triage" : "Model summary",
+      status: "skipped",
+      message: "Model phase skipped because model assistance is disabled.",
+      findingCount: scanRun.findings.length,
+      assistMode,
+    });
+  }
+  const agent = await explainScanRun(scanRun.findings, { ...options, assistMode });
+  if (options.useModel) {
+    emitScanProgress(options.onProgress, {
+      id: "model-summary",
+      stage: "model",
+      label: assistMode === "deep-assisted" ? "Deep model triage" : "Model summary",
+      status: agent.summary.provider === "none" && agent.summary.fallbackReason ? "skipped" : "completed",
+      message: agent.summary.fallbackReason
+        ? `Model phase used fallback summary: ${agent.summary.fallbackReason}`
+        : "Model phase completed using scanner-backed evidence.",
+      findingCount: scanRun.findings.length,
+      durationMs: Date.now() - modelStarted,
+      assistMode,
+    });
+  }
+  const reportStarted = Date.now();
+  emitScanProgress(options.onProgress, {
+    id: "report-ready",
+    stage: "report",
+    label: "Report ready",
+    status: "running",
+    message: "Writing HermSec report artifacts.",
+    assistMode,
+  });
   const report = await renderReport({
     scanRun,
     workspaceId: stableId(scanRun.target, "ws"),
@@ -42,6 +94,15 @@ export async function runScan(options: HarnessScanOptions): Promise<CommandResul
     agentSummary: agent.summary,
   });
   await writeBenchmarkExportIfRequested(report.paths.reportDir, scanRun);
+  emitScanProgress(options.onProgress, {
+    id: "report-ready",
+    stage: "report",
+    label: "Report ready",
+    status: "completed",
+    message: "HermSec report artifacts were written.",
+    durationMs: Date.now() - reportStarted,
+    assistMode,
+  });
 
   return {
     ok: true,

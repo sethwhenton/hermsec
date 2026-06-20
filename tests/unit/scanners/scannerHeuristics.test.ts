@@ -156,6 +156,71 @@ test("Java servlet heuristics track benchmark-style cookie values into file and 
   assert.equal(ruleIds.has("hermsec.java.xss"), false);
 });
 
+test("Java servlet heuristics track body readers, multipart filenames, and StringBuilder aliases", () => {
+  const findings = scanFile("src/main/java/UploadServlet.java", `
+    import javax.servlet.http.*;
+    import java.io.*;
+    class UploadServlet extends HttpServlet {
+      void doPost(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        BufferedReader reader = request.getReader();
+        String body = reader.readLine();
+        StringBuilder query = new StringBuilder("select * from audit where body = '");
+        query.append(body);
+        query.append("'");
+        java.sql.Connection connection = null;
+        connection.prepareStatement(query.toString()).executeQuery();
+
+        Part part = request.getPart("upload");
+        String fileName = part.getSubmittedFileName();
+        new FileInputStream(new File("/tmp/" + fileName));
+      }
+    }
+  `);
+  const ruleIds = new Set(findings.map((finding) => finding.ruleId));
+
+  assert.equal(ruleIds.has("hermsec.java.sqli"), true);
+  assert.equal(ruleIds.has("hermsec.java.pathtraver"), true);
+});
+
+test("Java servlet sanitizer families do not hide SQL taint", () => {
+  const findings = scanFile("src/main/java/SanitizerServlet.java", `
+    import javax.servlet.http.*;
+    class SanitizerServlet extends HttpServlet {
+      void doGet(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        String param = request.getParameter("q");
+        String safeForHtml = org.owasp.encoder.Encode.forHtml(param);
+        response.getWriter().println(safeForHtml);
+        String sql = "select * from users where name = '" + safeForHtml + "'";
+        java.sql.Connection connection = null;
+        connection.prepareStatement(sql).executeQuery();
+      }
+    }
+  `);
+  const ruleIds = new Set(findings.map((finding) => finding.ruleId));
+
+  assert.equal(ruleIds.has("hermsec.java.xss"), false);
+  assert.equal(ruleIds.has("hermsec.java.sqli"), true);
+});
+
+test("Java servlet heuristics detect LDAP and XPath request-taint sinks", () => {
+  const findings = scanFile("src/main/java/SearchServlet.java", `
+    import javax.servlet.http.*;
+    class SearchServlet extends HttpServlet {
+      void doGet(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        String filter = request.getHeader("x-user");
+        javax.naming.directory.DirContext context = null;
+        context.search("ou=people", "(uid=" + filter + ")", null);
+        javax.xml.xpath.XPath xpath = javax.xml.xpath.XPathFactory.newInstance().newXPath();
+        xpath.evaluate("//user[@id='" + filter + "']", new Object());
+      }
+    }
+  `);
+  const ruleIds = new Set(findings.map((finding) => finding.ruleId));
+
+  assert.equal(ruleIds.has("hermsec.java.ldapi"), true);
+  assert.equal(ruleIds.has("hermsec.java.xpathi"), true);
+});
+
 test("fixture package files do not define package scripts", () => {
   for (const packagePath of listFiles(fixturesRoot).filter((file) => path.basename(file) === "package.json")) {
     const parsed = JSON.parse(fs.readFileSync(packagePath, "utf8")) as { scripts?: unknown };

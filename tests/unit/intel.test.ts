@@ -231,7 +231,7 @@ function makeDependencyFinding(): Finding {
     description: "Fixture dependency finding.",
     evidence: "package-lock.json pins lodash@4.17.20.",
     remediation: "Upgrade lodash.",
-    tool: "hermsec-offline",
+    tool: "hermsec-heuristics",
     identifiers: { ghsa: ["GHSA-35jh-r3h4-6jhm"] },
     package: { ecosystem: "npm", name: "lodash", installedVersion: "4.17.20" },
     fingerprint: "fp-lodash",

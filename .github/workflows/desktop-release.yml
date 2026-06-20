@@ -32,18 +32,18 @@ jobs:
             package_script: dist:win
             artifact_name: hermsec-windows-x64
             artifact_paths: |
-              v2/hermsec-v3/release/*.exe
-              v2/hermsec-v3/release/*.blockmap
-              v2/hermsec-v3/release/latest*.yml
+              desktop/release/*.exe
+              desktop/release/*.blockmap
+              desktop/release/latest*.yml
           - label: macOS
             os: macos-latest
             package_script: dist:mac
             artifact_name: hermsec-macos
             artifact_paths: |
-              v2/hermsec-v3/release/*.dmg
-              v2/hermsec-v3/release/*.zip
-              v2/hermsec-v3/release/*.blockmap
-              v2/hermsec-v3/release/latest*.yml
+              desktop/release/*.dmg
+              desktop/release/*.zip
+              desktop/release/*.blockmap
+              desktop/release/latest*.yml
 
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
@@ -60,7 +60,7 @@ jobs:
           cache: "npm"
           cache-dependency-path: |
             package-lock.json
-            v2/hermsec-v3/package-lock.json
+            desktop/package-lock.json
 
       - uses: actions/setup-python@v5
         with:
@@ -73,18 +73,18 @@ jobs:
         run: npm ci
 
       - name: Install desktop dependencies
-        working-directory: v2/hermsec-v3
+        working-directory: desktop
         run: npm ci
 
       - name: Typecheck root harness
         run: npm run typecheck
 
       - name: Typecheck desktop app
-        working-directory: v2/hermsec-v3
+        working-directory: desktop
         run: npm run typecheck
 
       - name: Package desktop app
-        working-directory: v2/hermsec-v3
+        working-directory: desktop
         run: npm run ${{ matrix.package_script }}
 
       - name: Upload ${{ matrix.label }} artifacts

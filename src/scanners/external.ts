@@ -1,8 +1,9 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { emitScanProgress, type ScanProgressCallback } from "../core/progress.js";
 import type { SourceFile } from "../core/files.js";
-import type { Finding, ScannerStatus } from "../shared/types.js";
+import type { Finding, ScanAssistMode, ScanProgressStatus, ScannerStatus } from "../shared/types.js";
 import { scannerCatalog } from "./catalog.js";
 import { parseScannerJson, type ParserContext } from "./parsers.js";
 import {
@@ -19,6 +20,8 @@ export type ExternalScannerRuntime = {
   exec?: (request: SafeExecRequest) => Promise<SafeExecResult>;
   timeoutMs?: number;
   maxOutputBytes?: number;
+  onProgress?: ScanProgressCallback;
+  assistMode?: ScanAssistMode;
 };
 
 type ScannerDefinition = {
@@ -259,44 +262,65 @@ export async function runExternalScanners(
   const timeoutMs = runtime.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxOutputBytes = runtime.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES;
   const enabledScanners = enabledScannerSet();
+  const assistMode = runtime.assistMode;
 
   for (const scanner of EXTERNAL_SCANNERS) {
     if (enabledScanners && !enabledScanners.has(scanner.id)) {
+      emitScannerProgress(runtime.onProgress, scanner, "skipped", `${scanner.label} is disabled in the current scanner settings.`, {
+        assistMode,
+      });
       continue;
     }
 
     if (!repoRoot || !scanner.shouldRun(files)) {
-      statuses.push(skipped(scanner, `${scanner.label} had no matching external scanner inputs.`));
+      const status = skipped(scanner, `${scanner.label} had no matching external scanner inputs.`);
+      statuses.push(status);
+      emitScannerProgress(runtime.onProgress, scanner, "skipped", status.message, { assistMode });
       continue;
     }
 
     const resolution = resolver(scanner.id);
     if (!resolution) {
-      statuses.push(skipped(scanner, `${scanner.label} was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage.`));
+      const status = skipped(scanner, `${scanner.label} was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage.`);
+      statuses.push(status);
+      emitScannerProgress(runtime.onProgress, scanner, "skipped", status.message, { assistMode });
       continue;
     }
 
     const started = Date.now();
+    emitScannerProgress(runtime.onProgress, scanner, "running", `${scanner.label} is preparing a safe command plan.`, {
+      assistMode,
+    });
     let build: BuildResult;
     try {
       build = await scanner.build({ repoRoot, files, readText, resolution, timeoutMs, maxOutputBytes });
     } catch (error) {
-      statuses.push({
+      const status: ScannerStatus = {
         id: `${scanner.id}-run`,
         label: `${scanner.label} scan`,
         status: "failed",
         message: `${scanner.label} could not build a safe command plan: ${error instanceof Error ? error.message : String(error)}`,
         durationMs: Date.now() - started,
+      };
+      statuses.push(status);
+      emitScannerProgress(runtime.onProgress, scanner, "failed", status.message, {
+        durationMs: status.durationMs,
+        assistMode,
       });
       continue;
     }
     if (build.executions.length === 0) {
-      statuses.push({
+      const status: ScannerStatus = {
         id: `${scanner.id}-run`,
         label: `${scanner.label} scan`,
         status: "skipped",
         message: build.skipReason ?? `${scanner.label} had no safe command plan.`,
         durationMs: Date.now() - started,
+      };
+      statuses.push(status);
+      emitScannerProgress(runtime.onProgress, scanner, "skipped", status.message, {
+        durationMs: status.durationMs,
+        assistMode,
       });
       continue;
     }
@@ -306,6 +330,24 @@ export async function runExternalScanners(
     const notes: string[] = [];
     try {
       for (const execution of build.executions) {
+        emitScannerProgress(
+          runtime.onProgress,
+          scanner,
+          "running",
+          build.executions.length > 1
+            ? `${scanner.label} is running chunk ${build.executions.indexOf(execution) + 1} of ${build.executions.length}.`
+            : `${scanner.label} is running.`,
+          {
+            assistMode,
+            details: [
+              {
+                label: "Command plan",
+                status: "running",
+                value: build.executions.length > 1 ? `${build.executions.indexOf(execution) + 1}/${build.executions.length}` : "1/1",
+              },
+            ],
+          },
+        );
         let result: SafeExecResult;
         try {
           result = await exec({
@@ -345,26 +387,64 @@ export async function runExternalScanners(
     findings.push(...scannerFindings);
     const durationMs = Date.now() - started;
     if (failures.length > 0) {
-      statuses.push({
+      const status: ScannerStatus = {
         id: `${scanner.id}-run`,
         label: `${scanner.label} scan`,
         status: "failed",
         message: `${scanner.label} failed without stopping the scan: ${[...failures, ...notes].join(" ")}`,
         durationMs,
+      };
+      statuses.push(status);
+      emitScannerProgress(runtime.onProgress, scanner, "failed", status.message, {
+        findingCount: scannerFindings.length,
+        durationMs,
+        assistMode,
       });
       continue;
     }
 
-    statuses.push({
+    const status: ScannerStatus = {
       id: `${scanner.id}-run`,
       label: `${scanner.label} scan`,
       status: "completed",
       message: `${scanner.label} completed with ${scannerFindings.length} finding${scannerFindings.length === 1 ? "" : "s"}${notes.length > 0 ? ` (${notes.join("; ")})` : ""}.`,
       durationMs,
+    };
+    statuses.push(status);
+    emitScannerProgress(runtime.onProgress, scanner, "completed", status.message, {
+      findingCount: scannerFindings.length,
+      durationMs,
+      assistMode,
     });
   }
 
   return { findings, statuses };
+}
+
+function emitScannerProgress(
+  onProgress: ScanProgressCallback | undefined,
+  scanner: ScannerDefinition,
+  status: ScanProgressStatus,
+  message: string,
+  options: {
+    findingCount?: number | undefined;
+    durationMs?: number | undefined;
+    assistMode?: ScanAssistMode | undefined;
+    details?: Array<{ id?: string; label: string; status?: ScanProgressStatus; message?: string; value?: string }> | undefined;
+  } = {},
+): void {
+  emitScanProgress(onProgress, {
+    id: `${scanner.id}-run`,
+    stage: "scanner",
+    scannerId: scanner.id,
+    label: scanner.label,
+    status,
+    message,
+    ...(options.findingCount !== undefined ? { findingCount: options.findingCount } : {}),
+    ...(options.durationMs !== undefined ? { durationMs: options.durationMs } : {}),
+    ...(options.assistMode ? { assistMode: options.assistMode } : {}),
+    ...(options.details ? { details: options.details } : {}),
+  });
 }
 
 export function externalScannerCatalog(): ExternalScannerCatalogEntry[] {

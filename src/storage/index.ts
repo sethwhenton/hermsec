@@ -1,6 +1,5 @@
 export * from "./appData.js";
 export * from "./jsonStore.js";
-export * from "./onboardingStore.js";
 export * from "./platformPaths.js";
 export * from "./projectConfig.js";
 export * from "./reportIndex.js";
