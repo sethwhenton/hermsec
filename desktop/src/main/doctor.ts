@@ -472,6 +472,41 @@ function desktopProviderChecks(settings: AppSettings): DoctorCheck[] {
 }
 
 function desktopProviderCheck(provider: ProviderConfig, activeProviderId?: string, activeModelId?: string): DoctorCheck {
+  if (provider.apiFormat === "cursor") {
+    const hasKey = Boolean(resolveDesktopProviderApiKey(provider));
+    const hasBaseUrl = Boolean(provider.baseUrl?.trim());
+
+    if (!hasBaseUrl) {
+      return {
+        id: `provider-desktop-${provider.id}`,
+        label: `${provider.displayName} integration`,
+        status: "warn",
+        requirement: "recommended",
+        message: `${provider.displayName} is enabled but has no base URL configured.`,
+        remediation: "Set the provider base URL in Settings > Providers.",
+      };
+    }
+
+    if (!hasKey) {
+      return {
+        id: `provider-desktop-${provider.id}`,
+        label: `${provider.displayName} integration`,
+        status: "warn",
+        requirement: "recommended",
+        message: `${provider.displayName} is enabled but no API key is available to the desktop app.`,
+        remediation: `Save a local API key or set ${provider.apiKeyEnvVar || "CURSOR_API_KEY"}.`,
+      };
+    }
+
+    return {
+      id: `provider-desktop-${provider.id}`,
+      label: `${provider.displayName} integration`,
+      status: "pass",
+      requirement: "recommended",
+      message: `${provider.displayName} is configured; credentials are available to the desktop app.`,
+    };
+  }
+
   const model =
     provider.models.find((item) => provider.id === activeProviderId && item.enabled && item.id === activeModelId) ??
     provider.models.find((item) => item.enabled);

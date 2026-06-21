@@ -20,8 +20,9 @@ export function ModelsSettings() {
   const filteredProviders = useMemo(() => {
     if (!settings) return [];
     const q = query.trim().toLowerCase();
-    if (!q) return settings.providers;
-    return settings.providers
+    const modelProviders = settings.providers.filter((provider) => provider.apiFormat !== "cursor");
+    if (!q) return modelProviders;
+    return modelProviders
       .map((provider) => ({
         ...provider,
         models: provider.models.filter(

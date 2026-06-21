@@ -186,7 +186,8 @@ function normalizeSettings(settings: AppSettings): AppSettings {
     },
     providers,
     scanners: normalizeScannerSettings(settings.scanners),
-    ...(activeSelection ? { activeProviderId: activeSelection.providerId, activeModelId: activeSelection.modelId } : {}),
+    activeProviderId: activeSelection?.providerId,
+    activeModelId: activeSelection?.modelId,
   };
 }
 
@@ -195,14 +196,15 @@ function normalizeActiveSelection(
   providerId: string | undefined,
   modelId: string | undefined,
 ): { providerId: string; modelId: string } | undefined {
-  const provider = providerId ? providers.find((item) => item.enabled && item.id === providerId) : undefined;
+  const chatProviders = providers.filter((item) => item.apiFormat !== "cursor");
+  const provider = providerId ? chatProviders.find((item) => item.enabled && item.id === providerId) : undefined;
   const providerModel = provider?.models.find((model) => model.enabled && model.id === modelId);
   if (provider && providerModel) {
     return { providerId: provider.id, modelId: providerModel.id };
   }
 
   if (modelId) {
-    const matchingProvider = providers.find((item) =>
+    const matchingProvider = chatProviders.find((item) =>
       item.enabled && item.models.some((model) => model.enabled && model.id === modelId),
     );
     if (matchingProvider) {
@@ -210,7 +212,7 @@ function normalizeActiveSelection(
     }
   }
 
-  const fallbackProvider = providers.find((item) => item.enabled && item.models.some((model) => model.enabled));
+  const fallbackProvider = chatProviders.find((item) => item.enabled && item.models.some((model) => model.enabled));
   const fallbackModel = fallbackProvider?.models.find((model) => model.enabled);
   return fallbackProvider && fallbackModel
     ? { providerId: fallbackProvider.id, modelId: fallbackModel.id }

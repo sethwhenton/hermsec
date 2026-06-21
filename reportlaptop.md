@@ -535,3 +535,15 @@ This section is append-only. New work should be added as another iteration inste
 | Versioning | Bumped root and desktop package versions from `0.1.4` to `0.1.5` so the follow-up release can supersede the already-created `v0.1.4` release cleanly. |
 | Source checks | Verified OpenRouter's official docs describe `https://openrouter.ai/api/v1` as the OpenAI-compatible base URL. Verified Ollama's official OpenAI compatibility docs use `http://localhost:11434/v1` locally and official Ollama Cloud docs use `https://ollama.com/api`, not the unverified `/v1` cloud route. |
 | Verification | Root `npm run typecheck` passed. Desktop `npm run desktop:typecheck` passed. Root `npm test` passed with `76/76`. Desktop `npm run desktop:build` passed. Desktop `npm run desktop:smoke:doctor` passed with healthScore `100`, required `7/7`, scanners `6/6`, internet `5/5`, and expected provider warning in the isolated smoke environment. |
+
+### Iteration 22 - Provider Routing Follow-Up After v0.1.5
+
+| Item | Notes |
+| --- | --- |
+| Goal | Push the user's follow-up provider routing edits after the `v0.1.5` release. |
+| Cursor | Added Cursor Cloud Agents provider handling in Doctor and model discovery, while excluding Cursor from normal chat-completion model selection until agent handoff routing is separately implemented. |
+| Ollama Cloud | Re-enabled Ollama Cloud as an OpenAI-compatible provider preset with hosted model defaults and API-key-required validation. |
+| Local Ollama | Preserved explicit no-key handling for local Ollama. |
+| Provider discovery | Added Cursor model-list parsing and shared duplicate-model filtering for discovered providers. |
+| Safety check | Secret scan matched only `.env.example` placeholders and fake test keys. |
+| Verification | Desktop `npm run desktop:typecheck` passed. Desktop `npm run desktop:build` passed. Desktop `npm run desktop:smoke:doctor` passed with healthScore `100`, required `7/7`, scanners `6/6`, internet `5/5`, and expected provider warning in the isolated smoke environment. |

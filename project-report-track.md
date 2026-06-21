@@ -956,3 +956,19 @@ This file is the running engineering ledger for Hermsec. Use it to record meanin
 - Commit and push the follow-up changes to `main`.
 - Push tag `v0.1.5`.
 - Let the same tag-triggered Windows and macOS release workflows publish the latest installers.
+
+## 2026-06-21 - Provider Routing Follow-Up After v0.1.5
+
+### Changes
+
+- Added Cursor Cloud Agents provider checks and model discovery handling.
+- Kept Cursor out of normal chat model selection and report-chat model routing so it does not masquerade as a standard chat-completions provider.
+- Re-enabled Ollama Cloud as an OpenAI-compatible provider preset with hosted model defaults.
+- Required API keys for Ollama Cloud and Cursor provider validation while preserving no-key handling for local Ollama.
+- Added shared duplicate-model filtering for discovered provider models.
+
+### Verification
+
+- Desktop `npm run desktop:typecheck` passed.
+- Desktop `npm run desktop:build` passed.
+- Desktop `npm run desktop:smoke:doctor` passed with healthScore `100`, required `7/7`, scanners `6/6`, internet `5/5`, and expected provider warning in the isolated smoke environment.

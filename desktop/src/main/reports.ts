@@ -700,7 +700,7 @@ function buildReasoningLeakFallback(question: string, evidence: ConversationEvid
 
 function resolveModelConfig(): { baseUrl: string; apiKey?: string; modelId: string; maxTokens: number; historyTurns: number } | null {
   const settings = readSettings();
-  const candidates = settings.providers.filter((provider) => provider.enabled);
+  const candidates = settings.providers.filter((provider) => provider.enabled && provider.apiFormat !== "cursor");
   const provider =
     candidates.find((item) => item.id === settings.activeProviderId && item.models.some((model) => model.enabled && model.id === settings.activeModelId)) ??
     candidates.find((item) => item.models.some((model) => model.enabled && model.id === settings.activeModelId)) ??

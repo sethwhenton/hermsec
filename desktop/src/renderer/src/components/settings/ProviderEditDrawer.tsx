@@ -40,7 +40,7 @@ export function ProviderEditDrawer({
   }, [provider, open]);
 
   useEffect(() => {
-    if (!open || !draft?.baseUrl.trim() || draft.apiFormat === "cursor" || draft.supportsModelDiscovery === false) return;
+    if (!open || !draft?.baseUrl.trim() || draft.supportsModelDiscovery === false) return;
     const timer = window.setTimeout(() => {
       void runProviderCheck("auto");
     }, 750);
@@ -52,7 +52,7 @@ export function ProviderEditDrawer({
   if (!draft) return null;
 
   const isPreset = Boolean(draft.presetId);
-  const canDiscover = draft.apiFormat !== "cursor" && draft.supportsModelDiscovery !== false;
+  const canDiscover = draft.supportsModelDiscovery !== false;
   const requiresApiKey = !providerAllowsNoApiKey(draft);
 
   const runProviderCheck = async (_source: "auto" | "manual") => {

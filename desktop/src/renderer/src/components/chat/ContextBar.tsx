@@ -235,7 +235,7 @@ function getModelOptions(providers: ProviderConfig[]): ModelOption[] {
   const options: ModelOption[] = [];
 
   for (const provider of providers) {
-    if (!provider.enabled) continue;
+    if (!provider.enabled || provider.apiFormat === "cursor") continue;
     for (const model of provider.models) {
       const key = `${provider.id}:${model.id}`;
       if (!model.enabled || seen.has(key)) continue;

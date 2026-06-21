@@ -39,6 +39,14 @@ export async function testProvider(request: ProviderTestRequest): Promise<Provid
     };
   }
 
+  if (!apiKey && providerRequiresApiKey(request)) {
+    return {
+      ok: false,
+      message: `API key is required. Enter a key or set ${request.apiKeyEnvVar || "the provider API key environment variable"}.`,
+      latencyMs: Date.now() - started,
+    };
+  }
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -95,6 +103,10 @@ export async function testProvider(request: ProviderTestRequest): Promise<Provid
   }
 }
 
+function providerRequiresApiKey(request: ProviderTestRequest): boolean {
+  return request.providerId === "ollama-cloud" || request.apiFormat === "cursor";
+}
+
 async function fetchModelList({
   request,
   baseUrl,
@@ -123,6 +135,11 @@ async function fetchModelList({
     return fetch(url, { method: "GET", headers, signal });
   }
 
+  if (apiFormat === "cursor") {
+    if (apiKey) headers.Authorization = `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`;
+    return fetch(`${baseUrl}/v0/models`, { method: "GET", headers, signal });
+  }
+
   if (apiKey) {
     headers.Authorization = `Bearer ${apiKey}`;
   }
@@ -130,6 +147,14 @@ async function fetchModelList({
 }
 
 function normalizeModelResponse(value: unknown, request: ProviderTestRequest): ModelConfig[] {
+  if (request.apiFormat === "cursor") {
+    return uniqueModels(cursorModelIds(value).map((id) => ({
+      id,
+      label: labelFromModelId(id),
+      enabled: true,
+    })));
+  }
+
   const records = modelRecords(value);
   const models = records
     .map((record) => modelFromRecord(record, request.apiFormat))
@@ -139,12 +164,24 @@ function normalizeModelResponse(value: unknown, request: ProviderTestRequest): M
     ? models.filter((model) => OPENCODE_GO_CHAT_MODEL_IDS.has(model.id))
     : models;
 
+  return uniqueModels(filtered);
+}
+
+function uniqueModels(models: ModelConfig[]): ModelConfig[] {
   const seen = new Set<string>();
-  return filtered.filter((model) => {
+  return models.filter((model) => {
     if (seen.has(model.id)) return false;
     seen.add(model.id);
     return true;
   });
+}
+
+function cursorModelIds(value: unknown): string[] {
+  if (!value || typeof value !== "object") return [];
+  const record = value as Record<string, unknown>;
+  const models = record.models;
+  if (!Array.isArray(models)) return [];
+  return models.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
 }
 
 function modelRecords(value: unknown): Array<Record<string, unknown>> {
