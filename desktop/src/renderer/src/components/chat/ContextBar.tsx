@@ -32,13 +32,16 @@ export function ContextBar({ className }: ContextBarProps) {
   const modelMenuRef = useRef<HTMLDivElement>(null);
   const thinkingMenuRef = useRef<HTMLDivElement>(null);
   const activeModelId = settings?.activeModelId ?? "deepseek-v4-flash";
+  const activeProviderId = settings?.activeProviderId;
   const activeProjectPath = settings?.defaultProjectDir;
   const activeProjectName = activeProjectPath ? folderName(activeProjectPath) : null;
   const modelOptions = useMemo(
     () => getModelOptions(settings?.providers ?? []),
     [settings?.providers],
   );
-  const activeModel = modelOptions.find((model) => model.id === activeModelId);
+  const activeModel =
+    modelOptions.find((model) => model.id === activeModelId && model.providerId === activeProviderId) ??
+    modelOptions.find((model) => model.id === activeModelId);
 
   useEffect(() => {
     if (!modelMenuOpen && !thinkingMenuOpen) return;
@@ -66,8 +69,8 @@ export function ContextBar({ className }: ContextBarProps) {
     };
   }, [modelMenuOpen, thinkingMenuOpen]);
 
-  const handleSelectModel = (modelId: string) => {
-    void updateSettings({ activeModelId: modelId });
+  const handleSelectModel = (providerId: string, modelId: string) => {
+    void updateSettings({ activeProviderId: providerId, activeModelId: modelId });
     setModelMenuOpen(false);
   };
 
@@ -127,11 +130,11 @@ export function ContextBar({ className }: ContextBarProps) {
                   key={`${model.providerId}:${model.id}`}
                   type="button"
                   role="option"
-                  aria-selected={activeModelId === model.id}
-                  onClick={() => handleSelectModel(model.id)}
+                  aria-selected={activeModelId === model.id && activeProviderId === model.providerId}
+                  onClick={() => handleSelectModel(model.providerId, model.id)}
                   className={cn(
                     "flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors",
-                    activeModelId === model.id
+                    activeModelId === model.id && activeProviderId === model.providerId
                       ? "bg-white/8 text-foreground"
                       : "text-muted hover:bg-white/5 hover:text-foreground",
                   )}
@@ -142,7 +145,7 @@ export function ContextBar({ className }: ContextBarProps) {
                       {model.providerName}
                     </span>
                   </span>
-                  {activeModelId === model.id && <Check className="h-3.5 w-3.5 shrink-0" />}
+                  {activeModelId === model.id && activeProviderId === model.providerId && <Check className="h-3.5 w-3.5 shrink-0" />}
                 </button>
               ))}
               {modelOptions.length === 0 && (
@@ -219,7 +222,7 @@ function thinkingLabel(level: string | undefined): string {
 function thinkingDescription(level: string): string {
   if (level === "fast") return "Shorter answers";
   if (level === "deep") return "More context";
-  return "Default security coach";
+  return "Direct security review";
 }
 
 type ModelOption = ModelConfig & {
@@ -234,8 +237,9 @@ function getModelOptions(providers: ProviderConfig[]): ModelOption[] {
   for (const provider of providers) {
     if (!provider.enabled) continue;
     for (const model of provider.models) {
-      if (!model.enabled || seen.has(model.id)) continue;
-      seen.add(model.id);
+      const key = `${provider.id}:${model.id}`;
+      if (!model.enabled || seen.has(key)) continue;
+      seen.add(key);
       options.push({
         ...model,
         providerId: provider.id,

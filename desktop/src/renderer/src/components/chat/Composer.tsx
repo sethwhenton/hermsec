@@ -7,8 +7,9 @@ import { ContextBar } from "./ContextBar";
 interface ComposerProps {
   onSend: (text: string) => void;
   disabled?: boolean;
+  busy?: boolean;
   scanRunning?: boolean;
-  onStopScan?: () => void;
+  onStop?: () => void;
   onRestartScan?: () => void;
   className?: string;
   compact?: boolean;
@@ -17,17 +18,23 @@ interface ComposerProps {
 export function Composer({
   onSend,
   disabled,
+  busy,
   scanRunning,
-  onStopScan,
+  onStop,
   onRestartScan,
   className,
   compact,
 }: ComposerProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const canStop = Boolean(busy && onStop);
 
   const handleSend = () => {
     const trimmed = value.trim();
+    if (canStop) {
+      onStop?.();
+      return;
+    }
     if (!trimmed || disabled) return;
     onSend(trimmed);
     setValue("");
@@ -77,9 +84,6 @@ export function Composer({
           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
             {scanRunning ? (
               <>
-                <Button variant="outline" size="icon" title="Stop scan" onClick={onStopScan}>
-                  <Square className="h-3.5 w-3.5 fill-current" />
-                </Button>
                 <Button variant="ghost" size="icon" title="Restart scan" onClick={onRestartScan}>
                   <RotateCw className="h-3.5 w-3.5" />
                 </Button>
@@ -90,10 +94,12 @@ export function Composer({
           <Button
             size="icon"
             className="shrink-0 rounded-full"
-            disabled={!value.trim() || disabled}
+            disabled={canStop ? false : !value.trim() || disabled}
             onClick={handleSend}
+            title={canStop ? "Stop action" : "Send"}
+            aria-label={canStop ? "Stop action" : "Send message"}
           >
-            <ArrowUp className="h-4 w-4" />
+            {canStop ? <Square className="h-3.5 w-3.5 fill-current" /> : <ArrowUp className="h-4 w-4" />}
           </Button>
         </div>
       ) : (
@@ -105,9 +111,6 @@ export function Composer({
             <div className="flex items-center gap-1.5">
               {scanRunning ? (
                 <>
-                  <Button variant="outline" size="icon" title="Stop scan" onClick={onStopScan}>
-                    <Square className="h-3.5 w-3.5 fill-current" />
-                  </Button>
                   <Button variant="ghost" size="icon" title="Restart scan" onClick={onRestartScan}>
                     <RotateCw className="h-3.5 w-3.5" />
                   </Button>
@@ -117,10 +120,12 @@ export function Composer({
             <Button
               size="icon"
               className="rounded-full"
-              disabled={!value.trim() || disabled}
+              disabled={canStop ? false : !value.trim() || disabled}
               onClick={handleSend}
+              title={canStop ? "Stop action" : "Send"}
+              aria-label={canStop ? "Stop action" : "Send message"}
             >
-              <ArrowUp className="h-4 w-4" />
+              {canStop ? <Square className="h-3.5 w-3.5 fill-current" /> : <ArrowUp className="h-4 w-4" />}
             </Button>
           </div>
         </>

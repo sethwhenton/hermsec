@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import type {
   AppSettings,
   DeepPartial,
+  ProviderPreset,
   ProviderTestRequest,
   ProviderTestResult,
 } from "../renderer/src/types/settings";
@@ -37,6 +38,7 @@ import type {
   LatestReportResult,
   OpenArtifactRequest,
   OpenArtifactResult,
+  ReportControlResult,
 } from "../renderer/src/types/reports";
 
 const hermsecApi = {
@@ -50,6 +52,7 @@ const hermsecApi = {
       ipcRenderer.invoke("settings:choose-project-directory", currentPath),
   },
   provider: {
+    presets: (): Promise<ProviderPreset[]> => ipcRenderer.invoke("provider:presets"),
     test: (request: ProviderTestRequest): Promise<ProviderTestResult> =>
       ipcRenderer.invoke("provider:test", request),
   },
@@ -101,6 +104,7 @@ const hermsecApi = {
       ipcRenderer.invoke("reports:explain", request),
     converse: (request: ConverseReportRequest): Promise<ConverseReportResult> =>
       ipcRenderer.invoke("reports:converse", request),
+    cancel: (): Promise<ReportControlResult> => ipcRenderer.invoke("reports:cancel"),
     latest: (projectPath?: string): Promise<LatestReportResult> =>
       ipcRenderer.invoke("reports:latest", projectPath),
     dashboardBundle: (request: DashboardBundleRequest): Promise<DashboardBundleResult> =>

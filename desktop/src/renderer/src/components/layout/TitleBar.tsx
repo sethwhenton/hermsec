@@ -250,13 +250,71 @@ function MenuSurface({
   );
 }
 
+const aboutFeatureItems: Array<[string, string]> = [
+  ["Desktop chat", "Guide scans, run Doctor, explain findings, set automations, and open final report artifacts."],
+  ["Two scan modes", "Use scanner-backed summaries for speed or deep assisted scans for richer evidence grouping."],
+  ["Doctor", "Check runtime readiness, scanner availability, provider status, and internet access to advisory sources."],
+  ["Live progress", "See inspection, tool selection, scanner preparation, scan execution, model summary, and report generation."],
+  ["Scanner management", "Review installed, missing, enabled, auto-installable, and project-relevant scanners in Settings."],
+  ["Reports", "Generate dashboard, JSON, Markdown, HTML, one-page PDF, and benchmark-safe exports when needed."],
+];
+
+const scanFlowItems = [
+  "Validate the local project folder.",
+  "Walk the repo while skipping noisy folders.",
+  "Detect languages, manifests, lockfiles, IaC, and git metadata.",
+  "Choose matching scanners from Hermsec's supported catalog.",
+  "Prepare missing tools in Hermsec-managed storage when auto-install is enabled.",
+  "Run built-in heuristics and external scanners with safe wrappers.",
+  "Normalize, dedupe, and merge findings into one evidence format.",
+  "Use the selected model mode only to explain scanner-backed evidence.",
+  "Write final report artifacts and link them in chat.",
+];
+
+const heuristicItems: Array<[string, string]> = [
+  ["Secrets", "Private keys, AWS/GitHub/Slack-style tokens, password/API-key assignments, and test fixture secrets."],
+  ["JavaScript/TypeScript", "Risky eval, dynamic functions, command execution, shell true, weak TLS, wildcard CORS, innerHTML, and SQL string construction."],
+  ["Python", "Dangerous subprocess patterns, eval-style behavior, insecure deserialization, weak crypto/config, and Flask-like risks."],
+  ["Java servlet taint", "Request sources, aliases, concatenation, StringBuilder flows, sanitizer families, and SQL/LDAP/XPath/file/process/response/session sinks."],
+  ["Manifests", "Package and lockfile signals that suggest dependency or lifecycle-script risk."],
+  ["Config", "Loose app posture, unsafe settings, exposed env-style data, and infrastructure/config mistakes."],
+];
+
+const scannerHarnessItems: Array<[string, string]> = [
+  ["Core", "Hermsec heuristics, Semgrep, Gitleaks, TruffleHog, OSV-Scanner, Trivy, and Checkov."],
+  ["JavaScript/TypeScript", "Semgrep, SafeDep PMG npm audit, OSV, Trivy, and Retire.js."],
+  ["Python", "Semgrep, Bandit, pip-audit, OSV, and Trivy."],
+  ["Java/PHP/Go/Rust/Ruby", "FindSecBugs, Dependency-Check, Psalm, composer audit, gosec, govulncheck, cargo-audit, and Brakeman where available."],
+  ["C/C++/.NET", "Flawfinder, Cppcheck, and .NET vulnerable package checks when the runtime/tooling exists."],
+  ["IaC and config", "Checkov, Trivy, and Semgrep for Terraform, Dockerfile, Kubernetes/YAML, and GitHub Actions-style files."],
+];
+
+const safetyItems = [
+  "Does not install dependencies inside the scanned repo.",
+  "Does not build or execute the target project.",
+  "Does not run target package lifecycle scripts.",
+  "Uses supported scanner commands and safe wrappers instead of arbitrary custom execution.",
+  "Caps scanner output and applies timeouts.",
+  "Keeps model explanations tied to existing finding ids, files, lines, scanner ids, packages, CVEs, GHSA/OSV ids, and CWEs.",
+  "Keeps benchmark raw exports separate from user-facing report output.",
+];
+
+const growthItems = [
+  "More bundled scanners across Windows and macOS.",
+  "Broader parser coverage for real-world scanner output.",
+  "Deeper AST-backed analysis for Java, PHP, Go, and Rust later.",
+  "More benchmark suites beyond OWASP BenchmarkJava.",
+  "Stronger cross-tool finding merge logic.",
+  "More reliable hosted Electron smoke testing.",
+];
+
 function AboutHermsecModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <Modal
       open={open}
       onClose={onClose}
       title="About Hermsec"
-      className="w-[min(680px,calc(100vw-48px))] max-h-[calc(100vh-96px)] overflow-hidden rounded-2xl bg-surface-elevated"
+      className="w-[min(760px,calc(100vw-48px))] max-h-[calc(100vh-96px)] overflow-hidden rounded-2xl bg-surface-elevated"
       bodyClassName="overflow-y-auto pr-2 pb-1"
     >
       <div className="mb-5 rounded-2xl border border-border bg-background/70 p-4">
@@ -267,7 +325,7 @@ function AboutHermsecModal({ open, onClose }: { open: boolean; onClose: () => vo
           <div>
             <h3 className="text-xl font-semibold tracking-tight text-foreground">Hermsec</h3>
             <p className="mt-1 text-sm text-muted">
-              A security IDE for local projects, built around scanner evidence and a bounded assistant.
+              A local-first security teammate for repositories: choose a project folder, run the right scanners safely, explain what matters, and produce a usable report.
             </p>
           </div>
         </div>
@@ -276,34 +334,42 @@ function AboutHermsecModal({ open, onClose }: { open: boolean; onClose: () => vo
       <div className="space-y-5">
         <AboutSection
           icon={<Shield className="h-4 w-4" />}
-          title="What Hermsec Is"
-          body="Hermsec helps developers inspect local repositories for security incidents before they ship. It is designed for project security conversations: scan a codebase, review evidence, understand priority, generate reports, and plan fixes without turning the assistant into an unrestricted coding agent."
-        />
-        <AboutSection
-          icon={<ScanLine className="h-4 w-4" />}
-          title="How Scans Work"
-          body="The scan starts with concrete tooling evidence, then turns that evidence into local reports. Hermsec keeps raw scanner findings visible so the model can explain and prioritize, but not erase or invent evidence."
-        />
-        <FeatureGrid
-          items={[
-            ["Hermsec heuristics", "Local pattern checks for secrets, risky execution, package/config risks, and common insecure code paths."],
-            ["Semgrep", "Static analysis rules for JavaScript, TypeScript, Python, and framework-level vulnerability patterns."],
-            ["Gitleaks", "Secret detection for tokens, keys, and credential-like values committed to source."],
-            ["Bandit", "Python security checks for unsafe subprocesses, eval usage, weak crypto, and more."],
-            ["OSV and pip-audit", "Dependency vulnerability checks against advisory databases for npm and Python ecosystems."],
-            ["SafeDep PMG", "Package-manager safety wrapper and npm audit support for supply-chain hygiene."],
-          ]}
+          title="Core Promise"
+          body="Hermsec treats the repo as evidence. It reads files, lockfiles, manifests, configs, and scanner output, then reports from that evidence. It is not trying to install dependencies, build, or execute the target project."
         />
         <AboutSection
           icon={<Bot className="h-4 w-4" />}
-          title="Agent Behavior"
-          body="The assistant is scoped to defensive security work. It can explain findings, show affected files and lines, walk through remediation, create a prompt for another coding agent, and answer follow-up questions from the latest report. If a provider is configured, it uses your selected model with a compact redacted evidence packet."
+          title="Agent Boundary"
+          body="The model can summarize, group, prioritize, and explain scanner-backed findings. It is not allowed to invent findings, files, line numbers, scanner ids, packages, CVEs, CWEs, or remediation evidence that is not already present."
         />
+        <FeatureGrid
+          items={aboutFeatureItems}
+        />
+        <AboutSection
+          icon={<ScanLine className="h-4 w-4" />}
+          title="How A Scan Works"
+          body="The scanner harness is deterministic. It profiles the project, matches that profile to a supported scanner catalog, prepares missing tools when allowed, runs scanners with guardrails, normalizes findings, then generates reports."
+        />
+        <NumberedFlow items={scanFlowItems} />
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
+            <Activity className="h-4 w-4 text-accent" />
+            Built-In Heuristics
+          </div>
+          <FeatureGrid items={heuristicItems} />
+        </div>
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
+            <FolderOpen className="h-4 w-4 text-accent" />
+            External Scanner Harness
+          </div>
+          <FeatureGrid items={scannerHarnessItems} />
+        </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <MiniCard
             icon={<FileText className="h-4 w-4" />}
             title="Reports"
-            text="Hermsec writes HTML, JSON, an interactive dashboard, a one-page executive report, and a PDF artifact into your configured report folder."
+            text="Hermsec writes HTML, JSON, Markdown, an interactive dashboard, a one-page executive report, and a PDF artifact."
           />
           <MiniCard
             icon={<Clock className="h-4 w-4" />}
@@ -318,31 +384,27 @@ function AboutHermsecModal({ open, onClose }: { open: boolean; onClose: () => vo
           <MiniCard
             icon={<Activity className="h-4 w-4" />}
             title="Online MVP"
-            text="V3 is online-scan-only: scanner evidence, dependency intelligence, report generation, and optional model explanation run as one pipeline."
+            text="V3 runs scanner evidence, dependency intelligence, report generation, and optional model explanation as one guided pipeline."
           />
         </div>
+        <BulletPanel title="Security Posture" items={safetyItems} />
+        <BulletPanel title="Where Hermsec Is Strong Now" items={[
+          "JS/TS/Node/React baseline scanning.",
+          "Python baseline scanning.",
+          "Secrets scanning.",
+          "Dependency and lockfile scanning when scanners are available.",
+          "Java servlet benchmark-style taint cases.",
+          "Scanner progress visibility, Doctor readiness, and local report generation.",
+        ]} />
+        <BulletPanel title="Where It Still Needs Growth" items={growthItems} />
         <div className="rounded-2xl border border-border bg-background/70 p-4">
           <div className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
             <CheckCircle2 className="h-4 w-4 text-success" />
-            Current MVP Features
+            Short Version
           </div>
-          <div className="grid gap-2 text-xs leading-relaxed text-muted sm:grid-cols-2">
-            {[
-              "Project-scoped persistent chats",
-              "Scanner progress with stage status",
-              "Stop and restart running scans",
-              "Interactive dashboard view",
-              "Chat-driven automation setup",
-              "Configurable report directory",
-              "Provider and model settings",
-              "Copy-ready fix prompts",
-            ].map((item) => (
-              <div key={item} className="flex items-center gap-2">
-                <ChevronRight className="h-3 w-3 text-accent" />
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
+          <p className="text-sm leading-relaxed text-muted">
+            Hermsec is a scanner orchestrator plus evidence-grounded security assistant. The scanners catch; Hermsec normalizes and prioritizes; the model explains without being allowed to make things up.
+          </p>
         </div>
       </div>
     </Modal>
@@ -375,6 +437,46 @@ function FeatureGrid({ items }: { items: Array<[string, string]> }) {
       {items.map(([title, text]) => (
         <MiniCard key={title} icon={<FolderOpen className="h-4 w-4" />} title={title} text={text} />
       ))}
+    </div>
+  );
+}
+
+function NumberedFlow({ items }: { items: string[] }) {
+  return (
+    <div className="rounded-2xl border border-border bg-background/70 p-4">
+      <div className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
+        <ScanLine className="h-4 w-4 text-accent" />
+        Scan Pipeline
+      </div>
+      <div className="grid gap-2 text-xs leading-relaxed text-muted sm:grid-cols-2">
+        {items.map((item, index) => (
+          <div key={item} className="flex gap-2">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-[10px] text-foreground">
+              {index + 1}
+            </span>
+            <span>{item}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BulletPanel({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="rounded-2xl border border-border bg-background/70 p-4">
+      <div className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
+        <CheckCircle2 className="h-4 w-4 text-success" />
+        {title}
+      </div>
+      <div className="grid gap-2 text-xs leading-relaxed text-muted sm:grid-cols-2">
+        {items.map((item) => (
+          <div key={item} className="flex gap-2">
+            <ChevronRight className="mt-0.5 h-3 w-3 shrink-0 text-accent" />
+            <span>{item}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

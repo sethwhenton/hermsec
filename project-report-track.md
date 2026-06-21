@@ -878,3 +878,49 @@ This file is the running engineering ledger for Hermsec. Use it to record meanin
 - The first inventory pass is intentionally lightweight and manifest/lockfile based. Full parsing for every ecosystem should keep expanding as scanner support grows.
 - CISA KEV can only match when a CVE is present in scanner/advisory evidence; pure package records without CVEs will not become KEV matches.
 - Live feed availability depends on network/cache state, but source failures are recorded as report limitations instead of failing the scan.
+
+## 2026-06-21 - Settings, Provider Discovery, Stop Action, And v0.1.4 Release Prep
+
+### Changes
+
+- Bumped root and desktop package versions to `0.1.4`.
+- Kept Privacy mode off by default, but enforced redaction for desktop report-chat/model context when the user enables it.
+- Removed the unused `Show reasoning` setting until a visible reasoning timeline exists.
+- Clarified Language as a future interface preference and kept the current UI fixed to English.
+- Replaced the passive Automation disabled pill with a `Configure` action that opens the Automations view.
+- Added a shared provider preset catalog for OpenCode Go, OpenAI, Anthropic, Google Gemini, Cursor as coming soon, and custom providers.
+- Added debounced provider validation/model discovery from the provider drawer.
+- Rebuilt Settings > Models as provider accordions with model toggles, refresh actions, and provider-scoped active model selection.
+- Updated runtime model selection, Doctor provider checks, chat model status, and the context bar to use `activeProviderId` plus `activeModelId`.
+- Put provider logos inside clean white tiles so dark logos remain visible on the dark settings surface.
+- Wired the composer send button to become the stop button while a scan/report/model action is busy.
+- Updated Hermsec agent prompts to be formal, concise, direct, and defensive-security scoped.
+- Expanded the About Hermsec modal with the scan pipeline, heuristics, scanner harness, safety posture, strengths, and growth areas.
+- Corrected `projectcontext.md` to reference the current split Windows/macOS release workflows and current provider setup.
+- Hardened Windows and macOS release workflows so simultaneous tag-triggered publishers fall back to upload/edit if another workflow creates the GitHub Release first.
+
+### Issues And Fixes
+
+- Issue: dark provider logos disappeared into the dark card background.
+- Fix: added a shared white provider-logo tile with fallback initials.
+- Issue: treating Cursor like a normal model provider would be misleading.
+- Fix: kept Cursor visible as a coming-soon integration card with discovery disabled.
+- Issue: model IDs can overlap across providers.
+- Fix: provider-scoped active model selection now stores and uses the provider id with the model id.
+- Issue: a first local secret-scan command failed because PowerShell quote escaping was wrong.
+- Fix: reran the scan with corrected quoting; it matched only `.env.example` placeholders and fake test keys.
+
+### Verification
+
+- Root `npm run typecheck` passed.
+- Desktop `npm run desktop:typecheck` passed.
+- Root `npm test` passed with `76/76`.
+- Desktop `npm run desktop:build` passed.
+- Desktop `npm run desktop:smoke:doctor` passed with healthScore `100`, required `7/7`, scanners `6/6`, internet `5/5`, and expected provider warning in the isolated smoke environment.
+- Desktop `npm run desktop:smoke:dashboard` passed and generated dashboard/PDF artifacts under `.hermsec\v3-dashboard-smoke\hermsec-node-express-vuln-lab\2026-06-21T13-01-09-723Z`.
+
+### Release Plan
+
+- Commit and push the current `main` changes.
+- Push tag `v0.1.4`.
+- The tag-triggered Windows and macOS workflows should build installers and create/update the GitHub Release because GitHub CLI is not installed locally.

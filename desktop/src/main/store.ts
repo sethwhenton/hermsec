@@ -4,29 +4,35 @@ import { app } from "electron";
 import type { HermsecScanAssistMode } from "../renderer/src/types/scan";
 import type { AppSettings, AutomationFrequency, DeepPartial, ProviderConfig } from "../renderer/src/types/settings";
 import { getEnvDefaults } from "./env";
+import { normalizeProviderConfig, providerFromPreset, providerPresets } from "./providerCatalog";
 import { defaultScannerSettings, normalizeScannerSettings } from "./scannerDefaults";
 
 const SETTINGS_FILE = "settings.json";
 
 function defaultProvider(env: ReturnType<typeof getEnvDefaults>): ProviderConfig {
-  const models = [
-    { id: "kimi-k2.6", label: "Kimi K2.6", enabled: true },
-    { id: "glm-5.1", label: "GLM 5.1", enabled: true },
-    { id: "deepseek-v4-pro", label: "DeepSeek V4 Pro", enabled: true },
-    { id: "deepseek-v4-flash", label: "DeepSeek V4 Flash", enabled: true },
-  ];
-
-  if (!models.some((model) => model.id === env.model)) {
-    models.unshift({ id: env.model, label: env.model, enabled: true });
-  }
+  const preset = providerPresets().find((item) => item.id === env.provider);
+  const provider = preset
+    ? providerFromPreset(preset)
+    : {
+        id: env.provider,
+        displayName: env.provider,
+        baseUrl: env.baseUrl,
+        apiFormat: "openai-compatible" as const,
+        authKind: "environment" as const,
+        apiKeyEnvVar: env.apiKeyEnvVar,
+        enabled: true,
+        supportsModelDiscovery: true,
+        models: [],
+        modelDiscovery: { status: "idle" as const },
+      };
+  const models = provider.models.some((model) => model.id === env.model)
+    ? provider.models
+    : [{ id: env.model, label: env.model, enabled: true }, ...provider.models];
 
   return {
-    id: env.provider,
-    displayName: "OpenCode Go",
+    ...provider,
     baseUrl: env.baseUrl,
-    authKind: "environment",
     apiKeyEnvVar: env.apiKeyEnvVar,
-    enabled: true,
     models,
   };
 }
@@ -38,7 +44,6 @@ function defaultSettings(): AppSettings {
       language: "English",
       autoAcceptPermissions: false,
       terminalShell: "Auto (Default)",
-      showReasoning: true,
       privacyMode: false,
       scanMode: "scanner-model-summary",
       thinkingLevel: "balanced",
@@ -47,6 +52,7 @@ function defaultSettings(): AppSettings {
     defaultProjectDir: "",
     defaultReportDir: join(app.getPath("documents"), "Hermsec", "reports"),
     activeModelId: env.model,
+    activeProviderId: env.provider,
     automation: {
       enabled: false,
       frequency: "custom-days",
@@ -122,7 +128,9 @@ export function updateSettings(partial: DeepPartial<AppSettings>): AppSettings {
 function normalizeSettings(settings: AppSettings): AppSettings {
   const defaults = defaultSettings();
   const defaultProvider = defaults.providers[0];
-  const providers = settings.providers.map((provider) => {
+  const generalSettings = { ...(settings.general as AppSettings["general"] & { showReasoning?: boolean }) };
+  delete generalSettings.showReasoning;
+  const providers = settings.providers.map(normalizeProviderConfig).map((provider) => {
     if (provider.id !== defaultProvider.id) return provider;
     const existingModelIds = new Set(provider.models.map((model) => model.id));
     const defaultModelsById = new Map(defaultProvider.models.map((model) => [model.id, model]));
@@ -151,23 +159,16 @@ function normalizeSettings(settings: AppSettings): AppSettings {
     providers.unshift(defaultProvider);
   }
 
-  const enabledModelIds = new Set(
-    providers.flatMap((provider) =>
-      provider.enabled ? provider.models.filter((model) => model.enabled).map((model) => model.id) : [],
-    ),
-  );
-  const activeModelId = settings.activeModelId && enabledModelIds.has(settings.activeModelId)
-    ? settings.activeModelId
-    : providers.find((provider) => provider.enabled)?.models.find((model) => model.enabled)?.id;
+  const activeSelection = normalizeActiveSelection(providers, settings.activeProviderId, settings.activeModelId);
 
   return {
     ...settings,
     defaultProjectDir: normalizeDefaultProjectDir(settings.defaultProjectDir),
     general: {
-      ...settings.general,
-      scanMode: normalizeScanModeSetting(settings.general.scanMode),
-      thinkingLevel: normalizeThinkingLevel(settings.general.thinkingLevel),
-      contextWindow: normalizeContextWindow(settings.general.contextWindow),
+      ...generalSettings,
+      scanMode: normalizeScanModeSetting(generalSettings.scanMode),
+      thinkingLevel: normalizeThinkingLevel(generalSettings.thinkingLevel),
+      contextWindow: normalizeContextWindow(generalSettings.contextWindow),
     },
     automation: {
       enabled: Boolean(settings.automation?.enabled),
@@ -185,20 +186,39 @@ function normalizeSettings(settings: AppSettings): AppSettings {
     },
     providers,
     scanners: normalizeScannerSettings(settings.scanners),
-    ...(activeModelId ? { activeModelId } : {}),
+    ...(activeSelection ? { activeProviderId: activeSelection.providerId, activeModelId: activeSelection.modelId } : {}),
   };
+}
+
+function normalizeActiveSelection(
+  providers: ProviderConfig[],
+  providerId: string | undefined,
+  modelId: string | undefined,
+): { providerId: string; modelId: string } | undefined {
+  const provider = providerId ? providers.find((item) => item.enabled && item.id === providerId) : undefined;
+  const providerModel = provider?.models.find((model) => model.enabled && model.id === modelId);
+  if (provider && providerModel) {
+    return { providerId: provider.id, modelId: providerModel.id };
+  }
+
+  if (modelId) {
+    const matchingProvider = providers.find((item) =>
+      item.enabled && item.models.some((model) => model.enabled && model.id === modelId),
+    );
+    if (matchingProvider) {
+      return { providerId: matchingProvider.id, modelId };
+    }
+  }
+
+  const fallbackProvider = providers.find((item) => item.enabled && item.models.some((model) => model.enabled));
+  const fallbackModel = fallbackProvider?.models.find((model) => model.enabled);
+  return fallbackProvider && fallbackModel
+    ? { providerId: fallbackProvider.id, modelId: fallbackModel.id }
+    : undefined;
 }
 
 function normalizeDefaultProjectDir(projectDir: string | undefined): string {
   const value = String(projectDir ?? "").trim();
-  if (!value) return "";
-  const normalized = value.replace(/\\/g, "/").toLowerCase();
-  if (
-    normalized.includes("/test projects/hermsec-node-express-vuln-lab") ||
-    normalized.includes("/test projects/hermsec-python-flask-vuln-lab")
-  ) {
-    return "";
-  }
   return value;
 }
 

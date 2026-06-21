@@ -468,12 +468,12 @@ function desktopProviderChecks(settings: AppSettings): DoctorCheck[] {
     ];
   }
 
-  return enabledProviders.map((provider) => desktopProviderCheck(provider, settings.activeModelId));
+  return enabledProviders.map((provider) => desktopProviderCheck(provider, settings.activeProviderId, settings.activeModelId));
 }
 
-function desktopProviderCheck(provider: ProviderConfig, activeModelId?: string): DoctorCheck {
+function desktopProviderCheck(provider: ProviderConfig, activeProviderId?: string, activeModelId?: string): DoctorCheck {
   const model =
-    provider.models.find((item) => item.enabled && item.id === activeModelId) ??
+    provider.models.find((item) => provider.id === activeProviderId && item.enabled && item.id === activeModelId) ??
     provider.models.find((item) => item.enabled);
   const hasKey = Boolean(resolveDesktopProviderApiKey(provider));
   const hasBaseUrl = Boolean(provider.baseUrl?.trim());

@@ -1,6 +1,7 @@
-import { FolderOpen } from "lucide-react";
+import { CalendarClock, FolderOpen } from "lucide-react";
 import { getHermsecApi } from "@/lib/ipc";
 import { useSettingsStore } from "@/store/settingsStore";
+import { useUiStore } from "@/store/uiStore";
 import { ScanModeSegmentedControl } from "@/components/scan/ScanModeSegmentedControl";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -30,6 +31,7 @@ function SettingRow({
 export function GeneralSettings() {
   const settings = useSettingsStore((s) => s.settings);
   const update = useSettingsStore((s) => s.update);
+  const setView = useUiStore((s) => s.setView);
 
   if (!settings) return null;
 
@@ -48,15 +50,14 @@ export function GeneralSettings() {
       <h1 className="mb-6 text-xl font-medium">General</h1>
       <SettingRow
         title="Language"
-        description="Choose the language used for the interface."
+        description="The desktop interface currently stays in English. Translation support is planned."
       >
         <Select
-          value={general.language}
-          onChange={(language) => void update({ general: { ...general, language } })}
+          value="English"
+          onChange={() => undefined}
+          disabled
           options={[
             { value: "English", label: "English" },
-            { value: "German", label: "German" },
-            { value: "French", label: "French" },
           ]}
         />
       </SettingRow>
@@ -83,15 +84,6 @@ export function GeneralSettings() {
             { value: "PowerShell", label: "PowerShell" },
             { value: "bash", label: "bash" },
           ]}
-        />
-      </SettingRow>
-      <SettingRow
-        title="Show reasoning"
-        description="Display agent reasoning steps in the chat timeline."
-      >
-        <Toggle
-          checked={general.showReasoning}
-          onChange={(showReasoning) => void update({ general: { ...general, showReasoning } })}
         />
       </SettingRow>
       <SettingRow
@@ -151,9 +143,15 @@ export function GeneralSettings() {
         title="Automation"
         description="In-app schedule that checks project changes while Hermsec is open."
       >
-        <span className="rounded-md border border-border bg-surface-elevated px-3 py-1.5 text-xs text-foreground">
-          {settings.automation.enabled ? `${formatFrequency(settings.automation)} at ${settings.automation.time}` : "Disabled"}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="rounded-md border border-border bg-surface-elevated px-3 py-1.5 text-xs text-foreground">
+            {settings.automation.enabled ? `${formatFrequency(settings.automation)} at ${settings.automation.time}` : "Disabled"}
+          </span>
+          <Button variant="outline" size="sm" onClick={() => setView("automations")}>
+            <CalendarClock className="h-3.5 w-3.5" />
+            Configure
+          </Button>
+        </div>
       </SettingRow>
     </div>
   );

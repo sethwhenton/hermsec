@@ -195,5 +195,8 @@ jobs:
             gh release upload "${RELEASE_TAG}" "${assets[@]}" --clobber
             gh release edit "${RELEASE_TAG}" --notes-file release-notes.md --title "Hermsec ${RELEASE_TAG}"
           else
-            gh release create "${RELEASE_TAG}" "${assets[@]}" --title "Hermsec ${RELEASE_TAG}" --notes-file release-notes.md
+            if ! gh release create "${RELEASE_TAG}" "${assets[@]}" --title "Hermsec ${RELEASE_TAG}" --notes-file release-notes.md; then
+              gh release upload "${RELEASE_TAG}" "${assets[@]}" --clobber
+              gh release edit "${RELEASE_TAG}" --notes-file release-notes.md --title "Hermsec ${RELEASE_TAG}"
+            fi
           fi

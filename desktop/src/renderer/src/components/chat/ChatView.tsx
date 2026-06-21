@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Clock, LayoutDashboard } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { requireHermsecApi } from "@/lib/ipc";
 import { normalizeScanAssistMode, scanModeLabel, scanModeOptions } from "@/lib/scanModes";
@@ -86,6 +86,10 @@ type AssistantAnswer = string | {
 };
 type ParsedAutomation = Pick<AutomationSettings, "frequency" | "intervalDays" | "time">;
 type HermsecActionRoute = "scan" | "automation" | "capabilities" | "doctor" | "fix-prompt" | "chat";
+interface ActiveHermsecAction {
+  id: number;
+  stop?: () => void;
+}
 const DOCTOR_RUN_TIMEOUT_MS = 35_000;
 const SCAN_MODE_QUESTION_ID = "scan_mode";
 
@@ -107,8 +111,14 @@ export function ChatView() {
   const latestReport = useReportStore((s) => s.latestReport);
   const hydrateLatest = useReportStore((s) => s.hydrateLatest);
   const [pendingAutomation, setPendingAutomation] = useState<Partial<ParsedAutomation> | null>(null);
+  const actionSequenceRef = useRef(0);
+  const activeActionRef = useRef<ActiveHermsecAction | null>(null);
 
   const hasMessages = chatItems.length > 0;
+  const activeProjectPath = () =>
+    useSettingsStore.getState().settings?.defaultProjectDir?.trim() ||
+    useSessionStore.getState().currentSession?.projectPath?.trim() ||
+    "";
 
   useEffect(() => {
     if (!settings?.defaultProjectDir) return;
@@ -139,7 +149,7 @@ export function ChatView() {
     const nextItems = [...useUiStore.getState().chatItems, item];
     setChatItems(nextItems);
     await persistCurrentSession(
-      settings?.defaultProjectDir ?? "",
+      activeProjectPath(),
       nextItems,
       role === "user" ? content : undefined,
     );
@@ -153,7 +163,7 @@ export function ChatView() {
     };
     const nextItems = [...useUiStore.getState().chatItems, item];
     setChatItems(nextItems);
-    await persistCurrentSession(settings?.defaultProjectDir ?? "", nextItems);
+    await persistCurrentSession(activeProjectPath(), nextItems);
   };
 
   const pushScanProgressItem = async () => {
@@ -167,10 +177,50 @@ export function ChatView() {
     };
     const nextItems = [...useUiStore.getState().chatItems, item];
     setChatItems(nextItems);
-    await persistCurrentSession(settings?.defaultProjectDir ?? "", nextItems);
+    await persistCurrentSession(activeProjectPath(), nextItems);
   };
 
-  const pushDoctorItem = async () => {
+  const beginAction = (status: string, stop?: () => void) => {
+    const id = actionSequenceRef.current + 1;
+    actionSequenceRef.current = id;
+    activeActionRef.current = { id, stop };
+    setAgentThinking(true);
+    setAgentStatus(status);
+    return id;
+  };
+
+  const isActionCurrent = (id: number) => activeActionRef.current?.id === id;
+
+  const setActionStop = (id: number, stop: () => void) => {
+    if (!isActionCurrent(id)) return;
+    activeActionRef.current = { id, stop };
+  };
+
+  const finishAction = (id: number) => {
+    if (!isActionCurrent(id)) return;
+    activeActionRef.current = null;
+    setAgentThinking(false);
+    setAgentStatus("Thinking...");
+  };
+
+  const handleStopAction = () => {
+    const active = activeActionRef.current;
+    const shouldStopScan = useReportStore.getState().scanRunning;
+    if (!active && !shouldStopScan) return;
+
+    actionSequenceRef.current += 1;
+    activeActionRef.current = null;
+    if (active?.stop) {
+      active.stop();
+    } else if (shouldStopScan) {
+      void cancelScan();
+    }
+    setAgentThinking(false);
+    setAgentStatus("Action stopped.");
+    void pushMessage("assistant", "Stopped the current action.");
+  };
+
+  const pushDoctorItem = async (actionId?: number) => {
     const api = requireHermsecApi();
     const id = createId();
     const item: ChatItem = {
@@ -191,6 +241,7 @@ export function ChatView() {
     };
 
     const unsubscribe = api.doctor.onProgress((event) => {
+      if (actionId && !isActionCurrent(actionId)) return;
       if (event.runId !== id) return;
       setAgentStatus(progressStatusText(event));
       updateDoctorItem((current) => {
@@ -203,20 +254,51 @@ export function ChatView() {
       });
     });
 
+    if (actionId) {
+      setActionStop(actionId, () => {
+        unsubscribe();
+        const stoppedItems = updateDoctorItem((current) =>
+          current.kind === "doctor"
+            ? {
+                ...current,
+                running: false,
+                error: "Doctor stopped by you.",
+                progress: [
+                  ...(current.progress ?? []),
+                  {
+                    id: "doctor-stopped",
+                    runId: id,
+                    groupId: "required",
+                    label: "Doctor stopped",
+                    status: "fail",
+                    requirement: "optional",
+                    message: "Doctor checks were stopped by you.",
+                    at: Date.now(),
+                  },
+                ],
+              }
+            : current,
+        );
+        void persistCurrentSession(activeProjectPath(), stoppedItems);
+      });
+    }
+
     try {
       const result = await withTimeout(
         api.doctor.run(id),
         DOCTOR_RUN_TIMEOUT_MS,
         `Doctor did not finish within ${Math.round(DOCTOR_RUN_TIMEOUT_MS / 1000)} seconds. The run was stopped in the chat so it cannot loop forever.`,
       );
+      if (actionId && !isActionCurrent(actionId)) return;
       const completedItems = updateDoctorItem((current) =>
         current.kind === "doctor"
           ? { ...current, result, running: false, error: undefined }
           : current,
       );
       setAgentStatus(result.ok ? "Doctor checks completed." : "Doctor finished with items to review.");
-      await persistCurrentSession(settings?.defaultProjectDir ?? "", completedItems);
+      await persistCurrentSession(activeProjectPath(), completedItems);
     } catch (error) {
+      if (actionId && !isActionCurrent(actionId)) return;
       const message = error instanceof Error ? error.message : "Doctor could not complete.";
       const failedItems = updateDoctorItem((current) =>
         current.kind === "doctor"
@@ -241,7 +323,7 @@ export function ChatView() {
           : current,
       );
       setAgentStatus("Doctor stopped before it could complete.");
-      await persistCurrentSession(settings?.defaultProjectDir ?? "", failedItems);
+      await persistCurrentSession(activeProjectPath(), failedItems);
     } finally {
       unsubscribe();
     }
@@ -274,7 +356,9 @@ export function ChatView() {
     ]);
 
   const runProjectScan = async (assistModeInput?: HermsecScanAssistMode) => {
-    if (!settings?.defaultProjectDir?.trim()) {
+    const projectPath = activeProjectPath();
+    const currentSettings = useSettingsStore.getState().settings;
+    if (!projectPath) {
       await pushMessage(
         "assistant",
         "Choose a project folder first, then I can scan it. Use **New chat** or the **+** button in Projects to select the repository you want Hermsec to inspect.",
@@ -282,24 +366,32 @@ export function ChatView() {
       return;
     }
 
-    const assistMode = normalizeScanAssistMode(assistModeInput ?? settings?.general.scanMode);
+    const assistMode = normalizeScanAssistMode(assistModeInput ?? currentSettings?.general.scanMode);
     const label = scanModeLabel(assistMode);
-    setAgentThinking(true);
-    setAgentStatus(
+    const actionId = beginAction(
       assistMode === "deep-assisted"
         ? "Starting deep assisted scan..."
         : "Starting scanner + model summary scan...",
+      () => {
+        void cancelScan();
+      },
     );
     try {
       const result = await runScan({
-        targetPath: settings?.defaultProjectDir,
-        reportDir: settings?.defaultReportDir,
+        targetPath: projectPath,
+        reportDir: currentSettings?.defaultReportDir,
         mode: "online",
         assistMode,
         useModel: true,
       });
+      if (!isActionCurrent(actionId)) return;
 
       if (!result.ok) {
+        if (result.canceled) {
+          await pushScanProgressItem();
+          await pushMessage("assistant", "Scan stopped.");
+          return;
+        }
         await pushMessage("assistant", `Scan failed. ${result.message}`);
         return;
       }
@@ -316,11 +408,11 @@ export function ChatView() {
         reportLinks.length > 0 ? reportLinks : undefined,
       );
     } catch (error) {
+      if (!isActionCurrent(actionId)) return;
       const message = error instanceof Error ? error.message : "Hermsec could not complete the scan.";
       await pushMessage("assistant", `Scan failed. ${message}`);
     } finally {
-      setAgentThinking(false);
-      setAgentStatus("Thinking...");
+      finishAction(actionId);
     }
   };
 
@@ -378,8 +470,9 @@ export function ChatView() {
 
   const handleSend = async (text: string) => {
     await pushMessage("user", text);
-    setAgentThinking(true);
-    setAgentStatus("Understanding your request...");
+    const actionId = beginAction("Understanding your request...", () => {
+      void requireHermsecApi().reports.cancel();
+    });
 
     try {
       const currentItems = useUiStore.getState().chatItems;
@@ -390,6 +483,7 @@ export function ChatView() {
           ...pendingAutomation,
           ...parseAutomationRequest(text),
         });
+        if (!isActionCurrent(actionId)) return;
         return;
       }
 
@@ -397,12 +491,14 @@ export function ChatView() {
       if (route === "scan") {
         setAgentStatus("Preparing scan mode choices...");
         await pushScanModeQuestions();
+        if (!isActionCurrent(actionId)) return;
         return;
       }
 
       if (route === "automation") {
         setAgentStatus("Planning a scan automation...");
         await handleAutomationRequest(text);
+        if (!isActionCurrent(actionId)) return;
         return;
       }
 
@@ -413,27 +509,30 @@ export function ChatView() {
           "I can scan this repo, explain the findings in plain language, show you where issues sit in code, help prioritize fixes, generate a fix prompt for another coding agent, and set an in-app scan automation.",
         );
         await pushCapabilityQuestions();
+        if (!isActionCurrent(actionId)) return;
         return;
       }
 
       if (route === "doctor") {
         setAgentStatus("Checking scanner tools and internet sources...");
-        await pushDoctorItem();
+        await pushDoctorItem(actionId);
+        if (!isActionCurrent(actionId)) return;
         return;
       }
 
       setAgentStatus(route === "fix-prompt" ? "Preparing a scanner-backed fix prompt..." : agentModelStatus(settings));
-      const response = await answerSecurityQuestion(text, latestReportPath, settings?.defaultProjectDir, currentItems);
+      const response = await answerSecurityQuestion(text, latestReportPath, activeProjectPath(), currentItems);
+      if (!isActionCurrent(actionId)) return;
       const answer = normalizeAssistantAnswer(response);
       await pushMessage("assistant", answer.content, answer.reportLink, answer.copyAction);
     } catch (error) {
+      if (!isActionCurrent(actionId)) return;
       await pushMessage(
         "assistant",
         error instanceof Error ? `Hermsec could not complete that action. ${error.message}` : "Hermsec could not complete that action.",
       );
     } finally {
-      setAgentThinking(false);
-      setAgentStatus("Thinking...");
+      finishAction(actionId);
     }
   };
 
@@ -527,14 +626,20 @@ export function ChatView() {
         </AnimatePresence>
 
         <div className="w-full">
+          {hasMessages && !scanRunning && !isAgentThinking ? (
+            <QuickActions
+              compact
+              className="mb-2 justify-start px-1"
+              onAction={handleQuickAction}
+            />
+          ) : null}
           <Composer
             onSend={handleSend}
             disabled={isAgentThinking}
+            busy={isAgentThinking || scanRunning}
             scanRunning={scanRunning}
             compact={hasMessages}
-            onStopScan={() => {
-              void cancelScan();
-            }}
+            onStop={handleStopAction}
             onRestartScan={() => {
               void restartScan();
             }}
@@ -748,9 +853,15 @@ function normalizeAssistantAnswer(answer: AssistantAnswer): {
 
 function agentModelStatus(settings: AppSettings | null): string {
   const activeModelId = settings?.activeModelId;
-  const activeModel = settings?.providers
-    .flatMap((provider) => provider.models.map((model) => ({ ...model, provider: provider.displayName })))
-    .find((model) => model.enabled && model.id === activeModelId);
+  const activeProviderId = settings?.activeProviderId;
+  const modelOptions = settings?.providers
+    .filter((provider) => provider.enabled)
+    .flatMap((provider) =>
+      provider.models.map((model) => ({ ...model, providerId: provider.id, provider: provider.displayName })),
+    ) ?? [];
+  const activeModel =
+    modelOptions.find((model) => model.enabled && model.id === activeModelId && model.providerId === activeProviderId) ??
+    modelOptions.find((model) => model.enabled && model.id === activeModelId);
 
   if (activeModel) {
     return `Reading report evidence and asking ${activeModel.label} (${thinkingLabel(settings?.general.thinkingLevel)})...`;

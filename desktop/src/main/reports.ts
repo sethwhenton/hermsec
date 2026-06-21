@@ -10,8 +10,10 @@ import type {
   LatestReportResult,
   OpenArtifactRequest,
   OpenArtifactResult,
+  ReportControlResult,
 } from "../renderer/src/types/reports";
 import type { ProviderConfig } from "../renderer/src/types/settings";
+import { redactPrivacyText, redactPrivacyValue } from "./privacy";
 import { dashboardBundle } from "./reportArtifacts";
 import { openReportLocation } from "./scan";
 import { readSettings } from "./store";
@@ -61,6 +63,8 @@ interface ReportCandidate {
   mtimeMs: number;
 }
 
+let activeConversationController: AbortController | null = null;
+
 export function explainReport(request: ExplainReportRequest): ExplainReportResult {
   try {
     const reportPath = path.resolve(request.reportPath);
@@ -80,15 +84,18 @@ export function explainReport(request: ExplainReportRequest): ExplainReportResul
       question,
       previousPrompt: request.previousPrompt,
     });
+    const output = readSettings().general.privacyMode
+      ? privacyProtectReportAnswer(answer, summary?.target?.value)
+      : answer;
 
     return {
       ok: true,
-      message: answer.message,
+      message: output.message,
       reportPath,
-      intent: answer.intent,
-      ...(answer.copyLabel ? { copyLabel: answer.copyLabel } : {}),
-      ...(answer.copyText ? { copyText: answer.copyText } : {}),
-      ...(answer.promptFilePath ? { promptFilePath: answer.promptFilePath } : {}),
+      intent: output.intent,
+      ...(output.copyLabel ? { copyLabel: output.copyLabel } : {}),
+      ...(output.copyText ? { copyText: output.copyText } : {}),
+      ...(output.promptFilePath ? { promptFilePath: output.promptFilePath } : {}),
     };
   } catch (error) {
     return {
@@ -101,6 +108,7 @@ export function explainReport(request: ExplainReportRequest): ExplainReportResul
 
 export async function converseReport(request: ConverseReportRequest): Promise<ConverseReportResult> {
   try {
+    const privacyMode = readSettings().general.privacyMode;
     const resolvedReportPath = resolveConversationReportPath(request);
     let reportPath: string | undefined;
     let evidence: ConversationEvidence;
@@ -123,10 +131,14 @@ export async function converseReport(request: ConverseReportRequest): Promise<Co
       evidence = buildGeneralConversationEvidence(request.projectPath);
     }
 
+    const projectRoot = evidence.projectRoot ?? request.projectPath;
+    const modelEvidence = privacyMode ? redactPrivacyValue(evidence, projectRoot) : evidence;
     const modelMessage = await callConversationModel({
       question: request.question,
       history: request.history ?? [],
-      evidence,
+      evidence: modelEvidence,
+      privacyMode,
+      projectRoot,
     });
 
     if (modelMessage) {
@@ -141,7 +153,9 @@ export async function converseReport(request: ConverseReportRequest): Promise<Co
 
     return {
       ok: true,
-      message: buildConversationalFallback(request.question, evidence),
+      message: privacyMode
+        ? redactPrivacyText(buildConversationalFallback(request.question, evidence), projectRoot)
+        : buildConversationalFallback(request.question, evidence),
       ...(reportPath ? { reportPath } : {}),
       usedModel: false,
     };
@@ -152,6 +166,16 @@ export async function converseReport(request: ConverseReportRequest): Promise<Co
       error: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+export function cancelActiveReportAction(): ReportControlResult {
+  if (!activeConversationController) {
+    return { ok: false, message: "No report action is currently running." };
+  }
+
+  activeConversationController.abort();
+  activeConversationController = null;
+  return { ok: true, message: "Report action stop requested." };
 }
 
 export function latestReport(projectPath?: string): LatestReportResult {
@@ -403,6 +427,14 @@ function buildReportAnswer({
   };
 }
 
+function privacyProtectReportAnswer(answer: BuiltReportAnswer, projectRoot?: string): BuiltReportAnswer {
+  return {
+    ...answer,
+    message: redactPrivacyText(answer.message, projectRoot),
+    ...(answer.copyText ? { copyText: redactPrivacyText(answer.copyText, projectRoot) } : {}),
+  };
+}
+
 interface ConversationEvidenceFinding {
   title: string;
   severity: string;
@@ -479,24 +511,31 @@ async function callConversationModel({
   question,
   history,
   evidence,
+  privacyMode,
+  projectRoot,
 }: {
   question: string;
   history: ConverseReportRequest["history"];
   evidence: ConversationEvidence;
+  privacyMode: boolean;
+  projectRoot?: string;
 }): Promise<{ message: string; modelId: string } | null> {
   const modelConfig = resolveModelConfig();
   if (!modelConfig) return null;
 
   const controller = new AbortController();
+  activeConversationController?.abort();
+  activeConversationController = controller;
   const timeout = setTimeout(() => controller.abort(), 20_000);
   const messages = [
     {
       role: "system",
       content: [
         "You are Hermsec, a defensive security assistant for repository owners.",
-        "You can have a normal friendly chat with the user, but your product role is security guidance for their selected project.",
-        "Speak like a practical security coach: conversational, specific, calm, and not robotic.",
-        "If the user greets you or asks a general question, respond naturally and briefly, then offer useful Hermsec next steps.",
+        "Use a formal, concise, direct tone.",
+        "Avoid casual greetings, playful language, excessive encouragement, and ultra-friendly chat.",
+        "Answer with the minimum context needed to be useful.",
+        "For general questions, answer briefly and then state the relevant Hermsec next step if applicable.",
         "Return only the final answer shown to the user.",
         "Never reveal hidden reasoning, chain-of-thought, planning notes, internal checklists, or statements like 'The user is asking...' or 'I need to...'.",
         "Do not narrate how you are deciding what to do. Just answer.",
@@ -507,7 +546,7 @@ async function callConversationModel({
         "You may explain risk, show affected files/lines, recommend patches, and help the user decide what to fix first.",
         "You may help plan scan automations, report settings, provider/model settings, and safe remediation workflows.",
         "Hermsec action map:",
-        "- Normal chat: answer conversationally while staying around repository security and Hermsec usage.",
+        "- Normal chat: answer directly while staying around repository security and Hermsec usage.",
         "- Read scan/report: explain supplied report evidence, findings, affected files, severity, and remediation order.",
         "- Start scan: if the user asks to scan, tell them Hermsec can run the Online scan pipeline; the app router may start it directly.",
         "- Set automation: if the user asks for recurring scans, help gather cadence and exact time; the app router may persist it directly.",
@@ -523,10 +562,10 @@ async function callConversationModel({
         JSON.stringify(evidence, null, 2),
       ].join("\n"),
     },
-    ...normalizeConversationHistory(history).slice(-modelConfig.historyTurns),
+    ...normalizeConversationHistory(history, privacyMode, projectRoot).slice(-modelConfig.historyTurns),
     {
       role: "user",
-      content: question,
+      content: privacyMode ? redactPrivacyText(question, projectRoot) : redactSensitive(question),
     },
   ];
 
@@ -552,7 +591,7 @@ async function callConversationModel({
     };
     const rawContent = body.choices?.[0]?.message?.content?.trim();
     if (!rawContent) return null;
-    const content = sanitizeModelAnswer(rawContent, question, evidence);
+    const content = sanitizeModelAnswer(rawContent, question, evidence, privacyMode, projectRoot);
     if (!content) return null;
     return {
       message: content,
@@ -561,21 +600,34 @@ async function callConversationModel({
   } catch {
     return null;
   } finally {
+    if (activeConversationController === controller) {
+      activeConversationController = null;
+    }
     clearTimeout(timeout);
   }
 }
 
-function normalizeConversationHistory(history: ConverseReportRequest["history"] = []) {
+function normalizeConversationHistory(
+  history: ConverseReportRequest["history"] = [],
+  privacyMode = false,
+  projectRoot?: string,
+) {
   return history
     .filter((message) => message.content.trim())
     .map((message) => ({
       role: message.role,
-      content: redactSensitive(message.content).slice(0, 2000),
+      content: (privacyMode ? redactPrivacyText(message.content, projectRoot) : redactSensitive(message.content)).slice(0, 2000),
     }));
 }
 
-function sanitizeModelAnswer(content: string, question: string, evidence: ConversationEvidence): string | null {
-  const redacted = redactSensitive(content).trim();
+function sanitizeModelAnswer(
+  content: string,
+  question: string,
+  evidence: ConversationEvidence,
+  privacyMode: boolean,
+  projectRoot?: string,
+): string | null {
+  const redacted = (privacyMode ? redactPrivacyText(content, projectRoot) : redactSensitive(content)).trim();
   if (!redacted) return null;
 
   const finalAnswer = extractFinalAnswer(redacted);
@@ -646,6 +698,7 @@ function resolveModelConfig(): { baseUrl: string; apiKey: string; modelId: strin
   const settings = readSettings();
   const candidates = settings.providers.filter((provider) => provider.enabled);
   const provider =
+    candidates.find((item) => item.id === settings.activeProviderId && item.models.some((model) => model.enabled && model.id === settings.activeModelId)) ??
     candidates.find((item) => item.models.some((model) => model.enabled && model.id === settings.activeModelId)) ??
     candidates[0];
   if (!provider) return null;
@@ -708,10 +761,10 @@ function buildConversationalFallback(question: string, evidence: ConversationEvi
   if (evidence.findings.length === 0) {
     if (evidence.note) {
       return [
-        "Hey, I am here.",
-        `I can chat with you about ${evidence.targetName}, help set up scans or automations, explain how Hermsec works, and once you run a scan I can walk through exact findings with file and line evidence.`,
+        "I am available.",
+        `I can answer questions about ${evidence.targetName}, configure scans or automations, explain Hermsec behavior, and review exact findings after a scan is available.`,
         "",
-        "If you want to start practically, tell me: scan this project, set an automation, explain the app, or help me think through security risks.",
+        "Available actions: scan this project, set an automation, explain the app, or review security risks.",
       ].join("\n");
     }
     return [

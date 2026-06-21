@@ -13,8 +13,9 @@ import type { ScannerListRequest } from "../renderer/src/types/scanners";
 import type { CreateChatSessionRequest, UpdateChatSessionRequest } from "../renderer/src/types/sessions";
 import { runDoctor } from "./doctor";
 import { testProvider } from "./providerTest";
+import { providerPresets } from "./providerCatalog";
 import { archiveProjectDirectory, deleteProjectDirectory, listProjectDirectories, registerProjectDirectory } from "./projects";
-import { converseReport, explainReport, getDashboardBundle, latestReport, openArtifact } from "./reports";
+import { cancelActiveReportAction, converseReport, explainReport, getDashboardBundle, latestReport, openArtifact } from "./reports";
 import { cancelActiveScan, openReportLocation, scanProject } from "./scan";
 import { installScanner, scannerStatuses, uninstallScanner, updateScanner } from "./scanners";
 import {
@@ -66,6 +67,8 @@ export function registerIpcHandlers(): void {
   ipcMain.handle("provider:test", async (_event, request: ProviderTestRequest) =>
     testProvider(request),
   );
+
+  ipcMain.handle("provider:presets", () => providerPresets());
 
   ipcMain.handle("doctor:run", (event, runId?: string) =>
     runDoctor((progress) => event.sender.send("doctor:progress", { ...progress, runId })),
@@ -128,6 +131,8 @@ export function registerIpcHandlers(): void {
   ipcMain.handle("reports:converse", (_event, request: ConverseReportRequest) =>
     converseReport(request),
   );
+
+  ipcMain.handle("reports:cancel", () => cancelActiveReportAction());
 
   ipcMain.handle("reports:latest", (_event, projectPath?: string) =>
     latestReport(projectPath),

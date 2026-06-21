@@ -22,7 +22,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       return;
     }
     set({ loading: true });
-    const settings = await api.settings.get();
+    let settings = await api.settings.get();
+    if (!settings.defaultProjectDir?.trim()) {
+      const projects = await api.projects.list();
+      if (projects.length === 1) {
+        settings = await api.settings.set({ defaultProjectDir: projects[0].path });
+      }
+    }
     if (settings.defaultProjectDir?.trim()) {
       await api.projects.add(settings.defaultProjectDir);
     }

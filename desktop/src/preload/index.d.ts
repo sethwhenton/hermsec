@@ -1,6 +1,7 @@
 import type {
   AppSettings,
   DeepPartial,
+  ProviderPreset,
   ProviderTestRequest,
   ProviderTestResult,
 } from "../renderer/src/types/settings";
@@ -36,6 +37,7 @@ import type {
   LatestReportResult,
   OpenArtifactRequest,
   OpenArtifactResult,
+  ReportControlResult,
 } from "../renderer/src/types/reports";
 
 export interface HermsecApi {
@@ -46,6 +48,7 @@ export interface HermsecApi {
     chooseProjectDirectory: (currentPath?: string) => Promise<string | null>;
   };
   provider: {
+    presets: () => Promise<ProviderPreset[]>;
     test: (request: ProviderTestRequest) => Promise<ProviderTestResult>;
   };
   doctor: {
@@ -76,6 +79,7 @@ export interface HermsecApi {
   reports: {
     explain: (request: ExplainReportRequest) => Promise<ExplainReportResult>;
     converse: (request: ConverseReportRequest) => Promise<ConverseReportResult>;
+    cancel: () => Promise<ReportControlResult>;
     latest: (projectPath?: string) => Promise<LatestReportResult>;
     dashboardBundle: (request: DashboardBundleRequest) => Promise<DashboardBundleResult>;
     openArtifact: (request: OpenArtifactRequest) => Promise<OpenArtifactResult>;

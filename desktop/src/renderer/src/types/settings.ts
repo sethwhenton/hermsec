@@ -2,6 +2,14 @@ import type { HermsecScanAssistMode } from "./scan";
 import type { ScannerSettings } from "./scanners";
 
 export type ProviderAuthKind = "api_key" | "custom" | "environment";
+export type ProviderApiFormat = "openai-compatible" | "anthropic" | "gemini" | "custom" | "cursor";
+
+export interface ProviderModelDiscovery {
+  status: "idle" | "success" | "error";
+  message?: string;
+  modelCount?: number;
+  lastCheckedAt?: string;
+}
 
 export interface ModelConfig {
   id: string;
@@ -13,10 +21,30 @@ export interface ProviderConfig {
   id: string;
   displayName: string;
   baseUrl: string;
+  apiFormat?: ProviderApiFormat;
+  presetId?: string;
+  description?: string;
+  logoUrl?: string;
+  supportsModelDiscovery?: boolean;
   authKind: ProviderAuthKind;
   apiKeyEnvVar?: string;
   apiKey?: string;
   enabled: boolean;
+  models: ModelConfig[];
+  modelDiscovery?: ProviderModelDiscovery;
+}
+
+export interface ProviderPreset {
+  id: string;
+  displayName: string;
+  description: string;
+  baseUrl: string;
+  apiFormat: ProviderApiFormat;
+  apiKeyEnvVar: string;
+  logoUrl?: string;
+  enabled: boolean;
+  supportsModelDiscovery: boolean;
+  status: "available" | "coming-soon";
   models: ModelConfig[];
 }
 
@@ -24,7 +52,6 @@ export interface GeneralSettings {
   language: string;
   autoAcceptPermissions: boolean;
   terminalShell: string;
-  showReasoning: boolean;
   privacyMode: boolean;
   scanMode: HermsecScanAssistMode;
   thinkingLevel: "fast" | "balanced" | "deep";
@@ -51,13 +78,16 @@ export interface AppSettings {
   defaultProjectDir: string;
   defaultReportDir: string;
   activeModelId?: string;
+  activeProviderId?: string;
   automation: AutomationSettings;
   providers: ProviderConfig[];
   scanners: ScannerSettings;
 }
 
 export interface ProviderTestRequest {
+  providerId?: string;
   baseUrl: string;
+  apiFormat?: ProviderApiFormat;
   apiKey?: string;
   apiKeyEnvVar?: string;
 }
@@ -67,6 +97,8 @@ export interface ProviderTestResult {
   status?: number;
   message: string;
   latencyMs: number;
+  modelCount?: number;
+  models?: ModelConfig[];
 }
 
 export type DeepPartial<T> = {

@@ -1,9 +1,11 @@
 import { BrowserWindow } from "electron";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { redactPrivacyValue } from "./privacy";
 import { buildDashboardReport } from "./reportData";
 import type { ProjectStateFingerprint } from "./projectState";
 import { SCAN_METADATA_FILE, type LocalScanMetadata } from "./scanMetadata";
+import { readSettings } from "./store";
 
 export interface ReportArtifactResult {
   reportDir: string;
@@ -58,7 +60,7 @@ export async function generateReportArtifacts(
     writeFileSync(scanMetadataPath, JSON.stringify(scanMetadata, null, 2), "utf8");
   }
 
-  const report = buildDashboardReport(normalizedReportDir);
+  const report = privacyProtectDashboardReport(buildDashboardReport(normalizedReportDir));
   const dataJson = JSON.stringify(report, null, 2).replace(/</g, "\\u003c");
   const data = `const HERMSEC_REPORT = ${dataJson};\nwindow.HERMSEC_REPORT = HERMSEC_REPORT;\n`;
   writeFileSync(path.join(dashboardDir, "data.js"), data, "utf8");
@@ -103,7 +105,7 @@ export function dashboardBundle(reportPathOrDir: string): DashboardBundleResult 
       /<link rel="stylesheet" href="styles-v4\.css">\s*/u,
       `<style>${templates["styles-v4.css"]}\n${hermsecDashboardThemeCss()}</style>\n`,
     );
-    const report = buildDashboardReport(reportDir);
+    const report = privacyProtectDashboardReport(buildDashboardReport(reportDir));
     const dataJson = JSON.stringify(report, null, 2).replace(/</g, "\\u003c");
     html = html.replace(
       /<script src="data\.js"><\/script>/u,
@@ -130,6 +132,18 @@ export function dashboardBundle(reportPathOrDir: string): DashboardBundleResult 
       error: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+function privacyProtectDashboardReport<T extends { scan?: { projectPath?: string; targetPath?: string } }>(report: T): T {
+  if (!readSettings().general.privacyMode) return report;
+  const projectRoot = report.scan?.projectPath ?? report.scan?.targetPath;
+  const redacted = redactPrivacyValue(report, projectRoot) as T & {
+    evidence?: { redactionNote?: string };
+  };
+  if (redacted.evidence) {
+    redacted.evidence.redactionNote = "Privacy mode redacted local paths and secret-like values in this user-facing report.";
+  }
+  return redacted;
 }
 
 function readTemplates(): Record<(typeof templateFiles)[number], string> {

@@ -36,6 +36,11 @@ export interface ConverseReportResult {
   error?: string;
 }
 
+export interface ReportControlResult {
+  ok: boolean;
+  message: string;
+}
+
 export interface LatestReportResult {
   ok: boolean;
   message?: string;

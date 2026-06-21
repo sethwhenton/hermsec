@@ -101,6 +101,11 @@ export function LeftSidebar() {
     setView("chat");
   };
 
+  const handleNewChatForProject = async (project: ProjectDirectory) => {
+    setOpenActions(null);
+    await handleNewChatProject(project.path);
+  };
+
   const chooseAndAddProject = async () => {
     const api = getHermsecApi();
     if (!api) return;
@@ -244,7 +249,7 @@ export function LeftSidebar() {
                           void handleSelectProject(project);
                         }}
                         className={cn(
-                          "flex w-full items-start gap-2 rounded-xl px-2 py-2 pr-8 text-left text-xs transition-colors duration-150 ease-out",
+                          "flex w-full items-start gap-2 rounded-xl px-2 py-2 pr-14 text-left text-xs transition-colors duration-150 ease-out",
                           activeProject && !currentSessionId
                             ? "bg-white/8 text-foreground"
                             : "text-muted hover:bg-white/5 hover:text-foreground",
@@ -258,6 +263,14 @@ export function LeftSidebar() {
                           </span>
                         </span>
                       </button>
+                      <ProjectNewChatButton
+                        label={`Start new chat for ${project.name}`}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          void handleNewChatForProject(project);
+                        }}
+                      />
                       <RowActionButton
                         label={`Project actions for ${project.name}`}
                         onClick={(event) => openRowActions(event, "project", project.id)}
@@ -378,6 +391,26 @@ function RowActionButton({
       className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-[opacity,background-color,color] duration-150 ease-out hover:bg-white/8 hover:text-foreground group-hover/project:opacity-100 group-hover/session:opacity-100"
     >
       <MoreHorizontal className="h-3.5 w-3.5" />
+    </button>
+  );
+}
+
+function ProjectNewChatButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      className="absolute right-8 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-[opacity,background-color,color] duration-150 ease-out hover:bg-white/8 hover:text-foreground group-hover/project:opacity-100"
+    >
+      <Plus className="h-3.5 w-3.5" />
     </button>
   );
 }

@@ -1,7 +1,8 @@
-import { CheckCircle2, XCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { CheckCircle2, ChevronDown, ChevronRight, RefreshCw, XCircle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/cn";
 import { requireHermsecApi } from "@/lib/ipc";
-import type { ProviderConfig, ProviderTestResult } from "@/types/settings";
+import type { ModelConfig, ProviderConfig, ProviderTestResult } from "@/types/settings";
 import { Button } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
 import { Input } from "@/components/ui/Input";
@@ -28,27 +29,63 @@ export function ProviderEditDrawer({
   const [draft, setDraft] = useState<ProviderConfig | null>(provider);
   const [testState, setTestState] = useState<TestState>("idle");
   const [testResult, setTestResult] = useState<ProviderTestResult | null>(null);
+  const [modelsOpen, setModelsOpen] = useState(false);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     setDraft(provider);
     setTestState("idle");
     setTestResult(null);
+    setModelsOpen(false);
   }, [provider, open]);
+
+  useEffect(() => {
+    if (!open || !draft?.baseUrl.trim() || draft.apiFormat === "cursor" || draft.supportsModelDiscovery === false) return;
+    const timer = window.setTimeout(() => {
+      void runProviderCheck("auto");
+    }, 750);
+    return () => window.clearTimeout(timer);
+    // Keep this dependency list narrow so model updates from discovery do not retrigger discovery.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, draft?.id, draft?.baseUrl, draft?.apiKey, draft?.apiKeyEnvVar, draft?.apiFormat, draft?.supportsModelDiscovery]);
 
   if (!draft) return null;
 
-  const handleTest = async () => {
+  const isPreset = Boolean(draft.presetId);
+  const canDiscover = draft.apiFormat !== "cursor" && draft.supportsModelDiscovery !== false;
+
+  const runProviderCheck = async (_source: "auto" | "manual") => {
+    if (!draft.baseUrl.trim() || !canDiscover) return;
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
     setTestState("testing");
     setTestResult(null);
     try {
       const result = await requireHermsecApi().provider.test({
+        providerId: draft.id,
         baseUrl: draft.baseUrl,
+        apiFormat: draft.apiFormat,
         apiKey: draft.apiKey,
         apiKeyEnvVar: draft.apiKeyEnvVar,
       });
+      if (requestId !== requestIdRef.current) return;
       setTestResult(result);
       setTestState(result.ok ? "success" : "error");
+      setDraft((current) => current ? {
+        ...current,
+        models: result.models?.length ? mergeModels(current.models, result.models) : current.models,
+        modelDiscovery: {
+          status: result.ok ? "success" : "error",
+          message: result.message,
+          modelCount: result.modelCount,
+          lastCheckedAt: new Date().toISOString(),
+        },
+      } : current);
+      if (result.models?.length) {
+        setModelsOpen(true);
+      }
     } catch (error) {
+      if (requestId !== requestIdRef.current) return;
       setTestResult({
         ok: false,
         message: error instanceof Error ? error.message : "Test failed",
@@ -59,21 +96,30 @@ export function ProviderEditDrawer({
   };
 
   const handleSave = () => {
-    onSave(draft);
+    onSave({
+      ...draft,
+      apiFormat: draft.apiFormat ?? "openai-compatible",
+      supportsModelDiscovery: canDiscover,
+      modelDiscovery: draft.modelDiscovery ?? { status: "idle" },
+    });
     onClose();
   };
+
+  const discoveryText = modelStatusText(testState, testResult, draft.models.length);
 
   return (
     <Drawer open={open} onClose={onClose} title={isNew ? "Add provider" : "Edit provider"}>
       <div className="space-y-4">
         <p className="text-xs text-muted">
-          Configure an OpenAI-compatible provider. See the provider config docs.
+          {isPreset
+            ? "Use the preset URL and add your API key. Hermsec will check the provider and import available models."
+            : "Configure a custom provider. OpenAI-compatible endpoints work best today."}
         </p>
 
         <Field label="Provider ID" hint="Lowercase letters, numbers, hyphens, or underscores">
           <Input
             value={draft.id}
-            disabled={!isNew}
+            disabled={!isNew || isPreset}
             onChange={(e) => setDraft({ ...draft, id: e.target.value })}
           />
         </Field>
@@ -81,36 +127,68 @@ export function ProviderEditDrawer({
         <Field label="Display name">
           <Input
             value={draft.displayName}
+            disabled={isPreset}
             onChange={(e) => setDraft({ ...draft, displayName: e.target.value })}
           />
         </Field>
 
-        <Field label="Base URL">
+        <Field label="Provider URL">
           <Input
             value={draft.baseUrl}
+            disabled={isPreset}
             onChange={(e) => setDraft({ ...draft, baseUrl: e.target.value })}
-            placeholder="https://api.opencode.ai/v1"
+            placeholder="https://api.example.com/v1"
           />
         </Field>
 
-        <Field label="Auth kind">
+        <Field label="API format">
           <Select
-            value={draft.authKind}
-            onChange={(authKind) =>
+            value={draft.apiFormat ?? "openai-compatible"}
+            disabled={isPreset}
+            onChange={(apiFormat) =>
               setDraft({
                 ...draft,
-                authKind: authKind as ProviderConfig["authKind"],
+                apiFormat: apiFormat as ProviderConfig["apiFormat"],
               })
             }
             options={[
-              { value: "api_key", label: "API key" },
+              { value: "openai-compatible", label: "OpenAI-compatible" },
+              { value: "anthropic", label: "Anthropic" },
+              { value: "gemini", label: "Gemini" },
               { value: "custom", label: "Custom" },
-              { value: "environment", label: "Environment" },
             ]}
           />
         </Field>
 
-        <Field label="API key environment variable name">
+        {!isPreset && (
+          <Field label="Auth kind">
+            <Select
+              value={draft.authKind}
+              onChange={(authKind) =>
+                setDraft({
+                  ...draft,
+                  authKind: authKind as ProviderConfig["authKind"],
+                })
+              }
+              options={[
+                { value: "api_key", label: "API key" },
+                { value: "custom", label: "Custom" },
+                { value: "environment", label: "Environment" },
+              ]}
+            />
+          </Field>
+        )}
+
+        <Field label="API key" hint="Stored locally in Hermsec settings. Leave empty to use an environment variable.">
+          <Input
+            type="password"
+            value={draft.apiKey ?? ""}
+            onChange={(e) => setDraft({ ...draft, apiKey: e.target.value })}
+            placeholder="Paste provider API key"
+          />
+        </Field>
+
+        <Field label="Environment variable">
           <Input
             value={draft.apiKeyEnvVar ?? ""}
             onChange={(e) => setDraft({ ...draft, apiKeyEnvVar: e.target.value })}
@@ -118,37 +196,58 @@ export function ProviderEditDrawer({
           />
         </Field>
 
-        <Field label="API key" hint="Optional. Leave empty if you manage auth via environment.">
-          <Input
-            type="password"
-            value={draft.apiKey ?? ""}
-            onChange={(e) => setDraft({ ...draft, apiKey: e.target.value })}
-            placeholder="••••••••••••"
-          />
-        </Field>
+        <div className="rounded-lg border border-border bg-surface px-3 py-3">
+          <div className="flex items-start gap-2">
+            {testState === "testing" && <Spiral5x5 glow className="mt-0.5 shrink-0" />}
+            {testState === "success" && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />}
+            {testState === "error" && <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-danger" />}
+            {testState === "idle" && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-muted" />}
+            <div className="min-w-0 flex-1">
+              <div className={cn("text-xs font-medium", testState === "error" ? "text-danger" : testState === "success" ? "text-success" : "text-foreground")}>
+                {discoveryText}
+              </div>
+              <div className="mt-0.5 text-[11px] text-muted">
+                {canDiscover ? "Hermsec checks the provider after URL or key changes." : "Model discovery is not available for this provider yet."}
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => void runProviderCheck("manual")} disabled={testState === "testing" || !canDiscover}>
+              <RefreshCw className={cn("h-3.5 w-3.5", testState === "testing" && "animate-spin")} />
+              Check
+            </Button>
+          </div>
 
-        {testState !== "idle" && (
-          <div className="flex items-start gap-2 rounded-md border border-border bg-surface px-3 py-2">
-            {testState === "testing" && <Spiral5x5 glow className="shrink-0" />}
-            {testState === "success" && <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />}
-            {testState === "error" && <XCircle className="h-4 w-4 shrink-0 text-danger" />}
-            <div className="min-w-0 text-xs">
-              {testState === "testing" && <span className="text-muted">Testing connection…</span>}
-              {testResult && (
-                <span className={testResult.ok ? "text-success" : "text-danger"}>
-                  {testResult.message}
-                  {testResult.latencyMs > 0 && ` (${testResult.latencyMs}ms)`}
-                </span>
+          <button
+            type="button"
+            className="mt-3 flex w-full items-center justify-between rounded-md px-1 py-1 text-left text-xs text-muted transition-colors hover:bg-white/5 hover:text-foreground"
+            onClick={() => setModelsOpen((open) => !open)}
+          >
+            <span>{draft.models.length} available model{draft.models.length === 1 ? "" : "s"}</span>
+            {modelsOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          </button>
+
+          {modelsOpen && (
+            <div className="mt-2 max-h-44 overflow-y-auto rounded-md border border-border-subtle">
+              {draft.models.map((model, index) => (
+                <div
+                  key={model.id}
+                  className={cn("flex items-center justify-between px-3 py-2 text-xs", index > 0 && "border-t border-border-subtle")}
+                >
+                  <span className="truncate text-foreground">{model.label}</span>
+                  <span className="ml-2 shrink-0 text-[10px] text-muted">{model.id}</span>
+                </div>
+              ))}
+              {draft.models.length === 0 && (
+                <div className="px-3 py-4 text-center text-xs text-muted">No models discovered yet.</div>
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         <div className="flex items-center justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => void handleTest()} disabled={testState === "testing"}>
-            Test
+          <Button variant="outline" onClick={onClose}>
+            Cancel
           </Button>
-          <Button onClick={handleSave}>Save</Button>
+          <Button onClick={handleSave}>Save provider</Button>
         </div>
       </div>
     </Drawer>
@@ -171,4 +270,29 @@ function Field({
       {hint && <span className="block text-[11px] text-muted">{hint}</span>}
     </label>
   );
+}
+
+function modelStatusText(state: TestState, result: ProviderTestResult | null, fallbackCount: number): string {
+  if (state === "testing") return "Checking provider and loading models...";
+  if (result?.ok) {
+    const count = result.modelCount ?? fallbackCount;
+    return `Connected. ${count} model${count === 1 ? "" : "s"} available.`;
+  }
+  if (result && !result.ok) return result.message;
+  return fallbackCount > 0
+    ? `${fallbackCount} model${fallbackCount === 1 ? "" : "s"} configured.`
+    : "Provider not checked yet.";
+}
+
+function mergeModels(existing: ModelConfig[], incoming: ModelConfig[]): ModelConfig[] {
+  const byId = new Map(existing.map((model) => [model.id, model]));
+  for (const model of incoming) {
+    const current = byId.get(model.id);
+    byId.set(model.id, {
+      ...model,
+      enabled: current?.enabled ?? model.enabled,
+      label: model.label || current?.label || model.id,
+    });
+  }
+  return [...byId.values()].sort((left, right) => left.label.localeCompare(right.label));
 }
