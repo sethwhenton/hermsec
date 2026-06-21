@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronDown, ChevronRight, RefreshCw, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight, ExternalLink, RefreshCw, XCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { requireHermsecApi } from "@/lib/ipc";
@@ -53,6 +53,7 @@ export function ProviderEditDrawer({
 
   const isPreset = Boolean(draft.presetId);
   const canDiscover = draft.apiFormat !== "cursor" && draft.supportsModelDiscovery !== false;
+  const requiresApiKey = !providerAllowsNoApiKey(draft);
 
   const runProviderCheck = async (_source: "auto" | "manual") => {
     if (!draft.baseUrl.trim() || !canDiscover) return;
@@ -111,10 +112,13 @@ export function ProviderEditDrawer({
     <Drawer open={open} onClose={onClose} title={isNew ? "Add provider" : "Edit provider"}>
       <div className="space-y-4">
         <p className="text-xs text-muted">
-          {isPreset
+          {isPreset && requiresApiKey
             ? "Use the preset URL and add your API key. Hermsec will check the provider and import available models."
+            : isPreset
+              ? "Use the preset URL for your local provider. Hermsec will check the endpoint and import available models."
             : "Configure a custom provider. OpenAI-compatible endpoints work best today."}
         </p>
+        <ProviderVisitLink href={draft.websiteUrl} />
 
         <Field label="Provider ID" hint="Lowercase letters, numbers, hyphens, or underscores">
           <Input
@@ -179,22 +183,30 @@ export function ProviderEditDrawer({
           </Field>
         )}
 
-        <Field label="API key" hint="Stored locally in Hermsec settings. Leave empty to use an environment variable.">
-          <Input
-            type="password"
-            value={draft.apiKey ?? ""}
-            onChange={(e) => setDraft({ ...draft, apiKey: e.target.value })}
-            placeholder="Paste provider API key"
-          />
-        </Field>
+        {requiresApiKey ? (
+          <>
+            <Field label="API key" hint="Stored locally in Hermsec settings. Leave empty to use an environment variable.">
+              <Input
+                type="password"
+                value={draft.apiKey ?? ""}
+                onChange={(e) => setDraft({ ...draft, apiKey: e.target.value })}
+                placeholder="Paste provider API key"
+              />
+            </Field>
 
-        <Field label="Environment variable">
-          <Input
-            value={draft.apiKeyEnvVar ?? ""}
-            onChange={(e) => setDraft({ ...draft, apiKeyEnvVar: e.target.value })}
-            placeholder="HERMSEC_MODEL_API_KEY"
-          />
-        </Field>
+            <Field label="Environment variable">
+              <Input
+                value={draft.apiKeyEnvVar ?? ""}
+                onChange={(e) => setDraft({ ...draft, apiKeyEnvVar: e.target.value })}
+                placeholder="HERMSEC_MODEL_API_KEY"
+              />
+            </Field>
+          </>
+        ) : (
+          <div className="rounded-lg border border-border bg-surface px-3 py-2 text-xs text-muted">
+            This local provider does not require an API key. Keep Ollama running locally, then use Check to load available models.
+          </div>
+        )}
 
         <div className="rounded-lg border border-border bg-surface px-3 py-3">
           <div className="flex items-start gap-2">
@@ -269,6 +281,25 @@ function Field({
       {children}
       {hint && <span className="block text-[11px] text-muted">{hint}</span>}
     </label>
+  );
+}
+
+function providerAllowsNoApiKey(provider: ProviderConfig): boolean {
+  return provider.id === "ollama-local" || provider.presetId === "ollama-local";
+}
+
+function ProviderVisitLink({ href }: { href?: string }) {
+  if (!href) return null;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-medium text-muted transition-colors duration-150 ease-out hover:bg-white/6 hover:text-foreground"
+    >
+      Visit provider
+      <ExternalLink className="h-3 w-3" />
+    </a>
   );
 }
 

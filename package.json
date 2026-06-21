@@ -1,6 +1,6 @@
 {
   "name": "hermsec",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Local-first security assistant for vibe-coded repositories.",
   "type": "module",
   "private": false,

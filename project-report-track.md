@@ -924,3 +924,35 @@ This file is the running engineering ledger for Hermsec. Use it to record meanin
 - Commit and push the current `main` changes.
 - Push tag `v0.1.4`.
 - The tag-triggered Windows and macOS workflows should build installers and create/update the GitHub Release because GitHub CLI is not installed locally.
+
+## 2026-06-21 - Provider Catalog Follow-Up And v0.1.5 Release Prep
+
+### Changes
+
+- Added OpenRouter and local Ollama provider presets.
+- Added provider website links to supported provider cards and connected-provider rows.
+- Allowed explicit no-key provider handling for local Ollama in provider checks and report-chat model routing.
+- Marked Ollama Cloud as `coming soon` instead of enabling an unverified OpenAI-compatible cloud route.
+- Added `OLLAMA_API_KEY` to the README provider-key examples.
+- Updated project context to include OpenRouter/local Ollama and to describe Cursor/Ollama Cloud as future integrations.
+- Bumped root and desktop package versions to `0.1.5` for a follow-up release that matches the final source tree.
+
+### Source Check
+
+- OpenRouter official docs confirm OpenAI-compatible access via `https://openrouter.ai/api/v1`.
+- Ollama official OpenAI compatibility docs confirm local OpenAI-compatible access via `http://localhost:11434/v1`.
+- Ollama Cloud docs show the direct cloud API at `https://ollama.com/api`, so Hermsec should not enable it as an OpenAI-compatible `/v1/chat/completions` provider until that route is explicitly wired and tested.
+
+### Verification
+
+- Root `npm run typecheck` passed.
+- Desktop `npm run desktop:typecheck` passed.
+- Root `npm test` passed with `76/76`.
+- Desktop `npm run desktop:build` passed.
+- Desktop `npm run desktop:smoke:doctor` passed with healthScore `100`, required `7/7`, scanners `6/6`, internet `5/5`, and expected provider warning in the isolated smoke environment.
+
+### Release Plan
+
+- Commit and push the follow-up changes to `main`.
+- Push tag `v0.1.5`.
+- Let the same tag-triggered Windows and macOS release workflows publish the latest installers.

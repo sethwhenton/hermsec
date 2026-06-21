@@ -146,6 +146,7 @@ OPENAI_API_KEY
 ANTHROPIC_API_KEY
 GEMINI_API_KEY
 OPENROUTER_API_KEY
+OLLAMA_API_KEY
 ```
 
 For OpenCode Go, set `OPENCODE_GO_API_KEY`, keep `HERMSEC_MODEL=deepseek-v4-flash`, then enable remote model calls from Settings when model-backed explanations are wanted.

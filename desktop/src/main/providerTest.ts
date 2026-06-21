@@ -9,6 +9,9 @@ function resolveApiKey(request: ProviderTestRequest): string | undefined {
   if (request.apiKey?.trim()) {
     return request.apiKey.trim();
   }
+  if (request.providerId === "ollama-local") {
+    return undefined;
+  }
   if (request.apiKeyEnvVar?.trim()) {
     return process.env[request.apiKeyEnvVar.trim()];
   }

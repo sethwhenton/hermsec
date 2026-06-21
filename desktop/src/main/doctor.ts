@@ -475,6 +475,7 @@ function desktopProviderCheck(provider: ProviderConfig, activeProviderId?: strin
   const model =
     provider.models.find((item) => provider.id === activeProviderId && item.enabled && item.id === activeModelId) ??
     provider.models.find((item) => item.enabled);
+  const requiresKey = !providerAllowsNoApiKey(provider);
   const hasKey = Boolean(resolveDesktopProviderApiKey(provider));
   const hasBaseUrl = Boolean(provider.baseUrl?.trim());
 
@@ -500,7 +501,7 @@ function desktopProviderCheck(provider: ProviderConfig, activeProviderId?: strin
     };
   }
 
-  if (!hasKey) {
+  if (requiresKey && !hasKey) {
     return {
       id: `provider-desktop-${provider.id}`,
       label: `${provider.displayName} desktop provider`,
@@ -516,11 +517,14 @@ function desktopProviderCheck(provider: ProviderConfig, activeProviderId?: strin
     label: `${provider.displayName} desktop provider`,
     status: "pass",
     requirement: "recommended",
-    message: `${provider.displayName} is configured for ${model.id}; credentials are available to the desktop app.`,
+    message: requiresKey
+      ? `${provider.displayName} is configured for ${model.id}; credentials are available to the desktop app.`
+      : `${provider.displayName} is configured for ${model.id}; no API key is required.`,
   };
 }
 
 function resolveDesktopProviderApiKey(provider: ProviderConfig): string | undefined {
+  if (providerAllowsNoApiKey(provider)) return undefined;
   if (provider.apiKey?.trim()) return provider.apiKey.trim();
   const envNames = [
     provider.apiKeyEnvVar,
@@ -534,6 +538,10 @@ function resolveDesktopProviderApiKey(provider: ProviderConfig): string | undefi
   }
 
   return undefined;
+}
+
+function providerAllowsNoApiKey(provider: ProviderConfig): boolean {
+  return provider.id === "ollama-local" || provider.presetId === "ollama-local";
 }
 
 function groupFromChecks(

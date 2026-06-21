@@ -570,12 +570,16 @@ async function callConversationModel({
   ];
 
   try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (modelConfig.apiKey) {
+      headers.Authorization = `Bearer ${modelConfig.apiKey}`;
+    }
+
     const response = await fetch(`${modelConfig.baseUrl}/chat/completions`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${modelConfig.apiKey}`,
-      },
+      headers,
       body: JSON.stringify({
         model: modelConfig.modelId,
         temperature: 0.25,
@@ -694,7 +698,7 @@ function buildReasoningLeakFallback(question: string, evidence: ConversationEvid
   return buildConversationalFallback(question, evidence);
 }
 
-function resolveModelConfig(): { baseUrl: string; apiKey: string; modelId: string; maxTokens: number; historyTurns: number } | null {
+function resolveModelConfig(): { baseUrl: string; apiKey?: string; modelId: string; maxTokens: number; historyTurns: number } | null {
   const settings = readSettings();
   const candidates = settings.providers.filter((provider) => provider.enabled);
   const provider =
@@ -707,7 +711,7 @@ function resolveModelConfig(): { baseUrl: string; apiKey: string; modelId: strin
     provider.models.find((item) => item.enabled && item.id === settings.activeModelId) ??
     provider.models.find((item) => item.enabled);
   const apiKey = resolveProviderApiKey(provider);
-  if (!model?.id || !provider.baseUrl?.trim() || !apiKey) return null;
+  if (!model?.id || !provider.baseUrl?.trim() || (!apiKey && !providerAllowsNoApiKey(provider))) return null;
 
   return {
     baseUrl: provider.baseUrl.trim().replace(/\/$/, ""),
@@ -731,6 +735,7 @@ function contextTurns(window: string | undefined): number {
 }
 
 function resolveProviderApiKey(provider: ProviderConfig): string | undefined {
+  if (providerAllowsNoApiKey(provider)) return undefined;
   if (provider.apiKey?.trim()) return provider.apiKey.trim();
   const envNames = [
     provider.apiKeyEnvVar,
@@ -747,6 +752,10 @@ function resolveProviderApiKey(provider: ProviderConfig): string | undefined {
   }
 
   return undefined;
+}
+
+function providerAllowsNoApiKey(provider: ProviderConfig): boolean {
+  return provider.id === "ollama-local" || provider.presetId === "ollama-local";
 }
 
 function cleanEnvValue(value: string | undefined): string | undefined {

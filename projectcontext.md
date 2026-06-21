@@ -16,7 +16,7 @@ New product work should start in `desktop/` unless the request is specifically a
 - Desktop shell with chat/investigation, project selection, scans, dashboards, reports, settings, automations, and Doctor readiness.
 - Scanner-managed harness with catalog metadata, enablement state, auto-install preferences, managed/system scanner status, and adaptive project profiling.
 - Packaged runtime support for the root Hermsec CLI and scanner tools under desktop resources.
-- Provider settings for OpenCode Go, OpenAI, Anthropic, Google Gemini, and custom OpenAI-compatible/base URLs, with Cursor tracked as a future integration instead of a normal LLM endpoint.
+- Provider settings for OpenCode Go, OpenAI, Anthropic, Google Gemini, OpenRouter, local Ollama, and custom OpenAI-compatible/base URLs, with Cursor and Ollama Cloud tracked as future integrations where the current desktop route is not yet wired.
 - Local report storage with dashboard and one-page report rendering.
 
 ## Common Commands

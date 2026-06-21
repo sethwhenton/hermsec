@@ -25,6 +25,7 @@ export interface ProviderConfig {
   presetId?: string;
   description?: string;
   logoUrl?: string;
+  websiteUrl?: string;
   supportsModelDiscovery?: boolean;
   authKind: ProviderAuthKind;
   apiKeyEnvVar?: string;
@@ -40,8 +41,9 @@ export interface ProviderPreset {
   description: string;
   baseUrl: string;
   apiFormat: ProviderApiFormat;
-  apiKeyEnvVar: string;
+  apiKeyEnvVar?: string;
   logoUrl?: string;
+  websiteUrl?: string;
   enabled: boolean;
   supportsModelDiscovery: boolean;
   status: "available" | "coming-soon";

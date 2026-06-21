@@ -1,5 +1,6 @@
-import { CheckCircle2, Plus, Settings2 } from "lucide-react";
+import { CheckCircle2, ExternalLink, Plus, Settings2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { cn } from "@/lib/cn";
 import { requireHermsecApi } from "@/lib/ipc";
 import { useSettingsStore } from "@/store/settingsStore";
 import type { ProviderConfig, ProviderPreset } from "@/types/settings";
@@ -101,26 +102,34 @@ export function ProvidersSettings() {
           const connected = providersByPreset.has(preset.id);
           const comingSoon = preset.status === "coming-soon";
           return (
-            <button
+            <div
               key={preset.id}
-              type="button"
-              disabled={comingSoon}
-              onClick={() => handlePreset(preset)}
-              className="group flex min-h-28 items-start gap-3 rounded-lg border border-border bg-surface px-3 py-3 text-left transition-colors duration-150 ease-out hover:border-foreground/20 hover:bg-white/[0.04] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-55"
+              className={cn(
+                "group relative min-h-28 rounded-lg border border-border bg-surface px-3 py-3 transition-colors duration-150 ease-out hover:border-foreground/20 hover:bg-white/[0.04]",
+                comingSoon && "opacity-55",
+              )}
             >
-              <ProviderLogo name={preset.displayName} logoUrl={preset.logoUrl} />
-              <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-foreground">{preset.displayName}</span>
-                  {connected && <CheckCircle2 className="h-3.5 w-3.5 text-success" />}
+              <button
+                type="button"
+                disabled={comingSoon}
+                onClick={() => handlePreset(preset)}
+                className="flex w-full items-start gap-3 text-left disabled:cursor-not-allowed"
+              >
+                <ProviderLogo name={preset.displayName} logoUrl={preset.logoUrl} />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2 pr-20">
+                    <span className="text-sm font-medium text-foreground">{preset.displayName}</span>
+                    {connected && <CheckCircle2 className="h-3.5 w-3.5 text-success" />}
+                  </span>
+                  <span className="mt-1 line-clamp-2 text-xs text-muted">{preset.description}</span>
+                  <span className="mt-3 flex flex-wrap gap-1.5">
+                    <Badge>{comingSoon ? "Coming soon" : connected ? "Configured" : "Preset"}</Badge>
+                    {preset.supportsModelDiscovery && <Badge>{preset.models.length} defaults</Badge>}
+                  </span>
                 </span>
-                <span className="mt-1 line-clamp-2 text-xs text-muted">{preset.description}</span>
-                <span className="mt-3 flex flex-wrap gap-1.5">
-                  <Badge>{comingSoon ? "Coming soon" : connected ? "Configured" : "Preset"}</Badge>
-                  {preset.supportsModelDiscovery && <Badge>{preset.models.length} defaults</Badge>}
-                </span>
-              </span>
-            </button>
+              </button>
+              <ProviderVisitLink href={preset.websiteUrl} className="absolute top-3 right-3" />
+            </div>
           );
         })}
       </div>
@@ -145,6 +154,7 @@ export function ProvidersSettings() {
               <Badge>{authBadgeLabel[provider.authKind]}</Badge>
               <Badge>{provider.models.length} models</Badge>
             </button>
+            <ProviderVisitLink href={provider.websiteUrl} />
             <Button
               variant="ghost"
               size="sm"
@@ -186,11 +196,30 @@ function providerFromPreset(preset: ProviderPreset): ProviderConfig {
     apiFormat: preset.apiFormat,
     presetId: preset.id,
     logoUrl: preset.logoUrl,
-    authKind: "api_key",
+    websiteUrl: preset.websiteUrl,
+    authKind: preset.id === "ollama-local" ? "custom" : "api_key",
     apiKeyEnvVar: preset.apiKeyEnvVar,
     enabled: preset.enabled,
     supportsModelDiscovery: preset.supportsModelDiscovery,
     models: preset.models,
     modelDiscovery: { status: "idle" },
   };
+}
+
+function ProviderVisitLink({ href, className }: { href?: string; className?: string }) {
+  if (!href) return null;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className={cn(
+        "inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-medium text-muted transition-colors duration-150 ease-out hover:bg-white/6 hover:text-foreground",
+        className,
+      )}
+    >
+      Visit provider
+      <ExternalLink className="h-3 w-3" />
+    </a>
+  );
 }

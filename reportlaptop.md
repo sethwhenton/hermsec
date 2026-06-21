@@ -521,3 +521,17 @@ This section is append-only. New work should be added as another iteration inste
 | Secret check | `rg` found only `.env.example` placeholders and intentional fake test keys in redaction/provider tests; no real OpenCode/OpenAI-style key was found in the changed source set. |
 | Release path | The local machine does not have `gh` installed. The repository already has tag-triggered Windows and macOS release workflows, so pushing `v0.1.4` will trigger GitHub Actions to build and create/update the GitHub Release assets. |
 | Next | Watch the `v0.1.4` Windows and macOS release workflows after tag push. Add a committed Electron click-through UI test for provider setup, model accordions, stop action, and scan completion links. |
+
+### Iteration 21 - Provider Catalog Follow-Up And v0.1.5 Release Prep
+
+| Item | Notes |
+| --- | --- |
+| Goal | Fold in the provider catalog follow-up edits that appeared after `v0.1.4`, keep the latest release aligned with the final source tree, and avoid shipping unverified provider routes. |
+| Provider additions | Added OpenRouter and local Ollama provider presets, plus provider website links shown from the Providers settings cards and connected-provider rows. |
+| Local Ollama | Local Ollama is treated as an OpenAI-compatible local endpoint at `http://127.0.0.1:11434/v1` and does not require an API key for Doctor/model routing. |
+| Ollama Cloud | Marked Ollama Cloud as `coming soon` because current Ollama Cloud docs expose the cloud Ollama API at `https://ollama.com/api`, while Hermsec's current model route expects OpenAI-compatible `/v1/chat/completions`. |
+| Provider checks | Provider discovery and report-chat model calls now tolerate no-key local providers where explicitly allowed. |
+| Docs | Added `OLLAMA_API_KEY` to README provider-key examples and updated project context to include OpenRouter/local Ollama plus future Cursor/Ollama Cloud integration notes. |
+| Versioning | Bumped root and desktop package versions from `0.1.4` to `0.1.5` so the follow-up release can supersede the already-created `v0.1.4` release cleanly. |
+| Source checks | Verified OpenRouter's official docs describe `https://openrouter.ai/api/v1` as the OpenAI-compatible base URL. Verified Ollama's official OpenAI compatibility docs use `http://localhost:11434/v1` locally and official Ollama Cloud docs use `https://ollama.com/api`, not the unverified `/v1` cloud route. |
+| Verification | Root `npm run typecheck` passed. Desktop `npm run desktop:typecheck` passed. Root `npm test` passed with `76/76`. Desktop `npm run desktop:build` passed. Desktop `npm run desktop:smoke:doctor` passed with healthScore `100`, required `7/7`, scanners `6/6`, internet `5/5`, and expected provider warning in the isolated smoke environment. |
