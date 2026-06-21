@@ -5,6 +5,7 @@ import path from "node:path";
 import test, { type TestContext } from "node:test";
 import {
   buildWorkspaceInventoryFromFindings,
+  buildVulnerabilityIntelligence,
   cisaKevFetcher,
   githubAdvisoryFetcher,
   matchIntelToFindings,
@@ -13,6 +14,7 @@ import {
   osvFetcher,
   updateIntelCache,
   writeCachedIntelItems,
+  type IntelFetcher,
   type SecurityIntelItem,
   type WorkspaceInventory,
 } from "../../src/intel/index.js";
@@ -190,6 +192,88 @@ test("matcher scores package and finding identifier matches", () => {
   assert.equal(findingMatches[0]?.reasons.some((reason) => /ghsa-35jh-r3h4-6jhm/i.test(reason)), true);
 });
 
+test("vulnerability intelligence enriches reports from dependency inventory and KEV identifiers", async (t) => {
+  await withTempHermsecHome(t);
+  const repo = await makeTempRepo(t, {
+    "package-lock.json": JSON.stringify({
+      lockfileVersion: 3,
+      packages: {
+        "": { dependencies: { lodash: "^4.17.20" } },
+        "node_modules/lodash": { version: "4.17.20" },
+      },
+    }),
+  });
+  const finding = {
+    ...makeDependencyFinding(),
+    identifiers: { cve: ["CVE-2021-23337"], ghsa: ["GHSA-35jh-r3h4-6jhm"] },
+  };
+
+  const result = await buildVulnerabilityIntelligence({
+    target: repo,
+    workspaceId: "workspace-test",
+    findings: [finding],
+    mode: "online",
+    now,
+    fetchers: [
+      fakeFetcher("github-advisory", [makeIntelItem()]),
+      fakeFetcher("cisa-kev", [makeKevItem()]),
+    ],
+  });
+
+  assert.equal(result.status, "completed");
+  assert.equal(result.inventory.packages.some((pkg) => pkg.name === "lodash" && pkg.version === "4.17.20"), true);
+  assert.equal(result.items.length, 1);
+  const advisory = result.items[0];
+  assert.equal(advisory?.knownExploited, true);
+  assert.match(advisory?.source ?? "", /CISA KEV/);
+  assert.match(advisory?.source ?? "", /GitHub Advisory/);
+  assert.equal(advisory?.packageLabel, "npm:lodash@4.17.20");
+  assert.equal(advisory?.fixVersion, "4.17.21");
+  assert.deepEqual(advisory?.findingIds, ["finding-lodash"]);
+});
+
+test("vulnerability intelligence does not show generic ecosystem-only guidance as a match", async (t) => {
+  await withTempHermsecHome(t);
+  const repo = await makeTempRepo(t, {
+    "package-lock.json": JSON.stringify({
+      lockfileVersion: 3,
+      packages: {
+        "": { dependencies: { lodash: "^4.17.20" } },
+        "node_modules/lodash": { version: "4.17.20" },
+      },
+    }),
+  });
+
+  const result = await buildVulnerabilityIntelligence({
+    target: repo,
+    workspaceId: "workspace-test",
+    findings: [],
+    mode: "online",
+    now,
+    fetchers: [
+      fakeFetcher("github-advisory", [
+        {
+          id: "github-advisory:generic-npm",
+          source: "github-advisory",
+          sourceIds: ["generic-npm"],
+          title: "Generic npm advisory feed item",
+          summary: "This should not be displayed without a package or identifier match.",
+          url: "https://github.com/advisories",
+          identifiers: { cve: [], ghsa: [], osv: [], cwe: [] },
+          ecosystems: ["npm"],
+          packages: [],
+          severity: "unknown",
+          tags: ["dependency"],
+          provenance: { fetchedAt: now, normalizedFrom: ["github-advisory"] },
+        },
+      ]),
+    ],
+  });
+
+  assert.equal(result.items.length, 0);
+  assert.match(result.message, /No KEV or advisory matches/);
+});
+
 function makeInventory(): WorkspaceInventory {
   return {
     workspaceId: "workspace-test",
@@ -201,6 +285,25 @@ function makeInventory(): WorkspaceInventory {
     ciTools: [],
     dockerImages: [],
     previousFindingIds: [],
+  };
+}
+
+function makeKevItem(): SecurityIntelItem {
+  return {
+    id: "cisa-kev:CVE-2021-23337",
+    source: "cisa-kev",
+    sourceIds: ["CVE-2021-23337"],
+    title: "CVE-2021-23337 known exploited vulnerability",
+    summary: "Fixture KEV record for lodash.",
+    url: "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
+    publishedAt: "2021-02-15",
+    identifiers: { cve: ["CVE-2021-23337"], ghsa: [], osv: [], cwe: [] },
+    ecosystems: [],
+    packages: [],
+    severity: "high",
+    cisaKev: { knownExploited: true, addedAt: "2021-02-15" },
+    tags: ["known-exploited"],
+    provenance: { fetchedAt: now, normalizedFrom: ["cisa-kev"] },
   };
 }
 
@@ -218,6 +321,23 @@ function makeIntelItem(): SecurityIntelItem {
     severity: "high",
     tags: ["dependency"],
     provenance: { fetchedAt: now, normalizedFrom: ["github-advisory"] },
+  };
+}
+
+function fakeFetcher(source: IntelFetcher["source"], items: SecurityIntelItem[]): IntelFetcher {
+  return {
+    source,
+    priority: "P0",
+    onlineRequired: false,
+    ttlMs: 0,
+    async fetch(input) {
+      return {
+        source,
+        fetchedAt: input.now,
+        status: "fresh",
+        items,
+      };
+    },
   };
 }
 
@@ -272,6 +392,19 @@ async function withTempHermsecHome(t: TestContext): Promise<string> {
     } else {
       process.env.HERMSEC_HOME = previous;
     }
+    await fs.rm(directory, { recursive: true, force: true });
+  });
+  return directory;
+}
+
+async function makeTempRepo(t: TestContext, files: Record<string, string>): Promise<string> {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "hermsec-intel-repo-"));
+  for (const [fileName, content] of Object.entries(files)) {
+    const filePath = path.join(directory, fileName);
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, content, "utf8");
+  }
+  t.after(async () => {
     await fs.rm(directory, { recursive: true, force: true });
   });
   return directory;

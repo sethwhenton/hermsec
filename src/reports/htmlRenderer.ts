@@ -18,6 +18,7 @@ const template = `<!doctype html>
     <div class="report-layout">
       <div class="report-main">
         {{priorityActions}}
+        {{intelligence}}
         {{findings}}
       </div>
       <aside class="report-sidebar" aria-label="Report context">
@@ -569,6 +570,7 @@ export function renderHtmlReport(document: ReportDocument): string {
     .replace("{{metadata}}", renderMetadata(document))
     .replace("{{summary}}", renderSummary(document))
     .replace("{{priorityActions}}", renderPriorityActions(document))
+    .replace("{{intelligence}}", renderIntelligence(document))
     .replace("{{findings}}", renderFindings(document))
     .replace("{{delta}}", renderDelta(document))
     .replace("{{scannerStatus}}", renderScannerStatus(document))
@@ -673,6 +675,55 @@ function renderPriorityActions(document: ReportDocument): string {
     </div>
   </div>
   ${actions.length > 0 ? `<ol class="action-list">${actions.join("")}</ol>` : `<p class="empty-state">No findings require action.</p>`}
+</section>`;
+}
+
+function renderIntelligence(document: ReportDocument): string {
+  const cards = document.intelligence.map((item) => {
+    const identifiers = [
+      ...item.identifiers.cve,
+      ...item.identifiers.ghsa,
+      ...item.identifiers.osv,
+      ...item.identifiers.cwe
+    ];
+    const identifierTags = identifiers.length > 0 ? renderTags(identifiers, "subtle") : "";
+    const reasons = item.reasons.length > 0
+      ? `<ul class="limitations-list">${item.reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("")}</ul>`
+      : "";
+    return `<article class="finding ${item.knownExploited ? "critical" : item.severity === "unknown" ? "info" : item.severity}">
+  <div class="finding-title-row">
+    <h3>${escapeHtml(item.title)}</h3>
+    <div class="badge-row">
+      <span class="badge ${item.knownExploited ? "critical" : item.severity === "unknown" ? "info" : item.severity}">${escapeHtml(item.priority.toUpperCase())}</span>
+      ${item.knownExploited ? `<span class="badge critical">KNOWN EXPLOITED</span>` : ""}
+    </div>
+  </div>
+  <dl class="finding-meta">
+    ${renderDetail("Source", escapeHtml(item.source))}
+    ${renderDetail("Package", `<code>${escapeHtml(item.packageLabel)}</code>`)}
+    ${item.fixVersion ? renderDetail("Fixed version", `<code>${escapeHtml(item.fixVersion)}</code>`) : ""}
+    ${item.findingIds.length > 0 ? renderDetail("Related findings", formatIds(item.findingIds)) : ""}
+    ${identifierTags ? renderDetail("Identifiers", identifierTags) : ""}
+    ${renderDetail("Advisory", `<a href="${escapeHtml(item.url)}">${escapeHtml(item.url)}</a>`)}
+  </dl>
+  <div class="finding-content-grid">
+    <div class="finding-block full">
+      <h4>Why It Matters</h4>
+      <p>${escapeHtml(item.whyItMatters)}</p>
+    </div>
+    ${reasons ? `<div class="finding-block full"><h4>Match Reasons</h4>${reasons}</div>` : ""}
+  </div>
+</article>`;
+  });
+
+  return `<section class="section">
+  <div class="section-header">
+    <div>
+      <p class="section-kicker">Vulnerability Intelligence</p>
+      <h2>KEV and Advisory Matches</h2>
+    </div>
+  </div>
+  ${cards.length > 0 ? cards.join("") : `<p class="empty-state">No KEV or advisory intelligence matched the scanned dependency inventory or scanner identifiers for this run.</p>`}
 </section>`;
 }
 

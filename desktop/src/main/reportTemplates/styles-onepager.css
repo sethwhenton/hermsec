@@ -672,6 +672,23 @@ body {
   margin-bottom: 0.35rem;
 }
 
+.finding-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0 0 0.35rem;
+}
+
+.tag {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  padding: 0.14rem 0.32rem;
+  color: var(--text-secondary);
+  background: var(--surface-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+}
+
 .intel-why {
   margin: 0;
   font-size: 0.75rem;

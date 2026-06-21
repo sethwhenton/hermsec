@@ -479,3 +479,18 @@ This section is append-only. New work should be added as another iteration inste
 | Verification | Root `npm.cmd run typecheck` passed. Root `npm.cmd test` passed with `73/73`. Desktop `npm.cmd run typecheck` passed. Desktop `npm.cmd run smoke:dashboard` passed and generated a dashboard plus one-page PDF. Desktop `npm.cmd run smoke:doctor` passed with healthScore `100`, required `7/7`, scanners `6/6`, internet `5/5`, and `49` progress events. |
 | Current result | The scan progress card is now fed by real root scan/scanner/model/report events instead of desktop-side guessing. The app still keeps final report reconciliation as fallback only. |
 | Next | Add a committed Electron UI smoke that clicks through mode selection and asserts streamed card updates; continue BenchmarkJava taint precision tuning; deduplicate root/desktop scanner catalog metadata. |
+
+### Iteration 19 - Real Vulnerability Intelligence Matching
+
+| Item | Notes |
+| --- | --- |
+| Goal | Turn the report's `Vulnerability intelligence` section from a placeholder-style label into a real KEV/CVE/advisory cross-reference step. |
+| What changed | Added dependency inventory enrichment for npm, Python requirements, Go modules, Rust Cargo locks, Composer, Ruby Gemfile locks, and Maven POM basics. The root harness now runs vulnerability intelligence after scanner completion and before report writing. |
+| Advisory sources | Reuses the existing OSV, GitHub Advisory, NVD, and CISA KEV fetchers through the intel cache. Scan mode and `HERMSEC_SCANNER_ONLINE_UPDATES=false` decide whether it refreshes online feeds or uses cached/offline data. |
+| Report data | Added `ReportIntelligenceItem` records to `report-document.json`, Markdown, HTML, dashboard, and one-page report data. Cards include sources, package/version, CVE/GHSA/OSV/CWE identifiers, related finding ids, match reasons, fixed version, priority, and known-exploited status. |
+| Empty state | Reports now explicitly say no KEV/advisory intelligence matched the dependency inventory or scanner identifiers when nothing relevant is found. Generic ecosystem-only feed guidance is filtered out so it does not masquerade as a real match. |
+| What went wrong | The dashboard previously inferred "intelligence" from finding identifiers and always set `knownExploited` to false, while the one-page copy implied real KEV/dependency matching. The first positive test expected separate KEV and GitHub cards, but the existing deduper correctly merged same-CVE sources into one stronger combined card. |
+| How we solved it | Moved matching into the root scan/report path, built a real inventory, merged workspace/finding relevance, preserved deduped multi-source labels, and updated the test to expect one combined urgent item with KEV plus GitHub metadata. |
+| Verification | Root `npm run typecheck` passed. Root `npm test` passed with `76/76`. Desktop `npm --prefix desktop run typecheck` passed. Desktop `npm --prefix desktop run build` passed. Desktop `npm --prefix desktop run smoke:doctor` passed at health score `100`. Desktop `npm --prefix desktop run smoke:dashboard` passed and generated dashboard/PDF artifacts. |
+| End-to-end proof | The latest dashboard smoke `report-document.json` contains an `intelligence` array with `2` real matches for `express@4.18.2`: `CVE-2024-29041` fixed in `4.19.2` and `CVE-2024-43796` fixed in `4.20.0`, sourced from GitHub Advisory and OSV. |
+| Remaining caveat | This first inventory pass is manifest/lockfile based and should keep expanding per ecosystem. CISA KEV matching depends on CVE evidence from scanner/advisory data. Live feed failures are recorded as report limitations and do not fail scans. |

@@ -35,6 +35,7 @@ const document: ReportDocument = {
     scannerFailures: 0,
     generatedWithModel: false,
   },
+  intelligence: [],
   findings: [
     {
       id: "finding-test",
@@ -72,4 +73,12 @@ test("reports hide legacy internal scanner ids", () => {
   assert.equal(html.includes("hermsec-offline"), false);
   assert.equal(markdown.includes("HermSec heuristics"), true);
   assert.equal(html.includes("HermSec heuristics"), true);
+});
+
+test("reports show an honest vulnerability intelligence empty state", () => {
+  const markdown = renderMarkdownReport(document);
+  const html = renderHtmlReport(document);
+
+  assert.match(markdown, /No KEV or advisory intelligence matched/);
+  assert.match(html, /No KEV or advisory intelligence matched/);
 });

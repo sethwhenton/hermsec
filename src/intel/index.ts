@@ -4,6 +4,7 @@ export * from "./feed.js";
 export * from "./fetchers.js";
 export * from "./http.js";
 export * from "./matcher.js";
+export * from "./reportEnrichment.js";
 export * from "./schema.js";
 export * from "./sourceRegistry.js";
 export * from "./summarizer.js";

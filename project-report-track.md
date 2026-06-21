@@ -844,3 +844,37 @@ This file is the running engineering ledger for Hermsec. Use it to record meanin
 - Keep secrets out of the file.
 - Prefer concise metrics over long command output.
 - Link or list local artifact paths when a report/score was generated.
+
+## 2026-06-21 - Vulnerability Intelligence Report Integration
+
+### Changes
+
+- Replaced the placeholder-style vulnerability intelligence report section with real scan/report integration.
+- Added dependency inventory enrichment for supported manifests and lockfiles, including npm `package-lock.json`/`package.json`, Python `requirements*.txt`, Go `go.mod`, Rust `Cargo.lock`, Composer `composer.lock`, Ruby `Gemfile.lock`, and Maven `pom.xml` basics.
+- Wired report generation to refresh or reuse OSV, GitHub Advisory, NVD, and CISA KEV intelligence according to scan mode and `HERMSEC_SCANNER_ONLINE_UPDATES`.
+- Added matching against both dependency inventory and scanner identifiers, then normalized matched records into report intelligence cards with source labels, identifiers, matched packages, related finding ids, reasons, fixed versions, priority, and known-exploited status.
+- Filtered out generic ecosystem-only feed items so reports do not show advisory-looking cards without package or identifier evidence.
+- Updated Markdown, root HTML, dashboard, and one-page report templates to render matched intelligence or a clear empty state.
+- Updated desktop dashboard data mapping so deduped multi-source advisories can render as combined sources such as `GitHub Advisory, OSV` or `CISA KEV, GitHub Advisory`.
+
+### Issue And Fix
+
+- Issue: the report said KEV/CVE highlights were cross-referenced against dependencies, but the dashboard mostly inferred "intelligence" from CVE/GHSA/OSV identifiers already present on findings and always set `knownExploited` to false.
+- Fix: moved advisory matching into the root harness/report pipeline, built an actual dependency inventory, used the existing trusted feed fetchers and matcher, and persisted the matched intelligence in `report-document.json` for every renderer to consume.
+
+### Verification
+
+- Root `npm run typecheck` passed.
+- Root `npm test` passed with `76/76`.
+- Desktop `npm --prefix desktop run typecheck` passed.
+- Desktop `npm --prefix desktop run build` passed.
+- Desktop `npm --prefix desktop run smoke:doctor` passed with health score `100`, required `7/7`, scanners `6/6`, internet `5/5`, and provider warning expected in the isolated smoke environment.
+- Desktop `npm --prefix desktop run smoke:dashboard` passed and generated dashboard plus one-page PDF artifacts.
+- Inspected the generated smoke `report-document.json`; it contained `intelligence` with `2` real advisory matches, `confirmedCves: 2`, `knownExploited: 0`, and `10` total findings.
+- The generated intelligence records matched `express@4.18.2` against `CVE-2024-29041` fixed in `4.19.2` and `CVE-2024-43796` fixed in `4.20.0`, sourced from GitHub Advisory and OSV.
+
+### Remaining Risk
+
+- The first inventory pass is intentionally lightweight and manifest/lockfile based. Full parsing for every ecosystem should keep expanding as scanner support grows.
+- CISA KEV can only match when a CVE is present in scanner/advisory evidence; pure package records without CVEs will not become KEV matches.
+- Live feed availability depends on network/cache state, but source failures are recorded as report limitations instead of failing the scan.

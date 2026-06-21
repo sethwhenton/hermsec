@@ -5,6 +5,16 @@ function normalizeName(value: string): string {
   return value.toLowerCase();
 }
 
+function normalizeEcosystem(value: string): string {
+  const normalized = normalizeName(value.trim());
+  if (normalized === "python" || normalized === "pypi" || normalized === "pip") return "pypi";
+  if (normalized === "node" || normalized === "javascript") return "npm";
+  if (normalized === "cargo" || normalized === "crates") return "crates.io";
+  if (normalized === "composer") return "packagist";
+  if (normalized === "ruby") return "rubygems";
+  return normalized;
+}
+
 function normalizeIdentifier(value: string): string {
   const normalized = value.trim().toUpperCase().replace(/_/g, "-");
   if (/^CVE-\d{4}-\d{4,}$/.test(normalized)) {
@@ -96,7 +106,7 @@ export function packageAffected(
   inventoryPackage: WorkspaceInventory["packages"][number],
   intelPackage: SecurityIntelItem["packages"][number],
 ): boolean {
-  if (normalizeName(inventoryPackage.ecosystem) !== normalizeName(intelPackage.ecosystem)) {
+  if (normalizeEcosystem(inventoryPackage.ecosystem) !== normalizeEcosystem(intelPackage.ecosystem)) {
     return false;
   }
   if (normalizeName(inventoryPackage.name) !== normalizeName(intelPackage.name)) {

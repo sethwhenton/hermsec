@@ -496,9 +496,16 @@
   }
 
   function renderIntel() {
-    const cards = R.intelligence
-      .map(
-        (i) => `
+    const cards = R.intelligence.length > 0
+      ? R.intelligence
+          .map((i) => {
+            const ids = [
+              ...(i.identifiers?.cve || []),
+              ...(i.identifiers?.ghsa || []),
+              ...(i.identifiers?.osv || [])
+            ];
+            const reasons = (i.reasons || []).slice(0, 3);
+            return `
       <article class="intel-card reveal-item bezel bezel-card ${i.knownExploited ? "kev" : ""}">
         <div class="bezel-inner intel-card-inner">
         <div>
@@ -507,21 +514,25 @@
             <span>${esc(i.source)}</span>
             ${badge(i.severity)}
             ${i.knownExploited ? `<span class="badge badge-critical">Known Exploited</span>` : ""}
-            <span>${esc(i.ecosystem)} / ${esc(i.package)}</span>
-            <span>CVE ${esc(i.cve)}</span>
-            <span>Published ${esc(i.published)}</span>
+            ${i.package ? `<span>${esc(i.ecosystem)} / ${esc(i.package)}</span>` : ""}
+            ${i.cve ? `<span>${esc(i.cve)}</span>` : ""}
+            ${i.fixVersion ? `<span>Fix ${esc(i.fixVersion)}</span>` : ""}
+            ${i.published ? `<span>Published ${esc(i.published)}</span>` : ""}
           </div>
           <p class="intel-why"><strong>Why it matters:</strong> ${esc(i.whyItMatters)}</p>
+          ${ids.length > 0 ? `<div class="finding-tags">${ids.map((id) => `<span class="tag">${esc(id)}</span>`).join("")}</div>` : ""}
+          ${reasons.length > 0 ? `<p class="intel-why"><strong>Matched because:</strong> ${esc(reasons.join(" "))}</p>` : ""}
         </div>
-        <a class="intel-link" href="${esc(i.url)}" target="_blank" rel="noopener">View advisory<span class="link-arrow" aria-hidden="true">\u2197</span></a>
+        ${i.url ? `<a class="intel-link" href="${esc(i.url)}" target="_blank" rel="noopener">View advisory<span class="link-arrow" aria-hidden="true">\u2197</span></a>` : ""}
         </div>
-      </article>`
-      )
-      .join("");
+      </article>`;
+          })
+          .join("")
+      : `<div class="empty-state"><strong>No matched advisory intelligence</strong><p>No KEV, OSV, GitHub Advisory, or NVD entries matched the dependency inventory or scanner identifiers for this run.</p></div>`;
 
     document.getElementById("panel-intel").innerHTML = `
       <h2 class="section-title">Vulnerability intelligence</h2>
-      <p class="section-desc">Online intelligence cross-referenced against project dependencies and findings.</p>
+      <p class="section-desc">KEV and advisory records matched against dependency inventory and scanner evidence.</p>
       <div class="intel-list reveal-stagger">${cards}</div>`;
     document.getElementById("panel-intel").dataset.printTitle = "Vulnerability Intelligence";
   }

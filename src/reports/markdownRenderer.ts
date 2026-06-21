@@ -9,6 +9,7 @@ export function renderMarkdownReport(document: ReportDocument): string {
     renderMetadata(document),
     renderSummary(document),
     renderPriorityActions(document),
+    renderIntelligence(document),
     renderDelta(document),
     renderFindings(document),
     renderScannerStatus(document),
@@ -47,6 +48,7 @@ function renderSummary(document: ReportDocument): string {
     `- Info: ${document.summary.info}`,
     `- Secrets: ${document.summary.secrets}`,
     `- Confirmed CVEs from evidence: ${document.summary.confirmedCves}`,
+    `- Known exploited matches: ${document.summary.knownExploited}`,
     `- Scanner failures: ${document.summary.scannerFailures}`,
     `- Model explanations: ${document.summary.generatedWithModel ? "generated from supplied evidence" : "scanner-only explanation unavailable"}`
   ].join("\n");
@@ -59,6 +61,46 @@ function renderPriorityActions(document: ReportDocument): string {
     return `${index + 1}. ${escapeMarkdown(finding.title)}: ${escapeMarkdown(explanation?.suggestedFix ?? finding.remediation)}`;
   });
   return ["## Priority Actions", "", ...(actions.length > 0 ? actions : ["No findings require action."])].join("\n");
+}
+
+function renderIntelligence(document: ReportDocument): string {
+  if (document.intelligence.length === 0) {
+    return [
+      "## Vulnerability Intelligence",
+      "",
+      "No KEV or advisory intelligence matched the scanned dependency inventory or scanner identifiers for this run."
+    ].join("\n");
+  }
+  const lines = ["## Vulnerability Intelligence"];
+  for (const item of document.intelligence) {
+    const identifiers = [
+      ...item.identifiers.cve,
+      ...item.identifiers.ghsa,
+      ...item.identifiers.osv,
+      ...item.identifiers.cwe
+    ];
+    const itemLines: Array<string | undefined> = [
+      "",
+      `### ${escapeMarkdown(item.title)}`,
+      "",
+      `- Source: ${escapeMarkdown(item.source)}`,
+      `- Priority: ${escapeMarkdown(item.priority)}${item.knownExploited ? " (known exploited)" : ""}`,
+      `- Severity: ${escapeMarkdown(item.severity)}`,
+      `- Package: ${escapeMarkdown(item.packageLabel)}`,
+      identifiers.length > 0 ? `- Identifiers: ${identifiers.map((id) => `\`${escapeMarkdown(id)}\``).join(", ")}` : undefined,
+      item.fixVersion ? `- Fixed version: \`${escapeMarkdown(item.fixVersion)}\`` : undefined,
+      item.findingIds.length > 0 ? `- Related findings: ${item.findingIds.map((id) => `\`${escapeMarkdown(id)}\``).join(", ")}` : undefined,
+      `- Advisory: ${escapeMarkdown(item.url)}`,
+      "",
+      `Why it matters: ${escapeMarkdown(item.whyItMatters)}`,
+      "",
+      item.reasons.length > 0
+        ? `Match reasons: ${item.reasons.map((reason) => escapeMarkdown(reason)).join("; ")}`
+        : undefined
+    ];
+    lines.push(...itemLines.filter((line): line is string => line !== undefined));
+  }
+  return lines.filter((line): line is string => line !== undefined).join("\n");
 }
 
 function renderDelta(document: ReportDocument): string {

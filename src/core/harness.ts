@@ -5,9 +5,11 @@ import { providerCredentialEnv } from "../model/credentials.js";
 import { selectModelProvider } from "../model/providerRouter.js";
 import { assistModeFrom, emitScanProgress, type ScanProgressCallback } from "./progress.js";
 import { runScan as runLocalScan } from "./scan.js";
+import { buildVulnerabilityIntelligence } from "../intel/reportEnrichment.js";
 import { renderReport } from "../reports/reportRenderer.js";
 import { stableId } from "../shared/text.js";
 import type { CommandResult, OutputFormat, ScanMode } from "../shared/types.js";
+import type { ReportIntelligenceItem } from "../reports/schema.js";
 import type { ReportFormat } from "../reports/schema.js";
 import { loadUserConfig } from "../storage/userConfig.js";
 
@@ -31,6 +33,34 @@ export async function runScan(options: HarnessScanOptions): Promise<CommandResul
     ...(options.onProgress ? { onProgress: options.onProgress } : {}),
   });
   const workspaceName = path.basename(scanRun.target) || "workspace";
+  const intelligenceStarted = Date.now();
+  emitScanProgress(options.onProgress, {
+    id: "vulnerability-intelligence",
+    stage: "scanner",
+    scannerId: "vulnerability-intelligence",
+    label: "Vulnerability intelligence",
+    status: "running",
+    message: "Cross-checking dependency inventory and scanner identifiers against KEV/CVE advisory feeds.",
+    findingCount: scanRun.findings.length,
+    assistMode,
+  });
+  const intelligence = await resolveVulnerabilityIntelligence({
+    target: scanRun.target,
+    workspaceId: stableId(scanRun.target, "ws"),
+    findings: scanRun.findings,
+    mode: intelligenceModeForScan(options.mode),
+  });
+  emitScanProgress(options.onProgress, {
+    id: "vulnerability-intelligence",
+    stage: "scanner",
+    scannerId: "vulnerability-intelligence",
+    label: "Vulnerability intelligence",
+    status: intelligence.status,
+    message: intelligence.message,
+    findingCount: intelligence.items.length,
+    durationMs: Date.now() - intelligenceStarted,
+    assistMode,
+  });
   const modelStarted = Date.now();
   if (options.useModel) {
     emitScanProgress(options.onProgress, {
@@ -92,6 +122,8 @@ export async function runScan(options: HarnessScanOptions): Promise<CommandResul
     },
     explanations: agent.explanations,
     agentSummary: agent.summary,
+    intelligence: intelligence.items,
+    limitations: intelligence.limitations,
   });
   await writeBenchmarkExportIfRequested(report.paths.reportDir, scanRun);
   emitScanProgress(options.onProgress, {
@@ -112,6 +144,49 @@ export async function runScan(options: HarnessScanOptions): Promise<CommandResul
       report: report.artifacts,
     },
   };
+}
+
+async function resolveVulnerabilityIntelligence(input: {
+  target: string;
+  workspaceId: string;
+  findings: Awaited<ReturnType<typeof runLocalScan>>["findings"];
+  mode: "auto" | "online" | "offline";
+}): Promise<{
+  status: "completed" | "skipped" | "failed";
+  message: string;
+  items: ReportIntelligenceItem[];
+  limitations: string[];
+}> {
+  try {
+    const result = await buildVulnerabilityIntelligence(input);
+    const failedSources = result.results
+      .filter((source) => source.status === "failed")
+      .map((source) => source.source);
+    const limitations = failedSources.length > 0
+      ? [`Vulnerability intelligence source failures: ${failedSources.join(", ")}.`]
+      : [];
+    return {
+      status: result.status,
+      message: result.message,
+      items: result.items,
+      limitations,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      status: "failed",
+      message: `Vulnerability intelligence failed safely: ${message}`,
+      items: [],
+      limitations: [`Vulnerability intelligence failed safely: ${message}`],
+    };
+  }
+}
+
+function intelligenceModeForScan(mode: ScanMode): "auto" | "online" | "offline" {
+  if (mode === "offline" || process.env.HERMSEC_SCANNER_ONLINE_UPDATES === "false") {
+    return "offline";
+  }
+  return mode === "online" ? "online" : "auto";
 }
 
 async function writeBenchmarkExportIfRequested(reportDir: string, scanRun: Awaited<ReturnType<typeof runLocalScan>>): Promise<void> {

@@ -263,6 +263,11 @@
     const cveHighlights = R.intelligence.filter((i) => i.cve && !i.knownExploited);
 
     function intelCard(i) {
+      const ids = [
+        ...(i.identifiers?.cve || []),
+        ...(i.identifiers?.ghsa || []),
+        ...(i.identifiers?.osv || [])
+      ];
       return `
       <article class="intel-card bezel ${i.knownExploited ? "kev" : ""}">
         <div class="bezel-inner intel-card-inner">
@@ -271,9 +276,11 @@
             <span>${esc(i.source)}</span>
             ${badge(i.severity)}
             ${i.knownExploited ? `<span class="badge badge-critical">Known Exploited</span>` : ""}
-            <span>${esc(i.ecosystem)} / ${esc(i.package)}</span>
-            <span>CVE ${esc(i.cve)}</span>
+            ${i.package ? `<span>${esc(i.ecosystem)} / ${esc(i.package)}</span>` : ""}
+            ${i.cve ? `<span>${esc(i.cve)}</span>` : ""}
+            ${i.fixVersion ? `<span>Fix ${esc(i.fixVersion)}</span>` : ""}
           </div>
+          ${ids.length > 0 ? `<div class="finding-tags">${ids.map((id) => `<span class="tag">${esc(id)}</span>`).join("")}</div>` : ""}
           <p class="intel-why"><strong>Why it matters:</strong> ${esc(i.whyItMatters)}</p>
         </div>
       </article>`;
@@ -281,7 +288,7 @@
 
     document.getElementById("op-intel").innerHTML = `
       <h2 class="op-section-title" id="op-intel-title">Vulnerability intelligence</h2>
-      <p class="op-section-desc">KEV and confirmed CVE highlights cross-referenced against project dependencies.</p>
+      <p class="op-section-desc">KEV and advisory records matched against dependency inventory and scanner evidence.</p>
       ${
         kev.length > 0
           ? `<p class="intel-section-label">CISA Known Exploited (${kev.length})</p><div class="intel-list">${kev.map(intelCard).join("")}</div>`
@@ -290,6 +297,11 @@
       ${
         cveHighlights.length > 0
           ? `<p class="intel-section-label" style="margin-top:0.75rem">Confirmed CVE highlights (${cveHighlights.length})</p><div class="intel-list">${cveHighlights.map(intelCard).join("")}</div>`
+          : ""
+      }
+      ${
+        kev.length === 0 && cveHighlights.length === 0
+          ? `<div class="empty-state"><strong>No matched advisory intelligence</strong><p>No KEV, OSV, GitHub Advisory, or NVD entries matched this run.</p></div>`
           : ""
       }`;
   }

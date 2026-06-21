@@ -30,6 +30,7 @@ interface HermsecDocument {
   summary?: Partial<Record<Severity | "total" | "secrets" | "scannerFailures" | "confirmedCves" | "knownExploited", number>>;
   findings?: HermsecFinding[];
   explanations?: Record<string, ModelExplanation | undefined>;
+  intelligence?: HermsecIntelligence[];
   tools?: HermsecTool[];
   evidence?: {
     findingEvidence?: Record<string, Array<{ scanner?: string; message?: string }>>;
@@ -72,6 +73,34 @@ interface HermsecFinding {
     file?: string;
     startLine?: number;
   };
+}
+
+interface HermsecIntelligence {
+  id?: string;
+  title?: string;
+  source?: string;
+  severity?: string;
+  knownExploited?: boolean;
+  ecosystem?: string;
+  packageName?: string;
+  installedVersion?: string;
+  packageLabel?: string;
+  cve?: string;
+  identifiers?: {
+    cve?: string[];
+    ghsa?: string[];
+    osv?: string[];
+    cwe?: string[];
+  };
+  publishedAt?: string;
+  modifiedAt?: string;
+  url?: string;
+  whyItMatters?: string;
+  matchedPackages?: string[];
+  findingIds?: string[];
+  reasons?: string[];
+  priority?: string;
+  fixVersion?: string;
 }
 
 interface HermsecTool {
@@ -189,6 +218,16 @@ export interface DashboardReport {
     whyItMatters: string;
     url: string;
     findingIds: string[];
+    identifiers: {
+      cve: string[];
+      ghsa: string[];
+      osv: string[];
+      cwe: string[];
+    };
+    matchedPackages: string[];
+    reasons: string[];
+    priority: string;
+    fixVersion: string;
   }>;
   fixPlan: {
     fixNow: FixPlanItem[];
@@ -242,10 +281,11 @@ export function buildDashboardReport(reportDir: string): DashboardReport {
   const assist = readScanAssist(dir, metadata);
   const projectState = readJson<ProjectStateFingerprint>(path.join(dir, "project-state.json"));
   const findings = normalizeFindings(document.findings ?? readLooseFindings(dir));
-  const summary = normalizeSummary(document.summary, findings, document.tools ?? []);
   const sortedFindings = [...findings].sort(
     (a, b) => (severityRank[a.severity] ?? 5) - (severityRank[b.severity] ?? 5),
   );
+  const intelligence = buildIntelligence(document.intelligence, sortedFindings);
+  const summary = normalizeSummary(document.summary, findings, document.tools ?? [], intelligence);
   const targetPath = metadata?.projectPath ?? document.target?.value ?? path.dirname(dir);
   const project = document.target?.displayName ?? document.workspaceName ?? path.basename(targetPath);
   const reportGeneratedAt =
@@ -305,7 +345,7 @@ export function buildDashboardReport(reportDir: string): DashboardReport {
     findings: sortedFindings,
     adjudications: buildAdjudications(sortedFindings, document.explanations ?? {}),
     threatModel: buildThreatModel(sortedFindings, targetPath),
-    intelligence: buildIntelligence(sortedFindings),
+    intelligence,
     fixPlan: buildFixPlan(sortedFindings),
     evidence: {
       rawOutputs: buildRawOutputs(document),
@@ -412,6 +452,7 @@ function normalizeSummary(
   summary: HermsecDocument["summary"],
   findings: DashboardReport["findings"],
   tools: HermsecTool[],
+  intelligence: DashboardReport["intelligence"],
 ): DashboardReport["summary"] {
   const count = (severity: Severity) => findings.filter((finding) => finding.severity === severity).length;
   const value = (key: keyof DashboardReport["summary"], fallback: number) => {
@@ -420,6 +461,10 @@ function normalizeSummary(
     return Number.isFinite(parsed) ? parsed : fallback;
   };
 
+  const confirmedCves = new Set([
+    ...findings.flatMap((finding) => finding.cve),
+    ...intelligence.flatMap((item) => item.identifiers.cve),
+  ]);
   return {
     totalFindings: value("totalFindings", value("total" as keyof DashboardReport["summary"], findings.length)),
     critical: value("critical", count("critical")),
@@ -428,8 +473,8 @@ function normalizeSummary(
     low: value("low", count("low")),
     info: value("info", count("info")),
     secrets: value("secrets", findings.filter((finding) => finding.category === "secret").length),
-    confirmedCves: value("confirmedCves", findings.filter((finding) => finding.cve.length > 0).length),
-    knownExploited: value("knownExploited", 0),
+    confirmedCves: value("confirmedCves", confirmedCves.size),
+    knownExploited: value("knownExploited", intelligence.filter((item) => item.knownExploited).length),
     scannerFailures: value(
       "scannerFailures",
       tools.filter((tool) => normalizeScannerStatus(tool.status) === "failed").length,
@@ -668,7 +713,40 @@ function buildThreatModel(findings: DashboardReport["findings"], targetPath: str
   };
 }
 
-function buildIntelligence(findings: DashboardReport["findings"]): DashboardReport["intelligence"] {
+function buildIntelligence(
+  intelligence: HermsecDocument["intelligence"],
+  findings: DashboardReport["findings"],
+): DashboardReport["intelligence"] {
+  if (intelligence && intelligence.length > 0) {
+    return intelligence.map((item) => {
+      const identifiers = {
+        cve: arrayValue(item.identifiers?.cve),
+        ghsa: arrayValue(item.identifiers?.ghsa),
+        osv: arrayValue(item.identifiers?.osv),
+        cwe: arrayValue(item.identifiers?.cwe),
+      };
+      const cve = item.cve ?? identifiers.cve[0] ?? identifiers.ghsa[0] ?? identifiers.osv[0] ?? "";
+      return {
+        title: item.title ?? cve ?? "Matched vulnerability intelligence",
+        source: item.source ?? "Security intelligence",
+        severity: item.severity ?? "info",
+        knownExploited: Boolean(item.knownExploited),
+        ecosystem: item.ecosystem ?? "project",
+        package: item.packageLabel ?? item.packageName ?? "",
+        cve,
+        published: item.publishedAt ?? item.modifiedAt ?? "",
+        whyItMatters: item.whyItMatters ?? ((item.reasons ?? []).join(" ") || "Trusted advisory intelligence matched this scan."),
+        url: item.url ?? "",
+        findingIds: arrayValue(item.findingIds),
+        identifiers,
+        matchedPackages: arrayValue(item.matchedPackages),
+        reasons: arrayValue(item.reasons),
+        priority: item.priority ?? (item.knownExploited ? "urgent" : "normal"),
+        fixVersion: item.fixVersion ?? "",
+      };
+    });
+  }
+
   return findings
     .filter((finding) => finding.cve.length > 0 || finding.ghsa.length > 0 || finding.osv.length > 0)
     .map((finding) => {
@@ -685,6 +763,16 @@ function buildIntelligence(findings: DashboardReport["findings"]): DashboardRepo
         whyItMatters: finding.description || finding.remediation,
         url: firstReference(finding),
         findingIds: [finding.id],
+        identifiers: {
+          cve: finding.cve,
+          ghsa: finding.ghsa,
+          osv: finding.osv,
+          cwe: finding.cwe,
+        },
+        matchedPackages: finding.package ? [`dependency:${finding.package}${finding.version ? `@${finding.version}` : ""}`] : [],
+        reasons: ["This legacy report finding already contained an advisory identifier."],
+        priority: finding.severity === "critical" || finding.severity === "high" ? "high" : "normal",
+        fixVersion: "",
       };
     });
 }

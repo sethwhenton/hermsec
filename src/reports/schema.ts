@@ -42,6 +42,34 @@ export type ReportSummary = {
   generatedWithModel: boolean;
 };
 
+export type ReportIntelligenceItem = {
+  id: string;
+  title: string;
+  source: string;
+  severity: Severity | "unknown";
+  knownExploited: boolean;
+  ecosystem: string;
+  packageName?: string;
+  installedVersion?: string;
+  packageLabel: string;
+  cve?: string;
+  identifiers: {
+    cve: string[];
+    ghsa: string[];
+    osv: string[];
+    cwe: string[];
+  };
+  publishedAt?: string;
+  modifiedAt?: string;
+  url: string;
+  whyItMatters: string;
+  matchedPackages: string[];
+  findingIds: string[];
+  reasons: string[];
+  priority: "urgent" | "high" | "normal" | "watch";
+  fixVersion?: string;
+};
+
 export type EvidenceReference = {
   scanner: string;
   artifactPath?: string;
@@ -90,6 +118,7 @@ export type ReportDocument = {
   run: ScanRunSummary;
   tools: ScannerStatus[];
   summary: ReportSummary;
+  intelligence: ReportIntelligenceItem[];
   findings: Finding[];
   explanations: Record<string, ModelExplanation | undefined>;
   evidence: EvidenceBundle;
@@ -150,8 +179,10 @@ export function compareFindings(a: Finding, b: Finding): number {
 export function buildReportSummary(
   findings: readonly Finding[],
   tools: readonly ScannerStatus[],
-  generatedWithModel: boolean
+  generatedWithModel: boolean,
+  intelligence: readonly ReportIntelligenceItem[] = []
 ): ReportSummary {
+  const confirmedCves = new Set<string>();
   const summary: ReportSummary = {
     total: findings.length,
     critical: 0,
@@ -161,7 +192,7 @@ export function buildReportSummary(
     info: 0,
     secrets: 0,
     confirmedCves: 0,
-    knownExploited: 0,
+    knownExploited: intelligence.filter((item) => item.knownExploited).length,
     scannerFailures: tools.filter((tool) => tool.status === "failed").length,
     generatedWithModel
   };
@@ -171,10 +202,17 @@ export function buildReportSummary(
     if (finding.category === "secret") {
       summary.secrets += 1;
     }
-    if ((finding.identifiers?.cve?.length ?? 0) > 0) {
-      summary.confirmedCves += finding.identifiers?.cve?.length ?? 0;
+    for (const cve of finding.identifiers?.cve ?? []) {
+      confirmedCves.add(cve);
     }
   }
+
+  for (const item of intelligence) {
+    for (const cve of item.identifiers.cve) {
+      confirmedCves.add(cve);
+    }
+  }
+  summary.confirmedCves = confirmedCves.size;
 
   return summary;
 }
@@ -188,6 +226,9 @@ export function assertReportDocument(value: ReportDocument): void {
   }
   if (value.summary.total !== value.findings.length) {
     throw new Error("Report summary total does not match finding count.");
+  }
+  if (!Array.isArray(value.intelligence)) {
+    throw new Error("Report document is missing vulnerability intelligence.");
   }
   for (const finding of value.findings) {
     if (!finding.id || !finding.title || !finding.fingerprint) {

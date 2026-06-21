@@ -55,6 +55,7 @@ function makeReportDocument(): ReportDocument {
       scannerFailures: 0,
       generatedWithModel: false,
     },
+    intelligence: [],
     findings: [
       {
         id: "finding-report-test",

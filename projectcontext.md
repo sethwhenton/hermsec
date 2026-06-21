@@ -53,6 +53,7 @@ npm.cmd run dist:win
 - User-facing reports and dashboard data must display friendly scanner names. Legacy `hermsec-offline` findings are compatibility data only and should render as `HermSec heuristics`.
 - Chat scan progress should show the real orchestration state from root scanner events. The CLI streams `HERMSEC_PROGRESS <json>` lines in JSON mode while preserving the final JSON result; desktop consumes those lines live and only uses final report-status reconciliation as a fallback.
 - Deep assisted mode remains scanner-confirmed/model-supported only. Model explanations must validate against existing finding ids, scanner ids, files, lines, packages, CVEs/GHSAs/OSVs, and CWEs before reports accept them.
+- Vulnerability intelligence is now a real report-generation step. The harness inventories supported dependency manifests/lockfiles, refreshes or reuses OSV/GitHub Advisory/NVD/CISA KEV intelligence according to the online-updates setting, filters out generic ecosystem-only feed items, and writes matched advisory/KEV records into `report-document.json`, Markdown, HTML, dashboard, and one-page outputs.
 
 ## Boundaries
 

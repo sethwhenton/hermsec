@@ -17,6 +17,7 @@ import {
   type AgentSummary,
   type ReportDocument,
   type ReportFormat,
+  type ReportIntelligenceItem,
   type ScanTarget
 } from "./schema.js";
 
@@ -29,6 +30,7 @@ export type RenderReportInput = {
   formats?: readonly ReportFormat[];
   explanations?: Record<string, ModelExplanation | undefined>;
   agentSummary?: Partial<AgentSummary>;
+  intelligence?: readonly ReportIntelligenceItem[];
   rawEvidence?: readonly RawEvidenceInput[];
   limitations?: readonly string[];
   generatedAt?: string;
@@ -69,6 +71,7 @@ export async function renderReport(input: RenderReportInput): Promise<RenderRepo
 
   const explanations = input.explanations ?? {};
   const generatedWithModel = wasGeneratedWithModel(input.agentSummary);
+  const intelligence = [...(input.intelligence ?? [])];
   const document: ReportDocument = {
     schemaVersion: "1.0",
     scanId: input.scanRun.id,
@@ -91,7 +94,8 @@ export async function renderReport(input: RenderReportInput): Promise<RenderRepo
       }
     },
     tools: sortTools(input.scanRun.scannerStatuses),
-    summary: buildReportSummary(input.scanRun.findings, input.scanRun.scannerStatuses, generatedWithModel),
+    summary: buildReportSummary(input.scanRun.findings, input.scanRun.scannerStatuses, generatedWithModel, intelligence),
+    intelligence,
     findings: [...input.scanRun.findings].sort(compareFindings),
     explanations,
     evidence,

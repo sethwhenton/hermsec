@@ -114,6 +114,12 @@ Every scanner result crosses a normalization boundary before reporting. Hermsec 
 
 Deep assisted mode is evidence-bound. Model output can group, prioritize, explain impact, and suggest remediation, but it is rejected if it invents unsupported file paths, line numbers, packages, CVEs, CWEs, scanner ids, or finding ids.
 
+## Vulnerability Intelligence
+
+Hermsec cross-checks scanner evidence and dependency inventory against trusted advisory sources. During report generation it inventories supported manifests and lockfiles, including npm, Python, Go, Rust, Composer, Ruby, and Maven basics, then matches relevant records from OSV, GitHub Advisory, NVD, and CISA KEV cache/live feeds.
+
+Matched intelligence appears in the JSON, Markdown, HTML, dashboard, and one-page report outputs with the advisory source, package/version, CVE/GHSA/OSV identifiers, fixed version when known, related finding ids, match reasons, and KEV status. If no advisory or KEV entry matches the scanned dependencies or scanner identifiers, reports show an explicit empty state instead of implying a match was found.
+
 ## Scanner Harness
 
 The root harness never installs dependencies inside scanned repositories and does not run package lifecycle scripts. It normalizes scanner output into Hermsec findings and report artifacts. V3 uses Settings > Scanners to show supported scanners, install/readiness state, enablement, auto-install preferences, and project applicability.
