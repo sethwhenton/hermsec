@@ -80,6 +80,18 @@ npm ci
 npm run dev
 ```
 
+Repeatable desktop smoke checks:
+
+```powershell
+npm --prefix desktop run build
+npm run desktop:smoke:ui
+npm run desktop:smoke:doctor
+npm run desktop:smoke:dashboard
+npm run desktop:smoke:scan-modes
+```
+
+The GUI smoke runbook is in `docs/gui-e2e-smoke.md`.
+
 ## Packaging
 
 Build Windows locally:
@@ -127,13 +139,12 @@ Doctor is available from chat to check the app environment before scanning. It v
 
 ## Scan Modes
 
-Hermsec V3 exposes three product scan modes:
+Hermsec V3 exposes four product scan modes:
 
 - `Deep assisted scan`: inspects the project, selects the right scanner lanes, prepares missing supported tools, runs the scanner stack, then uses the selected model to triage scanner-backed evidence.
 - `Single agent inspection`: uses one configured model to inspect bounded repository evidence directly. This mode is scanner-free and uses safe read-only code tools.
 - `MoA inspection`: uses a mixture-of-agents panel. Specialist agents inspect bounded repository evidence, a false-positive judge reviews candidates, and an aggregator writes the accepted findings.
-
-For research and CLI experiments, Hermsec also includes `scanner-moa-assisted`. This hybrid mode runs scanners and MoA together, then judges and aggregates both candidate sets. It is documented in the Task 5 research bundle below.
+- `Scanner + MoA inspection`: runs the scanner stack and MoA independently, then sends both candidate sets through the false-positive judge and aggregator before writing the standard report.
 
 Scanner-only runs remain an internal benchmark control.
 

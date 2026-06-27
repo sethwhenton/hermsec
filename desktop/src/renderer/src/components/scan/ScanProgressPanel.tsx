@@ -291,6 +291,7 @@ function buildTimelineModel(events: ScanProgressEvent[]) {
 function tokenLabelForMode(mode: string): string {
   if (mode === "single-agent") return "Focused agent review";
   if (mode === "moa-assisted") return "Multi-agent review";
+  if (mode === "scanner-moa-assisted") return "Hybrid review";
   return "More context, more tokens";
 }
 

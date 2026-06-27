@@ -6,7 +6,7 @@ This file is the running engineering ledger for Hermsec. Use it to record meanin
 
 - Active app: `desktop`.
 - Reusable scanner/report engine: root TypeScript CLI and harness.
-- Current product direction: local-first desktop security agent for Vibecoders, with deterministic scanner evidence first and three scan modes: `Deep assisted scan`, `Single agent inspection`, and `MoA assisted inspection`.
+- Current product direction: local-first desktop security agent for Vibecoders, with deterministic scanner evidence first and four scan modes: `Deep assisted scan`, `Single agent inspection`, `MoA inspection`, and `Scanner + MoA inspection`.
 - Current scanner base: built-in Hermsec heuristics, Semgrep, Gitleaks, Bandit, OSV-Scanner, pip-audit, SafeDep PMG npm audit.
 - Current priority: improve Java accuracy with taint tracking, then broaden scanner coverage with Trivy and Checkov.
 
@@ -1233,3 +1233,84 @@ This file is the running engineering ledger for Hermsec. Use it to record meanin
 - Removed old/unreferenced paper images: previous mode charts, language baseline chart, old agents screenshot, and Doctor screenshot.
 - Kept the refreshed paper source and the actual-run `results/latest` bundle.
 - Updated README references so the research package points to the current TeX source and latest results only.
+
+## 2026-06-28 - Scanner + MoA Product Mode Alignment
+
+### Changes
+
+- Promoted `scanner-moa-assisted` from CLI/research-only visibility into the desktop product scan mode list.
+- Desktop now exposes exactly four scan modes: Deep assisted, Single Agent, MoA, and Scanner + MoA.
+- Kept `scanner-model-summary` as a hidden legacy alias that normalizes to Deep assisted.
+- Reduced Settings > Agents MoA presets to Low panel and High panel only.
+- Added settings migration behavior so legacy Fast/Balanced panel values normalize to Low, while legacy Deep panel values normalize to High.
+- Updated desktop scan launch normalization so Scanner + MoA is passed through to the CLI instead of falling back to Deep assisted.
+- Kept Scanner + MoA out of agent-only routing so scanner selection, preparation, and execution still run before MoA judging/aggregation.
+- Updated progress labels, scan-assist artifact text, local metadata typing, dashboard fallback labels, README, CLI usage, and project context.
+
+### Verification
+
+- `npm run typecheck` passed.
+- `npm --prefix desktop run typecheck` passed.
+- `npm test` passed with `97/97`.
+- `npm --prefix desktop run build` passed.
+- `npm --prefix desktop run smoke:doctor` passed with health score `100`.
+- `npm --prefix desktop run smoke:dashboard` passed and generated dashboard plus one-page PDF artifacts.
+- Real OpenCode Go Scanner + MoA CLI smoke passed on `tests/fixtures/repos/node-express-clean`, recording `scanner-moa-assisted`, `Scanner + MoA inspection`, `6` agents used, `5` accepted candidates, and `1` rejected candidate in report metadata.
+- Real OpenCode Go four-mode acceptance smoke passed on the clean fixture: Deep assisted, Single Agent, MoA, and Scanner + MoA all exited `0` and emitted mode-specific progress.
+
+## 2026-06-28 - Repeatable GUI Scan Mode Smoke
+
+### Changes
+
+- Added a desktop UI smoke script that launches the Electron renderer, opens Settings, verifies General scan modes, opens Agents, and checks the Low/High MoA panel UI.
+- Added a desktop scan-mode smoke script that runs all four visible scan modes through the desktop `scanProject` path and verifies dashboard HTML, one-page HTML, one-page PDF, progress events, and report metadata.
+- Added `docs/gui-e2e-smoke.md` with the repeatable command sequence for GUI validation.
+- Persisted scan-mode smoke results to `smoke-summary.json` so results remain available even if terminal output is truncated.
+- Fixed a smoke-only Electron lifecycle bug where offscreen report/PDF windows could fire `window-all-closed` and quit the app before all scan modes completed.
+
+### Verification
+
+- `npm --prefix desktop run typecheck` passed.
+- `npm --prefix desktop run build` passed.
+- `npm run desktop:smoke:scan-modes` passed using the real configured OpenCode Go provider, with `useModel: true`.
+- The GUI scan-mode smoke completed all four modes: Deep assisted, Single Agent, MoA, and Scanner + MoA.
+- `npm run typecheck` passed.
+- `npm test` passed with `97/97`.
+- `npm run desktop:smoke:ui` passed.
+- `npm --prefix desktop run smoke:doctor` passed with health score `100`.
+- `npm --prefix desktop run smoke:dashboard` passed and generated dashboard plus one-page PDF artifacts.
+
+## 2026-06-28 - Scanner + MoA Desktop Timeout Fix
+
+### Changes
+
+- Increased the desktop scan watchdog from a single fixed `180s` cutoff to mode-aware limits.
+- New desktop limits are: Deep assisted `5m`, Single Agent `7m`, MoA `10m`, and Scanner + MoA `15m`.
+- Kept a hard watchdog in place so long scans cannot loop forever.
+- Added environment overrides for local debugging: `HERMSEC_DESKTOP_SCAN_TIMEOUT_MS` and `HERMSEC_DESKTOP_SCAN_TIMEOUT_<MODE>_MS`.
+
+### Verification
+
+- `npm --prefix desktop run typecheck` passed.
+- `npm --prefix desktop run build` passed.
+- `npm run desktop:smoke:scan-modes` passed with the actual configured OpenCode Go provider and completed all four modes.
+- `npm run desktop:smoke:ui` passed.
+
+## 2026-06-28 - v0.1.6 Release Prep
+
+### Changes
+
+- Bumped root and desktop package versions to `0.1.6`.
+- Updated the About Hermsec modal to describe the current four-mode product, Scanner + MoA, evidence boundaries, and mode-specific watchdog behavior.
+- Updated the Settings footer version to `Hermsec Desktop v0.1.6`.
+- Confirmed the README download section points users to the GitHub Releases page for Windows and macOS installers.
+
+### Verification
+
+- `npm run typecheck` passed.
+- `npm --prefix desktop run typecheck` passed.
+- `npm test` passed with `97/97`.
+- `npm --prefix desktop run build` passed.
+- `npm run desktop:smoke:ui` passed.
+- `npm --prefix desktop run smoke:doctor` passed with health score `100`.
+- `npm run desktop:dist:win` passed and produced local Windows installer/portable artifacts for `0.1.6`.

@@ -23,16 +23,32 @@ export const scanModeOptions: Array<{
   },
   {
     id: "moa-assisted",
-    label: "MoA assisted inspection",
+    label: "MoA inspection",
     shortLabel: "MoA",
-    description: "Runs specialist agents, a false-positive judge, and an aggregator over bounded code evidence.",
+    description: "Runs specialist agents, a false-positive judge, and an aggregator over bounded code evidence without scanner tools.",
     status: "Multi-agent review",
+  },
+  {
+    id: "scanner-moa-assisted",
+    label: "Scanner + MoA inspection",
+    shortLabel: "Scan+MoA",
+    description: "Runs scanners and MoA independently, then lets the judge merge and validate both sources.",
+    status: "Hybrid review",
   },
 ];
 
 export function normalizeScanAssistMode(value: string | undefined): HermsecProductScanAssistMode {
   if (value === "single-agent" || value === "single-agent-inspection") return "single-agent";
   if (value === "moa-assisted" || value === "moa-inspection") return "moa-assisted";
+  if (
+    value === "scanner-moa-assisted" ||
+    value === "scanner-moa" ||
+    value === "scanner-plus-moa" ||
+    value === "scanner+moa" ||
+    value === "hybrid"
+  ) {
+    return "scanner-moa-assisted";
+  }
   if (value === "deep-assisted" || value === "scanner-model-summary") return "deep-assisted";
   return "deep-assisted";
 }

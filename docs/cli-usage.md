@@ -9,7 +9,7 @@ hermsec --help
 hermsec agent ask <message> [--target <path>] [--mode auto|offline|online] [--json] [--no-model]
 hermsec agent providers [--json]
 hermsec doctor [--json]
-hermsec scan <target> [--mode auto|offline|online] [--assist-mode scanner-model-summary|deep-assisted] [--out <dir>] [--json] [--md] [--html] [--no-model]
+hermsec scan <target> [--mode auto|offline|online] [--assist-mode deep-assisted|single-agent|moa-assisted|scanner-moa-assisted] [--out <dir>] [--json] [--md] [--html] [--no-model]
 hermsec config get [key]
 hermsec config set <key> <value>
 hermsec config path
@@ -38,7 +38,7 @@ set GEMINI_API_KEY=...
 hermsec config set privacyMode cloud-assisted
 hermsec config set preferredModelProvider gemini
 hermsec config set providerCredentialEnv GEMINI_API_KEY
-hermsec scan <target> --mode online --assist-mode scanner-model-summary
+hermsec scan <target> --mode online --assist-mode deep-assisted
 ```
 
 Supported starter providers are `openrouter`, `openai`, `claude`, `gemini`, `opencode-go`, `ollama`, `openai-compatible`, and `none`. Hermsec stores provider IDs and environment-variable names only; it rejects raw-looking key values.
@@ -56,6 +56,10 @@ The full desktop flow can be checked with:
 ```powershell
 npm run desktop:typecheck
 npm run desktop:build
+npm run desktop:smoke:ui
 npm run desktop:smoke:doctor
 npm run desktop:smoke:dashboard
+npm run desktop:smoke:scan-modes
 ```
+
+See `docs/gui-e2e-smoke.md` for the repeatable GUI end-to-end smoke runbook.

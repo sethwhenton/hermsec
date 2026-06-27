@@ -997,6 +997,9 @@ function parseAutomationRequest(text: string): Partial<ParsedAutomation> {
 }
 
 function parseScanModeText(lower: string): HermsecProductScanAssistMode | undefined {
+  if (/\b(scanner|scan|scanners)\s*(\+|plus|and|with)?\s*(moa|mixture\s+of\s+agents|multi[-\s]?agent)\b/.test(lower) || /\b(hybrid|scanner[-\s]?moa|scanner\+moa)\b/.test(lower)) {
+    return "scanner-moa-assisted";
+  }
   if (/\b(moa|mixture\s+of\s+agents|multi[-\s]?agent)\b/.test(lower)) return "moa-assisted";
   if (/\b(single[-\s]?agent|one\s+agent)\b/.test(lower)) return "single-agent";
   if (/\b(deep[-\s]?assisted|deep\s+scan|deep)\b/.test(lower)) return "deep-assisted";

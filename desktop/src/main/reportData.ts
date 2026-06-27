@@ -487,6 +487,7 @@ function readScanAssist(reportDir: string, metadata: LocalScanMetadata | null): 
 function assistModeFallbackLabel(mode: string): string {
   if (mode === "single-agent") return "Single-agent inspection";
   if (mode === "moa-assisted") return "MoA-assisted inspection";
+  if (mode === "scanner-moa-assisted") return "Scanner + MoA inspection";
   return "Deep assisted scan";
 }
 

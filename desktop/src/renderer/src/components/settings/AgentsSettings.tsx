@@ -68,25 +68,17 @@ const moaPresets: Array<{
   consensusThreshold: MoAInspectionPresetConfig["consensusThreshold"];
 }> = [
   {
-    id: "fast-quorum",
-    label: "Fast quorum",
-    description: "Three agents, one comparison round, and a majority decision.",
-    panelSize: 3,
+    id: "low-panel",
+    label: "Low panel",
+    description: "Cheaper run with three specialist agents, judge review, and one final aggregation.",
+    panelSize: 5,
     debateRounds: 1,
     consensusThreshold: "majority",
   },
   {
-    id: "balanced-panel",
-    label: "Balanced panel",
-    description: "Five agents compare bounded code evidence before a coordinator summary.",
-    panelSize: 5,
-    debateRounds: 2,
-    consensusThreshold: "coordinator",
-  },
-  {
-    id: "deep-panel",
-    label: "Deep panel",
-    description: "Seven agents, extra debate, and a stricter consensus threshold.",
+    id: "high-panel",
+    label: "High panel",
+    description: "Stronger run with five specialist agents, stricter judging, and more candidate capacity.",
     panelSize: 7,
     debateRounds: 3,
     consensusThreshold: "supermajority",
@@ -99,10 +91,10 @@ const fallbackAgents: AgentScanSettings = {
     maxToolRounds: 4,
   },
   moa: {
-    presetId: "balanced-panel",
+    presetId: "low-panel",
     panelSize: 5,
-    debateRounds: 2,
-    consensusThreshold: "coordinator",
+    debateRounds: 1,
+    consensusThreshold: "majority",
   },
 };
 
@@ -170,7 +162,7 @@ export function AgentsSettings() {
       <div className="mb-6">
         <h1 className="text-xl font-medium">Agents</h1>
         <p className="mt-1 text-xs leading-5 text-muted">
-          Configure the scanner-free agent modes. Deep assisted scan remains the scanner-backed mode.
+          Configure agent inspection modes. MoA and Scanner + MoA use the same Low or High panel.
         </p>
       </div>
 
@@ -224,12 +216,12 @@ export function AgentsSettings() {
         <SettingsCard
           icon={<Network className="h-4 w-4" />}
           title="MoA Inspection"
-          description="A scanner-free mixture-of-agents preset coordinates specialist reviews, judging, and aggregation."
+          description="MoA is scanner-free. Scanner + MoA uses this same panel after scanners run independently."
         >
           <div className="grid gap-4">
             <div>
               <div className="mb-2 text-xs font-medium text-foreground">Preset</div>
-              <div className="grid gap-2 sm:grid-cols-3">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {moaPresets.map((preset) => {
                   const active = agents.moa.presetId === preset.id;
                   return (
@@ -256,7 +248,9 @@ export function AgentsSettings() {
                         {preset.description}
                       </span>
                       <span className="mt-3 flex flex-wrap gap-1">
-                        <Badge>{preset.panelSize} agents</Badge>
+                        <Badge>{Math.max(1, preset.panelSize - 2)} specialists</Badge>
+                        <Badge>judge</Badge>
+                        <Badge>aggregator</Badge>
                         <Badge>{preset.debateRounds} round{preset.debateRounds === 1 ? "" : "s"}</Badge>
                       </span>
                     </button>
@@ -265,51 +259,11 @@ export function AgentsSettings() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              <Field label="Panel size">
-                <Select
-                  value={String(agents.moa.panelSize)}
-                  onChange={(panelSize) => updateMoa({ panelSize: Number(panelSize) as 3 | 5 | 7 })}
-                  options={[
-                    { value: "3", label: "3 agents" },
-                    { value: "5", label: "5 agents" },
-                    { value: "7", label: "7 agents" },
-                  ]}
-                />
-              </Field>
-              <Field label="Debate rounds">
-                <Input
-                  type="number"
-                  min={1}
-                  max={5}
-                  value={agents.moa.debateRounds}
-                  onChange={(event) =>
-                    updateMoa({ debateRounds: clampInteger(Number(event.target.value), 1, 5) })
-                  }
-                />
-              </Field>
-              <Field label="Consensus">
-                <Select
-                  value={agents.moa.consensusThreshold}
-                  onChange={(consensusThreshold) =>
-                    updateMoa({
-                      consensusThreshold: consensusThreshold as MoAInspectionPresetConfig["consensusThreshold"],
-                    })
-                  }
-                  options={[
-                    { value: "majority", label: "Majority" },
-                    { value: "supermajority", label: "Supermajority" },
-                    { value: "coordinator", label: "Coordinator" },
-                  ]}
-                />
-              </Field>
-            </div>
-
             <div className="rounded-lg border border-border-subtle bg-background p-3">
               <div className="mb-3">
                 <div className="text-xs font-semibold text-foreground">Panel models</div>
                 <div className="mt-1 text-[11px] leading-4 text-muted">
-                  Assign a model to each MoA task. Unset rows use the active chat model.
+                  Assign a model to each MoA task. These selections apply to MoA and Scanner + MoA.
                 </div>
               </div>
               <div className="grid gap-2">
@@ -391,8 +345,9 @@ function normalizeAgentSettings(
   modelChoices: ModelChoice[],
 ): AgentScanSettings {
   const fallbackModel = modelChoices[0];
-  const presetId = value?.moa?.presetId ?? fallbackAgents.moa.presetId;
-  const consensusThreshold = value?.moa?.consensusThreshold ?? fallbackAgents.moa.consensusThreshold;
+  const rawPresetId = value?.moa?.presetId;
+  const presetId = normalizePresetId(rawPresetId);
+  const presetDefaults = moaPresets.find((preset) => preset.id === presetId) ?? moaPresets[0];
   const legacyMoa = value?.moa as MoAInspectionPresetConfig & {
     coordinatorProviderId?: string;
     coordinatorModelId?: string;
@@ -415,12 +370,17 @@ function normalizeAgentSettings(
     },
     moa: {
       presetId,
-      consensusThreshold,
-      panelSize: normalizePanelSize(value?.moa?.panelSize ?? fallbackAgents.moa.panelSize),
-      debateRounds: clampInteger(value?.moa?.debateRounds ?? fallbackAgents.moa.debateRounds, 1, 5),
+      consensusThreshold: presetDefaults.consensusThreshold,
+      panelSize: presetDefaults.panelSize,
+      debateRounds: presetDefaults.debateRounds,
       ...(Object.keys(roleModels).length > 0 ? { roleModels } : {}),
     },
   };
+}
+
+function normalizePresetId(value: unknown): MoAInspectionPresetId {
+  if (value === "high-panel" || value === "deep-panel") return "high-panel";
+  return "low-panel";
 }
 
 function normalizeRoleModels(
@@ -466,9 +426,4 @@ function splitModelValue(value: string): { providerId: string; modelId: string }
 function clampInteger(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, Math.floor(value)));
-}
-
-function normalizePanelSize(value: number): 3 | 5 | 7 {
-  if (value === 3 || value === 7) return value;
-  return 5;
 }

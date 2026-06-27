@@ -710,3 +710,51 @@ This section is append-only. New work should be added as another iteration inste
 | Removed | Deleted older sanitized `findings/` summaries, stale chart screenshots, unreferenced app screenshots, and the old compiled PDF. |
 | Kept | Kept current ACM source, bibliography, ACM support files, current app screenshots referenced by the paper, and `docs/research/task5-hermsec-moa/results/latest/`. |
 | Docs | Updated README files so they point to the TeX paper source and fresh `results/latest` artifacts instead of old findings/PDF outputs. |
+
+### Iteration 36 - Scanner + MoA Desktop Product Mode
+
+| Item | Notes |
+| --- | --- |
+| Goal | Make Scanner + MoA available from the desktop app and keep the product aligned to four scan modes. |
+| Visible modes | The app now exposes `Deep assisted scan`, `Single agent inspection`, `MoA inspection`, and `Scanner + MoA inspection`. The old `scanner-model-summary` value remains hidden and maps to Deep assisted. |
+| MoA panels | Settings > Agents now uses only `Low panel` and `High panel`. Old Fast/Balanced saved values normalize to Low, and old Deep saved values normalize to High. |
+| Runtime fix | Desktop settings and scan launch normalization now preserve `scanner-moa-assisted`, so the CLI receives the requested mode. |
+| Progress/reporting | Scanner + MoA has its own progress label, token chip, scan-assist artifact notes, local scan metadata type, and dashboard fallback label. |
+| Scanner behavior | Scanner + MoA is not agent-only. It still runs scanner inspection, scanner preparation, and scanner execution before MoA judging and aggregation. |
+| Docs | Updated README, CLI usage docs, project context, and the project report track. |
+| Verification | Root typecheck passed. Desktop typecheck passed. Root tests passed with `97/97`. Desktop build passed. Doctor smoke passed with health score `100`. Dashboard smoke passed and generated dashboard/PDF artifacts. Real OpenCode Go Scanner + MoA CLI smoke passed on `node-express-clean`, and a real-provider four-mode CLI smoke passed for Deep, Single Agent, MoA, and Scanner + MoA. |
+
+### Iteration 37 - Repeatable GUI End-to-End Smoke
+
+| Item | Notes |
+| --- | --- |
+| Goal | Make the desktop GUI validation repeatable so the four product scan modes can be tested again without manual clicking. |
+| UI smoke | Added `desktop/scripts/smoke-ui.mjs` and the root `desktop:smoke:ui` script. It launches the Electron renderer, opens Settings, verifies the four General scan modes, opens Agents, and confirms only Low/High MoA panels plus Scanner + MoA copy are visible. |
+| Scan-mode smoke | Added `desktop/scripts/smoke-scan-modes.mjs` and the root `desktop:smoke:scan-modes` script. It runs Deep assisted, Single Agent, MoA, and Scanner + MoA through the desktop scan path, then verifies report folders, dashboard HTML, one-page HTML, one-page PDF, progress events, and mode metadata. |
+| Real provider | The final scan-mode GUI smoke used the actual configured OpenCode Go provider with `useModel: true`. No local fake provider was used for the acceptance run. |
+| What went wrong | The first GUI scan-mode smoke stopped after Deep assisted and Single Agent without printing a summary. Offscreen report/PDF windows could trigger Electron's `window-all-closed` handler and quit the app while the smoke loop was still running. |
+| How we solved it | Smoke modes now ignore `window-all-closed` and quit only after their own validation completes. The scan-mode smoke also writes `smoke-summary.json` and treats signal exits as failures. |
+| Final GUI result | The real-provider GUI scan-mode smoke completed all four modes. Deep assisted found `6` findings, Single Agent found `0`, MoA found `0`, and Scanner + MoA found `3` on the clean fixture. Each run wrote a one-page PDF. |
+| Verification | `npm run typecheck` passed. `npm --prefix desktop run typecheck` passed. `npm test` passed with `97/97`. `npm --prefix desktop run build` passed. `npm run desktop:smoke:ui` passed. `npm run desktop:smoke:scan-modes` passed with real OpenCode Go calls. `npm --prefix desktop run smoke:doctor` passed with health score `100`. `npm --prefix desktop run smoke:dashboard` passed and generated dashboard/PDF artifacts. |
+
+### Iteration 38 - Scanner + MoA Timeout Fix
+
+| Item | Notes |
+| --- | --- |
+| Issue | Manual desktop testing showed `Scanner + MoA inspection` failing with `Hermsec scan timed out after 180s`. |
+| Cause | The desktop wrapper had one fixed `180s` watchdog for every scan mode. Scanner + MoA runs scanners, independent MoA inspection, judging, aggregation, report generation, and PDF generation, so valid real-provider runs can exceed three minutes. |
+| Fix | Replaced the fixed timeout with mode-aware hard watchdogs: Deep assisted `5m`, Single Agent `7m`, MoA `10m`, and Scanner + MoA `15m`. The watchdog remains active so scans cannot loop forever. |
+| Validation | Reran `npm run desktop:smoke:scan-modes` with the actual configured OpenCode Go provider. All four modes completed and wrote one-page PDFs. Scanner + MoA completed with `3` findings, `117` progress events, `scanner-moa-assisted` metadata, and `Scanner + MoA inspection` label. |
+| Additional checks | `npm --prefix desktop run typecheck`, `npm --prefix desktop run build`, and `npm run desktop:smoke:ui` all passed. |
+
+### Iteration 39 - v0.1.6 Release Prep
+
+| Item | Notes |
+| --- | --- |
+| Goal | Prepare the current Scanner + MoA desktop build for GitHub download. |
+| Versioning | Bumped root and desktop package versions to `0.1.6` and updated the package lockfiles. |
+| About update | Updated the About Hermsec modal so it describes the current four modes, scanner-free agent boundaries, Scanner + MoA hybrid review, evidence validation, local reports, and mode-specific watchdog behavior. |
+| Visible version | Updated the Settings footer to `Hermsec Desktop v0.1.6`. |
+| Download path | Confirmed the README installer section points to GitHub Releases for Windows and macOS downloads. |
+| Local package check | `npm run desktop:dist:win` passed and produced `Hermsec Setup 0.1.6.exe` plus `Hermsec 0.1.6.exe` locally. The GitHub release workflow will normalize uploaded Windows asset names. |
+| Verification | `npm run typecheck`, `npm --prefix desktop run typecheck`, `npm test`, `npm --prefix desktop run build`, `npm run desktop:smoke:ui`, and `npm --prefix desktop run smoke:doctor` all passed. |

@@ -56,7 +56,7 @@ export function SettingsSidebar({ section, onBack, onSectionChange }: SettingsSi
 
       <div className="mt-auto flex items-center gap-2 px-2 pt-4 text-[10px] text-muted-foreground">
         <HermsecLogo className="h-4 w-4 text-accent" aria-label="Hermsec Desktop" />
-        <span>Hermsec Desktop v0.1.0</span>
+        <span>Hermsec Desktop v0.1.6</span>
       </div>
     </aside>
   );

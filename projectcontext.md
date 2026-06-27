@@ -38,8 +38,10 @@ cd desktop
 npm.cmd ci
 npm.cmd run typecheck
 npm.cmd run build
+npm.cmd run smoke:ui
 npm.cmd run smoke:doctor
 npm.cmd run smoke:dashboard
+npm.cmd run smoke:scan-modes
 npm.cmd run dist:win
 ```
 
@@ -48,15 +50,17 @@ npm.cmd run dist:win
 - Root `npm.cmd test` builds the scanner CLI engine and runs Node tests from `dist/tests`.
 - Desktop `npm.cmd run build` uses `electron-vite build` and copies report templates.
 - Desktop smoke tests require Electron and may exercise network/scanner/provider readiness depending on the local environment.
+- `npm.cmd run smoke:scan-modes` runs all four visible product scan modes by default, uses the real configured provider unless `HERMSEC_SMOKE_SCAN_MODES_USE_MODEL=false` is set, and writes a reproducible `smoke-summary.json` in the smoke output folder.
+- Desktop scan watchdogs are mode-aware: Deep assisted `5m`, Single Agent `7m`, MoA `10m`, and Scanner + MoA `15m`. Keep a hard timeout for every mode; do not remove the watchdog.
 - Windows and macOS release packaging is handled by `.github/workflows/windows-release.yml` and `.github/workflows/macos-release.yml`.
 - Provider settings now use supported provider presets, debounced URL/API-key checks, model discovery, provider-scoped model selection, and collapsible model toggles.
 - Fresh desktop settings default to adaptive scanner auto-install (`scanners.autoInstallMissing: true`), and scan completion chat messages link the generated one-page PDF location when available.
 - User-facing reports and dashboard data must display friendly scanner names. Legacy `hermsec-offline` findings are compatibility data only and should render as `HermSec heuristics`.
 - Chat scan progress should show the real orchestration state from root scanner events. The CLI streams `HERMSEC_PROGRESS <json>` lines in JSON mode while preserving the final JSON result; desktop consumes those lines live and only uses final report-status reconciliation as a fallback.
 - Deep assisted mode remains scanner-confirmed/model-supported only. Model explanations must validate against existing finding ids, scanner ids, files, lines, packages, CVEs/GHSAs/OSVs, and CWEs before reports accept them.
-- The visible product scan modes are `Deep assisted scan`, `Single agent inspection`, and `MoA assisted inspection`. Keep `scanner-model-summary` as a legacy alias only; do not show it in UI.
+- The visible product scan modes are `Deep assisted scan`, `Single agent inspection`, `MoA inspection`, and `Scanner + MoA inspection`. Keep `scanner-model-summary` as a legacy alias only; do not show it in UI.
 - Single Agent and MoA scans are agent-only product modes. They perform repository discovery, then use bounded read-only code inspection helpers without running HermSec heuristics, Semgrep, Gitleaks, Trivy, OSV, Checkov, or other scanner adapters. The helpers may list files, search code, and read snippets inside the selected repo only. They must not execute shell commands, install packages, run lifecycle scripts, or read outside the repo.
-- MoA product scans use specialist agents, a false-positive judge, and an aggregator. Reports should include agent-mode metadata, agents used, provider/model details, candidate/accepted/rejected/needs-review counts, aggregator info, runtime, source labels, and judge status.
+- MoA product scans use specialist agents, a false-positive judge, and an aggregator. Settings expose only Low and High MoA panels. The same Low/High panel config is reused by Scanner + MoA. Reports should include agent-mode metadata, agents used, provider/model details, candidate/accepted/rejected/needs-review counts, aggregator info, runtime, source labels, and judge status.
 - Settings > Agents lets users assign configured provider/model pairs per MoA task. Current task rows are `injection-and-execution`, `auth-and-data-flow`, `secrets-and-config`, `database-and-storage`, `config-and-iac`, `moa-false-positive-judge`, and `moa-aggregator`; unset rows use the active chat model.
 - Settings > Models is the source of truth for provider model availability. OpenCode Go should show every model returned by provider discovery or the current 20-model preset seed; Settings > Agents should only list models enabled from Settings > Models.
 - Desktop scan execution passes active provider/model settings to the root CLI through environment variables so configured providers work inside the bundled CLI process.

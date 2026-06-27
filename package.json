@@ -1,6 +1,6 @@
 {
   "name": "hermsec",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Local-first security assistant for vibe-coded repositories.",
   "type": "module",
   "private": false,
@@ -27,6 +27,8 @@
     "desktop:build": "npm --prefix desktop run build",
     "desktop:smoke:doctor": "npm --prefix desktop run smoke:doctor",
     "desktop:smoke:dashboard": "npm --prefix desktop run smoke:dashboard",
+    "desktop:smoke:ui": "npm --prefix desktop run smoke:ui",
+    "desktop:smoke:scan-modes": "npm --prefix desktop run smoke:scan-modes",
     "desktop:dist:win": "npm --prefix desktop run dist:win",
     "desktop:dist:mac": "npm --prefix desktop run dist:mac",
     "eval:owasp": "npm run build:core && node scripts/eval-owasp-benchmark.mjs --skip-if-missing",

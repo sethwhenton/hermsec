@@ -1,6 +1,6 @@
 {
   "name": "hermsec-v3",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Hermsec desktop security scanning workspace",
   "author": "Hermsec",
   "private": true,
@@ -16,6 +16,8 @@
     "preview": "electron-vite preview",
     "smoke:doctor": "node scripts/smoke-doctor.mjs",
     "smoke:dashboard": "node scripts/smoke-dashboard.mjs",
+    "smoke:ui": "node scripts/smoke-ui.mjs",
+    "smoke:scan-modes": "node scripts/smoke-scan-modes.mjs",
     "dist:win": "npm run build:packaged && npx electron-builder --win nsis portable --x64 --publish never",
     "dist:mac": "npm run build:packaged && npx electron-builder --mac dmg zip --publish never",
     "dist:mac:x64": "npm run build:packaged && npx electron-builder --mac dmg zip --x64 --publish never",

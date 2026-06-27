@@ -20,7 +20,13 @@ import { prepareScannersForProject, scannerEnvForCli, scannerStatuses } from "./
 import type { ScannerStatusItem } from "../renderer/src/types/scanners";
 
 const CLI_RELATIVE_PATH = path.join("dist", "src", "bin", "hermsec.js");
-const DEFAULT_SCAN_TIMEOUT_MS = 180_000;
+const DEFAULT_SCAN_TIMEOUT_MS = 300_000;
+const SCAN_TIMEOUT_MS_BY_ASSIST_MODE: Record<RuntimeScanAssistMode, number> = {
+  "deep-assisted": 300_000,
+  "single-agent": 420_000,
+  "moa-assisted": 600_000,
+  "scanner-moa-assisted": 900_000,
+};
 const MAX_OUTPUT_CHARS = 30_000_000;
 const HERMSEC_PROGRESS_PREFIX = "HERMSEC_PROGRESS ";
 
@@ -151,6 +157,13 @@ function defaultReportDir(): string {
 function normalizeAssistMode(mode?: ScanProjectRequest["assistMode"] | string): RuntimeScanAssistMode {
   if (mode === "single-agent") return "single-agent";
   if (mode === "moa-assisted") return "moa-assisted";
+  if (
+    mode === "scanner-moa-assisted" ||
+    mode === "scanner-moa" ||
+    mode === "scanner-plus-moa" ||
+    mode === "scanner+moa" ||
+    mode === "hybrid"
+  ) return "scanner-moa-assisted";
   return "deep-assisted";
 }
 
@@ -659,6 +672,7 @@ function progressStageLabel(id: string, fallback: string, assistMode: RuntimeSca
   if (id === "model-summary") {
     if (assistMode === "single-agent") return "Single-agent inspection";
     if (assistMode === "moa-assisted") return "MoA-assisted inspection";
+    if (assistMode === "scanner-moa-assisted") return "Scanner + MoA aggregation";
     return "Deep model triage";
   }
   return fallback;
@@ -673,6 +687,7 @@ function progressQueuedMessage(id: string, label: string, assistMode: RuntimeSca
   if (id === "model-summary") {
     if (assistMode === "single-agent") return "Single-agent repository inspection is queued.";
     if (assistMode === "moa-assisted") return "MoA specialist, judge, and aggregator inspection is queued.";
+    if (assistMode === "scanner-moa-assisted") return "Scanner + MoA judging and aggregation is queued after scanner execution.";
     return "Deep model-supported triage is queued after scanner evidence.";
   }
   return `${label} is queued.`;
@@ -692,6 +707,9 @@ function modelPhaseRunningMessage(assistMode: RuntimeScanAssistMode): string {
   if (assistMode === "moa-assisted") {
     return "Running specialist, false-positive judge, and aggregator model review.";
   }
+  if (assistMode === "scanner-moa-assisted") {
+    return "Judging and aggregating scanner findings with independent MoA candidates.";
+  }
   return "Reviewing model-supported scanner evidence.";
 }
 
@@ -701,6 +719,9 @@ function modelPhaseCompletedMessage(assistMode: RuntimeScanAssistMode): string {
   }
   if (assistMode === "moa-assisted") {
     return "MoA inspection evidence is ready for the report.";
+  }
+  if (assistMode === "scanner-moa-assisted") {
+    return "Scanner and MoA evidence is judged, merged, and ready for the report.";
   }
   return "Scanner-matched evidence is ready for deeper triage.";
 }
@@ -1238,10 +1259,11 @@ function runNodeCli(
     let stderr = "";
     let stdoutLineBuffer = "";
     let stderrLineBuffer = "";
+    const timeoutMs = scanTimeoutMs(assistMode);
     const timer = windowlessTimeout(() => {
       killProcessTree(child);
-      reject(new Error(`Hermsec scan timed out after ${DEFAULT_SCAN_TIMEOUT_MS / 1000}s.`));
-    }, DEFAULT_SCAN_TIMEOUT_MS);
+      reject(new Error(`Hermsec ${assistModeLabel(assistMode)} timed out after ${formatTimeoutDuration(timeoutMs)}.`));
+    }, timeoutMs);
 
     const handleChunk = (chunk: unknown, stream: "stdout" | "stderr") => {
       const text = Buffer.isBuffer(chunk) ? chunk.toString("utf8") : String(chunk);
@@ -1308,6 +1330,27 @@ function runNodeCli(
       resolve({ stdout, stderr, exitCode: exitCode ?? 0 });
     });
   });
+}
+
+function scanTimeoutMs(assistMode: RuntimeScanAssistMode): number {
+  const modeKey = assistMode.replace(/[^a-z0-9]/giu, "_").toUpperCase();
+  const modeOverride = Number(process.env[`HERMSEC_DESKTOP_SCAN_TIMEOUT_${modeKey}_MS`]);
+  if (Number.isFinite(modeOverride) && modeOverride >= 30_000) {
+    return Math.trunc(modeOverride);
+  }
+  const override = Number(process.env.HERMSEC_DESKTOP_SCAN_TIMEOUT_MS);
+  if (Number.isFinite(override) && override >= 30_000) {
+    return Math.trunc(override);
+  }
+  return SCAN_TIMEOUT_MS_BY_ASSIST_MODE[assistMode] ?? DEFAULT_SCAN_TIMEOUT_MS;
+}
+
+function formatTimeoutDuration(ms: number): string {
+  const seconds = Math.round(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return remainingSeconds === 0 ? `${minutes}m` : `${minutes}m ${remainingSeconds}s`;
 }
 
 function consumeProgressLine(

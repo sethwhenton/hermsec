@@ -252,9 +252,9 @@ function MenuSurface({
 
 const aboutFeatureItems: Array<[string, string]> = [
   ["Desktop chat", "Guide scans, run Doctor, explain findings, set automations, and open final report artifacts."],
-  ["Three scan modes", "Use scanner-backed deep scans, single-agent inspection, or MoA agent-only review."],
+  ["Four scan modes", "Use Deep assisted, Single Agent, MoA, or Scanner + MoA inspection from chat, settings, or automations."],
   ["Doctor", "Check runtime readiness, scanner availability, provider status, and internet access to advisory sources."],
-  ["Live progress", "See inspection, tool or agent preparation, scan execution, model inspection, and report generation."],
+  ["Live progress", "See project inspection, tool preparation, scanner lanes, agent stages, judging, aggregation, and report generation."],
   ["Scanner management", "Review installed, missing, enabled, auto-installable, and project-relevant scanners in Settings."],
   ["Reports", "Generate dashboard, JSON, Markdown, HTML, one-page PDF, and benchmark-safe exports when needed."],
 ];
@@ -267,7 +267,8 @@ const scanFlowItems = [
   "Prepare missing tools in Hermsec-managed storage when auto-install is enabled.",
   "Run built-in heuristics and external scanners with safe wrappers for Deep assisted scans.",
   "Normalize, dedupe, and merge findings into one evidence format.",
-  "Use Single Agent or MoA to inspect bounded code evidence without scanner tools.",
+  "Use Single Agent or MoA to inspect bounded code evidence without scanner tools, or Scanner + MoA to run both scanner and agent evidence paths.",
+  "Apply mode-specific watchdogs so long hybrid scans can finish while stalled runs still stop safely.",
   "Write final report artifacts and link them in chat.",
 ];
 
@@ -325,7 +326,7 @@ function AboutHermsecModal({ open, onClose }: { open: boolean; onClose: () => vo
           <div>
             <h3 className="text-xl font-semibold tracking-tight text-foreground">Hermsec</h3>
             <p className="mt-1 text-sm text-muted">
-              A local-first security teammate for repositories: choose a project folder, run the right scanners safely, explain what matters, and produce a usable report.
+              Version 0.1.6. A local-first security review app for repositories: choose a project folder, run scanner-backed or agent-backed review, explain what matters, and produce a usable report.
             </p>
           </div>
         </div>
@@ -340,7 +341,7 @@ function AboutHermsecModal({ open, onClose }: { open: boolean; onClose: () => vo
         <AboutSection
           icon={<Bot className="h-4 w-4" />}
           title="Agent Boundary"
-          body="Deep assisted mode explains scanner-backed findings. Single Agent and MoA inspect bounded repository evidence directly. The model is not allowed to invent findings, files, line numbers, packages, CVEs, CWEs, or remediation evidence that is not already present."
+          body="Deep assisted mode explains scanner-backed findings. Single Agent and MoA inspect bounded repository evidence directly without scanners. Scanner + MoA runs scanners and agent inspection independently, then judges and aggregates both sources. The model is not allowed to invent findings, files, line numbers, packages, CVEs, CWEs, or remediation evidence that is not already present."
         />
         <FeatureGrid
           items={aboutFeatureItems}
@@ -348,7 +349,7 @@ function AboutHermsecModal({ open, onClose }: { open: boolean; onClose: () => vo
         <AboutSection
           icon={<ScanLine className="h-4 w-4" />}
           title="How A Scan Works"
-          body="Deep assisted scans use the deterministic scanner harness. Single Agent and MoA skip scanner execution and use bounded read-only repository evidence before generating the same report format."
+          body="Deep assisted scans use the deterministic scanner harness. Single Agent and MoA skip scanner execution. Scanner + MoA runs scanners and agent inspection independently, then merges judged evidence into the same report format."
         />
         <NumberedFlow items={scanFlowItems} />
         <div>
@@ -383,8 +384,8 @@ function AboutHermsecModal({ open, onClose }: { open: boolean; onClose: () => vo
           />
           <MiniCard
             icon={<Activity className="h-4 w-4" />}
-            title="Online MVP"
-            text="V3 runs scanner evidence, dependency intelligence, report generation, and optional model explanation as one guided pipeline."
+            title="Hybrid Review"
+            text="Scanner + MoA combines deterministic scanner findings with independent multi-agent inspection, then validates candidates before reporting."
           />
         </div>
         <BulletPanel title="Security Posture" items={safetyItems} />
@@ -403,7 +404,7 @@ function AboutHermsecModal({ open, onClose }: { open: boolean; onClose: () => vo
             Short Version
           </div>
           <p className="text-sm leading-relaxed text-muted">
-            Hermsec is a scanner orchestrator plus evidence-grounded security assistant. The scanners catch; Hermsec normalizes and prioritizes; the model explains without being allowed to make things up.
+            Hermsec is a local scanner orchestrator and evidence-grounded security assistant. Scanners and agents collect candidates, Hermsec normalizes and validates them, and the report keeps every claim tied to project evidence.
           </p>
         </div>
       </div>

@@ -5,7 +5,7 @@ import test from "node:test";
 import { assistModeFrom } from "../../src/core/progress.js";
 
 const coreAssistModes = ["deep-assisted", "single-agent", "moa-assisted", "scanner-moa-assisted"];
-const visibleAssistModes = ["deep-assisted", "single-agent", "moa-assisted"];
+const visibleAssistModes = ["deep-assisted", "single-agent", "moa-assisted", "scanner-moa-assisted"];
 
 test("scanner-model-summary remains a legacy alias for deep-assisted", () => {
   assert.equal(
@@ -28,7 +28,18 @@ test("renderer scan mode options expose only the planned product modes and label
   assert.equal(optionIds.includes("scanner-model-summary"), false);
   assert.match(source, /label:\s*"Deep assisted scan"/);
   assert.match(source, /label:\s*"Single agent inspection"/);
-  assert.match(source, /label:\s*"MoA assisted inspection"/);
+  assert.match(source, /label:\s*"MoA inspection"/);
+  assert.match(source, /label:\s*"Scanner \+ MoA inspection"/);
+});
+
+test("agent settings expose only low and high MoA panels", async () => {
+  const settingsSource = await fs.readFile(path.resolve("desktop/src/renderer/src/types/settings.ts"), "utf8");
+  const agentsSource = await fs.readFile(path.resolve("desktop/src/renderer/src/components/settings/AgentsSettings.tsx"), "utf8");
+
+  assert.deepEqual(extractStringUnion(settingsSource, "MoAInspectionPresetId"), ["low-panel", "high-panel"]);
+  assert.match(agentsSource, /label:\s*"Low panel"/);
+  assert.match(agentsSource, /label:\s*"High panel"/);
+  assert.doesNotMatch(agentsSource, /Fast quorum|Balanced panel|Deep panel/);
 });
 
 test("automation setup surfaces use the shared product scan mode options", async () => {

@@ -1,8 +1,8 @@
 export type HermsecScanMode = "online";
 export type HermsecLegacyScanAssistMode = "scanner-model-summary";
-export type HermsecVisibleScanAssistMode = "deep-assisted" | "single-agent" | "moa-assisted";
+export type HermsecVisibleScanAssistMode = "deep-assisted" | "single-agent" | "moa-assisted" | "scanner-moa-assisted";
 export type HermsecScanAssistMode = HermsecLegacyScanAssistMode | HermsecVisibleScanAssistMode;
-export type HermsecProductScanAssistMode = HermsecScanAssistMode;
+export type HermsecProductScanAssistMode = HermsecVisibleScanAssistMode;
 
 export interface ProjectStateFingerprint {
   kind: "git" | "filesystem";

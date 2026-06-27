@@ -105,6 +105,7 @@ const severityRank: Record<Severity, number> = {
 export function assistModeLabel(mode: RuntimeScanAssistMode): string {
   if (mode === "single-agent") return "Single-agent inspection";
   if (mode === "moa-assisted") return "MoA-assisted inspection";
+  if (mode === "scanner-moa-assisted") return "Scanner + MoA inspection";
   return "Deep assisted scan";
 }
 
@@ -350,6 +351,9 @@ function modeNote(mode: RuntimeScanAssistMode): string {
   if (mode === "moa-assisted") {
     return "MoA-assisted inspection uses specialist agents, a false-positive judge, and an aggregator without running scanner tools.";
   }
+  if (mode === "scanner-moa-assisted") {
+    return "Scanner + MoA inspection runs scanners and MoA independently, then judges and merges both evidence sources.";
+  }
   return "Deep assisted scan groups matching scanner findings and allows model-supported triage over that scanner evidence.";
 }
 
@@ -359,6 +363,9 @@ function modelSupportNote(mode: RuntimeScanAssistMode): string {
   }
   if (mode === "moa-assisted") {
     return "MoA mode produces validated agent-only findings after specialist review, false-positive judging, and aggregation.";
+  }
+  if (mode === "scanner-moa-assisted") {
+    return "Scanner + MoA mode produces validated findings by judging scanner-backed and MoA candidate evidence together.";
   }
   return "Deep mode may use the model to explain and prioritize this merged scanner-backed group.";
 }

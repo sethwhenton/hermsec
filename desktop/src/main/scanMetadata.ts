@@ -5,7 +5,7 @@ export interface LocalScanMetadata {
   reportDir: string;
   scanId: string;
   mode: "online";
-  assistMode?: "scanner-model-summary" | "deep-assisted" | "single-agent" | "moa-assisted";
+  assistMode?: "scanner-model-summary" | "deep-assisted" | "single-agent" | "moa-assisted" | "scanner-moa-assisted";
   assistModeLabel?: string;
   startedAt: string;
   finishedAt: string;

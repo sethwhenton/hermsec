@@ -61,7 +61,7 @@ export interface GeneralSettings {
 }
 
 export type AgentReasoningDepth = "fast" | "balanced" | "deep";
-export type MoAInspectionPresetId = "fast-quorum" | "balanced-panel" | "deep-panel";
+export type MoAInspectionPresetId = "low-panel" | "high-panel";
 
 export interface AgentModelSelection {
   providerId?: string;

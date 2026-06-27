@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { app } from "electron";
-import type { HermsecScanAssistMode } from "../renderer/src/types/scan";
-import type { AppSettings, AutomationFrequency, DeepPartial, ProviderConfig } from "../renderer/src/types/settings";
+import type { HermsecProductScanAssistMode } from "../renderer/src/types/scan";
+import type { AgentScanSettings, AppSettings, AutomationFrequency, DeepPartial, ProviderConfig } from "../renderer/src/types/settings";
 import { getEnvDefaults } from "./env";
 import { normalizeProviderConfig, providerFromPreset, providerPresets } from "./providerCatalog";
 import { defaultScannerSettings, normalizeScannerSettings } from "./scannerDefaults";
@@ -62,6 +62,22 @@ function defaultSettings(): AppSettings {
     },
     providers: [defaultProvider(env)],
     scanners: defaultScannerSettings(),
+    agents: defaultAgentSettings(),
+  };
+}
+
+function defaultAgentSettings(): AgentScanSettings {
+  return {
+    singleAgent: {
+      reasoningDepth: "balanced",
+      maxToolRounds: 4,
+    },
+    moa: {
+      presetId: "low-panel",
+      panelSize: 5,
+      debateRounds: 1,
+      consensusThreshold: "majority",
+    },
   };
 }
 
@@ -186,9 +202,64 @@ function normalizeSettings(settings: AppSettings): AppSettings {
     },
     providers,
     scanners: normalizeScannerSettings(settings.scanners),
+    agents: normalizeAgentSettings(settings.agents),
     activeProviderId: activeSelection?.providerId,
     activeModelId: activeSelection?.modelId,
   };
+}
+
+function normalizeAgentSettings(agents: AppSettings["agents"]): AgentScanSettings {
+  const defaults = defaultAgentSettings();
+  const rawMoa = agents?.moa as (Partial<AgentScanSettings["moa"]> & { presetId?: unknown }) | undefined;
+  const presetId = normalizeMoaPresetId(rawMoa?.presetId);
+  const presetDefaults = moaPresetDefaults(presetId);
+  return {
+    singleAgent: {
+      ...(agents?.singleAgent?.providerId ? { providerId: agents.singleAgent.providerId } : {}),
+      ...(agents?.singleAgent?.modelId ? { modelId: agents.singleAgent.modelId } : {}),
+      reasoningDepth: normalizeAgentReasoningDepth(agents?.singleAgent?.reasoningDepth),
+      maxToolRounds: normalizeAgentToolRounds(agents?.singleAgent?.maxToolRounds),
+    },
+    moa: {
+      presetId,
+      panelSize: presetDefaults.panelSize,
+      debateRounds: presetDefaults.debateRounds,
+      consensusThreshold: presetDefaults.consensusThreshold,
+      ...(rawMoa?.roleModels ? { roleModels: rawMoa.roleModels } : {}),
+    },
+  };
+}
+
+function normalizeMoaPresetId(value: unknown): AgentScanSettings["moa"]["presetId"] {
+  if (value === "high-panel" || value === "deep-panel") return "high-panel";
+  return "low-panel";
+}
+
+function moaPresetDefaults(presetId: AgentScanSettings["moa"]["presetId"]): AgentScanSettings["moa"] {
+  if (presetId === "high-panel") {
+    return {
+      presetId,
+      panelSize: 7,
+      debateRounds: 3,
+      consensusThreshold: "supermajority",
+    };
+  }
+  return {
+    presetId,
+    panelSize: 5,
+    debateRounds: 1,
+    consensusThreshold: "majority",
+  };
+}
+
+function normalizeAgentReasoningDepth(value: AgentScanSettings["singleAgent"]["reasoningDepth"] | undefined): AgentScanSettings["singleAgent"]["reasoningDepth"] {
+  if (value === "fast" || value === "deep") return value;
+  return "balanced";
+}
+
+function normalizeAgentToolRounds(value: number | undefined): number {
+  if (!Number.isFinite(Number(value))) return 4;
+  return Math.min(12, Math.max(1, Math.floor(Number(value))));
 }
 
 function normalizeActiveSelection(
@@ -224,9 +295,16 @@ function normalizeDefaultProjectDir(projectDir: string | undefined): string {
   return value;
 }
 
-function normalizeScanModeSetting(mode: string | undefined): HermsecScanAssistMode {
+function normalizeScanModeSetting(mode: string | undefined): HermsecProductScanAssistMode {
   if (mode === "single-agent" || mode === "single-agent-inspection") return "single-agent";
   if (mode === "moa-assisted" || mode === "moa-inspection") return "moa-assisted";
+  if (
+    mode === "scanner-moa-assisted" ||
+    mode === "scanner-moa" ||
+    mode === "scanner-plus-moa" ||
+    mode === "scanner+moa" ||
+    mode === "hybrid"
+  ) return "scanner-moa-assisted";
   if (mode === "deep-assisted") return "deep-assisted";
   return "deep-assisted";
 }

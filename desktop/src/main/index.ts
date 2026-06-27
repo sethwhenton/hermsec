@@ -1,5 +1,5 @@
 import { app, BrowserWindow, shell } from "electron";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { loadEnvFile } from "./env";
 import { registerIpcHandlers } from "./ipc";
@@ -14,12 +14,14 @@ let mainWindow: BrowserWindow | null = null;
 
 const dashboardSmokeMode = isDashboardSmokeMode();
 const doctorSmokeMode = isDoctorSmokeMode();
+const scanModesSmokeMode = isScanModesSmokeMode();
+const uiSmokeMode = isUiSmokeMode();
 
 configureGraphicsMode();
 configureAppPaths();
 configureBundledRuntime();
 
-function createWindow(): void {
+function createWindow(): BrowserWindow {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 860,
@@ -64,10 +66,33 @@ function createWindow(): void {
   mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
     console.error("Renderer failed to load:", { errorCode, errorDescription, validatedURL });
   });
+
+  return mainWindow;
 }
 
 app.whenReady().then(async () => {
   loadEnvFile();
+  if (uiSmokeMode) {
+    try {
+      registerIpcHandlers();
+      await runUiSmoke();
+      app.quit();
+    } catch (error) {
+      console.error(error);
+      app.exit(1);
+    }
+    return;
+  }
+  if (scanModesSmokeMode) {
+    try {
+      await runScanModesSmoke();
+      app.quit();
+    } catch (error) {
+      console.error(error);
+      app.exit(1);
+    }
+    return;
+  }
   if (dashboardSmokeMode) {
     try {
       await runDashboardSmoke();
@@ -100,6 +125,9 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => {
+  if (dashboardSmokeMode || doctorSmokeMode || scanModesSmokeMode || uiSmokeMode) {
+    return;
+  }
   if (process.platform !== "darwin") {
     app.quit();
   }
@@ -190,6 +218,155 @@ async function runDoctorSmoke(): Promise<void> {
   );
 }
 
+async function runUiSmoke(): Promise<void> {
+  const window = createWindow();
+  await waitForRenderer(window);
+  const result = await window.webContents.executeJavaScript(`
+    (async () => {
+      const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      const bodyText = () => document.body?.innerText || "";
+      const clickText = (text) => {
+        const candidates = Array.from(document.querySelectorAll("button, [role='button']"));
+        const target = candidates.find((item) => (item.textContent || "").trim().includes(text));
+        if (!target) return false;
+        target.click();
+        return true;
+      };
+      const waitForText = async (text) => {
+        for (let i = 0; i < 40; i += 1) {
+          if (bodyText().includes(text)) return true;
+          await delay(100);
+        }
+        return false;
+      };
+
+      const openedSettings = clickText("Settings");
+      await waitForText("General");
+      await delay(200);
+      const general = bodyText();
+      const openedAgents = clickText("Agents");
+      await waitForText("Low panel");
+      await delay(200);
+      const agents = bodyText();
+
+      return {
+        openedSettings,
+        openedAgents,
+        generalHasDeep: general.includes("Deep assisted scan"),
+        generalHasSingle: general.includes("Single agent inspection"),
+        generalHasMoa: general.includes("MoA inspection"),
+        generalHasScannerMoa: general.includes("Scanner + MoA inspection"),
+        agentsHasLow: agents.includes("Low panel"),
+        agentsHasHigh: agents.includes("High panel"),
+        agentsMentionsScannerMoa: agents.includes("Scanner + MoA"),
+        bodyLength: bodyText().length,
+      };
+    })();
+  `) as {
+    openedSettings?: boolean;
+    openedAgents?: boolean;
+    generalHasDeep?: boolean;
+    generalHasSingle?: boolean;
+    generalHasMoa?: boolean;
+    generalHasScannerMoa?: boolean;
+    agentsHasLow?: boolean;
+    agentsHasHigh?: boolean;
+    agentsMentionsScannerMoa?: boolean;
+    bodyLength?: number;
+  };
+
+  assert(result.openedSettings, "Settings button was not clickable in the rendered UI.");
+  assert(result.openedAgents, "Agents settings section was not clickable in the rendered UI.");
+  assert(result.generalHasDeep, "General settings did not render Deep assisted scan.");
+  assert(result.generalHasSingle, "General settings did not render Single agent inspection.");
+  assert(result.generalHasMoa, "General settings did not render MoA inspection.");
+  assert(result.generalHasScannerMoa, "General settings did not render Scanner + MoA inspection.");
+  assert(result.agentsHasLow, "Agents settings did not render Low panel.");
+  assert(result.agentsHasHigh, "Agents settings did not render High panel.");
+  assert(result.agentsMentionsScannerMoa, "Agents settings did not explain Scanner + MoA panel reuse.");
+
+  console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+}
+
+async function runScanModesSmoke(): Promise<void> {
+  const projectPath = process.env.HERMSEC_SMOKE_PROJECT || resolve(findHermsecRoot(), "tests", "fixtures", "repos", "node-express-clean");
+  const reportDir =
+    process.env.HERMSEC_SMOKE_SCAN_MODES_OUT || join(app.getPath("documents"), "Hermsec", "scan-mode-smoke");
+  const useModel = process.env.HERMSEC_SMOKE_SCAN_MODES_USE_MODEL !== "false";
+  const modes = (process.env.HERMSEC_SMOKE_SCAN_MODES || "deep-assisted,single-agent,moa-assisted,scanner-moa-assisted")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean) as Array<"deep-assisted" | "single-agent" | "moa-assisted" | "scanner-moa-assisted">;
+
+  const runs = [];
+  for (const assistMode of modes) {
+    const progress: unknown[] = [];
+    const result = await scanProject({
+      targetPath: projectPath,
+      reportDir: join(reportDir, assistMode),
+      mode: "online",
+      assistMode,
+      useModel,
+    }, (event) => progress.push(event));
+
+    assert(result.ok, `${assistMode} scan failed: ${result.message}`);
+    assert(result.reportDir && existsSync(result.reportDir), `${assistMode} did not write a report directory.`);
+    assert(result.dashboardHtmlPath && existsSync(result.dashboardHtmlPath), `${assistMode} did not write a dashboard HTML file.`);
+    assert(result.onepagerHtmlPath && existsSync(result.onepagerHtmlPath), `${assistMode} did not write a one-page HTML file.`);
+    assert(result.onepagerPdfPath && statSync(result.onepagerPdfPath).size > 0, `${assistMode} did not write a one-page PDF.`);
+    assert(progress.some((event) => JSON.stringify(event).includes(assistMode)), `${assistMode} progress did not include the selected mode.`);
+
+    const document = readReportDocument(result.reportDir);
+    const agentMode = document.agentMode as { mode?: string; modeLabel?: string; agentsUsed?: unknown[] } | undefined;
+    if (assistMode === "single-agent" || assistMode === "moa-assisted" || assistMode === "scanner-moa-assisted") {
+      assert(agentMode?.mode === assistMode, `${assistMode} report agent metadata was not preserved.`);
+    }
+    if (assistMode === "scanner-moa-assisted") {
+      assert(agentMode?.modeLabel === "Scanner + MoA inspection", "Scanner + MoA report label was not preserved.");
+      assert((agentMode.agentsUsed ?? []).includes("scanner-stack"), "Scanner + MoA report did not include scanner-stack metadata.");
+    }
+
+    runs.push({
+      assistMode,
+      reportDir: result.reportDir,
+      findings: result.summary?.total ?? 0,
+      progressEvents: progress.length,
+      agentMode: agentMode?.mode,
+      agentModeLabel: agentMode?.modeLabel,
+      agentsUsed: agentMode?.agentsUsed?.length ?? 0,
+      onepagerPdfPath: result.onepagerPdfPath,
+    });
+  }
+
+  const summary = { ok: true, projectPath, reportDir, useModel, runs };
+  mkdirSync(reportDir, { recursive: true });
+  writeFileSync(join(reportDir, "smoke-summary.json"), JSON.stringify(summary, null, 2));
+  await writeStdout(`${JSON.stringify(summary, null, 2)}\n`);
+}
+
+async function waitForRenderer(window: BrowserWindow): Promise<void> {
+  for (let i = 0; i < 80; i += 1) {
+    if (!window.webContents.isLoading()) {
+      const readyState = await window.webContents.executeJavaScript("document.readyState").catch(() => "");
+      if (readyState === "interactive" || readyState === "complete") {
+        return;
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error("Renderer did not become ready for UI smoke test.");
+}
+
+function readReportDocument(reportDir: string): Record<string, unknown> {
+  return JSON.parse(readFileSync(join(reportDir, "report-document.json"), "utf8")) as Record<string, unknown>;
+}
+
+function writeStdout(message: string): Promise<void> {
+  return new Promise((resolve) => {
+    process.stdout.write(message, () => resolve());
+  });
+}
+
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
@@ -202,7 +379,7 @@ function configureAppPaths(): void {
 }
 
 function configureGraphicsMode(): void {
-  if (!dashboardSmokeMode && !doctorSmokeMode && process.env.HERMSEC_DISABLE_GPU !== "true") {
+  if (!dashboardSmokeMode && !doctorSmokeMode && !scanModesSmokeMode && !uiSmokeMode && process.env.HERMSEC_DISABLE_GPU !== "true") {
     return;
   }
 
@@ -233,4 +410,12 @@ function isDashboardSmokeMode(): boolean {
 
 function isDoctorSmokeMode(): boolean {
   return process.env.HERMSEC_SMOKE_DOCTOR === "true" || process.argv.includes("--smoke-doctor");
+}
+
+function isScanModesSmokeMode(): boolean {
+  return process.env.HERMSEC_SMOKE_SCAN_MODES_RUN === "true" || process.argv.includes("--smoke-scan-modes");
+}
+
+function isUiSmokeMode(): boolean {
+  return process.env.HERMSEC_SMOKE_UI === "true" || process.argv.includes("--smoke-ui");
 }
