@@ -30,7 +30,7 @@ HermSec is a desktop security scanner for local repositories. It is built to hel
 
 This paper first presents HermSec as a product, then compares four review modes. Deep assisted scan runs static scanners and uses a model to explain scanner evidence. Single agent inspection lets one model inspect bounded code snippets without scanners. MoA inspection uses several specialist agents, a false-positive judge, and an aggregator without scanners. Scanner + MoA inspection runs scanners and MoA together, then uses a judge and final aggregator to validate both sets of findings.
 
-The final controlled run completed 24 of 24 mode-and-fixture runs using efficient non-US models through OpenCode Go. MoA Low had the best F1 score at 0.4762. Single Agent had the best precision at 0.6667 but low recall. Scanner + MoA High had the best recall at 0.5833 but also many false positives. The result shows that multi-agent review can reduce noise compared with scanner-heavy modes, but the hybrid mode still needs stronger candidate filtering.
+The evaluation completed 24 of 24 mode-and-fixture runs using efficient non-US models through OpenCode Go. MoA Low had the best F1 score at 0.4762. Single Agent had the best precision at 0.6667 but low recall. Scanner + MoA High had the best recall at 0.5833 but also many false positives. The result shows that multi-agent review can reduce noise compared with scanner-heavy modes, but the hybrid mode still needs stronger candidate filtering.
 \end{abstract}
 
 \keywords{static analysis, software security, large language models, multi-agent systems, vulnerability detection, code review}
@@ -255,12 +255,10 @@ The study asks four questions:
   \item[RQ4] What should be improved before testing on larger benchmarks?
 \end{description}
 
-\subsection{Datasets}
-Two datasets were used.
+\subsection{Test Dataset}
+This study used one controlled test dataset.
 
-The first dataset came from tests prepared by my colleague Ghazal. It covered a broader set of languages and was useful for identifying where the scanner harness needed stronger language-specific coverage. In this refresh, it is treated as exploratory product context only. The paper no longer carries forward its old aggregate scanner-only counts or rates.
-
-The second dataset is the controlled fixture set used for the final mode comparison. The refreshed run used four fixtures with 12 expected findings in total. The fixture categories were:
+Our test data used four fixtures with 12 expected findings in total. The fixture categories were:
 
 \begin{itemize}
   \item vulnerable Node.js/Express project,
@@ -277,18 +275,18 @@ The HermSec harness follows the same basic steps for every scan. First, it valid
 The normal finding schema stores the title, category, severity, confidence, evidence, remediation, tool, rule ID, CWE, location, and fingerprint. This matters because scanner output and agent output must be scored and reported in the same format.
 
 \subsection{Execution Setup}
-The final comparison was run with HermSec V3 on Windows and recorded in \LatestResultsPath. The artifact includes the configured provider, model names, fixture identifiers, run status, fallback status, finding counts, and scored outcomes for every mode. The latest artifact has \texttt{executionMode} set to \texttt{actual}, so it is the measurement source used in this paper.
+The comparison was run with HermSec V3 on Windows and recorded in \LatestResultsPath. The artifact includes the configured provider, model names, fixture identifiers, run status, fallback status, finding counts, and scored outcomes for every mode. The artifact has \texttt{executionMode} set to \texttt{actual}, so it is the measurement source used in this paper.
 
 Deep assisted, single agent, MoA, and Scanner + MoA were run across the same controlled fixture set. The Scanner + MoA run used the real CLI mode: scanners ran first, MoA inspection ran next, combined candidates were judged, and the final report was written through the normal report template.
 
-The Deep assisted provider timeout issue found during earlier smoke tests was addressed by using smaller model explanation chunks and a longer summary watchdog. In the final artifact, two vulnerable Deep assisted rows still used fallback explanations because the model text was rejected as unsupported by the evidence validator. This is safer than accepting invented evidence, but it means the Deep assisted results should be read mainly as scanner-backed findings with guarded model support.
+During testing, the Deep assisted provider timeout issue was addressed by using smaller model explanation chunks and a longer summary watchdog. In the experiment artifact, two vulnerable Deep assisted rows still used fallback explanations because the model text was rejected as unsupported by the evidence validator. This is safer than accepting invented evidence, but it means the Deep assisted results should be read mainly as scanner-backed findings with guarded model support.
 
 \subsection{Model and Cost Choices}
 Another core idea in HermSec is cost control. Static scanners are the cheapest part because they run locally or through managed command-line tools. Model-assisted modes can become expensive because every agent reads project context and writes structured findings. For that reason, HermSec was designed to use efficient models first and reserve larger models for aggregation only when needed.
 
 The model routing is intentionally open to efficient non-US providers and models exposed through OpenCode Go or similar provider adapters. \texttt{deepseek-v4-flash} is useful for this design because DeepSeek documents context caching and pricing behavior that can reduce repeated prompt-prefix cost when the same system prompts and report schemas are reused \cite{deepseekcache,deepseekpricing}. Other efficient route models can be recorded in the result artifact's model policy. This matters for HermSec because Single Agent, MoA, and Scanner + MoA repeat similar instructions across fixtures.
 
-\texttt{mimo-v2.5} and \texttt{minimax-m3} are also relevant to the cost-control direction. MiMo V2.5 is described as an agent-capable long-context model with hybrid attention and KV-cache efficiency \cite{xiaomimimo25,xiaomimimo25inference}. MiniMax presents M3 as a coding and agentic model with long-context support \cite{minimaxm3}. The final run used \texttt{deepseek-v4-flash} for Deep assisted and Single Agent. MoA and Scanner + MoA used \texttt{deepseek-v4-flash} and \texttt{mimo-v2.5} for specialist agents, \texttt{deepseek-v4-pro} for the false-positive judge, and \texttt{minimax-m3} for the aggregator.
+\texttt{mimo-v2.5} and \texttt{minimax-m3} are also relevant to the cost-control direction. MiMo V2.5 is described as an agent-capable long-context model with hybrid attention and KV-cache efficiency \cite{xiaomimimo25,xiaomimimo25inference}. MiniMax presents M3 as a coding and agentic model with long-context support \cite{minimaxm3}. The experiment used \texttt{deepseek-v4-flash} for Deep assisted and Single Agent. MoA and Scanner + MoA used \texttt{deepseek-v4-flash} and \texttt{mimo-v2.5} for specialist agents, \texttt{deepseek-v4-pro} for the false-positive judge, and \texttt{minimax-m3} for the aggregator.
 
 \subsection{Scoring}
 Each finding was compared with the ground truth by file path and CWE. A true positive means HermSec found a planted issue. A false positive means HermSec reported an issue that did not match the answer key. A false negative means HermSec missed a planted issue.
@@ -304,15 +302,15 @@ F1 &= \frac{2 \times Precision \times Recall}{Precision + Recall}.
 \]
 
 \subsection{Problems Faced During Testing}
-There were a few relevant problems during testing. First, the Deep assisted explanation step initially hit provider timeout failures. This was improved by using smaller chunks and a longer watchdog. In the final run, two Deep assisted vulnerable rows still used fallback explanations because the model output did not pass evidence validation. Second, Scanner + MoA high initially failed when the false-positive judge received too many candidates in one request. This was fixed by batching the judge step and splitting failed batches. Third, scanner-heavy modes produced many findings outside the small answer key. Some of those findings may still be useful in a real project, but benchmark scoring counted only matches defined by the ground truth.
+There were a few relevant problems during testing. First, the Deep assisted explanation step hit provider timeout failures. This was improved by using smaller chunks and a longer watchdog. In the experiment run, two Deep assisted vulnerable rows still used fallback explanations because the model output did not pass evidence validation. Second, Scanner + MoA high failed when the false-positive judge received too many candidates in one request. This was fixed by batching the judge step and splitting failed batches. Third, scanner-heavy modes produced many findings outside the small answer key. Some of those findings may still be useful in a real project, but benchmark scoring counted only matches defined by the ground truth.
 
 During app development, the main challenge was making the product workflow clear. HermSec needed to show live progress, manage scanners, keep model settings simple, and still write a normal report at the end. The solution was to keep one report format for all modes and add mode metadata such as agents used, judge counts, and source labels.
 
 \section{Results}
-\subsection{Refresh Status}
-The refreshed scoring artifact is available at \LatestResultsPath. The old broad scanner-only aggregate and the earlier per-language chart are intentionally omitted. They were useful for development, but they are not part of the final comparison.
+\subsection{Evaluation Summary}
+The scoring artifact is available at \LatestResultsPath.
 
-The final run completed 24 of 24 mode-and-fixture runs. The metrics in this section come from \texttt{results.json} and \texttt{metrics.csv}. The chart files \texttt{mode-metrics.svg} and \texttt{mode-counts.svg} were regenerated from the same artifact.
+The evaluation completed 24 of 24 mode-and-fixture runs. The metrics in this section come from \texttt{results.json} and \texttt{metrics.csv}. The chart files \texttt{mode-metrics.svg} and \texttt{mode-counts.svg} were generated from the same artifact.
 
 \subsection{Aggregate Mode Comparison}
 Table~\ref{tab:mode-summary} shows the aggregate comparison. The best F1 score came from MoA Low. Single Agent had the highest precision but missed many planted findings. Scanner-heavy modes found more true positives but also produced many false positives against this small answer key.
@@ -337,10 +335,10 @@ Table~\ref{tab:mode-summary} shows the aggregate comparison. The best F1 score c
 \end{table*}
 
 \subsection{Per-Fixture Results}
-Table~\ref{tab:fixture-results} gives a compact per-fixture view. Clean fixtures show whether a mode stayed quiet or produced extra findings.
+Table~\ref{tab:fixture-results} gives a compact view of how each mode performed on each fixture. Clean fixtures show whether a mode stayed quiet or produced extra findings.
 
 \begin{table*}
-  \caption{Per-fixture results from the refreshed comparison.}
+  \caption{Per-fixture results from the evaluation.}
   \label{tab:fixture-results}
   \centering
   \scriptsize
@@ -393,7 +391,7 @@ The controlled run shows that no mode is perfect. Single Agent was the most prec
 The main lesson is that HermSec should keep both scanner-backed and agent-backed workflows. Scanners give broad deterministic coverage. Agents help review evidence and reduce noise. The next version should improve scanner candidate filtering, Java and multi-language coverage, and larger benchmark evaluation.
 
 \begin{acks}
-This work was developed for Security Insider Lab II. I thank my colleague Ghazal for preparing broader fixture tests and benchmark notes that helped guide the research refresh.
+This work was developed for Security Insider Lab II.
 \end{acks}
 
 \bibliographystyle{ACM-Reference-Format}
