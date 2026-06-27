@@ -7,7 +7,7 @@ import { useSettingsStore } from "@/store/settingsStore";
 import { useUiStore } from "@/store/uiStore";
 import { ScanModeSegmentedControl } from "@/components/scan/ScanModeSegmentedControl";
 import { Button } from "@/components/ui/Button";
-import type { HermsecScanAssistMode } from "@/types/scan";
+import type { HermsecProductScanAssistMode } from "@/types/scan";
 import type { AutomationFrequency } from "@/types/settings";
 
 export function AutomationsView() {
@@ -27,7 +27,7 @@ export function AutomationsView() {
   const schedule = `${formatFrequency(automation)} at ${formatTime(automation.time)}`;
   const statusLabel = automation.enabled ? `${schedule} - ${scanModeLabel(currentScanMode)}` : "Disabled";
 
-  const runNow = async (assistModeOverride?: HermsecScanAssistMode) => {
+  const runNow = async (assistModeOverride?: HermsecProductScanAssistMode) => {
     const assistMode = normalizeScanAssistMode(assistModeOverride ?? automation.scanMode ?? settings.general.scanMode);
     const result = await runScan({
       targetPath: settings.defaultProjectDir,
@@ -151,7 +151,7 @@ function AutomationEditorDialog({
   scanRunning,
 }: {
   onClose: () => void;
-  onRunNow: (assistMode?: HermsecScanAssistMode) => Promise<void>;
+  onRunNow: (assistMode?: HermsecProductScanAssistMode) => Promise<void>;
   scanRunning: boolean;
 }) {
   const settings = useSettingsStore((s) => s.settings);
@@ -162,7 +162,7 @@ function AutomationEditorDialog({
   const [intervalDays, setIntervalDays] = useState(settings?.automation.intervalDays ?? 1);
   const [time, setTime] = useState(settings?.automation.time ?? "09:00");
   const [enabled, setEnabled] = useState(settings?.automation.enabled ?? false);
-  const [scanMode, setScanMode] = useState<HermsecScanAssistMode>(
+  const [scanMode, setScanMode] = useState<HermsecProductScanAssistMode>(
     normalizeScanAssistMode(settings?.automation.scanMode ?? settings?.general.scanMode),
   );
 

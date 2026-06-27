@@ -1,4 +1,4 @@
-import type { OutputFormat, ScanMode, ScanProgressEvent } from "../../shared/types.js";
+import type { OutputFormat, ScanAssistMode, ScanAssistModeInput, ScanMode, ScanProgressEvent } from "../../shared/types.js";
 import { getFlagString, parseArgs, resolveLocalPath, resolveOutputPath, unknownFlagResult } from "../args.js";
 import { commandHelp, helpResult, usageError } from "../help.js";
 import { moduleSpecs } from "../moduleSpecs.js";
@@ -11,7 +11,7 @@ type ScanOptions = {
   cwd: string;
   target: string;
   mode: ScanMode;
-  assistMode?: "scanner-model-summary" | "deep-assisted";
+  assistMode?: ScanAssistModeInput;
   outputDirectory?: string;
   formats: OutputFormat[];
   useModel: boolean;
@@ -70,7 +70,9 @@ function writeProgressJsonl(event: ScanProgressEvent): void {
   process.stderr.write(`HERMSEC_PROGRESS ${JSON.stringify(event)}\n`);
 }
 
-function parseAssistMode(value: string | undefined): NonNullable<ScanOptions["assistMode"]> {
-  if (value === "deep-assisted") return "deep-assisted";
-  return "scanner-model-summary";
+function parseAssistMode(value: string | undefined): ScanAssistMode {
+  if (value === "single-agent") return "single-agent";
+  if (value === "moa-assisted") return "moa-assisted";
+  if (value === "scanner-moa-assisted") return "scanner-moa-assisted";
+  return "deep-assisted";
 }

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Check, ChevronDown, ChevronRight, Circle, Minus, X } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { normalizeScanAssistMode, scanModeLabel } from "@/lib/scanModes";
 import type { ScanProgressDetail, ScanProgressEvent, ScanProgressStatus } from "@/types/scan";
 import Spiral5x5 from "@/components/ui/Spiral5x5";
 
@@ -268,20 +269,29 @@ function buildTimelineModel(events: ScanProgressEvent[]) {
   const modeEvent = [...events]
     .reverse()
     .find((event) => event.assistMode || event.assistModeLabel || event.id === "scan-assist-mode");
-  const inferredMode = modeEvent?.assistMode
-    ?? (events.some((event) => /deep-assisted|deep assisted scan|deep model triage/i.test(`${event.message ?? ""} ${event.label}`))
-      ? "deep-assisted"
-      : "scanner-model-summary");
-  const mode = modeEvent?.assistModeLabel
-    ?? (inferredMode === "deep-assisted" ? "Deep assisted scan" : "Scanner + model summary");
+  const inferredMode = normalizeScanAssistMode(
+    modeEvent?.assistMode
+      ?? (events.some((event) => /deep-assisted|deep assisted scan|deep model triage/i.test(`${event.message ?? ""} ${event.label}`))
+        ? "deep-assisted"
+        : undefined),
+  );
+  const mode = modeEvent?.assistModeLabel && !/scanner \+ model summary/i.test(modeEvent.assistModeLabel)
+    ? modeEvent.assistModeLabel
+    : scanModeLabel(inferredMode);
 
   return {
     stages,
     chips: Array.from(chips),
     mode,
-    tokenLabel: inferredMode === "deep-assisted" ? "More context, more tokens" : "Lowest token use",
+    tokenLabel: tokenLabelForMode(inferredMode),
     done: stages.every((stage) => ["completed", "skipped"].includes(stage.status)),
   };
+}
+
+function tokenLabelForMode(mode: string): string {
+  if (mode === "single-agent") return "Focused agent review";
+  if (mode === "moa-assisted") return "Multi-agent review";
+  return "More context, more tokens";
 }
 
 function eventToDetail(event: ScanProgressEvent): ScanProgressDetail {

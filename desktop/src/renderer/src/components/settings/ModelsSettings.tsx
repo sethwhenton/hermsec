@@ -131,7 +131,7 @@ export function ModelsSettings() {
                   </span>
                   <span className="mt-0.5 block text-xs text-muted">
                     {enabledCount} enabled / {provider.models.length} available
-                    {provider.modelDiscovery?.message ? ` · ${provider.modelDiscovery.message}` : ""}
+                    {provider.modelDiscovery?.message ? ` - ${provider.modelDiscovery.message}` : ""}
                   </span>
                 </span>
                 <Button

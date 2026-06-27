@@ -252,9 +252,9 @@ function MenuSurface({
 
 const aboutFeatureItems: Array<[string, string]> = [
   ["Desktop chat", "Guide scans, run Doctor, explain findings, set automations, and open final report artifacts."],
-  ["Two scan modes", "Use scanner-backed summaries for speed or deep assisted scans for richer evidence grouping."],
+  ["Three scan modes", "Use scanner-backed deep scans, single-agent inspection, or MoA agent-only review."],
   ["Doctor", "Check runtime readiness, scanner availability, provider status, and internet access to advisory sources."],
-  ["Live progress", "See inspection, tool selection, scanner preparation, scan execution, model summary, and report generation."],
+  ["Live progress", "See inspection, tool or agent preparation, scan execution, model inspection, and report generation."],
   ["Scanner management", "Review installed, missing, enabled, auto-installable, and project-relevant scanners in Settings."],
   ["Reports", "Generate dashboard, JSON, Markdown, HTML, one-page PDF, and benchmark-safe exports when needed."],
 ];
@@ -265,9 +265,9 @@ const scanFlowItems = [
   "Detect languages, manifests, lockfiles, IaC, and git metadata.",
   "Choose matching scanners from Hermsec's supported catalog.",
   "Prepare missing tools in Hermsec-managed storage when auto-install is enabled.",
-  "Run built-in heuristics and external scanners with safe wrappers.",
+  "Run built-in heuristics and external scanners with safe wrappers for Deep assisted scans.",
   "Normalize, dedupe, and merge findings into one evidence format.",
-  "Use the selected model mode only to explain scanner-backed evidence.",
+  "Use Single Agent or MoA to inspect bounded code evidence without scanner tools.",
   "Write final report artifacts and link them in chat.",
 ];
 
@@ -295,7 +295,7 @@ const safetyItems = [
   "Does not run target package lifecycle scripts.",
   "Uses supported scanner commands and safe wrappers instead of arbitrary custom execution.",
   "Caps scanner output and applies timeouts.",
-  "Keeps model explanations tied to existing finding ids, files, lines, scanner ids, packages, CVEs, GHSA/OSV ids, and CWEs.",
+  "Keeps scanner explanations tied to scanner evidence and agent-only findings tied to bounded file/snippet evidence.",
   "Keeps benchmark raw exports separate from user-facing report output.",
 ];
 
@@ -340,7 +340,7 @@ function AboutHermsecModal({ open, onClose }: { open: boolean; onClose: () => vo
         <AboutSection
           icon={<Bot className="h-4 w-4" />}
           title="Agent Boundary"
-          body="The model can summarize, group, prioritize, and explain scanner-backed findings. It is not allowed to invent findings, files, line numbers, scanner ids, packages, CVEs, CWEs, or remediation evidence that is not already present."
+          body="Deep assisted mode explains scanner-backed findings. Single Agent and MoA inspect bounded repository evidence directly. The model is not allowed to invent findings, files, line numbers, packages, CVEs, CWEs, or remediation evidence that is not already present."
         />
         <FeatureGrid
           items={aboutFeatureItems}
@@ -348,7 +348,7 @@ function AboutHermsecModal({ open, onClose }: { open: boolean; onClose: () => vo
         <AboutSection
           icon={<ScanLine className="h-4 w-4" />}
           title="How A Scan Works"
-          body="The scanner harness is deterministic. It profiles the project, matches that profile to a supported scanner catalog, prepares missing tools when allowed, runs scanners with guardrails, normalizes findings, then generates reports."
+          body="Deep assisted scans use the deterministic scanner harness. Single Agent and MoA skip scanner execution and use bounded read-only repository evidence before generating the same report format."
         />
         <NumberedFlow items={scanFlowItems} />
         <div>

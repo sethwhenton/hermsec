@@ -12,6 +12,7 @@ export type ScanTarget = {
 export type ScanRunSummary = {
   id: string;
   mode: ScanMode;
+  modeLabel?: string;
   startedAt: string;
   finishedAt: string;
   durationMs: number;
@@ -26,6 +27,53 @@ export type ScanRunSummary = {
     actualReportDir: string;
     reason?: string;
   };
+};
+
+export type ReportFindingSourceLabel =
+  | "scanner-backed"
+  | "single-agent-inspected"
+  | "moa-specialist"
+  | "moa-aggregated";
+
+export type ReportAgentDescriptor = {
+  id: string;
+  label?: string;
+  role?: string;
+  provider?: string;
+  model?: string;
+  runtimeMs?: number;
+  status?: string;
+};
+
+export type ReportAggregatorDescriptor = {
+  agentId?: string;
+  provider?: string;
+  model?: string;
+  label?: string;
+};
+
+export type ReportFindingAgentMetadata = {
+  sourceLabel?: ReportFindingSourceLabel | string;
+  sourceLabels?: Array<ReportFindingSourceLabel | string>;
+  judgeStatus?: string;
+  judgeReason?: string;
+  agentIds?: string[];
+};
+
+export type ReportAgentModeMetadata = {
+  mode?: string;
+  scanMode?: string;
+  modeLabel?: string;
+  agents?: ReportAgentDescriptor[];
+  agentsUsed?: string[];
+  candidateFindingCount?: number;
+  acceptedFindingCount?: number;
+  rejectedFindingCount?: number;
+  needsHumanReviewCount?: number;
+  aggregatorModel?: string;
+  aggregator?: ReportAggregatorDescriptor;
+  totalAgentRuntimeMs?: number;
+  findings?: Record<string, ReportFindingAgentMetadata>;
 };
 
 export type ReportSummary = {
@@ -108,6 +156,8 @@ export type DeltaReport = {
   summaryText?: string;
 };
 
+export type ReportFinding = Finding & ReportFindingAgentMetadata;
+
 export type ReportDocument = {
   schemaVersion: "1.0";
   scanId: string;
@@ -116,10 +166,11 @@ export type ReportDocument = {
   generatedAt: string;
   target: ScanTarget;
   run: ScanRunSummary;
+  agentMode?: ReportAgentModeMetadata;
   tools: ScannerStatus[];
   summary: ReportSummary;
   intelligence: ReportIntelligenceItem[];
-  findings: Finding[];
+  findings: ReportFinding[];
   explanations: Record<string, ModelExplanation | undefined>;
   evidence: EvidenceBundle;
   delta?: DeltaReport;
@@ -145,10 +196,11 @@ export type AgentSummary = {
   provider: string;
   model?: string;
   fallbackReason?: string;
+  agentMode?: ReportAgentModeMetadata;
   executiveSummary: string;
   priorityActions: string[];
   explanations: Record<string, ModelExplanation | undefined>;
-};
+} & Record<string, unknown>;
 
 export const severityOrder: Severity[] = ["critical", "high", "medium", "low", "info"];
 

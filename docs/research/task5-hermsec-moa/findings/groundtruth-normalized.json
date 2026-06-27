@@ -1,0 +1,168 @@
+﻿{
+    "node-express-vulnerable":  [
+                                    {
+                                        "id":  "node-sqli-user-search",
+                                        "category":  "code",
+                                        "title":  "Unsafe toy SQL query construction",
+                                        "severity":  "high",
+                                        "cwe":  "CWE-89",
+                                        "location":  {
+                                                         "path":  "src/routes/search.js",
+                                                         "startLine":  14
+                                                     },
+                                        "ruleIds":  "semgrep"
+                                    },
+                                    {
+                                        "id":  "node-command-echo",
+                                        "category":  "code",
+                                        "title":  "User-controlled command string in local echo helper",
+                                        "severity":  "high",
+                                        "cwe":  "CWE-78",
+                                        "location":  {
+                                                         "path":  "src/routes/search.js",
+                                                         "startLine":  20
+                                                     },
+                                        "ruleIds":  "semgrep"
+                                    },
+                                    {
+                                        "id":  "node-path-read",
+                                        "category":  "code",
+                                        "title":  "Unchecked path join for fixture file read",
+                                        "severity":  "medium",
+                                        "cwe":  "CWE-22",
+                                        "location":  {
+                                                         "path":  "src/routes/search.js",
+                                                         "startLine":  26
+                                                     },
+                                        "ruleIds":  "semgrep"
+                                    },
+                                    {
+                                        "id":  "node-reflected-html",
+                                        "category":  "code",
+                                        "title":  "Unsanitized HTML response in fixture route",
+                                        "severity":  "medium",
+                                        "cwe":  "CWE-79",
+                                        "location":  {
+                                                         "path":  "src/routes/search.js",
+                                                         "startLine":  34
+                                                     },
+                                        "ruleIds":  "semgrep"
+                                    },
+                                    {
+                                        "id":  "node-weak-md5",
+                                        "category":  "code",
+                                        "title":  "MD5 hash used in toy route",
+                                        "severity":  "low",
+                                        "cwe":  "CWE-328",
+                                        "location":  {
+                                                         "path":  "src/routes/search.js",
+                                                         "startLine":  33
+                                                     },
+                                        "ruleIds":  "semgrep"
+                                    },
+                                    {
+                                        "id":  "node-fake-secret",
+                                        "category":  "secret",
+                                        "title":  "Fake Hermsec token fixture",
+                                        "severity":  "high",
+                                        "cwe":  "CWE-798",
+                                        "location":  {
+                                                         "path":  "src/routes/search.js",
+                                                         "startLine":  7
+                                                     },
+                                        "ruleIds":  "gitleaks"
+                                    }
+                                ],
+    "node-express-clean":  {
+
+                           },
+    "python-flask-vulnerable":  [
+                                    {
+                                        "id":  "python-sqli-user-search",
+                                        "category":  "code",
+                                        "title":  "Unsafe toy SQLite query construction",
+                                        "severity":  "high",
+                                        "cwe":  "CWE-89",
+                                        "location":  {
+                                                         "path":  "app.py",
+                                                         "startLine":  14
+                                                     },
+                                        "ruleIds":  [
+                                                        "bandit",
+                                                        "semgrep"
+                                                    ]
+                                    },
+                                    {
+                                        "id":  "python-command-shell",
+                                        "category":  "code",
+                                        "title":  "User-controlled shell command in local echo helper",
+                                        "severity":  "high",
+                                        "cwe":  "CWE-78",
+                                        "location":  {
+                                                         "path":  "app.py",
+                                                         "startLine":  20
+                                                     },
+                                        "ruleIds":  [
+                                                        "bandit",
+                                                        "semgrep"
+                                                    ]
+                                    },
+                                    {
+                                        "id":  "python-path-read",
+                                        "category":  "code",
+                                        "title":  "Unchecked local path join for fixture file read",
+                                        "severity":  "medium",
+                                        "cwe":  "CWE-22",
+                                        "location":  {
+                                                         "path":  "app.py",
+                                                         "startLine":  26
+                                                     },
+                                        "ruleIds":  [
+                                                        "bandit",
+                                                        "semgrep"
+                                                    ]
+                                    },
+                                    {
+                                        "id":  "python-template-string",
+                                        "category":  "code",
+                                        "title":  "Unsafe template string rendering in fixture route",
+                                        "severity":  "medium",
+                                        "cwe":  "CWE-79",
+                                        "location":  {
+                                                         "path":  "app.py",
+                                                         "startLine":  34
+                                                     },
+                                        "ruleIds":  "semgrep"
+                                    },
+                                    {
+                                        "id":  "python-weak-md5",
+                                        "category":  "code",
+                                        "title":  "MD5 hash used in toy route",
+                                        "severity":  "low",
+                                        "cwe":  "CWE-328",
+                                        "location":  {
+                                                         "path":  "app.py",
+                                                         "startLine":  33
+                                                     },
+                                        "ruleIds":  [
+                                                        "bandit",
+                                                        "semgrep"
+                                                    ]
+                                    },
+                                    {
+                                        "id":  "python-fake-secret",
+                                        "category":  "secret",
+                                        "title":  "Fake Hermsec token fixture",
+                                        "severity":  "high",
+                                        "cwe":  "CWE-798",
+                                        "location":  {
+                                                         "path":  "app.py",
+                                                         "startLine":  9
+                                                     },
+                                        "ruleIds":  "gitleaks"
+                                    }
+                                ],
+    "python-flask-clean":  {
+
+                           }
+}

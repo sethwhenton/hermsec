@@ -3,7 +3,6 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import type {
-  HermsecScanAssistMode,
   OpenReportLocationRequest,
   OpenReportLocationResult,
   ScanControlResult,
@@ -14,7 +13,7 @@ import type {
 } from "../renderer/src/types/scan";
 import { generateReportArtifacts } from "./reportArtifacts";
 import { getProjectStateFingerprint, projectStateChanged } from "./projectState";
-import { assistModeLabel, writeScanAssistArtifact } from "./scanAssist";
+import { assistModeLabel, writeScanAssistArtifact, type RuntimeScanAssistMode } from "./scanAssist";
 import { findBundledCliRoot } from "./runtimeBundle";
 import type { LocalScanMetadata } from "./scanMetadata";
 import { prepareScannersForProject, scannerEnvForCli, scannerStatuses } from "./scanners";
@@ -41,7 +40,15 @@ type CliOutcome = {
   };
 };
 
-type ScanProgressCallback = (event: ScanProgressEvent) => void;
+type RuntimeScanProgressEvent = Omit<ScanProgressEvent, "assistMode"> & {
+  assistMode?: RuntimeScanAssistMode;
+};
+
+type RuntimeScanProjectResult = Omit<ScanProjectResult, "assistMode"> & {
+  assistMode?: RuntimeScanAssistMode;
+};
+
+type ScanProgressCallback = (event: RuntimeScanProgressEvent) => void;
 
 type RootScanProgressEvent = {
   schemaVersion?: string;
@@ -54,7 +61,7 @@ type RootScanProgressEvent = {
   details?: Array<{ id?: string; label?: string; status?: string; message?: string; value?: string }>;
   findingCount?: number;
   durationMs?: number;
-  assistMode?: HermsecScanAssistMode;
+  assistMode?: RuntimeScanAssistMode | "scanner-model-summary";
   timestamp?: string;
 };
 
@@ -141,8 +148,10 @@ function defaultReportDir(): string {
   return path.join(app.getPath("documents"), "Hermsec", "reports");
 }
 
-function normalizeAssistMode(mode?: ScanProjectRequest["assistMode"]): HermsecScanAssistMode {
-  return mode === "deep-assisted" ? "deep-assisted" : "scanner-model-summary";
+function normalizeAssistMode(mode?: ScanProjectRequest["assistMode"] | string): RuntimeScanAssistMode {
+  if (mode === "single-agent") return "single-agent";
+  if (mode === "moa-assisted") return "moa-assisted";
+  return "deep-assisted";
 }
 
 function normalizeSummary(summary?: Partial<ScanSummary>): ScanSummary | undefined {
@@ -193,7 +202,7 @@ function stripProgressLines(value: string): string {
 export async function scanProject(
   request: ScanProjectRequest = {},
   onProgress?: ScanProgressCallback,
-): Promise<ScanProjectResult> {
+): Promise<RuntimeScanProjectResult> {
   if (activeScan) {
     return {
       ok: false,
@@ -221,6 +230,7 @@ export async function scanProject(
     const reportDir = path.resolve(request.reportDir || defaultReportDir());
     const mode = normalizeScanMode(request.mode);
     const assistMode = normalizeAssistMode(request.assistMode);
+    const agentOnlyMode = isAgentOnlyMode(assistMode);
 
     if (!existsSync(targetPath)) {
       return {
@@ -263,34 +273,63 @@ export async function scanProject(
       }),
     );
 
-    let scannerPlan = await timedStage(
-      onProgress,
-      "choose-tools",
-      "Choosing scanner tools",
-      "Choosing scanners for the detected project shape...",
-      async () => buildScannerPlan(profile, targetPath),
-      (plan) => ({
-        message: `${plan.filter((item) => item.adapter === "current").length} runnable scanner tool${plan.filter((item) => item.adapter === "current").length === 1 ? "" : "s"} selected.`,
-        details: plan.map(planDetail),
-        chips: profileChips(profile),
-      }),
-    );
+    let scannerPlan: ScannerPlanItem[] = [];
+    if (agentOnlyMode) {
+      await timedStage(
+        onProgress,
+        "choose-tools",
+        progressStageLabel("choose-tools", "Choosing scanner tools", assistMode),
+        "Selecting the agent-only inspection workflow...",
+        async () => agentModePlan(assistMode),
+        (plan) => ({
+          message: "Agent-only mode selected. Scanner tools will not run for this scan.",
+          details: plan,
+          chips: profileChips(profile),
+        }),
+      );
 
-    await timedStage(
-      onProgress,
-      "prepare-tools",
-      "Preparing tools",
-      "Preparing scanner tools for this project...",
-      async () => {
-        scannerPlan = scannerPlanFromStatuses(await prepareScannersForProject(targetPath));
-        return scannerPlan;
-      },
-      (plan) => ({
-        message: preparationSummary(plan),
-        details: plan.map(planDetail),
-        chips: toolChips(plan),
-      }),
-    );
+      await timedStage(
+        onProgress,
+        "prepare-tools",
+        progressStageLabel("prepare-tools", "Preparing tools", assistMode),
+        "Preparing bounded repository context for read-only agent inspection...",
+        async () => agentModePlan(assistMode),
+        (plan) => ({
+          message: "Bounded file, search, and snippet context will be prepared inside the agent runtime.",
+          details: plan,
+          chips: [assistModeLabel(assistMode)],
+        }),
+      );
+    } else {
+      scannerPlan = await timedStage(
+        onProgress,
+        "choose-tools",
+        "Choosing scanner tools",
+        "Choosing scanners for the detected project shape...",
+        async () => buildScannerPlan(profile, targetPath),
+        (plan) => ({
+          message: `${plan.filter((item) => item.adapter === "current").length} runnable scanner tool${plan.filter((item) => item.adapter === "current").length === 1 ? "" : "s"} selected.`,
+          details: plan.map(planDetail),
+          chips: profileChips(profile),
+        }),
+      );
+
+      await timedStage(
+        onProgress,
+        "prepare-tools",
+        "Preparing tools",
+        "Preparing scanner tools for this project...",
+        async () => {
+          scannerPlan = scannerPlanFromStatuses(await prepareScannersForProject(targetPath));
+          return scannerPlan;
+        },
+        (plan) => ({
+          message: preparationSummary(plan),
+          details: plan.map(planDetail),
+          chips: toolChips(plan),
+        }),
+      );
+    }
 
     const args = [
       cliPath,
@@ -316,19 +355,19 @@ export async function scanProject(
     const summary = normalizeSummary(parsed.data?.scan?.summary);
     const htmlPath = parsed.data?.report?.htmlPath;
     const actualReportDir = htmlPath ? path.dirname(htmlPath) : latestReportDir(reportDir) ?? reportDir;
-    emitToolProgressFromReport(actualReportDir, onProgress);
+    if (!agentOnlyMode) {
+      emitToolProgressFromReport(actualReportDir, onProgress);
+    }
     const modelStageLabel = progressStageLabel("model-summary", "Model summary", assistMode);
     emitProgress(
       onProgress,
       "model-summary",
       modelStageLabel,
       "running",
-      assistMode === "deep-assisted"
-        ? "Reviewing model-supported scanner evidence."
-        : "Summarizing scanner-backed evidence.",
+      modelPhaseRunningMessage(assistMode),
       { assistMode, assistModeLabel: assistModeLabel(assistMode) },
     );
-    const assistArtifactPath = writeScanAssistArtifact(actualReportDir, assistMode);
+    const assistArtifactPath = agentOnlyMode ? null : writeScanAssistArtifact(actualReportDir, assistMode);
     emitProgress(
       onProgress,
       "model-summary",
@@ -336,7 +375,9 @@ export async function scanProject(
       assistArtifactPath ? "completed" : "skipped",
       assistArtifactPath
         ? "Scanner evidence map was written for the report."
-        : "No model summary artifact was needed for this report.",
+        : agentOnlyMode
+          ? "Agent-only mode does not write a scanner evidence map."
+          : "No model summary artifact was needed for this report.",
       {
         assistMode,
         assistModeLabel: assistModeLabel(assistMode),
@@ -344,9 +385,7 @@ export async function scanProject(
           {
             label: assistModeLabel(assistMode),
             status: assistArtifactPath ? "completed" : "skipped",
-            message: assistMode === "deep-assisted"
-              ? "Scanner-matched evidence is ready for deeper triage."
-              : "Scanner-backed summary is ready.",
+            message: modelPhaseCompletedMessage(assistMode),
           },
         ],
       },
@@ -358,7 +397,7 @@ export async function scanProject(
       reportDir: actualReportDir,
       scanId: parsed.data?.scan?.id ?? `scan-${scanStartedMs}`,
       mode,
-      assistMode,
+      assistMode: assistMode as LocalScanMetadata["assistMode"],
       assistModeLabel: assistModeLabel(assistMode),
       startedAt: scanStartedAt,
       finishedAt,
@@ -436,19 +475,23 @@ async function runWithStageProgress(
   args: string[],
   control: ActiveScanControl,
   onProgress?: ScanProgressCallback,
-  assistMode: HermsecScanAssistMode = "scanner-model-summary",
+  assistMode: RuntimeScanAssistMode = "deep-assisted",
   scannerPlan: ScannerPlanItem[] = [],
   targetPath?: string,
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   const runnablePlan = scannerPlan.filter((item) => item.adapter === "current" && item.status === "completed");
+  const agentOnlyMode = isAgentOnlyMode(assistMode);
+  const runningLabel = progressStageLabel("running-scans", "Running scans", assistMode);
   emitProgress(
     onProgress,
     "running-scans",
-    "Running scans",
+    runningLabel,
     "running",
-    "Running selected scanner tools...",
+    agentOnlyMode ? modelPhaseRunningMessage(assistMode) : "Running selected scanner tools...",
     {
-      details: runnablePlan.length > 0
+      details: agentOnlyMode
+        ? agentInspectionDetails(assistMode, "running")
+        : runnablePlan.length > 0
         ? [
             {
               id: "scanner-engine",
@@ -471,11 +514,15 @@ async function runWithStageProgress(
     emitProgress(
       onProgress,
       "running-scans",
-      "Running scans",
+      runningLabel,
       "running",
-      "Scanner process is still running; exact tool statuses will appear from the report.",
+      agentOnlyMode
+        ? "Agent-only inspection is still running; model progress will update as stages complete."
+        : "Scanner process is still running; exact tool statuses will appear from the report.",
       {
-        details: runnablePlan.length > 0
+        details: agentOnlyMode
+          ? agentInspectionDetails(assistMode, "running")
+          : runnablePlan.length > 0
           ? [
               {
                 id: "scanner-engine",
@@ -507,11 +554,15 @@ async function runWithStageProgress(
     emitProgress(
       onProgress,
       "running-scans",
-      "Running scans",
+      runningLabel,
       "completed",
-      "Scanner execution completed. Reading scanner status report.",
+      agentOnlyMode
+        ? "Agent-only inspection completed. Reading report metadata."
+        : "Scanner execution completed. Reading scanner status report.",
       {
-        details: runnablePlan.length > 0
+        details: agentOnlyMode
+          ? agentInspectionDetails(assistMode, "completed")
+          : runnablePlan.length > 0
           ? [
               {
                 id: "scanner-engine",
@@ -553,7 +604,7 @@ function throwIfCanceled(control: ActiveScanControl): void {
   }
 }
 
-function emitInitialProgress(onProgress?: ScanProgressCallback, assistMode: HermsecScanAssistMode = "scanner-model-summary"): void {
+function emitInitialProgress(onProgress?: ScanProgressCallback, assistMode: RuntimeScanAssistMode = "deep-assisted"): void {
   emitProgress(
     onProgress,
     "scan-assist-mode",
@@ -581,7 +632,7 @@ function emitProgress(
     parentId?: string;
     details?: ScanProgressEvent["details"];
     chips?: string[];
-    assistMode?: HermsecScanAssistMode;
+    assistMode?: RuntimeScanAssistMode;
     assistModeLabel?: string;
   } = {},
 ): void {
@@ -599,29 +650,126 @@ function emitProgress(
   });
 }
 
-function progressStageLabel(id: string, fallback: string, assistMode: HermsecScanAssistMode): string {
-  if (id === "model-summary" && assistMode === "deep-assisted") {
+function progressStageLabel(id: string, fallback: string, assistMode: RuntimeScanAssistMode): string {
+  if (isAgentOnlyMode(assistMode)) {
+    if (id === "choose-tools") return assistMode === "moa-assisted" ? "Choosing agent panel" : "Choosing agent";
+    if (id === "prepare-tools") return "Preparing code context";
+    if (id === "running-scans") return assistMode === "moa-assisted" ? "Running agent panel" : "Running agent inspection";
+  }
+  if (id === "model-summary") {
+    if (assistMode === "single-agent") return "Single-agent inspection";
+    if (assistMode === "moa-assisted") return "MoA-assisted inspection";
     return "Deep model triage";
   }
   return fallback;
 }
 
-function progressQueuedMessage(id: string, label: string, assistMode: HermsecScanAssistMode): string {
+function progressQueuedMessage(id: string, label: string, assistMode: RuntimeScanAssistMode): string {
+  if (isAgentOnlyMode(assistMode)) {
+    if (id === "choose-tools") return `${label} is queued; scanner tools will not run.`;
+    if (id === "prepare-tools") return "Bounded code context preparation is queued.";
+    if (id === "running-scans") return `${label} is queued.`;
+  }
   if (id === "model-summary") {
-    return assistMode === "deep-assisted"
-      ? "Deep model-supported triage is queued after scanner evidence."
-      : "Model summary is queued after scanner evidence.";
+    if (assistMode === "single-agent") return "Single-agent repository inspection is queued.";
+    if (assistMode === "moa-assisted") return "MoA specialist, judge, and aggregator inspection is queued.";
+    return "Deep model-supported triage is queued after scanner evidence.";
   }
   return `${label} is queued.`;
 }
 
-function progressRunningMessage(id: string, label: string, assistMode: HermsecScanAssistMode): string {
+function progressRunningMessage(id: string, label: string, assistMode: RuntimeScanAssistMode): string {
   if (id === "model-summary") {
-    return assistMode === "deep-assisted"
-      ? "Model is supporting triage over scanner-confirmed groups."
-      : "Model is summarizing scanner-backed findings.";
+    return modelPhaseRunningMessage(assistMode);
   }
   return `${label} is running.`;
+}
+
+function modelPhaseRunningMessage(assistMode: RuntimeScanAssistMode): string {
+  if (assistMode === "single-agent") {
+    return "Inspecting bounded repository snippets for product findings.";
+  }
+  if (assistMode === "moa-assisted") {
+    return "Running specialist, false-positive judge, and aggregator model review.";
+  }
+  return "Reviewing model-supported scanner evidence.";
+}
+
+function modelPhaseCompletedMessage(assistMode: RuntimeScanAssistMode): string {
+  if (assistMode === "single-agent") {
+    return "Single-agent inspection evidence is ready for the report.";
+  }
+  if (assistMode === "moa-assisted") {
+    return "MoA inspection evidence is ready for the report.";
+  }
+  return "Scanner-matched evidence is ready for deeper triage.";
+}
+
+function isAgentOnlyMode(assistMode: RuntimeScanAssistMode): boolean {
+  return assistMode === "single-agent" || assistMode === "moa-assisted";
+}
+
+function agentModePlan(assistMode: RuntimeScanAssistMode): NonNullable<ScanProgressEvent["details"]> {
+  if (assistMode === "moa-assisted") {
+    return [
+      {
+        id: "moa-specialists",
+        label: "Specialist agents",
+        status: "completed",
+        message: "Specialist agents will inspect bounded repository snippets.",
+      },
+      {
+        id: "moa-judge",
+        label: "False-positive judge",
+        status: "completed",
+        message: "The judge will reject weak or unsupported agent candidates.",
+      },
+      {
+        id: "moa-aggregator",
+        label: "Aggregator",
+        status: "completed",
+        message: "The aggregator will merge accepted agent findings.",
+      },
+    ];
+  }
+
+  return [
+    {
+      id: "single-agent-inspector",
+      label: "Single agent inspector",
+      status: "completed",
+      message: "One configured agent will inspect bounded repository snippets.",
+    },
+  ];
+}
+
+function agentInspectionDetails(
+  assistMode: RuntimeScanAssistMode,
+  status: Extract<ScanProgressEvent["status"], "running" | "completed">,
+): NonNullable<ScanProgressEvent["details"]> {
+  if (assistMode === "moa-assisted") {
+    return [
+      {
+        id: "moa-agent-runtime",
+        label: "MoA runtime",
+        status,
+        message: status === "running"
+          ? "Specialists, judge, and aggregator are inspecting code without scanner tools."
+          : "Specialists, judge, and aggregator completed their agent-only inspection.",
+      },
+    ];
+  }
+
+  return [
+    {
+      id: "single-agent-runtime",
+      label: "Single agent runtime",
+      status,
+      message: status === "running"
+        ? "The configured agent is inspecting code without scanner tools."
+        : "The configured agent completed its agent-only inspection.",
+    },
+  ];
 }
 
 async function timedStage<T>(
@@ -1075,7 +1223,7 @@ function runNodeCli(
   control: ActiveScanControl,
   extraEnv?: Record<string, string>,
   onProgress?: ScanProgressCallback,
-  assistMode: HermsecScanAssistMode = "scanner-model-summary",
+  assistMode: RuntimeScanAssistMode = "deep-assisted",
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return new Promise((resolve, reject) => {
     const nodeBinary = process.platform === "win32" ? "node.exe" : "node";
@@ -1165,7 +1313,7 @@ function runNodeCli(
 function consumeProgressLine(
   line: string,
   onProgress: ScanProgressCallback | undefined,
-  fallbackAssistMode: HermsecScanAssistMode,
+  fallbackAssistMode: RuntimeScanAssistMode,
 ): boolean {
   if (!line.startsWith(HERMSEC_PROGRESS_PREFIX)) {
     return false;
@@ -1197,13 +1345,13 @@ function consumeProgressLine(
 
 function rootProgressToDesktopEvent(
   event: RootScanProgressEvent,
-  fallbackAssistMode: HermsecScanAssistMode,
-): ScanProgressEvent | undefined {
+  fallbackAssistMode: RuntimeScanAssistMode,
+): RuntimeScanProgressEvent | undefined {
   const status = normalizeProgressStatus(event.status);
   if (!status) {
     return undefined;
   }
-  const assistMode = event.assistMode === "deep-assisted" ? "deep-assisted" : fallbackAssistMode;
+  const assistMode = normalizeAssistMode(event.assistMode ?? fallbackAssistMode);
   const timestamp = event.timestamp ? Date.parse(event.timestamp) : Date.now();
   const details = rootProgressDetails(event, status);
   const base = {
@@ -1309,7 +1457,7 @@ function rootProgressDetails(
   return details.length > 0 ? details : undefined;
 }
 
-function scannerParentMessage(event: ScanProgressEvent): string {
+function scannerParentMessage(event: RuntimeScanProgressEvent): string {
   if (event.status === "running") {
     return event.message ?? `${event.label} is running.`;
   }

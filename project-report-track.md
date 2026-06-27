@@ -6,7 +6,7 @@ This file is the running engineering ledger for Hermsec. Use it to record meanin
 
 - Active app: `desktop`.
 - Reusable scanner/report engine: root TypeScript CLI and harness.
-- Current product direction: local-first desktop security agent for Vibecoders, with deterministic scanner evidence first and two scan-assist modes: `Scanner + model summary` and `Deep assisted scan`.
+- Current product direction: local-first desktop security agent for Vibecoders, with deterministic scanner evidence first and three scan modes: `Deep assisted scan`, `Single agent inspection`, and `MoA assisted inspection`.
 - Current scanner base: built-in Hermsec heuristics, Semgrep, Gitleaks, Bandit, OSV-Scanner, pip-audit, SafeDep PMG npm audit.
 - Current priority: improve Java accuracy with taint tracking, then broaden scanner coverage with Trivy and Checkov.
 
@@ -917,7 +917,93 @@ This file is the running engineering ledger for Hermsec. Use it to record meanin
 - Root `npm test` passed with `76/76`.
 - Desktop `npm run desktop:build` passed.
 - Desktop `npm run desktop:smoke:doctor` passed with healthScore `100`, required `7/7`, scanners `6/6`, internet `5/5`, and expected provider warning in the isolated smoke environment.
+
+## 2026-06-27 - Product Agent Scan Modes
+
+### Changes
+
+- Replaced the visible `Scanner + model summary` choice with three product modes: `Deep assisted scan`, `Single agent inspection`, and `MoA assisted inspection`.
+- Kept `scanner-model-summary` as a hidden legacy alias that normalizes to `deep-assisted`.
+- Added `Settings > Agents` for Single Agent and MoA configuration.
+- Added bounded read-only code inspection helpers for product agent scans.
+- Added Single Agent and MoA runtime paths. These are now agent-only modes: they perform repository discovery and bounded read-only code inspection without running scanner tools.
+- Added MoA specialist, false-positive judge, and aggregator orchestration.
+- Added normal report metadata for scan mode, agents used, provider/model, candidate/accepted/rejected/needs-review counts, aggregator info, runtime, finding source labels, and judge status.
+- Passed desktop active provider/model configuration into the root CLI child process.
+- Tightened evidence validation for code findings so model explanations require a source file and evidence snippet.
+
+### Issues And Fixes
+
+- Renderer initially used `single-agent-inspection` and `moa-inspection`, while the root runtime expected `single-agent` and `moa-assisted`. Fixed by standardizing IDs and keeping compatibility aliases.
+- The first fake-provider CLI E2E run produced agent findings but no report-level `agentMode`. Fixed by returning `productResult.agentMode` from `explainScanRun` and passing it to `renderReport`.
+
+### Verification
+
+- Root `npm run typecheck` passed.
+- Desktop `npm --prefix desktop run typecheck` passed.
+- Root `npm test` passed with `90/90`.
+- Desktop `npm --prefix desktop run build` passed.
+- Desktop `npm --prefix desktop run smoke:doctor` passed with healthScore `100`.
+- Desktop `npm --prefix desktop run smoke:dashboard` passed and generated dashboard/PDF artifacts.
+- Local fake OpenAI-compatible CLI smoke passed for `single-agent` and `moa-assisted`, writing `agentMode` metadata for both report documents.
 - Desktop `npm run desktop:smoke:dashboard` passed and generated dashboard/PDF artifacts under `.hermsec\v3-dashboard-smoke\hermsec-node-express-vuln-lab\2026-06-21T13-01-09-723Z`.
+
+## 2026-06-27 - Agent-Only Mode Correction
+
+### Changes
+
+- Corrected `Single agent inspection` and `MoA assisted inspection` so they no longer run HermSec heuristics or external scanner adapters.
+- Added a `scannerMode: "none"` root scan path that performs repository discovery only.
+- Routed Single Agent and MoA through that scanner-free path, then let the configured agent runtime produce validated findings from bounded repository snippets.
+- Removed scanner evidence from product-agent prompts and changed the shared model system prompt to refer to supplied task evidence instead of scanner-only evidence.
+- Updated desktop scan progress labels so agent modes show agent selection, code context preparation, and agent inspection instead of scanner selection/preparation.
+- Removed visible `Include scanner evidence` toggles from `Settings > Agents`.
+- Updated About/settings/report-assist copy so Deep assisted is the scanner-backed mode while Single Agent and MoA are agent-only modes.
+
+### Verification
+
+- Root `npm run typecheck` passed.
+- Desktop `npm --prefix desktop run typecheck` passed.
+- Root `npm run build` passed.
+- Focused tests passed: `scan.test`, `agentProductScan.test`, `scanAssistModes.contract.test`, and `moaMetadata.test`.
+- Desktop `npm --prefix desktop run build` passed.
+- Fake OpenAI-compatible CLI smoke passed for `single-agent` and `moa-assisted`; resulting statuses were only `repository-discovery` plus the selected agent mode, with no `hermsec-heuristics`, `semgrep`, `gitleaks`, `trivy`, `osv-scanner`, or `checkov` statuses.
+
+## 2026-06-27 - Real Provider Agent-Only E2E
+
+### Results
+
+- Used the configured OpenCode Go provider from local desktop settings without printing or persisting the key.
+- `single-agent` on `hermsec-node-express-vuln-lab`: pass, `2` findings, statuses `repository-discovery`, `single-agent`.
+- `single-agent` on `hermsec-python-flask-vuln-lab`: pass, `0` findings, statuses `repository-discovery`, `single-agent`.
+- `moa-assisted` on `hermsec-node-express-vuln-lab`: pass, `6` findings, statuses `repository-discovery`, `moa-assisted`; agent metadata `5` agents, `6` candidates, `6` accepted, `0` rejected, `0` needs-review.
+- `moa-assisted` on `hermsec-python-flask-vuln-lab`: pass, `5` findings, statuses `repository-discovery`, `moa-assisted`; agent metadata `5` agents, `7` candidates, `6` accepted, `0` rejected, `1` needs-review.
+
+### Notes
+
+- No successful agent-only run included scanner statuses such as `hermsec-heuristics`, `semgrep`, `gitleaks`, `trivy`, `osv-scanner`, or `checkov`.
+- The first MoA Python/Flask attempt exited before writing reports, but an immediate diagnostic rerun with the same provider and environment succeeded. Track this as a transient provider/runtime stability risk rather than a confirmed deterministic bug.
+
+## 2026-06-27 - MoA Per-Role Model Panel
+
+### Changes
+
+- Added per-role model selectors in `Settings > Agents > MoA Inspection`.
+- Roles currently exposed are `Injection and execution`, `Auth and data flow`, `Secrets and config`, `False-positive judge`, and `Aggregator`.
+- Removed the old coordinator-only model assumption from the visible MoA settings.
+- Added `moa.roleModels` settings storage for role-specific provider/model selections.
+- Desktop scans now pass role model routes to the CLI through `HERMSEC_AGENT_MODEL_CONFIG`.
+- Root MoA runtime resolves the provider/model per specialist, judge, and aggregator call.
+- Report metadata now records the provider/model used by each MoA task.
+
+### Verification
+
+- Root `npm run typecheck` passed.
+- Desktop `npm --prefix desktop run typecheck` passed.
+- Desktop `npm --prefix desktop run build` passed.
+- Root `npm test` passed with `93/93`.
+- Added a unit test proving per-role MoA model configs are applied and reported.
+- Real OpenCode Go MoA smoke on `hermsec-node-express-vuln-lab` passed with explicit role model config: `8` findings, statuses `repository-discovery, moa-assisted`, and five agent metadata rows using `deepseek-v4-flash`.
 
 ### Release Plan
 
@@ -972,3 +1058,96 @@ This file is the running engineering ledger for Hermsec. Use it to record meanin
 - Desktop `npm run desktop:typecheck` passed.
 - Desktop `npm run desktop:build` passed.
 - Desktop `npm run desktop:smoke:doctor` passed with healthScore `100`, required `7/7`, scanners `6/6`, internet `5/5`, and expected provider warning in the isolated smoke environment.
+
+## 2026-06-27 - OpenCode Go Model Catalog Expansion
+
+### Changes
+
+- Removed the hardcoded OpenCode Go discovery allowlist so provider refreshes keep every model returned by `/models`.
+- Expanded the OpenCode Go preset seed from the old curated subset to the 20-model catalog currently returned by the provider.
+- Confirmed `Settings > Agents` uses enabled models from `Settings > Models`, so disabled OpenCode Go models are not offered for Single Agent or MoA task routing.
+- Merged the missing OpenCode Go models into the local desktop settings snapshot for immediate inspection in the running app.
+
+### Verification
+
+- Direct OpenCode Go `/models` request returned `20` models.
+- Local desktop settings now show `20` OpenCode Go models available and `20` enabled.
+- Desktop `npm --prefix desktop run typecheck` passed.
+- Desktop `npm --prefix desktop run build` passed.
+- Restarted the HermSec desktop dev app with the updated code.
+
+## 2026-06-27 - Full-Screen Settings Layout
+
+### Changes
+
+- Settings now owns the full workspace below the title bar.
+- The main chat/project sidebar unmounts while Settings is open.
+- The Settings sidebar starts at the far-left edge of the app and is slightly wider.
+- Settings content can use a wider max width for panels such as Agents and Models.
+
+### Verification
+
+- Desktop `npm --prefix desktop run typecheck` passed.
+- Desktop `npm --prefix desktop run build` passed.
+- Restarted the HermSec desktop dev app with the updated layout.
+
+## 2026-06-27 - Model Matrix Smoke Prep
+
+### Changes
+
+- Prepared the CLI smoke path for model-backed fixture testing.
+- Confirmed raw CLI runs need `HERMSEC_ALLOW_REMOTE_PROVIDERS=true` for OpenCode Go, matching the desktop scan bridge behavior.
+- Saved smoke outputs under `.hermsec/smoke-runs/model-matrix-20260627-161731`.
+
+### Verification
+
+- Root `npm run build` passed.
+- Desktop `npm --prefix desktop run typecheck` passed.
+- Doctor smoke passed.
+- Real OpenCode Go Single Agent smoke on `tests/fixtures/repos/node-express-vulnerable` passed with `2` findings and statuses `repository-discovery, single-agent`.
+- Real OpenCode Go MoA smoke on the same fixture passed with `5` findings, `7` candidates, `5` accepted, and `2` rejected; statuses were `repository-discovery, moa-assisted`.
+
+## 2026-06-27 - Parallel Subagent Fixture Matrix
+
+### Changes
+
+- Ran the four local benchmark fixtures through parallel subagents split by mode: `deep-assisted`, `single-agent`, and `moa-assisted`.
+- Aggregated all worker outputs into `.hermsec/model-test-runs/parallel-20260627-subagents/aggregate-summary.json`.
+- Wrote a readable Markdown report at `.hermsec/model-test-runs/parallel-20260627-subagents/aggregate-report.md`.
+
+### Results
+
+- `deep-assisted`: TP `8`, FP `81`, FN `4`, precision `0.0899`, recall `0.6667`, F1 `0.1584`. Reports completed but model explanation fell back on all four runs.
+- `single-agent`: TP `2`, FP `1`, FN `10`, precision `0.6667`, recall `0.1667`, F1 `0.2667`.
+- `moa-assisted`: TP `5`, FP `4`, FN `7`, precision `0.5556`, recall `0.4167`, F1 `0.4762`.
+
+### Notes
+
+- Single Agent and MoA produced zero findings on both clean negative-control fixtures.
+- MoA was the strongest balanced agent-only mode on this fixture set.
+- Deep-assisted had the highest recall but too much scanner/dependency noise for small fixtures.
+
+## 2026-06-27 - Scanner + MoA CLI Mode And ACM Paper Update
+
+### Changes
+
+- Added real root CLI support for `scanner-moa-assisted`.
+- Scanner + MoA now runs scanners first, runs scanner-free MoA inspection, judges scanner and agent candidates together, aggregates accepted candidates, and writes the standard HermSec reports.
+- Added a provider retry path for OpenAI-compatible responses that return empty JSON content.
+- Added a Scanner + MoA scanner-candidate cap for large benchmark-style runs.
+- Updated the ACM paper to present HermSec as a product first, then compare Deep assisted, Single Agent, MoA, and Scanner + MoA.
+- Added a harness flow diagram, scanner settings screenshot, model/cost section, problems-faced section, and the new hybrid results.
+
+### Results
+
+- Real provider/model: OpenCode Go with `deepseek-v4-flash`.
+- Scanner + MoA fixture score: TP `7`, FP `9`, FN `5`, precision `0.4375`, recall `0.5833`, F1 `0.5000`.
+- Compared with earlier fixture results, Scanner + MoA had the best total F1 score.
+- `mimo-v2.5` and `minimax-m3` remain configured/considered for future routing, but the final metric table uses `deepseek-v4-flash` only.
+
+### Verification
+
+- Root `npm run typecheck` passed.
+- Root `npm test` passed with `94/94`.
+- The ACM paper compiled successfully to `hermsec_moa_paper.pdf`.
+- Rendered and visually checked all `7` PDF pages.

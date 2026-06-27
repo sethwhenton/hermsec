@@ -1,6 +1,6 @@
 import type { ModelConfig, ProviderTestRequest, ProviderTestResult } from "../renderer/src/types/settings";
 import { getEnvDefaults } from "./env";
-import { labelFromModelId, OPENCODE_GO_CHAT_MODEL_IDS } from "./providerCatalog";
+import { labelFromModelId } from "./providerCatalog";
 
 const TIMEOUT_MS = 8000;
 const ANTHROPIC_VERSION = "2023-06-01";
@@ -160,11 +160,7 @@ function normalizeModelResponse(value: unknown, request: ProviderTestRequest): M
     .map((record) => modelFromRecord(record, request.apiFormat))
     .filter((model): model is ModelConfig => Boolean(model?.id));
 
-  const filtered = request.providerId === "opencode-go"
-    ? models.filter((model) => OPENCODE_GO_CHAT_MODEL_IDS.has(model.id))
-    : models;
-
-  return uniqueModels(filtered);
+  return uniqueModels(models);
 }
 
 function uniqueModels(models: ModelConfig[]): ModelConfig[] {

@@ -5,7 +5,7 @@ import { useReportStore } from "@/store/reportStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { ScanModeSegmentedControl } from "@/components/scan/ScanModeSegmentedControl";
 import { Button } from "@/components/ui/Button";
-import type { HermsecScanAssistMode } from "@/types/scan";
+import type { HermsecProductScanAssistMode } from "@/types/scan";
 import type { AutomationFrequency } from "@/types/settings";
 
 interface AutomationPopoverProps {
@@ -30,7 +30,7 @@ export function AutomationPopover({ open, onClose }: AutomationPopoverProps) {
   const [intervalDays, setIntervalDays] = useState(settings?.automation.intervalDays ?? 1);
   const [time, setTime] = useState(settings?.automation.time ?? "09:00");
   const [enabled, setEnabled] = useState(settings?.automation.enabled ?? false);
-  const [scanMode, setScanMode] = useState<HermsecScanAssistMode>(
+  const [scanMode, setScanMode] = useState<HermsecProductScanAssistMode>(
     normalizeScanAssistMode(settings?.automation.scanMode ?? settings?.general.scanMode),
   );
 

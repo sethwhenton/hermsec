@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import path from "node:path";
 import { app } from "electron";
+import type { ProviderConfig } from "../renderer/src/types/settings";
 import type {
   ScannerActionResult,
   ScannerCatalogItem,
@@ -146,7 +147,8 @@ export async function updateScanner(scannerId: string): Promise<ScannerActionRes
 }
 
 export function scannerEnvForCli(projectPath?: string): Record<string, string> {
-  const settings = normalizeScannerSettings(readSettings().scanners);
+  const appSettings = readSettings();
+  const settings = normalizeScannerSettings(appSettings.scanners);
   const statuses = scannerStatuses({ projectPath, labProfile: settings.labInstallAll });
   const enabled = statuses
     .filter((scanner) => scanner.enabled && (settings.labInstallAll || scanner.usedByCurrentProject !== false))
@@ -161,7 +163,144 @@ export function scannerEnvForCli(projectPath?: string): Record<string, string> {
       env[`HERMSEC_${scanner.command.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}_BIN`] = scanner.managedPath;
     }
   }
+  Object.assign(env, modelEnvForCli(appSettings));
+  Object.assign(env, agentModelEnvForCli(appSettings));
   return env;
+}
+
+function modelEnvForCli(settings: ReturnType<typeof readSettings>): Record<string, string> {
+  const provider = selectedProvider(settings);
+  if (!provider || provider.apiFormat === "cursor") {
+    return {};
+  }
+  const model = selectedModel(settings, provider);
+  const providerId = rootProviderId(provider);
+  const env: Record<string, string> = {
+    HERMSEC_MODEL_PROVIDER: providerId,
+    HERMSEC_ALLOW_REMOTE_PROVIDERS: providerId === "ollama" ? "false" : "true",
+  };
+  if (model?.id) {
+    env.HERMSEC_MODEL = model.id;
+  }
+  if (provider.baseUrl?.trim()) {
+    env.HERMSEC_MODEL_BASE_URL = provider.baseUrl.trim();
+  }
+  const apiKeyEnv = provider.apiKeyEnvVar?.trim() || defaultProviderKeyEnv(provider);
+  if (apiKeyEnv) {
+    env.HERMSEC_MODEL_API_KEY_ENV = apiKeyEnv;
+    if (provider.apiKey?.trim()) {
+      env[apiKeyEnv] = provider.apiKey.trim();
+    }
+  }
+  return env;
+}
+
+type AgentModelRoute = {
+  provider?: string;
+  baseUrl?: string;
+  model?: string;
+  apiKeyEnv?: string;
+  allowRemoteProviders?: boolean;
+};
+
+function agentModelEnvForCli(settings: ReturnType<typeof readSettings>): Record<string, string> {
+  const env: Record<string, string> = {};
+  const routes: {
+    singleAgent?: AgentModelRoute;
+    moa?: Record<string, AgentModelRoute>;
+  } = {};
+
+  const singleRoute = routeForSelection(settings, settings.agents?.singleAgent, env);
+  if (singleRoute) {
+    routes.singleAgent = singleRoute;
+  }
+
+  const roleModels = settings.agents?.moa?.roleModels ?? {};
+  const moaRoutes: Record<string, AgentModelRoute> = {};
+  for (const [roleId, selection] of Object.entries(roleModels)) {
+    const route = routeForSelection(settings, selection, env);
+    if (route) {
+      moaRoutes[roleId] = route;
+    }
+  }
+  if (Object.keys(moaRoutes).length > 0) {
+    routes.moa = moaRoutes;
+  }
+
+  if (routes.singleAgent || routes.moa) {
+    env.HERMSEC_AGENT_MODEL_CONFIG = JSON.stringify(routes);
+  }
+  return env;
+}
+
+function routeForSelection(
+  settings: ReturnType<typeof readSettings>,
+  selection: { providerId?: string; modelId?: string } | undefined,
+  env: Record<string, string>,
+): AgentModelRoute | undefined {
+  const provider = selection?.providerId
+    ? settings.providers.find((item) => item.enabled && item.id === selection.providerId)
+    : selectedProvider(settings);
+  if (!provider || provider.apiFormat === "cursor") {
+    return undefined;
+  }
+  const model = selection?.modelId
+    ? provider.models.find((item) => item.enabled && item.id === selection.modelId)
+    : selectedModel(settings, provider);
+  const providerId = rootProviderId(provider);
+  const route: AgentModelRoute = {
+    provider: providerId,
+    allowRemoteProviders: providerId === "ollama" ? false : true,
+  };
+  if (provider.baseUrl?.trim()) {
+    route.baseUrl = provider.baseUrl.trim();
+  }
+  if (model?.id) {
+    route.model = model.id;
+  }
+  const apiKeyEnv = provider.apiKeyEnvVar?.trim() || defaultProviderKeyEnv(provider);
+  if (apiKeyEnv) {
+    route.apiKeyEnv = apiKeyEnv;
+    if (provider.apiKey?.trim()) {
+      env[apiKeyEnv] = provider.apiKey.trim();
+    }
+  }
+  return route;
+}
+
+function selectedProvider(settings: ReturnType<typeof readSettings>): ProviderConfig | undefined {
+  const providers = settings.providers.filter((provider) => provider.enabled);
+  if (settings.activeProviderId) {
+    const active = providers.find((provider) => provider.id === settings.activeProviderId);
+    if (active) return active;
+  }
+  return providers.find((provider) => provider.apiFormat !== "cursor");
+}
+
+function selectedModel(settings: ReturnType<typeof readSettings>, provider: ProviderConfig): ProviderConfig["models"][number] | undefined {
+  if (settings.activeModelId) {
+    const active = provider.models.find((model) => model.enabled && model.id === settings.activeModelId);
+    if (active) return active;
+  }
+  return provider.models.find((model) => model.enabled);
+}
+
+function rootProviderId(provider: ProviderConfig): string {
+  if (provider.id === "google-gemini" || provider.apiFormat === "gemini") return "gemini";
+  if (provider.id === "anthropic" || provider.apiFormat === "anthropic") return "claude";
+  if (provider.id === "ollama-local" || provider.id === "ollama-cloud") return "ollama";
+  if (provider.id === "openai" || provider.id === "openrouter" || provider.id === "opencode-go") return provider.id;
+  return "openai-compatible";
+}
+
+function defaultProviderKeyEnv(provider: ProviderConfig): string | undefined {
+  const providerId = rootProviderId(provider);
+  if (providerId === "opencode-go") return "OPENCODE_GO_API_KEY";
+  if (providerId === "openai") return "OPENAI_API_KEY";
+  if (providerId === "openrouter") return "OPENROUTER_API_KEY";
+  if (providerId === "claude") return "ANTHROPIC_API_KEY";
+  if (providerId === "gemini") return "GEMINI_API_KEY";
+  return undefined;
 }
 
 export async function prepareScannersForProject(projectPath: string): Promise<ScannerStatusItem[]> {

@@ -42,6 +42,7 @@ function toSummaryJson(summary: ReportSummary, document: ReportDocument): Record
     workspaceName: document.workspaceName,
     generatedAt: document.generatedAt,
     target: document.target,
+    ...(document.agentMode ? { agentMode: document.agentMode } : {}),
     summary,
     report: {
       generatedWithModel: summary.generatedWithModel,

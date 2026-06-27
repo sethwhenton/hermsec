@@ -1,8 +1,10 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import type { HermsecScanAssistMode } from "../renderer/src/types/scan";
+import type { HermsecVisibleScanAssistMode } from "../renderer/src/types/scan";
 
 export const SCAN_ASSIST_FILE = "scan-assist.json";
+
+export type RuntimeScanAssistMode = HermsecVisibleScanAssistMode;
 
 type Severity = "critical" | "high" | "medium" | "low" | "info";
 
@@ -72,7 +74,7 @@ export interface ScanAssistGroup {
 export interface ScanAssistArtifact {
   schemaVersion: "1.0";
   generatedAt: string;
-  mode: HermsecScanAssistMode;
+  mode: RuntimeScanAssistMode;
   label: string;
   summary: {
     groups: number;
@@ -100,13 +102,15 @@ const severityRank: Record<Severity, number> = {
   info: 4,
 };
 
-export function assistModeLabel(mode: HermsecScanAssistMode): string {
-  return mode === "deep-assisted" ? "Deep assisted scan" : "Scanner + model summary";
+export function assistModeLabel(mode: RuntimeScanAssistMode): string {
+  if (mode === "single-agent") return "Single-agent inspection";
+  if (mode === "moa-assisted") return "MoA-assisted inspection";
+  return "Deep assisted scan";
 }
 
 export function writeScanAssistArtifact(
   reportDir: string,
-  mode: HermsecScanAssistMode,
+  mode: RuntimeScanAssistMode,
 ): string | undefined {
   const artifact = buildScanAssistArtifact(reportDir, mode);
   if (!artifact) return undefined;
@@ -117,7 +121,7 @@ export function writeScanAssistArtifact(
 
 function buildScanAssistArtifact(
   reportDir: string,
-  mode: HermsecScanAssistMode,
+  mode: RuntimeScanAssistMode,
 ): ScanAssistArtifact | undefined {
   const document = readReportDocument(reportDir);
   const findings = normalizeFindings(document?.findings ?? readLooseFindings(reportDir));
@@ -202,7 +206,7 @@ function buildGroup(
   key: string,
   findings: ReportFinding[],
   index: number,
-  mode: HermsecScanAssistMode,
+  mode: RuntimeScanAssistMode,
 ): ScanAssistGroup {
   const scanners = Array.from(new Set(findings.map((finding) => finding.tool ?? "hermsec"))).sort();
   const locations = Array.from(new Set(findings.map(formatLocation).filter(Boolean))).sort();
@@ -227,10 +231,7 @@ function buildGroup(
     cwe,
     evidence,
     merged,
-    modelSupport:
-      mode === "deep-assisted"
-        ? "Deep mode may use the model to explain and prioritize this merged scanner-backed group."
-        : "Summary mode keeps model use to the final scanner-backed summary.",
+    modelSupport: modelSupportNote(mode),
     recommendation: top.remediation ?? "Review the grouped scanner evidence, patch the risky code path, and rerun Hermsec.",
   };
 }
@@ -342,9 +343,22 @@ function trimEvidence(value: string): string {
   return collapsed.length > 220 ? `${collapsed.slice(0, 217)}...` : collapsed;
 }
 
-function modeNote(mode: HermsecScanAssistMode): string {
-  return mode === "deep-assisted"
-    ? "Deep assisted scan groups matching scanner findings and allows model-supported triage over that scanner evidence."
-    : "Scanner + model summary keeps scanner output authoritative and uses the model only for concise report-level summarization.";
+function modeNote(mode: RuntimeScanAssistMode): string {
+  if (mode === "single-agent") {
+    return "Single-agent inspection uses bounded read-only repository context without running scanner tools.";
+  }
+  if (mode === "moa-assisted") {
+    return "MoA-assisted inspection uses specialist agents, a false-positive judge, and an aggregator without running scanner tools.";
+  }
+  return "Deep assisted scan groups matching scanner findings and allows model-supported triage over that scanner evidence.";
 }
 
+function modelSupportNote(mode: RuntimeScanAssistMode): string {
+  if (mode === "single-agent") {
+    return "Single-agent mode produces validated agent-only findings with agent provenance.";
+  }
+  if (mode === "moa-assisted") {
+    return "MoA mode produces validated agent-only findings after specialist review, false-positive judging, and aggregation.";
+  }
+  return "Deep mode may use the model to explain and prioritize this merged scanner-backed group.";
+}

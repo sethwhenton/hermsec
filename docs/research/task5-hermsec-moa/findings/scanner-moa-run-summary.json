@@ -1,0 +1,50 @@
+﻿[
+    {
+        "fixture":  "node-express-vulnerable",
+        "ok":  true,
+        "exitCode":  0,
+        "seconds":  117,
+        "findings":  10,
+        "accepted":  10,
+        "rejected":  0,
+        "needsReview":  1,
+        "reportDir":  "\u003chermsec-repo\u003e\\.hermsec\\model-test-runs\\scanner-moa-20260627\\node-express-vulnerable\\node-express-vulnerable\\2026-06-27T16-12-03-522Z",
+        "message":  "Scan completed: 10 finding(s). Report: \u003chermsec-repo\u003e\\.hermsec\\model-test-runs\\scanner-moa-20260627\\node-express-vulnerable\\node-express-vulnerable\\2026-06-27T16-12-03-522Z"
+    },
+    {
+        "fixture":  "node-express-clean",
+        "ok":  true,
+        "exitCode":  0,
+        "seconds":  56,
+        "findings":  1,
+        "accepted":  2,
+        "rejected":  1,
+        "needsReview":  0,
+        "reportDir":  "\u003chermsec-repo\u003e\\.hermsec\\model-test-runs\\scanner-moa-20260627\\node-express-clean\\node-express-clean\\2026-06-27T16-13-59-183Z",
+        "message":  "Scan completed: 1 finding(s). Report: \u003chermsec-repo\u003e\\.hermsec\\model-test-runs\\scanner-moa-20260627\\node-express-clean\\node-express-clean\\2026-06-27T16-13-59-183Z"
+    },
+    {
+        "fixture":  "python-flask-vulnerable",
+        "ok":  true,
+        "exitCode":  0,
+        "seconds":  122,
+        "findings":  4,
+        "accepted":  7,
+        "rejected":  0,
+        "needsReview":  0,
+        "reportDir":  "\u003chermsec-repo\u003e\\.hermsec\\model-test-runs\\scanner-moa-20260627\\python-flask-vulnerable\\python-flask-vulnerable\\2026-06-27T16-14-57-162Z",
+        "message":  "Scan completed: 4 finding(s). Report: \u003chermsec-repo\u003e\\.hermsec\\model-test-runs\\scanner-moa-20260627\\python-flask-vulnerable\\python-flask-vulnerable\\2026-06-27T16-14-57-162Z"
+    },
+    {
+        "fixture":  "python-flask-clean",
+        "ok":  true,
+        "exitCode":  0,
+        "seconds":  58,
+        "findings":  1,
+        "accepted":  0,
+        "rejected":  0,
+        "needsReview":  1,
+        "reportDir":  "\u003chermsec-repo\u003e\\.hermsec\\model-test-runs\\scanner-moa-20260627\\python-flask-clean\\python-flask-clean\\2026-06-27T16-17-01-471Z",
+        "message":  "Scan completed: 1 finding(s). Report: \u003chermsec-repo\u003e\\.hermsec\\model-test-runs\\scanner-moa-20260627\\python-flask-clean\\python-flask-clean\\2026-06-27T16-17-01-471Z"
+    }
+]

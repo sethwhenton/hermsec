@@ -41,6 +41,42 @@
     return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   }
 
+  function formatDurationMs(ms) {
+    const value = Number(ms);
+    if (!Number.isFinite(value) || value <= 0) return "not recorded";
+    if (value < 1000) return `${Math.round(value)}ms`;
+    const seconds = value / 1000;
+    if (seconds < 60) return `${seconds.toFixed(seconds >= 10 ? 0 : 1)}s`;
+    const minutes = Math.floor(seconds / 60);
+    const remaining = Math.round(seconds % 60);
+    return `${minutes}m ${remaining}s`;
+  }
+
+  function labelize(value) {
+    return String(value || "")
+      .replace(/[_-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/\b\w/g, (m) => m.toUpperCase());
+  }
+
+  function judgeBadge(status) {
+    if (!status) return "";
+    const normalized = String(status).toLowerCase().replace(/[\s_]+/g, "-");
+    const cls =
+      normalized === "accepted" ? "confirmed" :
+      normalized === "rejected" ? "info" :
+      normalized === "needs-human-review" ? "context" :
+      "info";
+    return `<span class="badge badge-${cls}">Judge: ${esc(labelize(status))}</span>`;
+  }
+
+  function findingSourceBadges(f) {
+    return (f.sourceLabels || [])
+      .map((label) => `<span class="badge badge-info">${esc(labelize(label))}</span>`)
+      .join("");
+  }
+
   function renderToolbar() {
     document.getElementById("screen-toolbar").innerHTML = `
       <div class="toolbar-left">
@@ -54,7 +90,8 @@
     const p = R.posture;
     const commitShort =
       scan.gitCommit && scan.gitCommit.length > 7 ? scan.gitCommit.slice(0, 7) : scan.gitCommit;
-    const assistLabel = R.assist?.label || scan.assistModeLabel || "Scanner + model summary";
+    const assistLabel = R.assist?.label || scan.assistModeLabel || "Deep assisted scan";
+    const agentMode = R.agentMode || null;
 
     document.getElementById("op-cover").innerHTML = `
       <div class="op-cover-top">
@@ -75,6 +112,9 @@
       </div>
       <div class="op-meta-grid">
         <div class="op-meta-item"><span>Scan ID</span><strong>${esc(scan.scanId)}</strong></div>
+        ${agentMode ? `<div class="op-meta-item"><span>Agent mode</span><strong>${esc(agentMode.modeLabel)}</strong></div>` : ""}
+        ${agentMode ? `<div class="op-meta-item"><span>Agent findings</span><strong>${esc(agentMode.acceptedFindingCount)} accepted / ${esc(agentMode.needsHumanReviewCount)} review</strong></div>` : ""}
+        ${agentMode ? `<div class="op-meta-item"><span>Agent runtime</span><strong>${esc(agentMode.totalAgentRuntime || formatDurationMs(agentMode.totalAgentRuntimeMs))}</strong></div>` : ""}
         <div class="op-meta-item"><span>Assist mode</span><strong>${esc(assistLabel)}</strong></div>
         <div class="op-meta-item"><span>Duration</span><strong>${esc(scan.duration)}</strong></div>
         <div class="op-meta-item"><span>Branch</span><code>${esc(scan.gitBranch)}</code></div>
@@ -110,7 +150,15 @@
       { label: "Secrets", value: s.secrets, cls: "alert" },
       { label: "Confirmed CVEs", value: s.confirmedCves, cls: "accent" },
       { label: "Known exploited", value: s.knownExploited, cls: "critical" },
-      { label: "Fix now", value: R.fixPlan.fixNow.length, cls: "accent" }
+      { label: "Fix now", value: R.fixPlan.fixNow.length, cls: "accent" },
+      ...(R.agentMode
+        ? [
+            { label: "Candidates", value: R.agentMode.candidateFindingCount, cls: "" },
+            { label: "Accepted", value: R.agentMode.acceptedFindingCount, cls: "accent" },
+            { label: "Rejected", value: R.agentMode.rejectedFindingCount, cls: "" },
+            { label: "Needs review", value: R.agentMode.needsHumanReviewCount, cls: "alert" }
+          ]
+        : [])
     ]
       .map(
         (m) =>
@@ -138,15 +186,29 @@
       </div>`
       )
       .join("");
+    const agentChips = R.agentMode
+      ? (R.agentMode.agents || [])
+          .map(
+            (agent) => `
+      <div class="pipeline-chip">
+        <span class="pipeline-icon completed" aria-hidden="true">A</span>
+        <span class="pipeline-name">${esc(agent.label || agent.id)}</span>
+        <span class="pipeline-count">${esc([agent.provider, agent.model].filter(Boolean).join(" / ") || "model not recorded")}</span>
+      </div>`
+          )
+          .join("")
+      : "";
 
     document.getElementById("op-pipeline").innerHTML = `
       <h2 class="op-section-title" id="op-pipeline-title">Scan integrity</h2>
       <p class="op-section-desc">Pipeline status across ${R.scanners.length} tools — ${R.summary.scannerFailures} failure${R.summary.scannerFailures !== 1 ? "s" : ""} noted.</p>
-      <div class="pipeline-strip">${chips}</div>`;
+      <div class="pipeline-strip">${chips}${agentChips}</div>`;
   }
 
   function renderFindingFull(f) {
     const adj = adjMap[f.id];
+    const sourceBadges = findingSourceBadges(f);
+    const judge = judgeBadge(f.judgeStatus);
     const adjBlock = adj
       ? `<h4>Agent verdict</h4><p>${verdictBadge(adj.verdict)} ${esc(adj.reasoning)}</p>`
       : "";
@@ -158,6 +220,8 @@
             <span class="finding-id">${esc(f.id)}</span>
             ${badge(f.severity)}
             <span class="badge badge-info">${esc(f.confidence)}</span>
+            ${sourceBadges}
+            ${judge}
             ${adj ? verdictBadge(adj.verdict) : ""}
             <div class="finding-title">${esc(f.title)}</div>
           </div>
@@ -194,6 +258,8 @@
         <td>${esc(f.title)}</td>
         <td><code>${esc(f.file)}${f.line ? ":" + f.line : ""}</code></td>
         <td>${esc(f.tool)}</td>
+        <td>${esc((f.sourceLabels || []).map(labelize).join(", "))}</td>
+        <td>${esc(labelize(f.judgeStatus))}</td>
       </tr>`
       )
       .join("");
@@ -214,6 +280,8 @@
             <th>Title</th>
             <th>Location</th>
             <th>Tool</th>
+            <th>Source</th>
+            <th>Judge</th>
           </tr>
         </thead>
         <tbody>${tableRows}</tbody>

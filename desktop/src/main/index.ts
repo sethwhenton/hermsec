@@ -124,7 +124,7 @@ async function runDashboardSmoke(): Promise<void> {
     targetPath: projectPath,
     reportDir,
     mode: "online",
-    assistMode: "scanner-model-summary",
+    assistMode: "deep-assisted",
     useModel: process.env.HERMSEC_SMOKE_USE_MODEL !== "false",
   });
 
@@ -141,7 +141,7 @@ async function runDashboardSmoke(): Promise<void> {
     targetPath: projectPath,
     reportDir,
     mode: "online",
-    assistMode: "scanner-model-summary",
+    assistMode: "deep-assisted",
     useModel: false,
     skipIfUnchanged: true,
     previousProjectState: result.projectState,

@@ -1,4 +1,4 @@
-import { ArrowLeft, Bot, Cog, ScanSearch, Server } from "lucide-react";
+import { ArrowLeft, Bot, Cog, ScanSearch, Server, UsersRound } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { SettingsSection } from "@/store/uiStore";
 import { HermsecLogo } from "@/components/branding/HermsecLogo";
@@ -11,6 +11,7 @@ interface SettingsSidebarProps {
 
 const desktopItems: Array<{ id: SettingsSection; label: string; icon: React.ReactNode }> = [
   { id: "general", label: "General", icon: <Cog className="h-4 w-4" /> },
+  { id: "agents", label: "Agents", icon: <UsersRound className="h-4 w-4" /> },
 ];
 
 const serverItems: Array<{ id: SettingsSection; label: string; icon: React.ReactNode }> = [
@@ -21,7 +22,7 @@ const serverItems: Array<{ id: SettingsSection; label: string; icon: React.React
 
 export function SettingsSidebar({ section, onBack, onSectionChange }: SettingsSidebarProps) {
   return (
-    <aside className="flex w-52 shrink-0 flex-col border-r border-border-subtle bg-surface px-2 py-4">
+    <aside className="flex w-64 shrink-0 flex-col border-r border-border-subtle bg-surface px-3 py-4">
       <button
         type="button"
         onClick={onBack}

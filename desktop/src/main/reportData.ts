@@ -27,6 +27,7 @@ interface HermsecDocument {
       dirty?: boolean;
     };
   };
+  agentMode?: HermsecAgentModeMetadata;
   summary?: Partial<Record<Severity | "total" | "secrets" | "scannerFailures" | "confirmedCves" | "knownExploited", number>>;
   findings?: HermsecFinding[];
   explanations?: Record<string, ModelExplanation | undefined>;
@@ -69,6 +70,13 @@ interface HermsecFinding {
   remediation?: string;
   references?: string[];
   fingerprint?: string;
+  sourceLabel?: string;
+  sourceLabels?: string[];
+  judgeStatus?: string;
+  judge?: {
+    status?: string;
+    reason?: string;
+  };
   location?: {
     file?: string;
     startLine?: number;
@@ -111,6 +119,56 @@ interface HermsecTool {
   durationMs?: number;
 }
 
+interface HermsecFindingAgentMetadata {
+  sourceLabel?: string;
+  sourceLabels?: string[];
+  judgeStatus?: string;
+  judge?: {
+    status?: string;
+    reason?: string;
+  };
+  agentIds?: string[];
+}
+
+interface HermsecAgentDescriptor {
+  id?: string;
+  label?: string;
+  role?: string;
+  provider?: string;
+  model?: string;
+  runtimeMs?: number;
+  durationMs?: number;
+  status?: string;
+}
+
+interface HermsecAgentModeMetadata {
+  mode?: string;
+  scanMode?: string;
+  modeLabel?: string;
+  agents?: HermsecAgentDescriptor[];
+  agentsUsed?: Array<string | HermsecAgentDescriptor>;
+  candidateFindingCount?: number;
+  candidateCount?: number;
+  acceptedFindingCount?: number;
+  acceptedCount?: number;
+  rejectedFindingCount?: number;
+  rejectedCount?: number;
+  needsHumanReviewCount?: number;
+  needsReviewCount?: number;
+  aggregatorModel?: string;
+  aggregator?: {
+    agentId?: string;
+    provider?: string;
+    model?: string;
+    label?: string;
+  };
+  totalAgentRuntimeMs?: number;
+  totalRuntimeMs?: number;
+  runtimeMs?: number;
+  findings?: Record<string, HermsecFindingAgentMetadata>;
+  findingSources?: Record<string, HermsecFindingAgentMetadata>;
+}
+
 export interface DashboardReport {
   scan: {
     id: string;
@@ -120,6 +178,7 @@ export interface DashboardReport {
     targetPath: string;
     projectPath: string;
     mode: string;
+    modeLabel: string;
     scanMode: string;
     assistMode: string;
     assistModeLabel: string;
@@ -187,7 +246,34 @@ export interface DashboardReport {
     remediation: string;
     references: string[];
     fingerprint: string;
+    sourceLabel: string;
+    sourceLabels: string[];
+    judgeStatus: string;
   }>;
+  agentMode?: {
+    mode: string;
+    scanMode: string;
+    modeLabel: string;
+    agentsUsed: string[];
+    agents: Array<{
+      id: string;
+      label: string;
+      role: string;
+      provider: string;
+      model: string;
+      runtimeMs?: number;
+      runtime: string;
+      status: string;
+    }>;
+    candidateFindingCount: number;
+    acceptedFindingCount: number;
+    rejectedFindingCount: number;
+    needsHumanReviewCount: number;
+    aggregatorModel: string;
+    aggregatorProvider: string;
+    totalAgentRuntimeMs: number;
+    totalAgentRuntime: string;
+  };
   adjudications: Array<{
     findingId: string;
     verdict: string;
@@ -280,7 +366,8 @@ export function buildDashboardReport(reportDir: string): DashboardReport {
   const metadata = readJson<LocalScanMetadata>(path.join(dir, SCAN_METADATA_FILE));
   const assist = readScanAssist(dir, metadata);
   const projectState = readJson<ProjectStateFingerprint>(path.join(dir, "project-state.json"));
-  const findings = normalizeFindings(document.findings ?? readLooseFindings(dir));
+  const agentModeInput = readAgentModeMetadata(document, metadata);
+  const findings = normalizeFindings(document.findings ?? readLooseFindings(dir), findingMetadataMap(agentModeInput));
   const sortedFindings = [...findings].sort(
     (a, b) => (severityRank[a.severity] ?? 5) - (severityRank[b.severity] ?? 5),
   );
@@ -311,6 +398,7 @@ export function buildDashboardReport(reportDir: string): DashboardReport {
   const dirty = Boolean(document.run?.git?.dirty ?? metadata?.dirtyWorkingTree ?? projectState?.gitDirty ?? false);
   const scanId = document.scanId ?? document.run?.id ?? metadata?.scanId ?? `scan-${Date.parse(reportGeneratedAt) || Date.now()}`;
   const scanMode = document.run?.mode ?? metadata?.mode ?? "online";
+  const agentMode = normalizeAgentMode(agentModeInput, scanMode, sortedFindings);
   const assistMode = metadata?.assistMode ?? assist.mode;
   const assistModeLabel = metadata?.assistModeLabel ?? assist.label;
 
@@ -338,11 +426,13 @@ export function buildDashboardReport(reportDir: string): DashboardReport {
       gitCommit: commit,
       dirty,
       dirtyWorkingTree: dirty,
+      modeLabel: agentMode?.modeLabel ?? labelize(scanMode),
     },
     summary,
     posture: buildPosture(summary),
     scanners: normalizeScanners(document.tools ?? [], findings),
     findings: sortedFindings,
+    ...(agentMode ? { agentMode } : {}),
     adjudications: buildAdjudications(sortedFindings, document.explanations ?? {}),
     threatModel: buildThreatModel(sortedFindings, targetPath),
     intelligence,
@@ -374,8 +464,8 @@ function readScanAssist(reportDir: string, metadata: LocalScanMetadata | null): 
     return { ...artifact, available: true };
   }
 
-  const mode = metadata?.assistMode ?? "scanner-model-summary";
-  const label = metadata?.assistModeLabel ?? (mode === "deep-assisted" ? "Deep assisted scan" : "Scanner + model summary");
+  const mode = metadata?.assistMode && metadata.assistMode !== "scanner-model-summary" ? metadata.assistMode : "deep-assisted";
+  const label = metadata?.assistModeLabel ?? assistModeFallbackLabel(mode);
   return {
     schemaVersion: "1.0",
     generatedAt: metadata?.reportGeneratedAt ?? new Date().toISOString(),
@@ -392,6 +482,26 @@ function readScanAssist(reportDir: string, metadata: LocalScanMetadata | null): 
     groups: [],
     matchingPairs: [],
   };
+}
+
+function assistModeFallbackLabel(mode: string): string {
+  if (mode === "single-agent") return "Single-agent inspection";
+  if (mode === "moa-assisted") return "MoA-assisted inspection";
+  return "Deep assisted scan";
+}
+
+function readAgentModeMetadata(
+  document: HermsecDocument,
+  metadata: LocalScanMetadata | null,
+): HermsecAgentModeMetadata | undefined {
+  const metadataAgentMode = (metadata as (LocalScanMetadata & { agentMode?: HermsecAgentModeMetadata }) | null)?.agentMode;
+  return document.agentMode ?? metadataAgentMode;
+}
+
+function findingMetadataMap(
+  agentMode: HermsecAgentModeMetadata | undefined,
+): Record<string, HermsecFindingAgentMetadata> | undefined {
+  return agentMode?.findings ?? agentMode?.findingSources;
 }
 
 function readReportDocument(reportDir: string): HermsecDocument {
@@ -482,15 +592,20 @@ function normalizeSummary(
   };
 }
 
-function normalizeFindings(findings: HermsecFinding[]): DashboardReport["findings"] {
+function normalizeFindings(
+  findings: HermsecFinding[],
+  agentFindingMetadata?: Record<string, HermsecFindingAgentMetadata>,
+): DashboardReport["findings"] {
   return findings.map((finding, index) => {
     const severity = normalizeSeverity(finding.severity);
     const category = finding.category || categoryFromFinding(finding);
     const file = finding.location?.file ?? "";
     const packageName = packageNameForFinding(finding);
     const packageVersion = packageVersionForFinding(finding);
+    const id = finding.id ?? `finding-${index + 1}`;
+    const source = findingAgentMetadata(finding, agentFindingMetadata?.[id]);
     return {
-      id: finding.id ?? `finding-${index + 1}`,
+      id,
       title: finding.title ?? "Security finding",
       severity,
       confidence: finding.confidence ?? "medium",
@@ -511,8 +626,113 @@ function normalizeFindings(findings: HermsecFinding[]): DashboardReport["finding
       remediation: finding.remediation ?? "Review the evidence, patch the affected code path, and rerun Hermsec.",
       references: arrayValue(finding.references),
       fingerprint: finding.fingerprint ?? finding.id ?? `fp-${index + 1}`,
+      sourceLabel: source.sourceLabel,
+      sourceLabels: source.sourceLabels,
+      judgeStatus: source.judgeStatus,
     };
   });
+}
+
+function normalizeAgentMode(
+  agentMode: HermsecAgentModeMetadata | undefined,
+  scanMode: string,
+  findings: DashboardReport["findings"],
+): DashboardReport["agentMode"] | undefined {
+  if (!agentMode) {
+    return undefined;
+  }
+
+  const agents = normalizeAgents(agentMode);
+  const candidateFindingCount = numberValue(agentMode.candidateFindingCount, agentMode.candidateCount) ?? findings.length;
+  const acceptedFindingCount = numberValue(agentMode.acceptedFindingCount, agentMode.acceptedCount) ?? countJudgeStatus(findings, "accepted");
+  const rejectedFindingCount = numberValue(agentMode.rejectedFindingCount, agentMode.rejectedCount) ?? countJudgeStatus(findings, "rejected");
+  const needsHumanReviewCount =
+    numberValue(agentMode.needsHumanReviewCount, agentMode.needsReviewCount) ?? countJudgeStatus(findings, "needs-human-review");
+  const totalAgentRuntimeMs =
+    numberValue(agentMode.totalAgentRuntimeMs, agentMode.totalRuntimeMs, agentMode.runtimeMs) ??
+    agents.reduce((sum, agent) => sum + (agent.runtimeMs ?? 0), 0);
+  const aggregatorProvider = agentMode.aggregator?.provider ?? "";
+  const aggregatorModel = agentMode.aggregatorModel ?? agentMode.aggregator?.model ?? "";
+  const mode = agentMode.mode ?? agentMode.scanMode ?? scanMode;
+  const modeLabel = agentMode.modeLabel ?? labelize(mode);
+  const agentsUsed = agents.map((agent) => agent.label || agent.id);
+
+  const hasMeaningfulMetadata =
+    Boolean(agentMode.mode || agentMode.modeLabel || agentMode.scanMode || aggregatorModel || aggregatorProvider) ||
+    agents.length > 0 ||
+    Object.keys(findingMetadataMap(agentMode) ?? {}).length > 0 ||
+    numberValue(agentMode.candidateFindingCount, agentMode.candidateCount) !== undefined ||
+    numberValue(agentMode.acceptedFindingCount, agentMode.acceptedCount) !== undefined ||
+    numberValue(agentMode.rejectedFindingCount, agentMode.rejectedCount) !== undefined ||
+    numberValue(agentMode.needsHumanReviewCount, agentMode.needsReviewCount) !== undefined ||
+    numberValue(agentMode.totalAgentRuntimeMs, agentMode.totalRuntimeMs, agentMode.runtimeMs) !== undefined;
+
+  if (!hasMeaningfulMetadata) {
+    return undefined;
+  }
+
+  return {
+    mode,
+    scanMode,
+    modeLabel,
+    agentsUsed,
+    agents,
+    candidateFindingCount,
+    acceptedFindingCount,
+    rejectedFindingCount,
+    needsHumanReviewCount,
+    aggregatorModel,
+    aggregatorProvider,
+    totalAgentRuntimeMs,
+    totalAgentRuntime: formatDuration(totalAgentRuntimeMs),
+  };
+}
+
+function normalizeAgents(agentMode: HermsecAgentModeMetadata): NonNullable<DashboardReport["agentMode"]>["agents"] {
+  const agents = new Map<string, NonNullable<DashboardReport["agentMode"]>["agents"][number]>();
+  const inputs = [
+    ...(agentMode.agentsUsed ?? []).map((agent) => (typeof agent === "string" ? { id: agent, label: agent } : agent)),
+    ...(agentMode.agents ?? []),
+  ];
+
+  inputs.forEach((agent, index) => {
+    const id = agent.id || agent.label || `agent-${index + 1}`;
+    const runtimeMs = numberValue(agent.runtimeMs, agent.durationMs);
+    agents.set(id, {
+      id,
+      label: agent.label ?? id,
+      role: agent.role ?? "agent",
+      provider: agent.provider ?? "",
+      model: agent.model ?? "",
+      ...(runtimeMs !== undefined ? { runtimeMs } : {}),
+      runtime: formatDuration(runtimeMs ?? 0),
+      status: agent.status ?? "",
+    });
+  });
+
+  return [...agents.values()];
+}
+
+function findingAgentMetadata(
+  finding: HermsecFinding,
+  mapped?: HermsecFindingAgentMetadata,
+): { sourceLabel: string; sourceLabels: string[]; judgeStatus: string } {
+  const sourceLabels = unique([
+    ...arrayValue(finding.sourceLabels),
+    ...arrayValue(finding.sourceLabel),
+    ...arrayValue(mapped?.sourceLabels),
+    ...arrayValue(mapped?.sourceLabel),
+  ]);
+  const judgeStatus = firstNonEmpty(finding.judgeStatus, finding.judge?.status, mapped?.judgeStatus, mapped?.judge?.status) ?? "";
+  return {
+    sourceLabel: sourceLabels[0] ?? "",
+    sourceLabels,
+    judgeStatus,
+  };
+}
+
+function countJudgeStatus(findings: DashboardReport["findings"], status: string): number {
+  return findings.filter((finding) => normalizeStatus(finding.judgeStatus) === status).length;
 }
 
 function displayScannerName(value: string | undefined): string {
@@ -834,6 +1054,41 @@ function normalizeSeverity(value?: string): Severity {
 function arrayValue(value?: string[] | string): string[] {
   if (!value) return [];
   return Array.isArray(value) ? value.filter(Boolean) : [value].filter(Boolean);
+}
+
+function numberValue(...values: unknown[]): number | undefined {
+  for (const value of values) {
+    if (value === undefined || value === null || value === "") {
+      continue;
+    }
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return undefined;
+}
+
+function unique(values: readonly string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))].sort((left, right) =>
+    left.localeCompare(right),
+  );
+}
+
+function firstNonEmpty(...values: Array<string | undefined>): string | undefined {
+  return values.find((value) => value !== undefined && value.trim().length > 0);
+}
+
+function normalizeStatus(value: string): string {
+  return value.toLowerCase().replace(/[\s_]+/g, "-");
+}
+
+function labelize(value: string): string {
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
 function packageNameForFinding(finding: HermsecFinding): string {

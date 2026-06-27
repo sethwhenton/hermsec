@@ -59,6 +59,23 @@ test("offline scan emits structured repository and heuristic progress", async ()
   assert.equal(events.every((event) => typeof event.timestamp === "string" && event.timestamp.length > 0), true);
 });
 
+test("agent-only scan mode performs repository discovery without scanner execution", async () => {
+  const events: ScanProgressEvent[] = [];
+  const run = await runScan({
+    target: path.join(fixtureRoot, "node-express-vulnerable"),
+    mode: "online",
+    assistMode: "moa-assisted",
+    scannerMode: "none",
+    onProgress: (event) => events.push(event),
+  });
+
+  assert.equal(run.summary.total, 0);
+  assert.deepEqual(run.findings, []);
+  assert.deepEqual(run.scannerStatuses.map((status) => status.id), ["repository-discovery"]);
+  assert.equal(events.some((event) => event.stage === "repository" && event.status === "completed"), true);
+  assert.equal(events.some((event) => event.stage === "scanner"), false);
+});
+
 type ExpectedFinding = {
   category: string;
   cwe?: string[];

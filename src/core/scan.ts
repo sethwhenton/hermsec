@@ -8,12 +8,13 @@ import { runOfflineHeuristicScanners } from "../scanners/heuristics.js";
 import { normalizeFindings } from "../scanners/normalization.js";
 import { normalizeTargetPath } from "../shared/paths.js";
 import { stableId } from "../shared/text.js";
-import type { Finding, ScanAssistMode, ScanMode, ScannerStatus, ScanRun, ScanSummary } from "../shared/types.js";
+import type { Finding, ScanAssistModeInput, ScanMode, ScannerStatus, ScanRun, ScanSummary } from "../shared/types.js";
 
 export type ScanOptions = {
   target: string;
   mode?: ScanMode;
-  assistMode?: ScanAssistMode;
+  assistMode?: ScanAssistModeInput;
+  scannerMode?: "full" | "none";
   onProgress?: ScanProgressCallback;
 };
 
@@ -24,6 +25,7 @@ export async function runScan(options: ScanOptions): Promise<ScanRun> {
   await assertDirectory(target);
   const mode = options.mode ?? "offline";
   const assistMode = assistModeFrom(options.assistMode);
+  const scannerMode = options.scannerMode ?? "full";
 
   const repositoryStageStarted = Date.now();
   emitScanProgress(options.onProgress, {
@@ -59,8 +61,28 @@ export async function runScan(options: ScanOptions): Promise<ScanRun> {
       status: "completed",
       message: repositoryDiscoveryMessage(repository, walk.files.length, walk.truncated),
     },
-    ...scannerAvailabilityStatuses(),
+    ...(scannerMode === "full" ? scannerAvailabilityStatuses() : []),
   ];
+
+  if (scannerMode === "none") {
+    const finished = Date.now();
+    const run: ScanRun = {
+      schemaVersion: "1.0",
+      id: stableId(`${target}:${startedAt}`, "scan"),
+      target,
+      mode,
+      startedAt,
+      finishedAt: new Date(finished).toISOString(),
+      durationMs: finished - started,
+      scannerStatuses,
+      findings: [],
+      summary: summarize([]),
+    };
+    if (Object.keys(repository.git).length > 0) {
+      run.git = repository.git;
+    }
+    return run;
+  }
 
   emitScanProgress(options.onProgress, {
     id: "hermsec-heuristics",

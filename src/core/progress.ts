@@ -1,4 +1,4 @@
-import type { ScanAssistMode, ScanProgressEvent } from "../shared/types.js";
+import type { ScanAssistMode, ScanAssistModeInput, ScanProgressEvent } from "../shared/types.js";
 
 export type ScanProgressCallback = (event: ScanProgressEvent) => void;
 
@@ -22,6 +22,17 @@ export function emitScanProgress(
   });
 }
 
-export function assistModeFrom(value: ScanAssistMode | undefined): ScanAssistMode {
-  return value === "deep-assisted" ? "deep-assisted" : "scanner-model-summary";
+export function assistModeFrom(value: ScanAssistModeInput | undefined): ScanAssistMode {
+  switch (value) {
+    case "single-agent":
+      return "single-agent";
+    case "moa-assisted":
+      return "moa-assisted";
+    case "scanner-moa-assisted":
+      return "scanner-moa-assisted";
+    case "deep-assisted":
+    case "scanner-model-summary":
+    case undefined:
+      return "deep-assisted";
+  }
 }

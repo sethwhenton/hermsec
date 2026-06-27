@@ -19,6 +19,16 @@ export type OpenAiCompatibleDefaults = {
   label?: string;
 };
 
+type OpenAiChatPayload = {
+  choices?: Array<{
+    message?: {
+      content?: string | Array<{ text?: string; content?: string }>;
+    };
+  }>;
+  model?: string;
+  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+};
+
 export function createOpenAiCompatibleProvider(defaults: OpenAiCompatibleDefaults): ModelProviderAdapter {
   return {
     id: defaults.id,
@@ -73,34 +83,28 @@ export function createOpenAiCompatibleProvider(defaults: OpenAiCompatibleDefault
         throw new Error(`Missing provider credential environment variable: ${safeEnvName}`);
       }
 
-      const response = await fetch(`${baseUrl}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {})
-        },
-        body: JSON.stringify({
-          model,
-          messages: request.messages,
-          temperature: request.temperature ?? 0,
-          ...(request.maxTokens ? { max_tokens: request.maxTokens } : {}),
-          ...(request.responseFormat === "json" ? { response_format: { type: "json_object" } } : {})
-        }),
-        signal: AbortSignal.timeout(config?.timeoutMs ?? 30_000)
+      let payload = await requestChatCompletion({
+        baseUrl,
+        defaultsId: defaults.id,
+        ...(apiKey ? { apiKey } : {}),
+        model,
+        request,
+        ...(config?.timeoutMs ? { timeoutMs: config.timeoutMs } : {}),
+        includeResponseFormat: request.responseFormat === "json",
       });
-
-      if (!response.ok) {
-        const rawError = await response.text();
-        const redacted = redactForLog(rawError).value;
-        throw new Error(`${defaults.id} provider request failed with ${response.status}: ${String(redacted).slice(0, 500)}`);
+      let content = extractMessageContent(payload);
+      if (!content && request.responseFormat === "json") {
+        payload = await requestChatCompletion({
+          baseUrl,
+          defaultsId: defaults.id,
+          ...(apiKey ? { apiKey } : {}),
+          model,
+          request,
+          ...(config?.timeoutMs ? { timeoutMs: config.timeoutMs } : {}),
+          includeResponseFormat: false,
+        });
+        content = extractMessageContent(payload);
       }
-
-      const payload = (await response.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
-        model?: string;
-        usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
-      };
-      const content = payload.choices?.[0]?.message?.content;
       if (!content) {
         throw new Error(`${defaults.id} provider returned no message content.`);
       }
@@ -160,6 +164,56 @@ export const ollamaProvider = createOpenAiCompatibleProvider({
   local: true,
   label: "Ollama"
 });
+
+async function requestChatCompletion(input: {
+  baseUrl: string;
+  defaultsId: ModelProviderId;
+  apiKey?: string;
+  model: string;
+  request: ModelRequest;
+  timeoutMs?: number;
+  includeResponseFormat: boolean;
+}): Promise<OpenAiChatPayload> {
+  const response = await fetch(`${input.baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(input.apiKey ? { authorization: `Bearer ${input.apiKey}` } : {})
+    },
+    body: JSON.stringify({
+      model: input.model,
+      messages: input.request.messages,
+      temperature: input.request.temperature ?? 0,
+      ...(input.request.maxTokens ? { max_tokens: input.request.maxTokens } : {}),
+      ...(input.includeResponseFormat ? { response_format: { type: "json_object" } } : {})
+    }),
+    signal: AbortSignal.timeout(input.timeoutMs ?? 30_000)
+  });
+
+  if (!response.ok) {
+    const rawError = await response.text();
+    const redacted = redactForLog(rawError).value;
+    throw new Error(`${input.defaultsId} provider request failed with ${response.status}: ${String(redacted).slice(0, 500)}`);
+  }
+
+  return (await response.json()) as OpenAiChatPayload;
+}
+
+function extractMessageContent(payload: OpenAiChatPayload): string | undefined {
+  const content = payload.choices?.[0]?.message?.content;
+  if (typeof content === "string") {
+    const trimmed = content.trim();
+    return trimmed ? trimmed : undefined;
+  }
+  if (Array.isArray(content)) {
+    const joined = content
+      .map((part) => part.text ?? part.content ?? "")
+      .join("\n")
+      .trim();
+    return joined ? joined : undefined;
+  }
+  return undefined;
+}
 
 function stripTrailingSlash(value: string): string {
   return value.replace(/\/+$/, "");

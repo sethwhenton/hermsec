@@ -15,6 +15,7 @@ import {
   buildReportSummary,
   compareFindings,
   type AgentSummary,
+  type ReportAgentModeMetadata,
   type ReportDocument,
   type ReportFormat,
   type ReportIntelligenceItem,
@@ -30,6 +31,7 @@ export type RenderReportInput = {
   formats?: readonly ReportFormat[];
   explanations?: Record<string, ModelExplanation | undefined>;
   agentSummary?: Partial<AgentSummary>;
+  agentMode?: ReportAgentModeMetadata;
   intelligence?: readonly ReportIntelligenceItem[];
   rawEvidence?: readonly RawEvidenceInput[];
   limitations?: readonly string[];
@@ -71,6 +73,7 @@ export async function renderReport(input: RenderReportInput): Promise<RenderRepo
 
   const explanations = input.explanations ?? {};
   const generatedWithModel = wasGeneratedWithModel(input.agentSummary);
+  const agentMode = input.agentMode ?? input.agentSummary?.agentMode;
   const intelligence = [...(input.intelligence ?? [])];
   const document: ReportDocument = {
     schemaVersion: "1.0",
@@ -82,6 +85,7 @@ export async function renderReport(input: RenderReportInput): Promise<RenderRepo
     run: {
       id: input.scanRun.id,
       mode: input.scanRun.mode,
+      ...(agentMode?.modeLabel ? { modeLabel: agentMode.modeLabel } : {}),
       startedAt: input.scanRun.startedAt,
       finishedAt: input.scanRun.finishedAt,
       durationMs: input.scanRun.durationMs,
@@ -93,6 +97,7 @@ export async function renderReport(input: RenderReportInput): Promise<RenderRepo
         ...(destination.fallbackReason ? { reason: destination.fallbackReason } : {})
       }
     },
+    ...(agentMode ? { agentMode } : {}),
     tools: sortTools(input.scanRun.scannerStatuses),
     summary: buildReportSummary(input.scanRun.findings, input.scanRun.scannerStatuses, generatedWithModel, intelligence),
     intelligence,
@@ -115,10 +120,12 @@ export async function renderReport(input: RenderReportInput): Promise<RenderRepo
   assertReportDocument(redactedDocument);
 
   const agentSummary: AgentSummary = {
+    ...extraAgentSummaryFields(input.agentSummary),
     generatedWithModel,
     provider: input.agentSummary?.provider ?? (generatedWithModel ? "configured-model" : "none"),
     ...(input.agentSummary?.model ? { model: input.agentSummary.model } : {}),
     ...(input.agentSummary?.fallbackReason ? { fallbackReason: input.agentSummary.fallbackReason } : {}),
+    ...(agentMode ? { agentMode } : {}),
     executiveSummary: input.agentSummary?.executiveSummary ?? buildExecutiveSummary(redactedDocument),
     priorityActions: input.agentSummary?.priorityActions ?? buildPriorityActions(redactedDocument),
     explanations: redactedDocument.explanations
@@ -190,6 +197,23 @@ async function readPreviousFindings(filePath: string): Promise<Finding[] | undef
 
 function sortTools(tools: readonly ScannerStatus[]): ScannerStatus[] {
   return [...tools].sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function extraAgentSummaryFields(agentSummary: Partial<AgentSummary> | undefined): Record<string, unknown> {
+  if (!agentSummary) {
+    return {};
+  }
+  const reserved = new Set([
+    "generatedWithModel",
+    "provider",
+    "model",
+    "fallbackReason",
+    "agentMode",
+    "executiveSummary",
+    "priorityActions",
+    "explanations"
+  ]);
+  return Object.fromEntries(Object.entries(agentSummary).filter(([key]) => !reserved.has(key)));
 }
 
 function buildExecutiveSummary(document: ReportDocument): string {

@@ -55,6 +55,42 @@
     return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   }
 
+  function formatDurationMs(ms) {
+    const value = Number(ms);
+    if (!Number.isFinite(value) || value <= 0) return "not recorded";
+    if (value < 1000) return `${Math.round(value)}ms`;
+    const seconds = value / 1000;
+    if (seconds < 60) return `${seconds.toFixed(seconds >= 10 ? 0 : 1)}s`;
+    const minutes = Math.floor(seconds / 60);
+    const remaining = Math.round(seconds % 60);
+    return `${minutes}m ${remaining}s`;
+  }
+
+  function labelize(value) {
+    return String(value || "")
+      .replace(/[_-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/\b\w/g, (m) => m.toUpperCase());
+  }
+
+  function judgeBadge(status) {
+    if (!status) return "";
+    const normalized = String(status).toLowerCase().replace(/[\s_]+/g, "-");
+    const cls =
+      normalized === "accepted" ? "confirmed" :
+      normalized === "rejected" ? "fp" :
+      normalized === "needs-human-review" ? "context" :
+      "info";
+    return `<span class="badge badge-${cls}">Judge: ${esc(labelize(status))}</span>`;
+  }
+
+  function findingSourceBadges(f) {
+    return (f.sourceLabels || [])
+      .map((label) => `<span class="badge badge-info" style="text-transform:none;letter-spacing:0">${esc(labelize(label))}</span>`)
+      .join("");
+  }
+
   function showToast(msg) {
     const el = document.getElementById("toast");
     el.textContent = msg;
@@ -138,7 +174,8 @@
       scan.gitCommit && scan.gitCommit.length > 7 ? scan.gitCommit.slice(0, 7) : scan.gitCommit;
     const metaSummary = `${esc(scan.gitBranch)} · ${esc(commitShort)} · ${esc(scan.scanId)} · ${esc(scan.duration)}`;
 
-    const assistLabel = R.assist?.label || scan.assistModeLabel || "Scanner + model summary";
+    const assistLabel = R.assist?.label || scan.assistModeLabel || "Deep assisted scan";
+    const agentMode = R.agentMode || null;
 
     document.getElementById("report-header").innerHTML = `
       <div class="header-inner">
@@ -159,6 +196,7 @@
               <div class="verdict-meta-pills">
                 <span class="header-pill"><strong>${R.fixPlan.fixNow.length}</strong> fix now</span>
                 <span class="header-pill">${esc(scan.duration)}</span>
+                ${agentMode ? `<span class="header-pill">${esc(agentMode.modeLabel)}</span>` : ""}
                 <span class="header-pill">${esc(assistLabel)}</span>
               </div>
             </div>
@@ -197,6 +235,9 @@
             <div class="meta-item"><span>Branch</span><code>${esc(scan.gitBranch)}</code></div>
             <div class="meta-item"><span>Commit</span><code>${esc(scan.gitCommit)}</code></div>
             <div class="meta-item"><span>Dirty tree</span><span>${scan.dirtyWorkingTree ? "Yes" : "No"}</span></div>
+            ${agentMode ? `<div class="meta-item"><span>Agent mode</span><span>${esc(agentMode.modeLabel)}</span></div>` : ""}
+            ${agentMode?.aggregatorModel ? `<div class="meta-item"><span>Aggregator</span><code>${esc(agentMode.aggregatorModel)}</code></div>` : ""}
+            ${agentMode ? `<div class="meta-item"><span>Agent runtime</span><span>${esc(agentMode.totalAgentRuntime || formatDurationMs(agentMode.totalAgentRuntimeMs))}</span></div>` : ""}
             <div class="meta-item"><span>Assist mode</span><span>${esc(assistLabel)}</span></div>
             <div class="meta-item"><span>Started</span><span>${formatDate(scan.startedAt)}</span></div>
             <div class="meta-item"><span>Finished</span><span>${formatDate(scan.finishedAt)}</span></div>
@@ -236,6 +277,43 @@
       </li>`
       )
       .join("");
+    const agentMode = R.agentMode || null;
+    const agentRows = agentMode
+      ? (agentMode.agents || [])
+          .slice(0, 6)
+          .map(
+            (agent) => `
+        <div class="assist-mini-group">
+          <div>
+            <strong>${esc(agent.label || agent.id)}</strong>
+            <span>${esc([agent.provider, agent.model].filter(Boolean).join(" / ") || "Provider/model not recorded")}</span>
+          </div>
+          <span class="badge badge-info">${esc(agent.runtime || formatDurationMs(agent.runtimeMs))}</span>
+        </div>`
+          )
+          .join("")
+      : "";
+    const agentModeCard = agentMode
+      ? `
+      <div class="assist-mode-card reveal-item">
+        <div class="assist-mode-copy">
+          <span class="section-eyebrow">Agent mode</span>
+          <h3>${esc(agentMode.modeLabel || agentMode.mode)}</h3>
+          <p>${esc([
+            `${agentMode.agentsUsed?.length || agentMode.agents?.length || 0} agents`,
+            agentMode.aggregatorModel ? `aggregated by ${agentMode.aggregatorModel}` : "",
+            `runtime ${agentMode.totalAgentRuntime || formatDurationMs(agentMode.totalAgentRuntimeMs)}`
+          ].filter(Boolean).join(" | "))}</p>
+        </div>
+        <div class="assist-mode-stats">
+          <div><strong>${agentMode.candidateFindingCount ?? 0}</strong><span>candidate</span></div>
+          <div><strong>${agentMode.acceptedFindingCount ?? 0}</strong><span>accepted</span></div>
+          <div><strong>${agentMode.rejectedFindingCount ?? 0}</strong><span>rejected</span></div>
+          <div><strong>${agentMode.needsHumanReviewCount ?? 0}</strong><span>review</span></div>
+        </div>
+        <div class="assist-mini-list">${agentRows || `<div class="assist-mini-group"><div><strong>No agent list</strong><span>Provider and model metadata was not recorded.</span></div></div>`}</div>
+      </div>`
+      : "";
     const assist = R.assist || {};
     const topGroups = (assist.groups || []).slice(0, 3);
     const assistGroups =
@@ -257,7 +335,7 @@
       <div class="assist-mode-card reveal-item">
         <div class="assist-mode-copy">
           <span class="section-eyebrow">Assist mode</span>
-          <h3>${esc(assist.label || R.scan.assistModeLabel || "Scanner + model summary")}</h3>
+          <h3>${esc(assist.label || R.scan.assistModeLabel || "Deep assisted scan")}</h3>
           <p>${esc(assist.summary?.note || "Scanner output remains authoritative; the model can only support scanner-backed evidence.")}</p>
         </div>
         <div class="assist-mode-stats">
@@ -273,6 +351,7 @@
       <p class="section-desc">Status and output from each tool in the Hermsec scan pipeline.</p>
       <div class="bezel bezel-panel">
         <div class="bezel-inner">
+          ${agentModeCard}
           ${assistCard}
           <ul class="pipeline-list reveal-stagger">${items}</ul>
         </div>
@@ -299,6 +378,8 @@
     const adj = adjMap[f.id];
     const ids = [...f.cve, ...f.ghsa, ...f.osv];
     const expanded = expandedFindings.has(f.id);
+    const sourceBadges = findingSourceBadges(f);
+    const judge = judgeBadge(f.judgeStatus);
 
     const tags = [
       ...f.cwe.map((c) => `<span class="tag">${esc(c)}</span>`),
@@ -334,6 +415,8 @@
               <span class="finding-id">${esc(f.id)}</span>
               ${badge(f.severity)}
               <span class="badge badge-info" style="text-transform:none;letter-spacing:0">${esc(f.confidence)}</span>
+              ${sourceBadges}
+              ${judge}
               ${adj ? verdictBadge(adj.verdict) : ""}
             </div>
             <div class="finding-title">${esc(f.title)}</div>

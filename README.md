@@ -6,6 +6,23 @@ The app is built for "scan my project and tell me what matters" workflows. It ke
 
 The current product is V3 only. Earlier experimental UI surfaces have been removed from the active tree.
 
+## Screenshots
+
+<p>
+  <img src="docs/assets/screenshots/home-chat.png" alt="Hermsec home chat screen" width="49%">
+  <img src="docs/assets/screenshots/scan-progress-summary.png" alt="Hermsec scan progress and report summary" width="49%">
+</p>
+
+<p>
+  <img src="docs/assets/screenshots/automation-popover.png" alt="Hermsec automation settings" width="49%">
+  <img src="docs/assets/screenshots/scanners-settings.png" alt="Hermsec scanner settings" width="49%">
+</p>
+
+<p>
+  <img src="docs/assets/screenshots/agents-settings.png" alt="Hermsec agent settings" width="49%">
+  <img src="docs/assets/screenshots/providers-settings.png" alt="Hermsec provider settings" width="49%">
+</p>
+
 ## Repository Layout
 
 ```text
@@ -13,7 +30,7 @@ desktop/       Electron + React V3 desktop app
 src/           Root scanner, report, doctor, model, intel, scheduler, and CLI engine
 tests/         Root scanner/CLI/unit/integration tests
 scripts/       Benchmark and maintenance scripts
-docs/          Current install and CLI notes
+docs/          Current install notes, screenshots, research paper, and CLI notes
 .github/       Benchmark and desktop release workflows
 ```
 
@@ -99,10 +116,13 @@ Doctor is available from chat to check the app environment before scanning. It v
 
 ## Scan Modes
 
-Hermsec V3 exposes two user-facing scan modes:
+Hermsec V3 exposes three product scan modes:
 
-- `Scanner + model summary`: runs the scanner stack first, then uses the selected model only to summarize scanner-backed evidence.
-- `Deep assisted scan`: runs scanners, merges matching findings across tools, and gives the model more context for deeper triage while still requiring scanner-supported evidence.
+- `Deep assisted scan`: inspects the project, selects the right scanner lanes, prepares missing supported tools, runs the scanner stack, then uses the selected model to triage scanner-backed evidence.
+- `Single agent inspection`: uses one configured model to inspect bounded repository evidence directly. This mode is scanner-free and uses safe read-only code tools.
+- `MoA inspection`: uses a mixture-of-agents panel. Specialist agents inspect bounded repository evidence, a false-positive judge reviews candidates, and an aggregator writes the accepted findings.
+
+For research and CLI experiments, Hermsec also includes `scanner-moa-assisted`. This hybrid mode runs scanners and MoA together, then judges and aggregates both candidate sets. It is documented in the Task 5 research bundle below.
 
 Scanner-only runs remain an internal benchmark control.
 
@@ -133,6 +153,17 @@ Java coverage includes Hermsec's lightweight servlet taint heuristics for reques
 ## Benchmarking
 
 Benchmark work is supported from the root CLI and CI. The current Java gate targets OWASP BenchmarkJava, with benchmark artifacts written under `.hermsec/benchmark-runs` when local suites are available. Recommended expansion suites remain OpenSSF CVE Benchmark for JS/TS, CASTLE and a Juliet subset for C/C++, OWASP BenchmarkPython plus curated fixtures for Python, and labeled dependency/secrets fixtures for SCA and secret scanning.
+
+## Research Paper And Findings
+
+The Task 5 research package is checked into [docs/research/task5-hermsec-moa](docs/research/task5-hermsec-moa). It contains:
+
+- the Overleaf-ready ACM paper source in [overleaf-paper](docs/research/task5-hermsec-moa/overleaf-paper),
+- the compiled paper PDF at [hermsec_moa_paper.pdf](docs/research/task5-hermsec-moa/overleaf-paper/hermsec_moa_paper.pdf),
+- the paper figures and app screenshots,
+- sanitized model/scanner finding summaries in [findings](docs/research/task5-hermsec-moa/findings).
+
+The paper direction is: Hermsec as a user-friendly repository scanner, followed by a comparison of static scanner-backed review, single-agent review, multi-agent review, and the Scanner + MoA hybrid.
 
 ## Provider Keys
 

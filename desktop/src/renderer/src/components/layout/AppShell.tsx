@@ -100,11 +100,13 @@ export function AppShell() {
     updateSettings,
   ]);
 
+  const isSettingsView = view === "settings";
+
   return (
     <div className="flex h-full flex-col bg-background">
       <TitleBar />
       <div className="flex min-h-0 flex-1">
-        <LeftSidebar />
+        {!isSettingsView && <LeftSidebar />}
         <main className="relative min-w-0 flex-1">
           <AnimatePresence mode="wait">
             {view === "chat" ? (

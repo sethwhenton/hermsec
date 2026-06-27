@@ -1,6 +1,5 @@
-import type { Finding } from "../shared/types.js";
 import { displayScannerName } from "./displayNames.js";
-import type { ReportDocument } from "./schema.js";
+import type { ReportDocument, ReportFinding } from "./schema.js";
 import { compareFindings, severityOrder } from "./schema.js";
 
 export function renderMarkdownReport(document: ReportDocument): string {
@@ -8,6 +7,7 @@ export function renderMarkdownReport(document: ReportDocument): string {
     "# Hermsec Security Report",
     renderMetadata(document),
     renderSummary(document),
+    renderAgentMode(document),
     renderPriorityActions(document),
     renderIntelligence(document),
     renderDelta(document),
@@ -27,9 +27,10 @@ function renderMetadata(document: ReportDocument): string {
     `- Workspace: ${escapeMarkdown(document.workspaceName)} (\`${escapeMarkdown(document.workspaceId)}\`)`,
     `- Generated: ${escapeMarkdown(document.generatedAt)}`,
     `- Target: \`${escapeMarkdown(document.target.value)}\``,
-    `- Mode: ${escapeMarkdown(document.run.mode)}`,
+    `- Mode: ${escapeMarkdown(document.run.modeLabel ?? document.run.mode)}`,
+    document.agentMode?.modeLabel ? `- Agent mode: ${escapeMarkdown(document.agentMode.modeLabel)}` : undefined,
     `- Redaction applied: ${document.evidence.redactionApplied ? "yes" : "no"}`
-  ];
+  ].filter((line): line is string => line !== undefined);
   if (document.run.git?.commit) {
     lines.push(`- Commit: \`${escapeMarkdown(document.run.git.commit)}\``);
   }
@@ -52,6 +53,40 @@ function renderSummary(document: ReportDocument): string {
     `- Scanner failures: ${document.summary.scannerFailures}`,
     `- Model explanations: ${document.summary.generatedWithModel ? "generated from supplied evidence" : "scanner-only explanation unavailable"}`
   ].join("\n");
+}
+
+function renderAgentMode(document: ReportDocument): string {
+  const metadata = document.agentMode;
+  if (!metadata) {
+    return "";
+  }
+
+  const lines = [
+    "## Agent Mode",
+    "",
+    `- Mode: ${escapeMarkdown(metadata.modeLabel ?? metadata.mode ?? document.run.modeLabel ?? document.run.mode)}`,
+    metadata.scanMode ? `- Scan mode: ${escapeMarkdown(metadata.scanMode)}` : undefined,
+    metadata.candidateFindingCount !== undefined ? `- Candidate findings: ${metadata.candidateFindingCount}` : undefined,
+    metadata.acceptedFindingCount !== undefined ? `- Accepted findings: ${metadata.acceptedFindingCount}` : undefined,
+    metadata.rejectedFindingCount !== undefined ? `- Rejected findings: ${metadata.rejectedFindingCount}` : undefined,
+    metadata.needsHumanReviewCount !== undefined ? `- Needs human review: ${metadata.needsHumanReviewCount}` : undefined,
+    metadata.aggregatorModel ?? formatAggregator(metadata.aggregator)
+      ? `- Aggregator model: ${escapeMarkdown(metadata.aggregatorModel ?? formatAggregator(metadata.aggregator) ?? "")}`
+      : undefined,
+    metadata.totalAgentRuntimeMs !== undefined ? `- Total agent runtime: ${formatDuration(metadata.totalAgentRuntimeMs)}` : undefined
+  ].filter((line): line is string => line !== undefined);
+
+  if ((metadata.agents ?? []).length > 0) {
+    lines.push("", "| Agent | Role | Provider / Model | Runtime |", "| --- | --- | --- | ---: |");
+    for (const agent of metadata.agents ?? []) {
+      const providerModel = [agent.provider, agent.model].filter(Boolean).join(" / ") || "not recorded";
+      lines.push(
+        `| ${escapeTable(agent.label ?? agent.id)} | ${escapeTable(agent.role ?? "agent")} | ${escapeTable(providerModel)} | ${escapeTable(formatDuration(agent.runtimeMs))} |`
+      );
+    }
+  }
+
+  return lines.join("\n");
 }
 
 function renderPriorityActions(document: ReportDocument): string {
@@ -139,8 +174,9 @@ function renderFindings(document: ReportDocument): string {
   return lines.join("\n");
 }
 
-function renderFinding(document: ReportDocument, finding: Finding): string {
+function renderFinding(document: ReportDocument, finding: ReportFinding): string {
   const explanation = document.explanations[finding.id];
+  const agent = findingAgentMetadata(document, finding);
   const location = finding.location
     ? `${finding.location.file}${finding.location.startLine ? `:${finding.location.startLine}` : ""}`
     : "No source location";
@@ -157,6 +193,8 @@ function renderFinding(document: ReportDocument, finding: Finding): string {
     `- Tool: ${escapeMarkdown(displayScannerName(finding.tool))}`,
     `- Confidence: ${escapeMarkdown(finding.confidence)}`,
     `- Location: \`${escapeMarkdown(location)}\``,
+    agent.sourceLabels.length > 0 ? `- Source labels: ${agent.sourceLabels.map((label) => escapeMarkdown(labelize(label))).join(", ")}` : undefined,
+    agent.judgeStatus ? `- Judge status: ${escapeMarkdown(labelize(agent.judgeStatus))}` : undefined,
     identifiers.length > 0 ? `- Identifiers from evidence: ${identifiers.map((id) => `\`${escapeMarkdown(id)}\``).join(", ")}` : undefined,
     "",
     `Evidence: ${escapeMarkdown(finding.evidence)}`,
@@ -196,6 +234,66 @@ function renderEvidenceBundle(document: ReportDocument): string {
 
 function renderLimitations(document: ReportDocument): string {
   return ["## Limitations", "", ...document.limitations.map((limitation) => `- ${escapeMarkdown(limitation)}`)].join("\n");
+}
+
+function findingAgentMetadata(
+  document: ReportDocument,
+  finding: ReportFinding
+): { sourceLabels: string[]; judgeStatus?: string } {
+  const mapped = document.agentMode?.findings?.[finding.id];
+  const sourceLabels = unique([
+    ...arrayValue(finding.sourceLabels),
+    ...arrayValue(finding.sourceLabel),
+    ...arrayValue(mapped?.sourceLabels),
+    ...arrayValue(mapped?.sourceLabel)
+  ]);
+  const judgeStatus = firstNonEmpty(finding.judgeStatus, mapped?.judgeStatus);
+  return {
+    sourceLabels,
+    ...(judgeStatus ? { judgeStatus } : {})
+  };
+}
+
+function formatAggregator(value: { agentId?: string; provider?: string; model?: string; label?: string } | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const providerModel = [value.provider, value.model].filter(Boolean).join(" / ");
+  return firstNonEmpty(providerModel, value.label, value.agentId);
+}
+
+function formatDuration(durationMs: number | undefined): string {
+  if (durationMs === undefined) {
+    return "n/a";
+  }
+  if (durationMs >= 1000) {
+    const seconds = durationMs / 1000;
+    return `${seconds >= 10 ? seconds.toFixed(0) : seconds.toFixed(1)} s`;
+  }
+  return `${durationMs} ms`;
+}
+
+function arrayValue(value: string | readonly string[] | undefined): string[] {
+  if (!value) {
+    return [];
+  }
+  return (Array.isArray(value) ? value : [value]).map((item) => item.trim()).filter(Boolean);
+}
+
+function unique(values: readonly string[]): string[] {
+  return [...new Set(values)].sort((left, right) => left.localeCompare(right));
+}
+
+function firstNonEmpty(...values: Array<string | undefined>): string | undefined {
+  return values.find((value) => value !== undefined && value.trim().length > 0);
+}
+
+function labelize(value: string): string {
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (match) => match.toUpperCase());
 }
 
 function formatIds(ids: readonly string[]): string {

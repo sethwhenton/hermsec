@@ -1,6 +1,5 @@
-import type { Finding } from "../shared/types.js";
 import { displayScannerName } from "./displayNames.js";
-import type { ReportDocument } from "./schema.js";
+import type { ReportDocument, ReportFinding } from "./schema.js";
 import { compareFindings, severityOrder } from "./schema.js";
 
 const template = `<!doctype html>
@@ -23,6 +22,7 @@ const template = `<!doctype html>
       </div>
       <aside class="report-sidebar" aria-label="Report context">
         {{delta}}
+        {{agentMode}}
         {{scannerStatus}}
         {{evidenceBundle}}
         {{limitations}}
@@ -573,6 +573,7 @@ export function renderHtmlReport(document: ReportDocument): string {
     .replace("{{intelligence}}", renderIntelligence(document))
     .replace("{{findings}}", renderFindings(document))
     .replace("{{delta}}", renderDelta(document))
+    .replace("{{agentMode}}", renderAgentMode(document))
     .replace("{{scannerStatus}}", renderScannerStatus(document))
     .replace("{{evidenceBundle}}", renderEvidenceBundle(document))
     .replace("{{limitations}}", renderLimitations(document));
@@ -590,7 +591,10 @@ function renderMetadata(document: ReportDocument): string {
     renderDetail("Started", escapeHtml(document.run.startedAt), "metadata-item"),
     renderDetail("Finished", escapeHtml(document.run.finishedAt), "metadata-item"),
     renderDetail("Duration", escapeHtml(formatDuration(document.run.durationMs)), "metadata-item"),
-    renderDetail("Mode", escapeHtml(document.run.mode), "metadata-item"),
+    renderDetail("Mode", escapeHtml(document.run.modeLabel ?? document.run.mode), "metadata-item"),
+    document.agentMode?.modeLabel
+      ? renderDetail("Agent mode", escapeHtml(document.agentMode.modeLabel), "metadata-item")
+      : "",
     document.run.git?.branch
       ? renderDetail("Git branch", `<code>${escapeHtml(document.run.git.branch)}</code>`, "metadata-item")
       : "",
@@ -608,7 +612,8 @@ function renderMetadata(document: ReportDocument): string {
     <h1>${escapeHtml(document.workspaceName)}</h1>
     <p class="hero-lede">Generated ${escapeHtml(document.generatedAt)} from scanner-backed evidence for <code>${escapeHtml(document.target.value)}</code>.</p>
     <div class="hero-flags">
-      <span class="status-pill">${escapeHtml(document.run.mode)} mode</span>
+      <span class="status-pill">${escapeHtml(document.run.modeLabel ?? document.run.mode)} mode</span>
+      ${document.agentMode?.modeLabel ? `<span class="status-pill">${escapeHtml(document.agentMode.modeLabel)}</span>` : ""}
       <span class="status-pill ${document.evidence.redactionApplied ? "redaction-on" : "redaction-off"}">Redaction ${document.evidence.redactionApplied ? "applied" : "not needed"}</span>
       <span class="status-pill">${escapeHtml(document.summary.generatedWithModel ? "Model explanations" : "Scanner-only explanations")}</span>
     </div>
@@ -755,8 +760,9 @@ function renderFindings(document: ReportDocument): string {
 </section>`;
 }
 
-function renderFinding(document: ReportDocument, finding: Finding): string {
+function renderFinding(document: ReportDocument, finding: ReportFinding): string {
   const explanation = document.explanations[finding.id];
+  const agent = findingAgentMetadata(document, finding);
   const identifiers = [
     ...(finding.identifiers?.cve ?? []),
     ...(finding.identifiers?.ghsa ?? []),
@@ -775,6 +781,8 @@ function renderFinding(document: ReportDocument, finding: Finding): string {
     finding.ruleId ? renderDetail("Rule", `<code>${escapeHtml(finding.ruleId)}</code>`) : "",
     packageDetails ? renderDetail("Package", `<code>${escapeHtml(packageDetails)}</code>`) : "",
     renderDetail("Fingerprint", `<code>${escapeHtml(finding.fingerprint)}</code>`),
+    agent.sourceLabels.length > 0 ? renderDetail("Source", renderTags(agent.sourceLabels.map(labelize), "subtle")) : "",
+    agent.judgeStatus ? renderDetail("Judge", `<span class="badge subtle">${escapeHtml(labelize(agent.judgeStatus))}</span>`) : "",
     identifiers.length > 0 ? renderDetail("Identifiers", renderTags(identifiers, "subtle")) : ""
   ].join("");
   const safeNextSteps = explanation?.safeNextSteps?.length
@@ -790,6 +798,8 @@ function renderFinding(document: ReportDocument, finding: Finding): string {
     <div class="badge-row">
       <span class="badge ${finding.severity}">${finding.severity.toUpperCase()}</span>
       <span class="badge subtle">${escapeHtml(finding.confidence)}</span>
+      ${agent.sourceLabels.map((label) => `<span class="badge subtle">${escapeHtml(labelize(label))}</span>`).join("")}
+      ${agent.judgeStatus ? `<span class="badge subtle">Judge: ${escapeHtml(labelize(agent.judgeStatus))}</span>` : ""}
     </div>
   </div>
   <dl class="finding-meta">${metadata}</dl>
@@ -839,6 +849,57 @@ function renderDelta(document: ReportDocument): string {
     ${renderDeltaItem("Worsened", delta.worsenedFindingIds, "critical")}
     ${renderDeltaItem("Improved", delta.improvedFindingIds, "low")}
   </div>
+</section>`;
+}
+
+function renderAgentMode(document: ReportDocument): string {
+  const metadata = document.agentMode;
+  if (!metadata) {
+    return "";
+  }
+
+  const aggregator = metadata.aggregatorModel ?? formatAggregator(metadata.aggregator);
+  const details = [
+    renderDetail("Mode", escapeHtml(metadata.modeLabel ?? metadata.mode ?? document.run.modeLabel ?? document.run.mode)),
+    metadata.scanMode ? renderDetail("Scan mode", escapeHtml(metadata.scanMode)) : "",
+    metadata.candidateFindingCount !== undefined
+      ? renderDetail("Candidates", escapeHtml(String(metadata.candidateFindingCount)))
+      : "",
+    metadata.acceptedFindingCount !== undefined
+      ? renderDetail("Accepted", escapeHtml(String(metadata.acceptedFindingCount)))
+      : "",
+    metadata.rejectedFindingCount !== undefined
+      ? renderDetail("Rejected", escapeHtml(String(metadata.rejectedFindingCount)))
+      : "",
+    metadata.needsHumanReviewCount !== undefined
+      ? renderDetail("Needs review", escapeHtml(String(metadata.needsHumanReviewCount)))
+      : "",
+    aggregator ? renderDetail("Aggregator", `<code>${escapeHtml(aggregator)}</code>`) : "",
+    metadata.totalAgentRuntimeMs !== undefined
+      ? renderDetail("Agent runtime", escapeHtml(formatDuration(metadata.totalAgentRuntimeMs)))
+      : ""
+  ].join("");
+
+  const agentRows = (metadata.agents ?? [])
+    .map((agent) => {
+      const providerModel = [agent.provider, agent.model].filter(Boolean).join(" / ") || "not recorded";
+      return `<tr>
+        <td>${escapeHtml(agent.label ?? agent.id)}</td>
+        <td>${escapeHtml(agent.role ?? "agent")}</td>
+        <td><code>${escapeHtml(providerModel)}</code></td>
+        <td class="duration">${escapeHtml(formatDuration(agent.runtimeMs))}</td>
+      </tr>`;
+    })
+    .join("");
+
+  return `<section class="section">
+  <p class="section-kicker">Agents</p>
+  <h2>Agent Mode</h2>
+  <dl class="key-values">${details}</dl>
+  ${agentRows ? `<table class="compact-table">
+    <thead><tr><th>Agent</th><th>Role</th><th>Provider / Model</th><th>Runtime</th></tr></thead>
+    <tbody>${agentRows}</tbody>
+  </table>` : `<p class="empty-state">No per-agent provider/model metadata was recorded.</p>`}
 </section>`;
 }
 
@@ -897,13 +958,62 @@ function renderLimitations(document: ReportDocument): string {
 </section>`;
 }
 
+function findingAgentMetadata(
+  document: ReportDocument,
+  finding: ReportFinding
+): { sourceLabels: string[]; judgeStatus?: string } {
+  const mapped = document.agentMode?.findings?.[finding.id];
+  const sourceLabels = unique([
+    ...arrayValue(finding.sourceLabels),
+    ...arrayValue(finding.sourceLabel),
+    ...arrayValue(mapped?.sourceLabels),
+    ...arrayValue(mapped?.sourceLabel)
+  ]);
+  const judgeStatus = firstNonEmpty(finding.judgeStatus, mapped?.judgeStatus);
+  return {
+    sourceLabels,
+    ...(judgeStatus ? { judgeStatus } : {})
+  };
+}
+
+function formatAggregator(value: { agentId?: string; provider?: string; model?: string; label?: string } | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const providerModel = [value.provider, value.model].filter(Boolean).join(" / ");
+  return firstNonEmpty(providerModel, value.label, value.agentId);
+}
+
+function arrayValue(value: string | readonly string[] | undefined): string[] {
+  if (!value) {
+    return [];
+  }
+  return (Array.isArray(value) ? value : [value]).map((item) => item.trim()).filter(Boolean);
+}
+
+function unique(values: readonly string[]): string[] {
+  return [...new Set(values)].sort((left, right) => left.localeCompare(right));
+}
+
+function firstNonEmpty(...values: Array<string | undefined>): string | undefined {
+  return values.find((value) => value !== undefined && value.trim().length > 0);
+}
+
+function labelize(value: string): string {
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
 function formatIds(ids: readonly string[]): string {
   return ids.length > 0
     ? `<div class="id-list">${ids.map((id) => `<code class="id-pill">${escapeHtml(id)}</code>`).join("")}</div>`
     : `<span class="muted">None</span>`;
 }
 
-function formatLocation(finding: Finding): string {
+function formatLocation(finding: ReportFinding): string {
   if (!finding.location) {
     return "No source location";
   }

@@ -45,7 +45,7 @@ function defaultSettings(): AppSettings {
       autoAcceptPermissions: false,
       terminalShell: "Auto (Default)",
       privacyMode: false,
-      scanMode: "scanner-model-summary",
+      scanMode: "deep-assisted",
       thinkingLevel: "balanced",
       contextWindow: "standard",
     },
@@ -58,7 +58,7 @@ function defaultSettings(): AppSettings {
       frequency: "custom-days",
       intervalDays: 1,
       time: "09:00",
-      scanMode: "scanner-model-summary",
+      scanMode: "deep-assisted",
     },
     providers: [defaultProvider(env)],
     scanners: defaultScannerSettings(),
@@ -225,8 +225,10 @@ function normalizeDefaultProjectDir(projectDir: string | undefined): string {
 }
 
 function normalizeScanModeSetting(mode: string | undefined): HermsecScanAssistMode {
+  if (mode === "single-agent" || mode === "single-agent-inspection") return "single-agent";
+  if (mode === "moa-assisted" || mode === "moa-inspection") return "moa-assisted";
   if (mode === "deep-assisted") return "deep-assisted";
-  return "scanner-model-summary";
+  return "deep-assisted";
 }
 
 function normalizeThinkingLevel(level: AppSettings["general"]["thinkingLevel"] | undefined): AppSettings["general"]["thinkingLevel"] {

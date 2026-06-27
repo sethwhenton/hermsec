@@ -3,17 +3,27 @@ import type { ModelConfig, ProviderConfig, ProviderPreset } from "../renderer/sr
 const LOGO_BASE = "https://raw.githubusercontent.com/ln-dev7/logos-apps/master/logos";
 
 const opencodeGoChatModels: ModelConfig[] = [
-  model("glm-5.2", "GLM 5.2"),
-  model("glm-5.1", "GLM 5.1"),
-  model("kimi-k2.7", "Kimi K2.7"),
-  model("kimi-k2.6", "Kimi K2.6"),
   model("deepseek-v4-pro", "DeepSeek V4 Pro"),
   model("deepseek-v4-flash", "DeepSeek V4 Flash"),
-  model("mimo-v2.5", "MiMo V2.5"),
+  model("glm-5", "GLM 5"),
+  model("glm-5.1", "GLM 5.1"),
+  model("glm-5.2", "GLM 5.2"),
+  model("hy3-preview", "HY3 Preview"),
+  model("kimi-k2.5", "Kimi K2.5"),
+  model("kimi-k2.6", "Kimi K2.6"),
+  model("kimi-k2.7-code", "Kimi K2.7 Code"),
   model("mimo-v2.5-pro", "MiMo V2.5 Pro"),
+  model("mimo-v2.5", "MiMo V2.5"),
+  model("mimo-v2-pro", "MiMo V2 Pro"),
+  model("mimo-v2-omni", "MiMo V2 Omni"),
+  model("minimax-m2.5", "MiniMax M2.5"),
+  model("minimax-m2.7", "MiniMax M2.7"),
+  model("minimax-m3", "MiniMax M3"),
+  model("qwen3.5-plus", "Qwen3.5 Plus"),
+  model("qwen3.6-plus", "Qwen3.6 Plus"),
+  model("qwen3.7-max", "Qwen3.7 Max"),
+  model("qwen3.7-plus", "Qwen3.7 Plus"),
 ];
-
-export const OPENCODE_GO_CHAT_MODEL_IDS = new Set(opencodeGoChatModels.map((item) => item.id));
 
 export function providerPresets(): ProviderPreset[] {
   return [

@@ -10,7 +10,7 @@ import { useSettingsStore } from "@/store/settingsStore";
 import { useUiStore } from "@/store/uiStore";
 import type { AgentQuestion, ChatItem, ChatMessage } from "@/types/chat";
 import type { DoctorProgressEvent } from "@/types/doctor";
-import type { HermsecScanAssistMode } from "@/types/scan";
+import type { HermsecProductScanAssistMode } from "@/types/scan";
 import type { AppSettings, AutomationFrequency, AutomationSettings } from "@/types/settings";
 import { AutomationPopover } from "@/components/automation/AutomationPopover";
 import { Button } from "@/components/ui/Button";
@@ -84,7 +84,7 @@ type AssistantAnswer = string | {
   copyAction?: ChatMessage["copyAction"];
   reportLink?: ChatMessage["reportLink"];
 };
-type ParsedAutomation = Pick<AutomationSettings, "frequency" | "intervalDays" | "time">;
+type ParsedAutomation = Pick<AutomationSettings, "frequency" | "intervalDays" | "time" | "scanMode">;
 type HermsecActionRoute = "scan" | "automation" | "capabilities" | "doctor" | "fix-prompt" | "chat";
 interface ActiveHermsecAction {
   id: number;
@@ -92,6 +92,7 @@ interface ActiveHermsecAction {
 }
 const DOCTOR_RUN_TIMEOUT_MS = 35_000;
 const SCAN_MODE_QUESTION_ID = "scan_mode";
+const AUTOMATION_SCAN_MODE_QUESTION_ID = "automation_scan_mode";
 
 export function ChatView() {
   const chatItems = useUiStore((s) => s.chatItems);
@@ -355,7 +356,7 @@ export function ChatView() {
       },
     ]);
 
-  const runProjectScan = async (assistModeInput?: HermsecScanAssistMode) => {
+  const runProjectScan = async (assistModeInput?: HermsecProductScanAssistMode) => {
     const projectPath = activeProjectPath();
     const currentSettings = useSettingsStore.getState().settings;
     if (!projectPath) {
@@ -368,14 +369,9 @@ export function ChatView() {
 
     const assistMode = normalizeScanAssistMode(assistModeInput ?? currentSettings?.general.scanMode);
     const label = scanModeLabel(assistMode);
-    const actionId = beginAction(
-      assistMode === "deep-assisted"
-        ? "Starting deep assisted scan..."
-        : "Starting scanner + model summary scan...",
-      () => {
-        void cancelScan();
-      },
-    );
+    const actionId = beginAction(`Starting ${label.toLowerCase()}...`, () => {
+      void cancelScan();
+    });
     try {
       const result = await runScan({
         targetPath: projectPath,
@@ -421,6 +417,8 @@ export function ChatView() {
     const frequency = partial.frequency ?? "custom-days";
     const intervalDays = frequency === "custom-days" ? normalizeIntervalDays(partial.intervalDays) : undefined;
     const time = partial.time ?? "09:00";
+    const scanMode = normalizeScanAssistMode(partial.scanMode ?? currentSettings?.automation.scanMode ?? currentSettings?.general.scanMode);
+    const scanModeText = scanModeLabel(scanMode);
 
     await updateSettings({
       automation: {
@@ -429,6 +427,7 @@ export function ChatView() {
         frequency,
         ...(intervalDays ? { intervalDays } : {}),
         time,
+        scanMode,
       },
     });
 
@@ -436,7 +435,7 @@ export function ChatView() {
     await pushMessage(
       "assistant",
       [
-        `Done. I set the Hermsec scan automation to run ${formatAutomationFrequency({ frequency, intervalDays })} at ${formatClockTime(time)}.`,
+        `Done. I set the Hermsec scan automation to run ${formatAutomationFrequency({ frequency, intervalDays })} at ${formatClockTime(time)} using ${scanModeText}.`,
         "It runs only while Hermsec is open. When it is due, Hermsec checks whether the selected project changed; if nothing changed, it skips the scan.",
       ].join("\n"),
     );
@@ -445,8 +444,9 @@ export function ChatView() {
   const continueAutomationFlow = async (partial: Partial<ParsedAutomation>) => {
     const missingFrequency = !partial.frequency;
     const missingTime = !partial.time;
+    const missingScanMode = !partial.scanMode;
 
-    if (!missingFrequency && !missingTime) {
+    if (!missingFrequency && !missingTime && !missingScanMode) {
       await saveAutomation(partial);
       return;
     }
@@ -454,11 +454,7 @@ export function ChatView() {
     setPendingAutomation(partial);
     await pushMessage(
       "assistant",
-      missingFrequency && missingTime
-        ? "I can set that up. I just need the scan cadence and exact run time."
-        : missingFrequency
-          ? "I have the time. How often should Hermsec run this scan?"
-          : "I have the cadence. What time should Hermsec run it?",
+      automationQuestionPrompt({ missingFrequency, missingTime, missingScanMode }),
     );
     await pushQuestionItem(buildAutomationQuestions(partial));
   };
@@ -574,7 +570,7 @@ export function ChatView() {
       return;
     }
 
-    if (answers.automation_frequency || answers.automation_time) {
+    if (answers.automation_frequency || answers.automation_time || answers[AUTOMATION_SCAN_MODE_QUESTION_ID]) {
       const selected = parseAutomationAnswers(answers);
       void continueAutomationFlow({
         ...(pendingAutomation ?? {}),
@@ -931,6 +927,18 @@ function buildAutomationQuestions(partial: Partial<ParsedAutomation>): AgentQues
       ],
     });
   }
+  if (!partial.scanMode) {
+    questions.push({
+      id: AUTOMATION_SCAN_MODE_QUESTION_ID,
+      prompt: "Which scan mode should this automation use?",
+      options: scanModeOptions.map((option) => ({
+        id: option.id,
+        label: option.label,
+        description: option.description,
+        meta: option.status,
+      })),
+    });
+  }
   return questions;
 }
 
@@ -938,6 +946,7 @@ function parseAutomationAnswers(answers: Record<string, string[]>): Partial<Pars
   const parsed: Partial<ParsedAutomation> = {};
   const frequency = answers.automation_frequency?.[0];
   const time = answers.automation_time?.[0];
+  const scanMode = answers[AUTOMATION_SCAN_MODE_QUESTION_ID]?.[0];
 
   if (frequency?.startsWith("days:")) {
     parsed.frequency = "custom-days";
@@ -948,6 +957,10 @@ function parseAutomationAnswers(answers: Record<string, string[]>): Partial<Pars
 
   if (time && /^\d{2}:\d{2}$/.test(time)) {
     parsed.time = time;
+  }
+
+  if (scanMode) {
+    parsed.scanMode = normalizeScanAssistMode(scanMode);
   }
 
   return parsed;
@@ -975,7 +988,48 @@ function parseAutomationRequest(text: string): Partial<ParsedAutomation> {
     parsed.time = parsedTime;
   }
 
+  const parsedScanMode = parseScanModeText(lower);
+  if (parsedScanMode) {
+    parsed.scanMode = parsedScanMode;
+  }
+
   return parsed;
+}
+
+function parseScanModeText(lower: string): HermsecProductScanAssistMode | undefined {
+  if (/\b(moa|mixture\s+of\s+agents|multi[-\s]?agent)\b/.test(lower)) return "moa-assisted";
+  if (/\b(single[-\s]?agent|one\s+agent)\b/.test(lower)) return "single-agent";
+  if (/\b(deep[-\s]?assisted|deep\s+scan|deep)\b/.test(lower)) return "deep-assisted";
+  return undefined;
+}
+
+function automationQuestionPrompt({
+  missingFrequency,
+  missingTime,
+  missingScanMode,
+}: {
+  missingFrequency: boolean;
+  missingTime: boolean;
+  missingScanMode: boolean;
+}): string {
+  const missing = [
+    missingFrequency ? "scan cadence" : "",
+    missingTime ? "exact run time" : "",
+    missingScanMode ? "scan mode" : "",
+  ].filter(Boolean);
+
+  if (missing.length >= 2) {
+    return `I can set that up. I just need the ${joinReadableList(missing)}.`;
+  }
+  if (missingFrequency) return "I have the time and scan mode. How often should Hermsec run this scan?";
+  if (missingTime) return "I have the cadence and scan mode. What time should Hermsec run it?";
+  return "I have the cadence and time. Which scan mode should this automation use?";
+}
+
+function joinReadableList(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? "";
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")}, and ${items.at(-1)}`;
 }
 
 function parseTimeText(text: string): string | undefined {

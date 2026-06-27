@@ -97,9 +97,9 @@ export function GeneralSettings() {
       </SettingRow>
       <SettingRow
         title="Scan mode"
-        description="Default assistance level for chat and dashboard scans."
+        description="Default scan behavior. Deep uses scanners; Single Agent and MoA inspect code without scanner tools."
       >
-        <div className="w-[420px]">
+        <div className="w-[560px] max-w-full">
           <ScanModeSegmentedControl
             value={general.scanMode}
             onChange={(scanMode) => void update({ general: { ...general, scanMode } })}

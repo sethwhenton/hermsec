@@ -1,21 +1,22 @@
 import { motion } from "framer-motion";
-import { FileText, Radar } from "lucide-react";
+import { Bot, Network, Radar } from "lucide-react";
 import { useId } from "react";
 import { cn } from "@/lib/cn";
-import { scanModeOptions } from "@/lib/scanModes";
-import type { HermsecScanAssistMode } from "@/types/scan";
+import { normalizeScanAssistMode, scanModeOptions } from "@/lib/scanModes";
+import type { HermsecProductScanAssistMode, HermsecVisibleScanAssistMode } from "@/types/scan";
 
 interface ScanModeSegmentedControlProps {
-  value: HermsecScanAssistMode;
-  onChange: (value: HermsecScanAssistMode) => void;
+  value: HermsecProductScanAssistMode;
+  onChange: (value: HermsecProductScanAssistMode) => void;
   compact?: boolean;
   disabled?: boolean;
 }
 
 const modeIcons = {
-  "scanner-model-summary": FileText,
   "deep-assisted": Radar,
-} satisfies Record<HermsecScanAssistMode, typeof FileText>;
+  "single-agent": Bot,
+  "moa-assisted": Network,
+} satisfies Record<HermsecVisibleScanAssistMode, typeof Radar>;
 
 export function ScanModeSegmentedControl({
   value,
@@ -24,19 +25,20 @@ export function ScanModeSegmentedControl({
   disabled = false,
 }: ScanModeSegmentedControlProps) {
   const controlId = useId();
+  const normalizedValue = normalizeScanAssistMode(value);
 
   return (
     <div
       className={cn(
         "grid gap-1 rounded-xl border border-border bg-background p-1",
-        compact ? "grid-cols-2" : "grid-cols-2",
+        "grid-cols-3",
       )}
       role="radiogroup"
       aria-label="Scan assist mode"
     >
       {scanModeOptions.map((option) => {
         const Icon = modeIcons[option.id];
-        const selected = value === option.id;
+        const selected = normalizedValue === option.id;
         return (
           <button
             key={option.id}

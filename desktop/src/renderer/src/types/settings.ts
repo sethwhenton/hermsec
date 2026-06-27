@@ -1,4 +1,4 @@
-import type { HermsecScanAssistMode } from "./scan";
+import type { HermsecProductScanAssistMode } from "./scan";
 import type { ScannerSettings } from "./scanners";
 
 export type ProviderAuthKind = "api_key" | "custom" | "environment";
@@ -55,9 +55,37 @@ export interface GeneralSettings {
   autoAcceptPermissions: boolean;
   terminalShell: string;
   privacyMode: boolean;
-  scanMode: HermsecScanAssistMode;
+  scanMode: HermsecProductScanAssistMode;
   thinkingLevel: "fast" | "balanced" | "deep";
   contextWindow: "compact" | "standard" | "large";
+}
+
+export type AgentReasoningDepth = "fast" | "balanced" | "deep";
+export type MoAInspectionPresetId = "fast-quorum" | "balanced-panel" | "deep-panel";
+
+export interface AgentModelSelection {
+  providerId?: string;
+  modelId?: string;
+}
+
+export interface SingleAgentScanConfig {
+  providerId?: string;
+  modelId?: string;
+  reasoningDepth: AgentReasoningDepth;
+  maxToolRounds: number;
+}
+
+export interface MoAInspectionPresetConfig {
+  presetId: MoAInspectionPresetId;
+  panelSize: 3 | 5 | 7;
+  debateRounds: number;
+  consensusThreshold: "majority" | "supermajority" | "coordinator";
+  roleModels?: Record<string, AgentModelSelection>;
+}
+
+export interface AgentScanSettings {
+  singleAgent: SingleAgentScanConfig;
+  moa: MoAInspectionPresetConfig;
 }
 
 export type AutomationFrequency = "custom-days" | "weekly" | "monthly" | "daily" | "every-3-days";
@@ -72,7 +100,7 @@ export interface AutomationSettings {
   lastResult?: string;
   lastReportDir?: string;
   lastProjectStateFingerprint?: string;
-  scanMode?: HermsecScanAssistMode;
+  scanMode?: HermsecProductScanAssistMode;
 }
 
 export interface AppSettings {
@@ -84,6 +112,7 @@ export interface AppSettings {
   automation: AutomationSettings;
   providers: ProviderConfig[];
   scanners: ScannerSettings;
+  agents?: AgentScanSettings;
 }
 
 export interface ProviderTestRequest {

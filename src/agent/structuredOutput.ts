@@ -83,6 +83,15 @@ export function validateModelExplanation(
   const text = explanationText(normalized);
   const allowed = collectAllowedEvidence(finding);
 
+  if (finding.category === "code") {
+    if (!finding.location?.file) {
+      violations.push("missing source file for code finding");
+    }
+    if (!finding.evidence?.trim()) {
+      violations.push("missing evidence snippet for code finding");
+    }
+  }
+
   for (const cve of uniqueMatches(text, cvePattern)) {
     if (!allowed.identifiers.has(cve.toUpperCase())) {
       violations.push(`invented CVE identifier: ${cve}`);

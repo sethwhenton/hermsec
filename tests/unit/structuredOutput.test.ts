@@ -91,6 +91,24 @@ test("model explanation validation rejects invented finding ids", () => {
   assert.ok(result.violations.includes("invented finding id: finding-999"));
 });
 
+test("candidate evidence validation rejects explanations without a source file", () => {
+  const { location: _location, ...findingWithoutFile } = anchoredCodeFinding;
+  const result = validateModelExplanation(findingWithoutFile, anchoredCodeExplanation);
+
+  assert.equal(result.ok, false);
+  assert.match(result.violations.join("\n"), /missing source file/i);
+});
+
+test("candidate evidence validation rejects explanations without a scanner snippet", () => {
+  const result = validateModelExplanation({
+    ...anchoredCodeFinding,
+    evidence: "",
+  }, anchoredCodeExplanation);
+
+  assert.equal(result.ok, false);
+  assert.match(result.violations.join("\n"), /missing evidence snippet/i);
+});
+
 test("model explanation validation does not treat defensive slash phrases as file paths", () => {
   const { package: _ignoredPackage, ...findingWithoutPackage } = baseFinding;
   const result = validateModelExplanation({
@@ -113,3 +131,32 @@ test("model explanation validation does not treat defensive slash phrases as fil
 
   assert.equal(result.ok, true);
 });
+
+const anchoredCodeFinding: Finding = {
+  id: "finding-code-1",
+  title: "Dynamic SQL construction",
+  category: "code",
+  severity: "high",
+  confidence: "high",
+  description: "Scanner found dynamic SQL construction.",
+  evidence: "src/app.js:10 const sql = `SELECT * FROM users WHERE id = ${id}`;",
+  remediation: "Use parameterized queries.",
+  tool: "semgrep",
+  ruleId: "javascript.sql-injection",
+  cwe: ["CWE-89"],
+  location: {
+    file: "src/app.js",
+    startLine: 10,
+  },
+  fingerprint: "code-finding-1",
+};
+
+const anchoredCodeExplanation: ModelExplanation = {
+  title: "Dynamic SQL construction",
+  impact: "The scanner evidence indicates a SQL injection risk in a source file.",
+  evidenceSummary: "The scanner reported a risky SQL construction pattern in the supplied source evidence.",
+  suggestedFix: "Use a parameterized query or approved query builder.",
+  confidenceReason: "The explanation is anchored to the scanner supplied source evidence.",
+  safeNextSteps: ["Review the scanner evidence.", "Run Hermsec after changing the query."],
+  cveUsage: "not_present",
+};

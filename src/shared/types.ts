@@ -9,7 +9,9 @@ export type FindingCategory =
 
 export type ScanMode = "auto" | "offline" | "online";
 
-export type ScanAssistMode = "scanner-model-summary" | "deep-assisted";
+export type ScanAssistMode = "deep-assisted" | "single-agent" | "moa-assisted" | "scanner-moa-assisted";
+
+export type ScanAssistModeInput = ScanAssistMode | "scanner-model-summary";
 
 export type ScanProgressStage =
   | "repository"
@@ -80,7 +82,25 @@ export type Finding = {
     name: string;
     installedVersion?: string;
   };
+  agent?: AgentFindingMetadata;
   fingerprint: string;
+};
+
+export type AgentFindingMetadata = {
+  mode: ScanAssistMode;
+  source: "scanner-backed" | "single-agent" | "moa-specialist" | "moa-aggregator";
+  provider: string;
+  model?: string;
+  role?: string;
+  generatedAt: string;
+  candidateIds?: string[];
+  sourceFindingIds?: string[];
+  judge?: {
+    verdict: "accepted" | "rejected" | "needs-review";
+    confidence?: "low" | "medium" | "high";
+    reason?: string;
+    reviewedBy?: string;
+  };
 };
 
 export type ScannerStatus = {
