@@ -6,6 +6,7 @@ This folder contains the paper source, figures, and refreshed results for the Se
 
 - `overleaf-paper/` - ACM/Overleaf-ready paper source.
 - `overleaf-paper/hermsec_moa_paper.tex` - main paper file.
+- `overleaf-paper/hermsec_moa_paper.pdf` - compiled PDF generated from the current paper source.
 - `overleaf-paper/hermsec_moa_refs.bib` - bibliography.
 - `overleaf-paper/figures/` - app screenshots used by the refreshed paper.
 - `results/latest/results.json` - source of truth for the refreshed actual-run metrics.
