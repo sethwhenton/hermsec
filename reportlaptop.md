@@ -662,3 +662,51 @@ This section is append-only. New work should be added as another iteration inste
 | Hybrid score | Scanner + MoA scored TP `7`, FP `9`, FN `5`, precision `0.4375`, recall `0.5833`, F1 `0.5000`. This was the best F1 among the four tested modes. |
 | Paper update | Updated the ACM paper title, abstract, product overview, harness diagram, model/cost discussion, scanner settings screenshot, methodology, results, discussion, future work, and references. The paper now notes that final metrics used `deepseek-v4-flash`; `mimo-v2.5` and `minimax-m3` were configured/considered but not part of the final metric table. |
 | Verification | Root `npm run typecheck` passed. Root `npm test` passed with `94/94`. The ACM PDF compiled successfully and all `7` rendered pages were visually inspected. |
+
+### Iteration 32 - Fresh Research Runner Reset
+
+| Item | Notes |
+| --- | --- |
+| Goal | Reset the Task 5 research workflow around the current thesis: Deep assisted, Single Agent, MoA Low/High, and Scanner + MoA Low/High using efficient non-US models. |
+| Model policy | The research runner now blocks US flagship model families for experiment rows and uses an OpenCode Go model mix: `deepseek-v4-flash` for deep/specialist work, `mimo-v2.5` for alternate specialists, `deepseek-v4-pro` for judging, and `minimax-m3` for aggregation. |
+| Product runtime | MoA and Scanner + MoA now support low/high specialist fan-out. The high panel includes injection/execution, auth/data-flow, secrets/config, database/storage, and config/IaC specialists. Runtime metadata records each role model and duration. |
+| Settings UI | `Settings > Agents` now exposes model rows for the expanded MoA roles, including database/storage and config/IaC. Enabled models from configured providers remain the selectable pool. |
+| Research artifacts | Added `scripts/research-task5-medium-benchmark.mjs`, which prepares the requested scenario matrix, benchmark subset manifest, result JSON, CSV metrics, and SVG charts under `docs/research/task5-hermsec-moa/results/latest/`. |
+| Benchmark subset prep | The runner detects and samples local public benchmark checkouts: OWASP BenchmarkJava, OpenSSF CVE Benchmark, CASTLE, and Juliet when available. In this laptop state, BenchmarkJava, OpenSSF CVE Benchmark, and CASTLE were available; Juliet was missing. |
+| Paper cleanup | Removed stale scanner-only claims such as `89 of 184`, `48.4%`, and `61.8%`. The paper now treats the latest metric table as pending until real model-backed runs complete. |
+| Current blocker | OpenCode Go is configured locally with `20` models, but no API key is saved in `%APPDATA%\\hermsec-v3\\settings.json` and `OPENCODE_GO_API_KEY` is not set in the shell. Real medium benchmark execution is blocked until credentials are restored. |
+| Dry-run output | Regenerated deterministic dry-run artifacts at `docs/research/task5-hermsec-moa/results/latest/`. These validate the harness and document the planned matrix, but they are not publishable performance results. |
+| Verification | `npm test` passed with `96/96`. `npm --prefix desktop run typecheck` passed. `npm --prefix desktop run build` passed. `node --test scripts\\research-task5-medium-benchmark.test.mjs` passed. `git diff --check` reported only CRLF normalization warnings. |
+| Next step | Save the OpenCode Go API key in HermSec settings or set `OPENCODE_GO_API_KEY`, then run `node scripts\\research-task5-medium-benchmark.mjs --actual --subset medium` to produce publishable fresh results. |
+
+### Iteration 33 - Actual Medium Research Matrix
+
+| Item | Notes |
+| --- | --- |
+| Goal | Run the refreshed Task 5 matrix with real OpenCode Go model calls and update the research paper from placeholders to actual results. |
+| Credential source | The research runner now reads `OPENCODE_GO_API_KEY` from `.env.local` when the shell environment and desktop settings do not provide a key. The key is not printed or written to artifacts. |
+| Harness fix | Scanner + MoA High initially failed when the false-positive judge received too many candidates in one request. Added batched judge handling with recursive split and needs-review fallback for single failed candidates. |
+| Deep assisted fix | Deep assisted initially hit provider timeout fallback. Research runs now use smaller model explanation chunks and a longer summary watchdog. The final run has no provider-failed Deep assisted rows; two vulnerable rows used `unsupported-model-output` fallback because evidence validation rejected unsupported model text. |
+| Runner UX | Added `--scenario` and `--fixture` filters so failed cells can be retried without rerunning the whole matrix. |
+| Actual run | Ran `node scripts\\research-task5-medium-benchmark.mjs --actual --subset medium --timeout-ms 240000`. It completed `24/24` mode-and-fixture cells successfully. |
+| Results | Deep assisted F1 `0.1188`; Single Agent F1 `0.2667`; MoA Low F1 `0.4762`; MoA High F1 `0.3333`; Scanner + MoA Low F1 `0.1395`; Scanner + MoA High F1 `0.1707`. MoA Low was the best balanced mode; Scanner + MoA High had highest recall but too many false positives. |
+| Artifacts | Updated `docs/research/task5-hermsec-moa/results/latest/` with actual `results.json`, `metrics.csv`, charts, subset manifest, and 24 run folders. |
+| Paper update | Replaced Task 5 placeholders with actual metrics, exact model mix, testing problems, discussion answers, and updated README notes. |
+
+### Iteration 34 - Subagent Review Cleanup
+
+| Item | Notes |
+| --- | --- |
+| Goal | Use subagent review to catch final research/runtime issues before handoff. |
+| Research review fix | The paper conclusion still used old placeholder wording. Rewrote it to state the actual result: MoA Low had the best F1, Single Agent had the best precision, and Scanner + MoA High had the best recall but too much noise. |
+| Runtime review fix | Filtered retry runs using `--scenario` or `--fixture` wrote filtered `results.json` but an unfiltered `subset-manifest.json`. Fixed the manifest to use the selected scenarios and added a regression test. |
+| Verification | `node --test scripts\\research-task5-medium-benchmark.test.mjs` passed with `3/3`. `npm run build:core` passed. |
+
+### Iteration 35 - Research Artifact Cleanup For Push
+
+| Item | Notes |
+| --- | --- |
+| Goal | Keep only the updated paper source and new actual-run result bundle in the repository. |
+| Removed | Deleted older sanitized `findings/` summaries, stale chart screenshots, unreferenced app screenshots, and the old compiled PDF. |
+| Kept | Kept current ACM source, bibliography, ACM support files, current app screenshots referenced by the paper, and `docs/research/task5-hermsec-moa/results/latest/`. |
+| Docs | Updated README files so they point to the TeX paper source and fresh `results/latest` artifacts instead of old findings/PDF outputs. |

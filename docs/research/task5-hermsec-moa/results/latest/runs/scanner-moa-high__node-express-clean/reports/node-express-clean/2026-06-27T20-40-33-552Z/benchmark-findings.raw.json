@@ -1,0 +1,90 @@
+{
+  "schemaVersion": "1.0",
+  "scanId": "scan-df714d2c27f7dcc5",
+  "target": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\node-express-clean",
+  "generatedAt": "2026-06-27T20:40:33.552Z",
+  "findings": [
+    {
+      "id": "finding-c6cbfa8ae3511fdb",
+      "title": "Outdated express dependency vulnerable to known advisories",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "The pinned express@4.18.2 is affected by multiple known vulnerabilities (open redirect and XSS via response.redirect). Both advisories are remediated by upgrading to a current express 4.x release.",
+      "evidence": "express@4.18.2 is affected by GHSA-rv95-896h-c2vc (CVE-2024-29041, open redirect) and GHSA-qw6h-vgh9-j6wx (CVE-2024-43796, XSS via response.redirect). pmg corroborates express<4.19.2 and express<4.20.0 ranges.",
+      "remediation": "Upgrade express to a fixed 4.x release (>=4.22.2) and regenerate the lockfile. Run the dependency scanner again to confirm both advisories are cleared.",
+      "tool": "hermsec-scanner-moa",
+      "ruleId": "npm:express-multiple-advisories",
+      "cwe": [
+        "CWE-601",
+        "CWE-79"
+      ],
+      "location": {
+        "file": "package-lock.json",
+        "startLine": 1,
+        "endLine": 1
+      },
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "moa-aggregator",
+        "provider": "opencode-go",
+        "model": "MiniMax-M3",
+        "generatedAt": "2026-06-27T20:41:46.031Z",
+        "candidateIds": [
+          "candidate-fc937a3ffb4628d9"
+        ],
+        "sourceFindingIds": [
+          "scanner:finding-79460a7a95ca1609",
+          "scanner:finding-5d7c8a7ede9c55b6",
+          "scanner:finding-b80725495585908e",
+          "scanner:finding-34a12328494fee7c"
+        ],
+        "judge": {
+          "verdict": "accepted",
+          "reviewedBy": "moa-false-positive-judge",
+          "reason": "Aggregated from MoA candidates that passed false-positive judging."
+        }
+      },
+      "fingerprint": "fp-d532ddd5eb4e578f"
+    },
+    {
+      "id": "finding-499332388425438c",
+      "title": "HTML response embeds untrusted input without escaping",
+      "category": "code",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "A route handler renders user-controlled values directly into an HTML string returned via res.send, allowing stored/reflected cross-site scripting.",
+      "evidence": "src/routes/search.js:34 res.send(`<h1>${name}</h1><p>${digest}</p>`); — name and digest are interpolated into HTML with no escaping.",
+      "remediation": "Escape both name and digest before interpolation, or render via a templating engine with auto-escaping enabled and set a restrictive Content-Security-Policy header. Validate and normalize inputs at the boundary.",
+      "tool": "hermsec-scanner-moa",
+      "ruleId": "hermsec.code.unsanitized-html-response",
+      "cwe": [
+        "CWE-79"
+      ],
+      "location": {
+        "file": "src/routes/search.js",
+        "startLine": 34,
+        "endLine": 34
+      },
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "moa-aggregator",
+        "provider": "opencode-go",
+        "model": "MiniMax-M3",
+        "generatedAt": "2026-06-27T20:41:46.032Z",
+        "candidateIds": [
+          "candidate-825196015a48b69c"
+        ],
+        "sourceFindingIds": [
+          "scanner:finding-b1bdc12ef0d825ab"
+        ],
+        "judge": {
+          "verdict": "accepted",
+          "reviewedBy": "moa-false-positive-judge",
+          "reason": "Aggregated from MoA candidates that passed false-positive judging."
+        }
+      },
+      "fingerprint": "fp-57c670b361befe0d"
+    }
+  ]
+}

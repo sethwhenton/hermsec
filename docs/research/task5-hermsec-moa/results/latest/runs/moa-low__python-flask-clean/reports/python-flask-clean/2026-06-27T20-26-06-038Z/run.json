@@ -1,0 +1,18 @@
+{
+  "durationMs": 314,
+  "fallback": {
+    "actualReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-26-06-038Z",
+    "configuredReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-clean\\reports",
+    "used": false
+  },
+  "finishedAt": "2026-06-27T20:26:06.038Z",
+  "git": {
+    "branch": "main",
+    "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+    "dirty": true
+  },
+  "id": "scan-5d515c2c819561cf",
+  "mode": "auto",
+  "modeLabel": "MoA-assisted inspection",
+  "startedAt": "2026-06-27T20:26:05.724Z"
+}

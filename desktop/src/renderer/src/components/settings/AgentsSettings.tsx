@@ -38,6 +38,16 @@ const moaRoleModels: Array<{ id: string; label: string; description: string }> =
     description: "Hardcoded secrets, debug posture, weak headers, deployment config, and unsafe defaults.",
   },
   {
+    id: "database-and-storage",
+    label: "Database and storage",
+    description: "Database queries, object storage, persistence controls, migrations, and data handling risks.",
+  },
+  {
+    id: "config-and-iac",
+    label: "Config and IaC",
+    description: "Docker, Kubernetes, CI, Terraform, cloud, environment, and deployment configuration risks.",
+  },
+  {
     id: "moa-false-positive-judge",
     label: "False-positive judge",
     description: "Reviews candidate findings and rejects weak or unsupported agent claims.",

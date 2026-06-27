@@ -1,0 +1,73 @@
+{
+  "agentMode": {
+    "acceptedFindingCount": 2,
+    "agents": [
+      {
+        "id": "single-agent-inspector",
+        "label": "Single Agent Inspector",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "security-inspector",
+        "runtimeMs": 14062,
+        "status": "completed"
+      }
+    ],
+    "agentsUsed": [
+      "single-agent-inspector"
+    ],
+    "candidateFindingCount": 2,
+    "findings": {
+      "finding-29d66c8cfa313e07": {
+        "agentIds": [
+          "single-agent"
+        ],
+        "sourceLabel": "single-agent-inspected",
+        "sourceLabels": [
+          "single-agent-inspected"
+        ]
+      },
+      "finding-72a366f9ced461de": {
+        "agentIds": [
+          "single-agent"
+        ],
+        "sourceLabel": "single-agent-inspected",
+        "sourceLabels": [
+          "single-agent-inspected"
+        ]
+      }
+    },
+    "mode": "single-agent",
+    "modeLabel": "Single-agent inspection",
+    "needsHumanReviewCount": 0,
+    "rejectedFindingCount": 0,
+    "scanMode": "single-agent",
+    "totalAgentRuntimeMs": 14062
+  },
+  "generatedAt": "2026-06-27T20:22:41.054Z",
+  "report": {
+    "generatedWithModel": true,
+    "redactionApplied": false
+  },
+  "scanId": "scan-c8aa3d82e25c187a",
+  "schemaVersion": "1.0",
+  "summary": {
+    "confirmedCves": 0,
+    "critical": 0,
+    "generatedWithModel": true,
+    "high": 2,
+    "info": 0,
+    "knownExploited": 0,
+    "low": 0,
+    "medium": 0,
+    "scannerFailures": 0,
+    "secrets": 0,
+    "total": 2
+  },
+  "target": {
+    "displayName": "node-express-vulnerable",
+    "kind": "local-path",
+    "value": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\node-express-vulnerable"
+  },
+  "workspaceId": "ws-cd7a61cac17ceb13",
+  "workspaceName": "node-express-vulnerable"
+}

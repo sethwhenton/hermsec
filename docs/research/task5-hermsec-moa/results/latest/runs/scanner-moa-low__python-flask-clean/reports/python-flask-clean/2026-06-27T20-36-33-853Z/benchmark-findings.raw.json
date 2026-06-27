@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "1.0",
+  "scanId": "scan-d6e881a5a5e23a4d",
+  "target": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\python-flask-clean",
+  "generatedAt": "2026-06-27T20:36:33.853Z",
+  "findings": [
+    {
+      "id": "finding-86a9026676959873",
+      "title": "Flask 3.0.3 affected by CVE-2026-27205 (Vary: Cookie header not set on session access)",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "The pinned version of Flask (3.0.3) is affected by a vulnerability in which the framework fails to set the `Vary: Cookie` header when the session object is accessed. Without this header, intermediate caches may serve a response intended for one user/session to another, potentially exposing session-scoped data.",
+      "evidence": "pip-audit reports flask@3.0.3 is affected by CVE-2026-27205, GHSA-68rp-wp8r-4726.",
+      "remediation": "Upgrade flask to a fixed version (3.1.3 or later) in requirements.txt and rebuild the dependency lockfile.",
+      "tool": "hermsec-scanner-moa",
+      "ruleId": "pip-audit:CVE-2026-27205",
+      "cwe": [
+        "CWE-525"
+      ],
+      "location": {
+        "file": "requirements.txt",
+        "startLine": 1,
+        "endLine": 1
+      },
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "moa-aggregator",
+        "provider": "opencode-go",
+        "model": "MiniMax-M3",
+        "generatedAt": "2026-06-27T20:36:59.450Z",
+        "candidateIds": [
+          "candidate-2d40194673ce4dfc"
+        ],
+        "sourceFindingIds": [
+          "scanner:finding-3aef6630933b3c74"
+        ],
+        "judge": {
+          "verdict": "accepted",
+          "reviewedBy": "moa-false-positive-judge",
+          "reason": "Aggregated from MoA candidates that passed false-positive judging."
+        }
+      },
+      "fingerprint": "fp-ec06ec7562d711f2"
+    }
+  ]
+}

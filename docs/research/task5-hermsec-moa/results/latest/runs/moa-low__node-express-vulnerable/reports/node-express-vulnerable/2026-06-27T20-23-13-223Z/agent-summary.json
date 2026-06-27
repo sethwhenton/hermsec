@@ -1,0 +1,142 @@
+{
+  "agentMode": {
+    "acceptedFindingCount": 5,
+    "agents": [
+      {
+        "id": "injection-and-execution",
+        "label": "Injection and execution specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 21993,
+        "status": "completed"
+      },
+      {
+        "id": "auth-and-data-flow",
+        "label": "Auth and data-flow specialist",
+        "model": "xiaomi/mimo-v2.5-20260422",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 4442,
+        "status": "completed"
+      },
+      {
+        "id": "secrets-and-config",
+        "label": "Secrets and config specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 26065,
+        "status": "completed"
+      },
+      {
+        "id": "moa-false-positive-judge",
+        "label": "False-positive Judge",
+        "model": "deepseek-v4-pro",
+        "provider": "opencode-go",
+        "role": "judge",
+        "runtimeMs": 22899,
+        "status": "completed"
+      },
+      {
+        "id": "moa-aggregator",
+        "label": "MoA Aggregator",
+        "model": "MiniMax-M3",
+        "provider": "opencode-go",
+        "role": "aggregator",
+        "runtimeMs": 11933,
+        "status": "completed"
+      }
+    ],
+    "agentsUsed": [
+      "injection-and-execution",
+      "auth-and-data-flow",
+      "secrets-and-config",
+      "moa-false-positive-judge",
+      "moa-aggregator"
+    ],
+    "aggregator": {
+      "agentId": "moa-aggregator",
+      "label": "MoA Aggregator",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go"
+    },
+    "aggregatorModel": "MiniMax-M3",
+    "candidateFindingCount": 8,
+    "findings": {
+      "finding-20c4034da1e1dd7f": {
+        "agentIds": [
+          "injection-and-execution"
+        ],
+        "judgeReason": "Direct evidence of SQL injection via string concatenation in db.query.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-8782c799b91eaafc": {
+        "agentIds": [
+          "injection-and-execution"
+        ],
+        "judgeReason": "Direct evidence of command injection via string concatenation in childProcess.exec.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-a6a062da440676bf": {
+        "agentIds": [
+          "secrets-and-config"
+        ],
+        "judgeReason": "Evidence shows an exposed debug endpoint '/debug-token' that leaks processed token data.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-b6f553d7fae5a7fb": {
+        "agentIds": [
+          "injection-and-execution"
+        ],
+        "judgeReason": "Direct evidence of command injection via template literal in exec call with unsanitized query parameter.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-f157dbe9f0e4e02f": {
+        "agentIds": [
+          "injection-and-execution"
+        ],
+        "judgeReason": "Direct evidence of SQL injection via template literal in query string construction.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      }
+    },
+    "mode": "moa-assisted",
+    "modeLabel": "MoA-assisted inspection",
+    "needsHumanReviewCount": 0,
+    "rejectedFindingCount": 3,
+    "scanMode": "moa-assisted",
+    "totalAgentRuntimeMs": 87505
+  },
+  "executiveSummary": "MoA-assisted inspection produced 5 validated agent-only findings.",
+  "explanations": {},
+  "generatedWithModel": true,
+  "model": "MiniMax-M3",
+  "priorityActions": [
+    "finding-20c4034da1e1dd7f: Use parameterized queries or prepared statements (e.g., db.query('SELECT * FROM users WHERE name = ?', [term])).",
+    "finding-8782c799b91eaafc: Use execFile or spawn with argument array, validate the tool parameter against a whitelist.",
+    "finding-b6f553d7fae5a7fb: Use execFile or spawn with argument array, validate the host parameter against an allowlist of valid hosts.",
+    "finding-f157dbe9f0e4e02f: Use parameterized queries or prepared statements if the query is to be executed, or treat the input as untrusted and apply proper escaping.",
+    "finding-a6a062da440676bf: Remove or guard the /debug-token endpoint behind authentication, feature flags, or environment checks (e.g., only enable in development)."
+  ],
+  "provider": "opencode-go"
+}

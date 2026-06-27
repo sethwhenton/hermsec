@@ -1,0 +1,43 @@
+{
+  "bundleId": "evidence-ed203d5cf44eca38",
+  "findingEvidence": {
+    "finding-39f04bd3c517ef56": [
+      {
+        "location": {
+          "endLine": 20,
+          "file": "src/routes/search.js",
+          "startLine": 18
+        },
+        "message": "src/routes/search.js lines 18-20: exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined);",
+        "ruleId": "command-injection-exec-002",
+        "scanner": "hermsec-moa"
+      }
+    ],
+    "finding-3e46f6e9757c74ac": [
+      {
+        "location": {
+          "endLine": 10,
+          "file": "src/app.js",
+          "startLine": 8
+        },
+        "message": "src/app.js lines 8-10: const tool = req.query.tool; return childProcess.exec(\"tool \" + tool);",
+        "ruleId": "command-injection-exec-001",
+        "scanner": "hermsec-moa"
+      }
+    ],
+    "finding-8c7d0480c465ee36": [
+      {
+        "location": {
+          "endLine": 5,
+          "file": "src/app.js",
+          "startLine": 3
+        },
+        "message": "src/app.js lines 3-5: const term = req.query.q; return db.query(\"SELECT * FROM users WHERE name = '\" + term + \"'\");",
+        "ruleId": "sql-injection-concatenation-001",
+        "scanner": "hermsec-moa"
+      }
+    ]
+  },
+  "rawArtifacts": [],
+  "redactionApplied": false
+}

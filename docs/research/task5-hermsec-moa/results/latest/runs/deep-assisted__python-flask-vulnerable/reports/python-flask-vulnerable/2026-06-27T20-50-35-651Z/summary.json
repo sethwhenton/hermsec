@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-06-27T20:50:35.651Z",
+  "report": {
+    "generatedWithModel": false,
+    "redactionApplied": false
+  },
+  "scanId": "scan-5476239d7b86378e",
+  "schemaVersion": "1.0",
+  "summary": {
+    "confirmedCves": 44,
+    "critical": 0,
+    "generatedWithModel": false,
+    "high": 6,
+    "info": 0,
+    "knownExploited": 0,
+    "low": 2,
+    "medium": 49,
+    "scannerFailures": 0,
+    "secrets": 1,
+    "total": 57
+  },
+  "target": {
+    "displayName": "python-flask-vulnerable",
+    "kind": "local-path",
+    "value": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\python-flask-vulnerable"
+  },
+  "workspaceId": "ws-09cd0f0cab58e3d8",
+  "workspaceName": "python-flask-vulnerable"
+}

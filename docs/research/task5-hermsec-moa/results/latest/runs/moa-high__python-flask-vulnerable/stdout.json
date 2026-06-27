@@ -1,0 +1,171 @@
+{
+  "ok": true,
+  "message": "Scan completed: 3 finding(s). Report: <hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-28-11-603Z",
+  "data": {
+    "scan": {
+      "schemaVersion": "1.0",
+      "id": "scan-2f91f7970d246cc0",
+      "target": "<hermsec-repo>\\tests\\fixtures\\repos\\python-flask-vulnerable",
+      "mode": "auto",
+      "startedAt": "2026-06-27T20:28:11.178Z",
+      "finishedAt": "2026-06-27T20:28:11.603Z",
+      "durationMs": 425,
+      "scannerStatuses": [
+        {
+          "id": "repository-discovery",
+          "label": "Repository discovery",
+          "status": "completed",
+          "message": "Discovered 5 files (python:1, json:1, yaml:1, text:2), package managers: pip, lockfiles: 0, ignored folders: none."
+        },
+        {
+          "id": "moa-assisted",
+          "label": "MoA-assisted inspection",
+          "status": "completed",
+          "message": "MoA-assisted inspection completed with 3 validated findings.",
+          "durationMs": 53813
+        }
+      ],
+      "findings": [
+        {
+          "id": "finding-8a66bd132f71f635",
+          "title": "Command Injection in run endpoint",
+          "category": "code",
+          "severity": "critical",
+          "confidence": "high",
+          "description": "subprocess.check_output is invoked with shell=True and a command string built from user input, allowing arbitrary command execution on the host.",
+          "evidence": "subprocess.check_output(f\"echo {name}\", shell=True, text=True) (app.py line 22)",
+          "remediation": "Avoid shell=True and pass arguments as a list, e.g. subprocess.check_output([\"echo\", name], text=True). Validate or strictly allow-list input if needed.",
+          "tool": "hermsec-moa",
+          "ruleId": "COMMAND-INJECTION-1",
+          "cwe": [
+            "CWE-78"
+          ],
+          "location": {
+            "file": "app.py",
+            "startLine": 22,
+            "endLine": 22
+          },
+          "agent": {
+            "mode": "moa-assisted",
+            "source": "moa-aggregator",
+            "provider": "opencode-go",
+            "model": "MiniMax-M3",
+            "generatedAt": "2026-06-27T20:29:05.424Z",
+            "candidateIds": [
+              "candidate-9657ef5bdf48ba7e"
+            ],
+            "sourceFindingIds": [
+              "candidate-2df6688c09d33f36"
+            ],
+            "judge": {
+              "verdict": "accepted",
+              "reviewedBy": "moa-false-positive-judge",
+              "reason": "Aggregated from MoA candidates that passed false-positive judging."
+            }
+          },
+          "fingerprint": "fp-f74c454137d5a0ce"
+        },
+        {
+          "id": "finding-25db1d868d4fb04a",
+          "title": "SQL Injection in search endpoint",
+          "category": "code",
+          "severity": "high",
+          "confidence": "high",
+          "description": "A SQL query is constructed via f-string interpolation of unsanitized user input, enabling SQL injection. An attacker can alter the query structure to read or modify arbitrary data.",
+          "evidence": "query = f\"SELECT * FROM users WHERE display_name = '{term}'\" (app.py line 15)",
+          "remediation": "Use parameterized queries or an ORM so user input is bound, not concatenated. Example: cursor.execute(\"SELECT * FROM users WHERE display_name = ?\", (term,)).",
+          "tool": "hermsec-moa",
+          "ruleId": "SQL-INJECTION-1",
+          "cwe": [
+            "CWE-89"
+          ],
+          "location": {
+            "file": "app.py",
+            "startLine": 15,
+            "endLine": 15
+          },
+          "agent": {
+            "mode": "moa-assisted",
+            "source": "moa-aggregator",
+            "provider": "opencode-go",
+            "model": "MiniMax-M3",
+            "generatedAt": "2026-06-27T20:29:05.422Z",
+            "candidateIds": [
+              "candidate-0df6ec6a5ff49c82"
+            ],
+            "sourceFindingIds": [
+              "candidate-6461afe0ff10d53b"
+            ],
+            "judge": {
+              "verdict": "accepted",
+              "reviewedBy": "moa-false-positive-judge",
+              "reason": "Aggregated from MoA candidates that passed false-positive judging."
+            }
+          },
+          "fingerprint": "fp-d6ad45099cfacf25"
+        },
+        {
+          "id": "finding-199a36715fca7297",
+          "title": "Flask Debug Mode Enabled",
+          "category": "config",
+          "severity": "medium",
+          "confidence": "medium",
+          "description": "Flask debug mode is enabled, which exposes the interactive Werkzeug debugger and detailed tracebacks. If the service is reachable by untrusted users, this can lead to remote code execution via the debugger console and information disclosure.",
+          "evidence": "app.py line 8: app.config[\"DEBUG\"] = True; app.py line 42: app.run(debug=True, host=\"127.0.0.1\")",
+          "remediation": "Disable debug mode outside of local development: set app.config['DEBUG'] = False and start the server with app.run(debug=False). Ensure the Werkzeug debugger PIN is not exposed and avoid binding to non-loopback interfaces without authentication.",
+          "tool": "hermsec-moa",
+          "ruleId": "debug-mode-enabled",
+          "cwe": [
+            "CWE-489"
+          ],
+          "location": {
+            "file": "app.py",
+            "startLine": 8,
+            "endLine": 8
+          },
+          "agent": {
+            "mode": "moa-assisted",
+            "source": "moa-aggregator",
+            "provider": "opencode-go",
+            "model": "MiniMax-M3",
+            "generatedAt": "2026-06-27T20:29:05.425Z",
+            "candidateIds": [
+              "candidate-e69c280e97988622"
+            ],
+            "sourceFindingIds": [
+              "candidate-345f162c238a563a"
+            ],
+            "judge": {
+              "verdict": "accepted",
+              "reviewedBy": "moa-false-positive-judge",
+              "reason": "Aggregated from MoA candidates that passed false-positive judging."
+            }
+          },
+          "fingerprint": "fp-bf3fb68c7db400d0"
+        }
+      ],
+      "summary": {
+        "total": 3,
+        "critical": 1,
+        "high": 1,
+        "medium": 1,
+        "low": 0,
+        "info": 0
+      },
+      "git": {
+        "branch": "main",
+        "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+        "dirty": true
+      }
+    },
+    "report": {
+      "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-28-11-603Z\\summary.json",
+      "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-28-11-603Z\\findings.json",
+      "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-28-11-603Z\\evidence.json",
+      "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-28-11-603Z\\run.json",
+      "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-28-11-603Z\\agent-summary.json",
+      "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-28-11-603Z\\delta.json",
+      "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-28-11-603Z\\report-document.json"
+    }
+  }
+}

@@ -1,0 +1,550 @@
+{
+  "agentMode": {
+    "acceptedFindingCount": 38,
+    "agents": [
+      {
+        "id": "scanner-stack",
+        "label": "Scanner Stack",
+        "provider": "hermsec-scanners",
+        "role": "scanner",
+        "status": "completed"
+      },
+      {
+        "id": "injection-and-execution",
+        "label": "Injection and execution specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 6613,
+        "status": "completed"
+      },
+      {
+        "id": "auth-and-data-flow",
+        "label": "Auth and data-flow specialist",
+        "model": "xiaomi/mimo-v2.5-20260422",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 1763,
+        "status": "completed"
+      },
+      {
+        "id": "secrets-and-config",
+        "label": "Secrets and config specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 18508,
+        "status": "completed"
+      },
+      {
+        "id": "moa-false-positive-judge",
+        "label": "False-positive Judge",
+        "model": "deepseek-v4-pro",
+        "provider": "opencode-go",
+        "role": "judge",
+        "runtimeMs": 125547,
+        "status": "completed"
+      },
+      {
+        "id": "moa-aggregator",
+        "label": "Scanner + MoA Aggregator",
+        "model": "MiniMax-M3",
+        "provider": "opencode-go",
+        "role": "aggregator",
+        "runtimeMs": 29108,
+        "status": "completed"
+      }
+    ],
+    "agentsUsed": [
+      "scanner-stack",
+      "injection-and-execution",
+      "auth-and-data-flow",
+      "secrets-and-config",
+      "moa-false-positive-judge",
+      "moa-aggregator"
+    ],
+    "aggregator": {
+      "agentId": "moa-aggregator",
+      "label": "Scanner + MoA Aggregator",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go"
+    },
+    "aggregatorModel": "MiniMax-M3",
+    "candidateFindingCount": 61,
+    "findings": {
+      "finding-0f595fbef013f4d6": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-161214d1eed442bc": {
+        "agentIds": [
+          "bandit"
+        ],
+        "judgeReason": "Scanner indicates string-based SQL query construction; likely SQL injection vector.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-1b07d79630a40fd5": {
+        "agentIds": [
+          "injection-and-execution"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-1fb5546ad4cdca07": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence with multiple identifiers (CVE-2026-4292, GHSA, BIT) for known Django vulnerability.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-233500de48472042": {
+        "agentIds": [
+          "secrets-and-config"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-2a662179f20fedac": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-2da8bf57c3beedf7": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence with multiple identifiers (CVE-2024-24680, GHSA, BIT) for known Django vulnerability.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-30d7af736c067ecf": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence with multiple identifiers (CVE-2026-33034, GHSA, BIT) for known Django vulnerability.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-4940470cf86bbc97": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-4d631eba5901a15a": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Confirmed CVE-2025-64459 in django 4.2.1.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-553fcfa7d373c22c": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-5759826843b92b57": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence with multiple identifiers (CVE-2023-46695, GHSA, BIT) for known Django vulnerability.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-59e543d0f5b92291": {
+        "agentIds": [
+          "bandit"
+        ],
+        "judgeReason": "Flask debug mode exposes the Werkzeug debugger and allows arbitrary code execution.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-61f54bb2a229b9c4": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence with multiple identifiers (CVE-2026-4277, GHSA, BIT) for known Django vulnerability.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-6286deb685eb0215": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "Code evidence shows debug=True, which is dangerous outside local development.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-6746dbbd8d8e1e3b": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence with multiple identifiers (CVE-2025-32873, GHSA, BIT) for known Django vulnerability.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-6e29a11e0cc9821d": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-76e0ee6b7af74773": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-79648cd2f4b0451f": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-89c7f141b309a9a2": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-92e2ec5bf5cdeb83": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-991a30f91ac44426": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-9ec04da14758c908": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence with multiple identifiers (CVE-2026-3902, GHSA, BIT) for known Django vulnerability.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-9fdafd73600719c0": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-a2713a54df22bf82": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence with multiple identifiers (CVE-2024-38875, GHSA, BIT) for known Django vulnerability.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-ab0a01e020936a2a": {
+        "agentIds": [
+          "bandit"
+        ],
+        "judgeReason": "Subprocess shell=True is a genuine command injection risk.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-ad5e6ba69c40063c": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "Code evidence shows shell=True with user input, leading to command injection.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-b58346c3abe32f02": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Confirmed CVE-2025-64458 in django 4.2.1.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-b6e9847405c68393": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-b85501840e8f7659": {
+        "agentIds": [
+          "semgrep"
+        ],
+        "judgeReason": "Subprocess shell=True is a genuine command injection risk.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-c44681bed92945fd": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-d02e3f648fb7691a": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence with multiple identifiers (CVE-2026-33033, GHSA, BIT) for known Django vulnerability.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-d2861bc2a152161b": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence with multiple identifiers (CVE-2025-57833, GHSA, BIT) for known Django vulnerability.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-d88e78175b200595": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-df5ff9f08d375620": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-df94066397398095": {
+        "agentIds": [
+          "injection-and-execution"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-eebedbc6bf643f8e": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-f49b9ad6002f4bab": {
+        "agentIds": [
+          "bandit"
+        ],
+        "judgeReason": "MD5 use may be for non-security purposes; insufficient context to confirm impact.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-f9c90720b2faf255": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-faec3c5d94108ef8": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      }
+    },
+    "mode": "scanner-moa-assisted",
+    "modeLabel": "Scanner + MoA inspection",
+    "needsHumanReviewCount": 21,
+    "rejectedFindingCount": 2,
+    "scanMode": "scanner-moa-assisted",
+    "totalAgentRuntimeMs": 181641
+  },
+  "generatedAt": "2026-06-27T20:33:21.809Z",
+  "report": {
+    "generatedWithModel": true,
+    "redactionApplied": false
+  },
+  "scanId": "scan-36689ce1b1b59c22",
+  "schemaVersion": "1.0",
+  "summary": {
+    "confirmedCves": 44,
+    "critical": 2,
+    "generatedWithModel": true,
+    "high": 6,
+    "info": 0,
+    "knownExploited": 0,
+    "low": 0,
+    "medium": 32,
+    "scannerFailures": 0,
+    "secrets": 0,
+    "total": 40
+  },
+  "target": {
+    "displayName": "python-flask-vulnerable",
+    "kind": "local-path",
+    "value": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\python-flask-vulnerable"
+  },
+  "workspaceId": "ws-09cd0f0cab58e3d8",
+  "workspaceName": "python-flask-vulnerable"
+}

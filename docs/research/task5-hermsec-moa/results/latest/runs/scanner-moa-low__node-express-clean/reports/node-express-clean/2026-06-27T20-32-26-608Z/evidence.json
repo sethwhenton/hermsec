@@ -1,0 +1,43 @@
+{
+  "bundleId": "evidence-17a35da072d23e9c",
+  "findingEvidence": {
+    "finding-3634e335aa21615a": [
+      {
+        "location": {
+          "endLine": 1,
+          "file": "package-lock.json",
+          "startLine": 1
+        },
+        "message": "express@4.18.2 is affected by GHSA-rv95-896h-c2vc / CVE-2024-29041 (Open Redirect); confirmed by osv-scanner and npm-audit.",
+        "ruleId": "osv:GHSA-rv95-896h-c2vc",
+        "scanner": "hermsec-scanner-moa"
+      }
+    ],
+    "finding-7019dba50fce9299": [
+      {
+        "location": {
+          "endLine": 34,
+          "file": "src/routes/search.js",
+          "startLine": 34
+        },
+        "message": "src/routes/search.js:34 res.send(`<h1>${name}</h1><p>${digest}</p>`);",
+        "ruleId": "hermsec.code.unsanitized-html-response",
+        "scanner": "hermsec-scanner-moa"
+      }
+    ],
+    "finding-78719257fc1c2afc": [
+      {
+        "location": {
+          "endLine": 1,
+          "file": "package-lock.json",
+          "startLine": 1
+        },
+        "message": "express@4.18.2 is affected by GHSA-qw6h-vgh9-j6wx / CVE-2024-43796 (XSS via response.redirect); confirmed by osv-scanner and npm-audit.",
+        "ruleId": "osv:GHSA-qw6h-vgh9-j6wx",
+        "scanner": "hermsec-scanner-moa"
+      }
+    ]
+  },
+  "rawArtifacts": [],
+  "redactionApplied": false
+}

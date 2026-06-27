@@ -1,0 +1,126 @@
+{
+  "agentMode": {
+    "acceptedFindingCount": 5,
+    "agents": [
+      {
+        "id": "scanner-stack",
+        "label": "Scanner Stack",
+        "provider": "hermsec-scanners",
+        "role": "scanner",
+        "status": "completed"
+      },
+      {
+        "id": "injection-and-execution",
+        "label": "Injection and execution specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 5127,
+        "status": "completed"
+      },
+      {
+        "id": "auth-and-data-flow",
+        "label": "Auth and data-flow specialist",
+        "model": "xiaomi/mimo-v2.5-20260422",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 1018,
+        "status": "completed"
+      },
+      {
+        "id": "secrets-and-config",
+        "label": "Secrets and config specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 7493,
+        "status": "completed"
+      },
+      {
+        "id": "moa-false-positive-judge",
+        "label": "False-positive Judge",
+        "model": "deepseek-v4-pro",
+        "provider": "opencode-go",
+        "role": "judge",
+        "runtimeMs": 16455,
+        "status": "completed"
+      },
+      {
+        "id": "moa-aggregator",
+        "label": "Scanner + MoA Aggregator",
+        "model": "MiniMax-M3",
+        "provider": "opencode-go",
+        "role": "aggregator",
+        "runtimeMs": 13672,
+        "status": "completed"
+      }
+    ],
+    "agentsUsed": [
+      "scanner-stack",
+      "injection-and-execution",
+      "auth-and-data-flow",
+      "secrets-and-config",
+      "moa-false-positive-judge",
+      "moa-aggregator"
+    ],
+    "aggregator": {
+      "agentId": "moa-aggregator",
+      "label": "Scanner + MoA Aggregator",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go"
+    },
+    "aggregatorModel": "MiniMax-M3",
+    "candidateFindingCount": 6,
+    "findings": {
+      "finding-3634e335aa21615a": {
+        "agentIds": [
+          "moa-aggregator"
+        ],
+        "judgeReason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-aggregated",
+        "sourceLabels": [
+          "moa-aggregated"
+        ]
+      },
+      "finding-7019dba50fce9299": {
+        "agentIds": [
+          "moa-aggregator"
+        ],
+        "judgeReason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-aggregated",
+        "sourceLabels": [
+          "moa-aggregated"
+        ]
+      },
+      "finding-78719257fc1c2afc": {
+        "agentIds": [
+          "moa-aggregator"
+        ],
+        "judgeReason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-aggregated",
+        "sourceLabels": [
+          "moa-aggregated"
+        ]
+      }
+    },
+    "mode": "scanner-moa-assisted",
+    "modeLabel": "Scanner + MoA inspection",
+    "needsHumanReviewCount": 0,
+    "rejectedFindingCount": 1,
+    "scanMode": "scanner-moa-assisted",
+    "totalAgentRuntimeMs": 43892
+  },
+  "executiveSummary": "Scanner + MoA inspection produced 3 validated scanner and agent findings.",
+  "explanations": {},
+  "generatedWithModel": true,
+  "model": "MiniMax-M3",
+  "priorityActions": [
+    "finding-3634e335aa21615a: Upgrade express to a fixed release such as 4.19.2 or later (4.22.2 recommended to also cover other express advisories).",
+    "finding-7019dba50fce9299: Escape untrusted values (e.g., via a vetted escape function) or render through a templating engine that auto-escapes by default; avoid interpolating raw input into HTML.",
+    "finding-78719257fc1c2afc: Upgrade express to a fixed release such as 4.20.0 or later (4.22.2 recommended)."
+  ],
+  "provider": "opencode-go"
+}

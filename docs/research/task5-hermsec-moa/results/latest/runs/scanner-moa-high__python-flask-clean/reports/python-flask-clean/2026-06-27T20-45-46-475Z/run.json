@@ -1,0 +1,18 @@
+{
+  "durationMs": 12205,
+  "fallback": {
+    "actualReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-45-46-475Z",
+    "configuredReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__python-flask-clean\\reports",
+    "used": false
+  },
+  "finishedAt": "2026-06-27T20:45:46.475Z",
+  "git": {
+    "branch": "main",
+    "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+    "dirty": true
+  },
+  "id": "scan-495e81916776635b",
+  "mode": "auto",
+  "modeLabel": "Scanner + MoA inspection",
+  "startedAt": "2026-06-27T20:45:34.270Z"
+}

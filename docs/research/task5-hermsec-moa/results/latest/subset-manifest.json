@@ -1,0 +1,1319 @@
+{
+  "schemaVersion": "1.0",
+  "generatedAt": "2026-06-27T20:20:30.489Z",
+  "subset": "medium",
+  "fixtureCount": 4,
+  "expectedFindingCount": 12,
+  "fixtures": [
+    {
+      "id": "node-express-vulnerable",
+      "path": "tests/fixtures/repos/node-express-vulnerable",
+      "kind": "vulnerable-app",
+      "language": [
+        "javascript"
+      ],
+      "framework": [
+        "express"
+      ],
+      "safeToRun": false,
+      "expectedFindingCount": 6,
+      "expectedFindings": [
+        {
+          "id": "node-sqli-user-search",
+          "category": "code",
+          "severity": "high",
+          "cwe": [
+            "CWE-89"
+          ],
+          "location": {
+            "file": "src/routes/search.js",
+            "startLine": 14
+          }
+        },
+        {
+          "id": "node-command-echo",
+          "category": "code",
+          "severity": "high",
+          "cwe": [
+            "CWE-78"
+          ],
+          "location": {
+            "file": "src/routes/search.js",
+            "startLine": 20
+          }
+        },
+        {
+          "id": "node-path-read",
+          "category": "code",
+          "severity": "medium",
+          "cwe": [
+            "CWE-22"
+          ],
+          "location": {
+            "file": "src/routes/search.js",
+            "startLine": 26
+          }
+        },
+        {
+          "id": "node-reflected-html",
+          "category": "code",
+          "severity": "medium",
+          "cwe": [
+            "CWE-79"
+          ],
+          "location": {
+            "file": "src/routes/search.js",
+            "startLine": 34
+          }
+        },
+        {
+          "id": "node-weak-md5",
+          "category": "code",
+          "severity": "low",
+          "cwe": [
+            "CWE-328"
+          ],
+          "location": {
+            "file": "src/routes/search.js",
+            "startLine": 33
+          }
+        },
+        {
+          "id": "node-fake-secret",
+          "category": "secret",
+          "severity": "high",
+          "cwe": [
+            "CWE-798"
+          ],
+          "location": {
+            "file": "src/routes/search.js",
+            "startLine": 7
+          }
+        }
+      ]
+    },
+    {
+      "id": "node-express-clean",
+      "path": "tests/fixtures/repos/node-express-clean",
+      "kind": "clean-app",
+      "language": [
+        "javascript"
+      ],
+      "framework": [
+        "express"
+      ],
+      "safeToRun": false,
+      "expectedFindingCount": 0,
+      "expectedFindings": []
+    },
+    {
+      "id": "python-flask-vulnerable",
+      "path": "tests/fixtures/repos/python-flask-vulnerable",
+      "kind": "vulnerable-app",
+      "language": [
+        "python"
+      ],
+      "framework": [
+        "flask"
+      ],
+      "safeToRun": false,
+      "expectedFindingCount": 6,
+      "expectedFindings": [
+        {
+          "id": "python-sqli-user-search",
+          "category": "code",
+          "severity": "high",
+          "cwe": [
+            "CWE-89"
+          ],
+          "location": {
+            "file": "app.py",
+            "startLine": 14
+          }
+        },
+        {
+          "id": "python-command-shell",
+          "category": "code",
+          "severity": "high",
+          "cwe": [
+            "CWE-78"
+          ],
+          "location": {
+            "file": "app.py",
+            "startLine": 20
+          }
+        },
+        {
+          "id": "python-path-read",
+          "category": "code",
+          "severity": "medium",
+          "cwe": [
+            "CWE-22"
+          ],
+          "location": {
+            "file": "app.py",
+            "startLine": 26
+          }
+        },
+        {
+          "id": "python-template-string",
+          "category": "code",
+          "severity": "medium",
+          "cwe": [
+            "CWE-79"
+          ],
+          "location": {
+            "file": "app.py",
+            "startLine": 34
+          }
+        },
+        {
+          "id": "python-weak-md5",
+          "category": "code",
+          "severity": "low",
+          "cwe": [
+            "CWE-328"
+          ],
+          "location": {
+            "file": "app.py",
+            "startLine": 33
+          }
+        },
+        {
+          "id": "python-fake-secret",
+          "category": "secret",
+          "severity": "high",
+          "cwe": [
+            "CWE-798"
+          ],
+          "location": {
+            "file": "app.py",
+            "startLine": 9
+          }
+        }
+      ]
+    },
+    {
+      "id": "python-flask-clean",
+      "path": "tests/fixtures/repos/python-flask-clean",
+      "kind": "clean-app",
+      "language": [
+        "python"
+      ],
+      "framework": [
+        "flask"
+      ],
+      "safeToRun": false,
+      "expectedFindingCount": 0,
+      "expectedFindings": []
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "deep-assisted",
+      "label": "Deep assisted",
+      "assistMode": "deep-assisted",
+      "modelTier": "efficient-default",
+      "provider": "opencode-go",
+      "defaultModel": "deepseek-v4-flash",
+      "routeModels": [
+        "deepseek-v4-flash"
+      ],
+      "scannerBacked": true
+    },
+    {
+      "id": "single-agent",
+      "label": "Single agent",
+      "assistMode": "single-agent",
+      "modelTier": "efficient-default",
+      "provider": "opencode-go",
+      "defaultModel": "deepseek-v4-flash",
+      "routeModels": [
+        "deepseek-v4-flash"
+      ],
+      "scannerBacked": false,
+      "routeConfig": {
+        "singleAgent": {
+          "provider": "opencode-go",
+          "model": "deepseek-v4-flash",
+          "apiKeyEnv": "OPENCODE_GO_API_KEY",
+          "allowRemoteProviders": true
+        }
+      },
+      "env": {
+        "HERMSEC_PRODUCT_AGENT_SPECIALIST_COUNT": "1",
+        "HERMSEC_PRODUCT_AGENT_PANEL": "single"
+      }
+    },
+    {
+      "id": "moa-low",
+      "label": "MoA low",
+      "assistMode": "moa-assisted",
+      "modelTier": "low",
+      "provider": "opencode-go",
+      "defaultModel": "deepseek-v4-flash",
+      "routeModels": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "scannerBacked": false,
+      "routeConfig": {
+        "moa": {
+          "injection-and-execution": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "auth-and-data-flow": {
+            "provider": "opencode-go",
+            "model": "mimo-v2.5",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "secrets-and-config": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "moa-false-positive-judge": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-pro",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "moa-aggregator": {
+            "provider": "opencode-go",
+            "model": "minimax-m3",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          }
+        }
+      },
+      "env": {
+        "HERMSEC_PRODUCT_AGENT_SPECIALIST_COUNT": "3",
+        "HERMSEC_PRODUCT_AGENT_PANEL": "low",
+        "HERMSEC_PRODUCT_AGENT_CANDIDATE_LIMIT": "60"
+      }
+    },
+    {
+      "id": "moa-high",
+      "label": "MoA high",
+      "assistMode": "moa-assisted",
+      "modelTier": "high",
+      "provider": "opencode-go",
+      "defaultModel": "deepseek-v4-flash",
+      "routeModels": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "scannerBacked": false,
+      "routeConfig": {
+        "moa": {
+          "injection-and-execution": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "auth-and-data-flow": {
+            "provider": "opencode-go",
+            "model": "mimo-v2.5",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "secrets-and-config": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "database-and-storage": {
+            "provider": "opencode-go",
+            "model": "mimo-v2.5",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "config-and-iac": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "moa-false-positive-judge": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-pro",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "moa-aggregator": {
+            "provider": "opencode-go",
+            "model": "minimax-m3",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          }
+        }
+      },
+      "env": {
+        "HERMSEC_PRODUCT_AGENT_SPECIALIST_COUNT": "5",
+        "HERMSEC_PRODUCT_AGENT_PANEL": "high",
+        "HERMSEC_PRODUCT_AGENT_CANDIDATE_LIMIT": "120"
+      }
+    },
+    {
+      "id": "scanner-moa-low",
+      "label": "Scanner+MoA low",
+      "assistMode": "scanner-moa-assisted",
+      "modelTier": "low",
+      "provider": "opencode-go",
+      "defaultModel": "deepseek-v4-flash",
+      "routeModels": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "scannerBacked": true,
+      "routeConfig": {
+        "moa": {
+          "injection-and-execution": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "auth-and-data-flow": {
+            "provider": "opencode-go",
+            "model": "mimo-v2.5",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "secrets-and-config": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "moa-false-positive-judge": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-pro",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "moa-aggregator": {
+            "provider": "opencode-go",
+            "model": "minimax-m3",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          }
+        }
+      },
+      "env": {
+        "HERMSEC_PRODUCT_AGENT_SPECIALIST_COUNT": "3",
+        "HERMSEC_PRODUCT_AGENT_PANEL": "low",
+        "HERMSEC_PRODUCT_AGENT_CANDIDATE_LIMIT": "60",
+        "HERMSEC_SCANNER_MOA_SCANNER_CANDIDATE_LIMIT": "80"
+      }
+    },
+    {
+      "id": "scanner-moa-high",
+      "label": "Scanner+MoA high",
+      "assistMode": "scanner-moa-assisted",
+      "modelTier": "high",
+      "provider": "opencode-go",
+      "defaultModel": "deepseek-v4-flash",
+      "routeModels": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "scannerBacked": true,
+      "routeConfig": {
+        "moa": {
+          "injection-and-execution": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "auth-and-data-flow": {
+            "provider": "opencode-go",
+            "model": "mimo-v2.5",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "secrets-and-config": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "database-and-storage": {
+            "provider": "opencode-go",
+            "model": "mimo-v2.5",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "config-and-iac": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "moa-false-positive-judge": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-pro",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "moa-aggregator": {
+            "provider": "opencode-go",
+            "model": "minimax-m3",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          }
+        }
+      },
+      "env": {
+        "HERMSEC_PRODUCT_AGENT_SPECIALIST_COUNT": "5",
+        "HERMSEC_PRODUCT_AGENT_PANEL": "high",
+        "HERMSEC_PRODUCT_AGENT_CANDIDATE_LIMIT": "120",
+        "HERMSEC_SCANNER_MOA_SCANNER_CANDIDATE_LIMIT": "120"
+      }
+    }
+  ],
+  "modelPolicy": {
+    "provider": "opencode-go",
+    "providerLabel": "OpenCode Go",
+    "credentialEnv": "OPENCODE_GO_API_KEY",
+    "allowedModels": [
+      {
+        "id": "deepseek-v4-flash",
+        "origin": "non-US",
+        "role": "main specialist and deep-assisted triage model"
+      },
+      {
+        "id": "mimo-v2.5",
+        "origin": "non-US",
+        "role": "alternate specialist model for code/context diversity"
+      },
+      {
+        "id": "deepseek-v4-pro",
+        "origin": "non-US",
+        "role": "false-positive judge only"
+      },
+      {
+        "id": "minimax-m3",
+        "origin": "non-US",
+        "role": "final aggregator model"
+      }
+    ],
+    "excludedModels": [
+      {
+        "id": "gpt-*",
+        "reason": "US flagship family excluded by the experiment policy."
+      },
+      {
+        "id": "claude-*",
+        "reason": "US flagship family excluded by the experiment policy."
+      },
+      {
+        "id": "gemini-*",
+        "reason": "US flagship family excluded by the experiment policy."
+      },
+      {
+        "id": "grok-*",
+        "reason": "US flagship family excluded by the experiment policy."
+      },
+      {
+        "id": "llama-*",
+        "reason": "US flagship family excluded by the experiment policy."
+      }
+    ]
+  },
+  "publicBenchmarks": {
+    "schemaVersion": "1.0",
+    "generatedAt": "2026-06-27T20:20:30.489Z",
+    "note": "Public benchmark chunks are prepared for the publishable actual run. The controlled fixture matrix remains the local smoke/scoring harness until model-backed public-suite execution is enabled.",
+    "suites": [
+      {
+        "id": "owasp-benchmark-java",
+        "label": "OWASP BenchmarkJava",
+        "status": "available",
+        "source": "OWASP-Benchmark/BenchmarkJava",
+        "localPath": ".hermsec-benchmarks/BenchmarkJava",
+        "selection": "Up to 3 vulnerable and 2 safe cases per selected Java category.",
+        "selectedCaseCount": 45,
+        "categories": [
+          "sqli",
+          "xss",
+          "cmdi",
+          "pathtraver",
+          "ldapi",
+          "xpathi",
+          "crypto",
+          "hash",
+          "weakrand"
+        ],
+        "cases": [
+          {
+            "testName": "BenchmarkTest00008",
+            "category": "sqli",
+            "vulnerable": true,
+            "cwe": "CWE-89"
+          },
+          {
+            "testName": "BenchmarkTest00018",
+            "category": "sqli",
+            "vulnerable": true,
+            "cwe": "CWE-89"
+          },
+          {
+            "testName": "BenchmarkTest00024",
+            "category": "sqli",
+            "vulnerable": true,
+            "cwe": "CWE-89"
+          },
+          {
+            "testName": "BenchmarkTest00052",
+            "category": "sqli",
+            "vulnerable": false,
+            "cwe": "CWE-89"
+          },
+          {
+            "testName": "BenchmarkTest00104",
+            "category": "sqli",
+            "vulnerable": false,
+            "cwe": "CWE-89"
+          },
+          {
+            "testName": "BenchmarkTest00013",
+            "category": "xss",
+            "vulnerable": true,
+            "cwe": "CWE-79"
+          },
+          {
+            "testName": "BenchmarkTest00014",
+            "category": "xss",
+            "vulnerable": true,
+            "cwe": "CWE-79"
+          },
+          {
+            "testName": "BenchmarkTest00030",
+            "category": "xss",
+            "vulnerable": true,
+            "cwe": "CWE-79"
+          },
+          {
+            "testName": "BenchmarkTest00147",
+            "category": "xss",
+            "vulnerable": false,
+            "cwe": "CWE-79"
+          },
+          {
+            "testName": "BenchmarkTest00151",
+            "category": "xss",
+            "vulnerable": false,
+            "cwe": "CWE-79"
+          },
+          {
+            "testName": "BenchmarkTest00006",
+            "category": "cmdi",
+            "vulnerable": true,
+            "cwe": "CWE-78"
+          },
+          {
+            "testName": "BenchmarkTest00007",
+            "category": "cmdi",
+            "vulnerable": true,
+            "cwe": "CWE-78"
+          },
+          {
+            "testName": "BenchmarkTest00015",
+            "category": "cmdi",
+            "vulnerable": true,
+            "cwe": "CWE-78"
+          },
+          {
+            "testName": "BenchmarkTest00051",
+            "category": "cmdi",
+            "vulnerable": false,
+            "cwe": "CWE-78"
+          },
+          {
+            "testName": "BenchmarkTest00090",
+            "category": "cmdi",
+            "vulnerable": false,
+            "cwe": "CWE-78"
+          },
+          {
+            "testName": "BenchmarkTest00001",
+            "category": "pathtraver",
+            "vulnerable": true,
+            "cwe": "CWE-22"
+          },
+          {
+            "testName": "BenchmarkTest00002",
+            "category": "pathtraver",
+            "vulnerable": true,
+            "cwe": "CWE-22"
+          },
+          {
+            "testName": "BenchmarkTest00011",
+            "category": "pathtraver",
+            "vulnerable": true,
+            "cwe": "CWE-22"
+          },
+          {
+            "testName": "BenchmarkTest00063",
+            "category": "pathtraver",
+            "vulnerable": false,
+            "cwe": "CWE-22"
+          },
+          {
+            "testName": "BenchmarkTest00064",
+            "category": "pathtraver",
+            "vulnerable": false,
+            "cwe": "CWE-22"
+          },
+          {
+            "testName": "BenchmarkTest00012",
+            "category": "ldapi",
+            "vulnerable": true,
+            "cwe": "CWE-90"
+          },
+          {
+            "testName": "BenchmarkTest00021",
+            "category": "ldapi",
+            "vulnerable": true,
+            "cwe": "CWE-90"
+          },
+          {
+            "testName": "BenchmarkTest00044",
+            "category": "ldapi",
+            "vulnerable": true,
+            "cwe": "CWE-90"
+          },
+          {
+            "testName": "BenchmarkTest00138",
+            "category": "ldapi",
+            "vulnerable": false,
+            "cwe": "CWE-90"
+          },
+          {
+            "testName": "BenchmarkTest00139",
+            "category": "ldapi",
+            "vulnerable": false,
+            "cwe": "CWE-90"
+          },
+          {
+            "testName": "BenchmarkTest00207",
+            "category": "xpathi",
+            "vulnerable": true,
+            "cwe": "CWE-643"
+          },
+          {
+            "testName": "BenchmarkTest00442",
+            "category": "xpathi",
+            "vulnerable": true,
+            "cwe": "CWE-643"
+          },
+          {
+            "testName": "BenchmarkTest00607",
+            "category": "xpathi",
+            "vulnerable": true,
+            "cwe": "CWE-643"
+          },
+          {
+            "testName": "BenchmarkTest00116",
+            "category": "xpathi",
+            "vulnerable": false,
+            "cwe": "CWE-643"
+          },
+          {
+            "testName": "BenchmarkTest00117",
+            "category": "xpathi",
+            "vulnerable": false,
+            "cwe": "CWE-643"
+          },
+          {
+            "testName": "BenchmarkTest00005",
+            "category": "crypto",
+            "vulnerable": true,
+            "cwe": "CWE-327"
+          },
+          {
+            "testName": "BenchmarkTest00019",
+            "category": "crypto",
+            "vulnerable": true,
+            "cwe": "CWE-327"
+          },
+          {
+            "testName": "BenchmarkTest00020",
+            "category": "crypto",
+            "vulnerable": true,
+            "cwe": "CWE-327"
+          },
+          {
+            "testName": "BenchmarkTest00054",
+            "category": "crypto",
+            "vulnerable": false,
+            "cwe": "CWE-327"
+          },
+          {
+            "testName": "BenchmarkTest00058",
+            "category": "crypto",
+            "vulnerable": false,
+            "cwe": "CWE-327"
+          },
+          {
+            "testName": "BenchmarkTest00003",
+            "category": "hash",
+            "vulnerable": true,
+            "cwe": "CWE-328"
+          },
+          {
+            "testName": "BenchmarkTest00029",
+            "category": "hash",
+            "vulnerable": true,
+            "cwe": "CWE-328"
+          },
+          {
+            "testName": "BenchmarkTest00046",
+            "category": "hash",
+            "vulnerable": true,
+            "cwe": "CWE-328"
+          },
+          {
+            "testName": "BenchmarkTest00009",
+            "category": "hash",
+            "vulnerable": false,
+            "cwe": "CWE-328"
+          },
+          {
+            "testName": "BenchmarkTest00022",
+            "category": "hash",
+            "vulnerable": false,
+            "cwe": "CWE-328"
+          },
+          {
+            "testName": "BenchmarkTest00023",
+            "category": "weakrand",
+            "vulnerable": true,
+            "cwe": "CWE-330"
+          },
+          {
+            "testName": "BenchmarkTest00066",
+            "category": "weakrand",
+            "vulnerable": true,
+            "cwe": "CWE-330"
+          },
+          {
+            "testName": "BenchmarkTest00067",
+            "category": "weakrand",
+            "vulnerable": true,
+            "cwe": "CWE-330"
+          },
+          {
+            "testName": "BenchmarkTest00010",
+            "category": "weakrand",
+            "vulnerable": false,
+            "cwe": "CWE-330"
+          },
+          {
+            "testName": "BenchmarkTest00042",
+            "category": "weakrand",
+            "vulnerable": false,
+            "cwe": "CWE-330"
+          }
+        ]
+      },
+      {
+        "id": "openssf-cve-benchmark",
+        "label": "OpenSSF CVE Benchmark",
+        "status": "available",
+        "source": "ossf-cve-benchmark/ossf-cve-benchmark",
+        "localPath": ".hermsec-benchmarks/ossf-cve-benchmark",
+        "selection": "First 20 CVE descriptors from the shallow clone, preserving vulnerable repository metadata.",
+        "selectedCaseCount": 20,
+        "cases": [
+          {
+            "cve": "CVE-2016-1000229",
+            "repository": "https://github.com/linxiaowu66/swagger-ui.git",
+            "cwes": [
+              "CWE-079",
+              "CWE-116"
+            ],
+            "prePatchFile": "src/main/javascript/helpers/handlebars.js",
+            "prePatchLine": 68
+          },
+          {
+            "cve": "CVE-2016-10735",
+            "repository": "https://github.com/twbs/bootstrap.git",
+            "cwes": [
+              "CWE-079",
+              "CWE-116"
+            ],
+            "prePatchFile": "js/src/util.js",
+            "prePatchLine": 120
+          },
+          {
+            "cve": "CVE-2017-0931",
+            "repository": "https://github.com/guardian/html-janitor.git",
+            "cwes": [
+              "CWE-079",
+              "CWE-116"
+            ],
+            "prePatchFile": "src/html-janitor.js",
+            "prePatchLine": 43
+          },
+          {
+            "cve": "CVE-2017-1000006",
+            "repository": "https://github.com/plotly/plotly.js.git",
+            "cwes": [
+              "CWE-079",
+              "CWE-116",
+              "CWE-020"
+            ],
+            "prePatchFile": "src/lib/svg_text_utils.js",
+            "prePatchLine": 270
+          },
+          {
+            "cve": "CVE-2017-1000219",
+            "repository": "https://github.com/KyleRoss/windows-cpu.git",
+            "cwes": [
+              "CWE-078",
+              "CWE-088"
+            ],
+            "prePatchFile": "index.js",
+            "prePatchLine": 82
+          },
+          {
+            "cve": "CVE-2017-1000427",
+            "repository": "https://github.com/markedjs/marked.git",
+            "cwes": [
+              "CWE-020"
+            ],
+            "prePatchFile": "lib/marked.js",
+            "prePatchLine": 878
+          },
+          {
+            "cve": "CVE-2017-1001004",
+            "repository": "https://github.com/josdejong/typed-function.git",
+            "cwes": [
+              "CWE-094",
+              "CWE-079",
+              "CWE-116"
+            ],
+            "prePatchFile": "typed-function.js",
+            "prePatchLine": 1118
+          },
+          {
+            "cve": "CVE-2017-10910",
+            "repository": "https://github.com/mqttjs/MQTT.js.git",
+            "cwes": [
+              "CWE-770"
+            ],
+            "prePatchFile": "lib/client.js",
+            "prePatchLine": 267
+          },
+          {
+            "cve": "CVE-2017-15010",
+            "repository": "https://github.com/salesforce/tough-cookie.git",
+            "cwes": [
+              "CWE-730",
+              "CWE-400"
+            ],
+            "prePatchFile": "lib/cookie.js",
+            "prePatchLine": 61
+          },
+          {
+            "cve": "CVE-2017-16003",
+            "repository": "https://github.com/felixrieseberg/windows-build-tools.git",
+            "cwes": [
+              "CWE-829"
+            ],
+            "prePatchFile": "src/download.js",
+            "prePatchLine": 38
+          },
+          {
+            "cve": "CVE-2017-16006",
+            "repository": "https://github.com/jonschlinkert/remarkable.git",
+            "cwes": [
+              "CWE-020"
+            ],
+            "prePatchFile": "lib/parser_inline.js",
+            "prePatchLine": 151
+          },
+          {
+            "cve": "CVE-2017-16011",
+            "repository": "https://github.com/jquery/jquery.git",
+            "cwes": [
+              "CWE-79"
+            ],
+            "prePatchFile": "src/core.js",
+            "prePatchLine": 52
+          },
+          {
+            "cve": "CVE-2017-16014",
+            "repository": "https://github.com/http-party/node-http-proxy.git",
+            "cwes": [
+              "CWE-730"
+            ],
+            "prePatchFile": "lib/node-http-proxy.js",
+            "prePatchLine": 225
+          },
+          {
+            "cve": "CVE-2017-16018",
+            "repository": "https://github.com/restify/node-restify.git",
+            "cwes": [
+              "CWE-079",
+              "CWE-116"
+            ],
+            "prePatchFile": "lib/server.js",
+            "prePatchLine": 202
+          },
+          {
+            "cve": "CVE-2017-16023",
+            "repository": "https://github.com/sindresorhus/decamelize.git",
+            "cwes": [
+              "CWE-730",
+              "CWE-400"
+            ],
+            "prePatchFile": "index.js",
+            "prePatchLine": 8
+          },
+          {
+            "cve": "CVE-2017-16026",
+            "repository": "https://github.com/request/request.git",
+            "cwes": [
+              "CWE-770"
+            ],
+            "prePatchFile": "lib/multipart.js",
+            "prePatchLine": 71
+          },
+          {
+            "cve": "CVE-2017-16028",
+            "repository": "https://github.com/jonschlinkert/randomatic.git",
+            "cwes": [
+              "CWE-338"
+            ],
+            "prePatchFile": "index.js",
+            "prePatchLine": 81
+          },
+          {
+            "cve": "CVE-2017-16029",
+            "repository": "https://github.com/henrytseng/hostr.git",
+            "cwes": [
+              "CWE-022",
+              "CWE-023",
+              "CWE-036",
+              "CWE-073",
+              "CWE-099"
+            ],
+            "prePatchFile": "lib/routes/statics.js",
+            "prePatchLine": 31
+          },
+          {
+            "cve": "CVE-2017-16030",
+            "repository": "https://github.com/3rd-Eden/useragent.git",
+            "cwes": [
+              "CWE-730",
+              "CWE-400"
+            ],
+            "prePatchFile": "lib/regexps.js",
+            "prePatchLine": 887
+          },
+          {
+            "cve": "CVE-2017-16031",
+            "repository": "https://github.com/socketio/socket.io.git",
+            "cwes": [
+              "CWE-338"
+            ],
+            "prePatchFile": "lib/manager.js",
+            "prePatchLine": 755
+          }
+        ]
+      },
+      {
+        "id": "castle-c250",
+        "label": "CASTLE C250",
+        "status": "available",
+        "source": "CASTLE-Benchmark/CASTLE-Benchmark",
+        "localPath": ".hermsec-benchmarks/CASTLE-Benchmark",
+        "selection": "Up to 2 vulnerable and 1 safe C program per selected CWE.",
+        "selectedCaseCount": 27,
+        "cwes": [
+          "CWE-22",
+          "CWE-78",
+          "CWE-89",
+          "CWE-125",
+          "CWE-134",
+          "CWE-190",
+          "CWE-327",
+          "CWE-416",
+          "CWE-787"
+        ],
+        "cases": [
+          {
+            "name": "CASTLE-22-1.c",
+            "vulnerable": true,
+            "cwe": "CWE-22",
+            "lines": [
+              16,
+              19
+            ],
+            "description": "Improper limitation of a pathname leads to path traversal vulnerability."
+          },
+          {
+            "name": "CASTLE-22-2.c",
+            "vulnerable": true,
+            "cwe": "CWE-22",
+            "lines": [
+              8,
+              20,
+              29
+            ],
+            "description": "Unimplemented validation of a pathname leads to path traversal vulnerability."
+          },
+          {
+            "name": "CASTLE-22-7.c",
+            "vulnerable": false,
+            "cwe": "CWE-22",
+            "lines": [],
+            "description": "Proper path validation prevents path traversal."
+          },
+          {
+            "name": "CASTLE-78-1.c",
+            "vulnerable": true,
+            "cwe": "CWE-78",
+            "lines": [
+              13,
+              16
+            ],
+            "description": "Missing input validation of fgets input allows for OS command injection"
+          },
+          {
+            "name": "CASTLE-78-2.c",
+            "vulnerable": true,
+            "cwe": "CWE-78",
+            "lines": [
+              9,
+              10
+            ],
+            "description": "Missing input validation of command line arguments allows for OS command injection"
+          },
+          {
+            "name": "CASTLE-78-7.c",
+            "vulnerable": false,
+            "cwe": "CWE-78",
+            "lines": [],
+            "description": "OS command input is verified sufficiently."
+          },
+          {
+            "name": "CASTLE-89-1.c",
+            "vulnerable": true,
+            "cwe": "CWE-89",
+            "lines": [
+              25,
+              28
+            ],
+            "description": "Missing input validation of fgets input allows for SQL injection."
+          },
+          {
+            "name": "CASTLE-89-2.c",
+            "vulnerable": true,
+            "cwe": "CWE-89",
+            "lines": [
+              40,
+              43
+            ],
+            "description": "Insufficient inpit validation of fgets input allows for SQL injection."
+          },
+          {
+            "name": "CASTLE-89-7.c",
+            "vulnerable": false,
+            "cwe": "CWE-89",
+            "lines": [],
+            "description": "Static SQL query is not vulnerable to injection."
+          },
+          {
+            "name": "CASTLE-125-1.c",
+            "vulnerable": true,
+            "cwe": "CWE-125",
+            "lines": [
+              7
+            ],
+            "description": "Upper array boundary error violation."
+          },
+          {
+            "name": "CASTLE-125-2.c",
+            "vulnerable": true,
+            "cwe": "CWE-125",
+            "lines": [
+              8
+            ],
+            "description": "Upper array boundary error violation."
+          },
+          {
+            "name": "CASTLE-125-7.c",
+            "vulnerable": false,
+            "cwe": "CWE-125",
+            "lines": [],
+            "description": "No read out of bounds in any iterations."
+          },
+          {
+            "name": "CASTLE-134-1.c",
+            "vulnerable": true,
+            "cwe": "CWE-134",
+            "lines": [
+              9
+            ],
+            "description": "The format string is sourced fron an input without sanitization"
+          },
+          {
+            "name": "CASTLE-134-2.c",
+            "vulnerable": true,
+            "cwe": "CWE-134",
+            "lines": [
+              9
+            ],
+            "description": "The format string is sourced fron an input without sanitization"
+          },
+          {
+            "name": "CASTLE-134-7.c",
+            "vulnerable": false,
+            "cwe": "CWE-134",
+            "lines": [],
+            "description": "The format string not sourced from outside the program"
+          },
+          {
+            "name": "CASTLE-190-1.c",
+            "vulnerable": true,
+            "cwe": "CWE-190",
+            "lines": [
+              6
+            ],
+            "description": "Arithmetic overflow in multiplication."
+          },
+          {
+            "name": "CASTLE-190-2.c",
+            "vulnerable": true,
+            "cwe": "CWE-190",
+            "lines": [
+              6
+            ],
+            "description": "Integer overflow in atoi function."
+          },
+          {
+            "name": "CASTLE-190-7.c",
+            "vulnerable": false,
+            "cwe": "CWE-190",
+            "lines": [],
+            "description": "There are no arithmetic overflows in any of these functions."
+          },
+          {
+            "name": "CASTLE-327-1.c",
+            "vulnerable": true,
+            "cwe": "CWE-327",
+            "lines": [
+              24,
+              32,
+              38,
+              44
+            ],
+            "description": "Password is hashed with MD5."
+          },
+          {
+            "name": "CASTLE-327-2.c",
+            "vulnerable": true,
+            "cwe": "CWE-327",
+            "lines": [
+              11,
+              26,
+              34,
+              40,
+              46
+            ],
+            "description": "Password is hashed with MD5 missdirected by function names."
+          },
+          {
+            "name": "CASTLE-327-7.c",
+            "vulnerable": false,
+            "cwe": "CWE-327",
+            "lines": [],
+            "description": "Password is hashed with SHA256."
+          },
+          {
+            "name": "CASTLE-416-1.c",
+            "vulnerable": true,
+            "cwe": "CWE-416",
+            "lines": [
+              20
+            ],
+            "description": "Memory is used after being freed"
+          },
+          {
+            "name": "CASTLE-416-2.c",
+            "vulnerable": true,
+            "cwe": "CWE-416",
+            "lines": [
+              10,
+              31,
+              32
+            ],
+            "description": "Memory is used after being freed"
+          },
+          {
+            "name": "CASTLE-416-7.c",
+            "vulnerable": false,
+            "cwe": "CWE-416",
+            "lines": [],
+            "description": "Both allocated memory chunks are freed, and not used after free"
+          },
+          {
+            "name": "CASTLE-787-1.c",
+            "vulnerable": true,
+            "cwe": "CWE-787",
+            "lines": [
+              7
+            ],
+            "description": "Buffer overflow in scanf function."
+          },
+          {
+            "name": "CASTLE-787-2.c",
+            "vulnerable": true,
+            "cwe": "CWE-787",
+            "lines": [
+              7
+            ],
+            "description": "Buffer overflow in strcpy function."
+          },
+          {
+            "name": "CASTLE-787-7.c",
+            "vulnerable": false,
+            "cwe": "CWE-787",
+            "lines": [],
+            "description": "Not vulnerable, since memory allocation is properly null-checked."
+          }
+        ]
+      },
+      {
+        "id": "nist-juliet-subset",
+        "label": "NIST Juliet subset",
+        "status": "missing",
+        "localPath": ".hermsec-benchmarks/Juliet",
+        "selectedCaseCount": 0,
+        "cases": [],
+        "source": "NIST Juliet 1.1 C/C++ and Java",
+        "selection": "Not downloaded locally; keep as planned expansion unless the suite is added to the ignored benchmark cache."
+      }
+    ]
+  }
+}

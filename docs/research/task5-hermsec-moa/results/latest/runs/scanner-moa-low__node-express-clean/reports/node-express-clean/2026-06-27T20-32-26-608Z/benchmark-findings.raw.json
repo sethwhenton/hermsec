@@ -1,0 +1,127 @@
+{
+  "schemaVersion": "1.0",
+  "scanId": "scan-ce6249aeacf2c492",
+  "target": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\node-express-clean",
+  "generatedAt": "2026-06-27T20:32:26.608Z",
+  "findings": [
+    {
+      "id": "finding-3634e335aa21615a",
+      "title": "Express.js Open Redirect in malformed URLs (CVE-2024-29041)",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "The pinned express@4.18.2 is affected by an open redirect vulnerability in malformed URLs, which can allow attackers to redirect users to attacker-controlled destinations.",
+      "evidence": "express@4.18.2 is affected by GHSA-rv95-896h-c2vc / CVE-2024-29041 (Open Redirect); confirmed by osv-scanner and npm-audit.",
+      "remediation": "Upgrade express to a fixed release such as 4.19.2 or later (4.22.2 recommended to also cover other express advisories).",
+      "tool": "hermsec-scanner-moa",
+      "ruleId": "osv:GHSA-rv95-896h-c2vc",
+      "cwe": [
+        "CWE-601"
+      ],
+      "location": {
+        "file": "package-lock.json",
+        "startLine": 1,
+        "endLine": 1
+      },
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "moa-aggregator",
+        "provider": "opencode-go",
+        "model": "MiniMax-M3",
+        "generatedAt": "2026-06-27T20:33:10.504Z",
+        "candidateIds": [
+          "candidate-791e14f519cd7a34"
+        ],
+        "sourceFindingIds": [
+          "scanner:finding-79460a7a95ca1609",
+          "scanner:finding-5d7c8a7ede9c55b6"
+        ],
+        "judge": {
+          "verdict": "accepted",
+          "reviewedBy": "moa-false-positive-judge",
+          "reason": "Aggregated from MoA candidates that passed false-positive judging."
+        }
+      },
+      "fingerprint": "fp-4c9d92604106bfbf"
+    },
+    {
+      "id": "finding-7019dba50fce9299",
+      "title": "Unsanitized input interpolated into HTML response (reflected XSS)",
+      "category": "code",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "The route handler builds an HTML response using template literal interpolation of variables (name, digest) without HTML-escaping, allowing reflected cross-site scripting when those values originate from untrusted input.",
+      "evidence": "src/routes/search.js:34 res.send(`<h1>${name}</h1><p>${digest}</p>`);",
+      "remediation": "Escape untrusted values (e.g., via a vetted escape function) or render through a templating engine that auto-escapes by default; avoid interpolating raw input into HTML.",
+      "tool": "hermsec-scanner-moa",
+      "ruleId": "hermsec.code.unsanitized-html-response",
+      "cwe": [
+        "CWE-79"
+      ],
+      "location": {
+        "file": "src/routes/search.js",
+        "startLine": 34,
+        "endLine": 34
+      },
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "moa-aggregator",
+        "provider": "opencode-go",
+        "model": "MiniMax-M3",
+        "generatedAt": "2026-06-27T20:33:10.507Z",
+        "candidateIds": [
+          "candidate-c8f3b7afb0b8e926"
+        ],
+        "sourceFindingIds": [
+          "scanner:finding-b1bdc12ef0d825ab"
+        ],
+        "judge": {
+          "verdict": "accepted",
+          "reviewedBy": "moa-false-positive-judge",
+          "reason": "Aggregated from MoA candidates that passed false-positive judging."
+        }
+      },
+      "fingerprint": "fp-62918b372fd743b9"
+    },
+    {
+      "id": "finding-78719257fc1c2afc",
+      "title": "Express.js XSS via response.redirect() (CVE-2024-43796)",
+      "category": "dependency",
+      "severity": "low",
+      "confidence": "high",
+      "description": "The pinned express@4.18.2 is affected by a reflected XSS issue reachable through response.redirect() with user-controlled URLs, allowing attacker-controlled content to be rendered in the browser.",
+      "evidence": "express@4.18.2 is affected by GHSA-qw6h-vgh9-j6wx / CVE-2024-43796 (XSS via response.redirect); confirmed by osv-scanner and npm-audit.",
+      "remediation": "Upgrade express to a fixed release such as 4.20.0 or later (4.22.2 recommended).",
+      "tool": "hermsec-scanner-moa",
+      "ruleId": "osv:GHSA-qw6h-vgh9-j6wx",
+      "cwe": [
+        "CWE-79"
+      ],
+      "location": {
+        "file": "package-lock.json",
+        "startLine": 1,
+        "endLine": 1
+      },
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "moa-aggregator",
+        "provider": "opencode-go",
+        "model": "MiniMax-M3",
+        "generatedAt": "2026-06-27T20:33:10.506Z",
+        "candidateIds": [
+          "candidate-907efcaedd4a90e2"
+        ],
+        "sourceFindingIds": [
+          "scanner:finding-b80725495585908e",
+          "scanner:finding-34a12328494fee7c"
+        ],
+        "judge": {
+          "verdict": "accepted",
+          "reviewedBy": "moa-false-positive-judge",
+          "reason": "Aggregated from MoA candidates that passed false-positive judging."
+        }
+      },
+      "fingerprint": "fp-0dadb4688364b62a"
+    }
+  ]
+}

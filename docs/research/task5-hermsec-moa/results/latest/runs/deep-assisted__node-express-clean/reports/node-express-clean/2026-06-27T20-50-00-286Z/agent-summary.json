@@ -1,0 +1,88 @@
+{
+  "executiveSummary": "6 scanner finding(s): 0 critical, 0 high, 4 medium, 2 low, 0 info. Findings explained from supplied scanner evidence.",
+  "explanations": {
+    "finding-34a12328494fee7c": {
+      "confidenceReason": "High confidence because PMG uses npm audit data.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "PMG wrapped npm audit reported express <4.20.0 is affected by GHSA-QW6H-VGH9-J6WX (XSS via response.redirect()) in package-lock.json.",
+      "impact": "Cross-site scripting vulnerability in Express.js via response.redirect() could allow an attacker to inject scripts through redirect responses.",
+      "safeNextSteps": [
+        "Upgrade express to version 4.22.2",
+        "Review redirect handling for input validation"
+      ],
+      "suggestedFix": "Upgrade express to 4.22.2 after dependency review.",
+      "title": "express vulnerable to XSS via response.redirect()"
+    },
+    "finding-5d7c8a7ede9c55b6": {
+      "confidenceReason": "High confidence because PMG uses npm audit data which is generally accurate for known vulnerabilities.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "PMG wrapped npm audit reported express <4.19.2 is affected by GHSA-RV95-896H-C2VC (open redirect) in package-lock.json.",
+      "impact": "Open redirect vulnerability in Express.js could allow an attacker to redirect users to malicious external sites via malformed URLs.",
+      "safeNextSteps": [
+        "Upgrade express to version 4.22.2 as recommended",
+        "Review all redirect logic to ensure proper URL validation"
+      ],
+      "suggestedFix": "Upgrade express to 4.22.2 after dependency review.",
+      "title": "Express.js Open Redirect in malformed URLs"
+    },
+    "finding-79460a7a95ca1609": {
+      "confidenceReason": "High confidence because OSV-Scanner uses authoritative vulnerability databases.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "OSV-Scanner reported express@4.18.2 is affected by GHSA-rv95-896h-c2vc (CVE-2024-29041) in package-lock.json.",
+      "impact": "Open redirect vulnerability in Express.js (CVE-2024-29041) could allow an attacker to redirect users to malicious external sites via malformed URLs.",
+      "safeNextSteps": [
+        "Upgrade express to version 4.19.2 or later",
+        "Verify no other dependencies are affected by the same vulnerability"
+      ],
+      "suggestedFix": "Upgrade express to a fixed version: 4.19.2 or 5.0.0-beta.3.",
+      "title": "Express.js Open Redirect in malformed URLs"
+    },
+    "finding-7aeee916077462b4": {
+      "confidenceReason": "Medium confidence because the scanner heuristic identifies a pattern that may still be vulnerable even with escapeHtml.",
+      "cveUsage": "not_applicable",
+      "evidenceSummary": "Hermsec heuristic scanner found res.send(`<h1>${escapeHtml(String(req.query.name ?? \"\"))}</h1>`); at src/app.js:7, but escapeHtml is used; however the finding suggests it may still be risky. Confidence is medium.",
+      "impact": "Cross-site scripting (XSS) vulnerability via unsanitized user input in HTML response at src/app.js:7, potentially allowing attacker to inject scripts.",
+      "safeNextSteps": [
+        "Review the use of escapeHtml to ensure it is properly escaping all contexts",
+        "Consider using a templating engine that auto-escapes",
+        "Conduct manual code review of the response construction"
+      ],
+      "suggestedFix": "Escape untrusted output before placing it in HTML responses.",
+      "title": "HTML response may include unsanitized input"
+    },
+    "finding-b1bdc12ef0d825ab": {
+      "confidenceReason": "Medium confidence because the scanner heuristic identifies a pattern where variables are directly interpolated without escaping.",
+      "cveUsage": "not_applicable",
+      "evidenceSummary": "Hermsec heuristic scanner found res.send(`<h1>${name}</h1><p>${digest}</p>`); at src/routes/search.js:34 with no escaping applied.",
+      "impact": "Cross-site scripting (XSS) vulnerability via unsanitized user input in HTML response at src/routes/search.js:34, potentially allowing attacker to inject scripts.",
+      "safeNextSteps": [
+        "Apply HTML escaping to all interpolated variables",
+        "Consider using a templating engine with auto-escaping",
+        "Test for XSS"
+      ],
+      "suggestedFix": "Escape untrusted output before placing it in HTML responses.",
+      "title": "HTML response may include unsanitized input"
+    },
+    "finding-b80725495585908e": {
+      "confidenceReason": "High confidence because OSV-Scanner uses authoritative vulnerability databases.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "OSV-Scanner reported express@4.18.2 is affected by GHSA-qw6h-vgh9-j6wx (CVE-2024-43796) in package-lock.json.",
+      "impact": "Cross-site scripting vulnerability in Express.js via response.redirect() (CVE-2024-43796) could allow an attacker to inject scripts through redirect responses.",
+      "safeNextSteps": [
+        "Upgrade express to version 4.20.0 or later",
+        "Check for similar vulnerabilities in other dependencies"
+      ],
+      "suggestedFix": "Upgrade express to a fixed version: 4.20.0 or 5.0.0.",
+      "title": "express vulnerable to XSS via response.redirect()"
+    }
+  },
+  "generatedWithModel": true,
+  "priorityActions": [
+    "finding-5d7c8a7ede9c55b6: Upgrade express to 4.22.2 after dependency review.",
+    "finding-79460a7a95ca1609: Upgrade express to a fixed version: 4.19.2, 5.0.0-beta.3.",
+    "finding-7aeee916077462b4: Escape untrusted output before placing it in HTML responses.",
+    "finding-b1bdc12ef0d825ab: Escape untrusted output before placing it in HTML responses.",
+    "finding-34a12328494fee7c: Upgrade express to 4.22.2 after dependency review."
+  ],
+  "provider": "opencode-go"
+}

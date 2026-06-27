@@ -1,0 +1,18 @@
+{
+  "durationMs": 292,
+  "fallback": {
+    "actualReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-27-50-758Z",
+    "configuredReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__node-express-clean\\reports",
+    "used": false
+  },
+  "finishedAt": "2026-06-27T20:27:50.758Z",
+  "git": {
+    "branch": "main",
+    "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+    "dirty": true
+  },
+  "id": "scan-dd05ad181120e194",
+  "mode": "auto",
+  "modeLabel": "MoA-assisted inspection",
+  "startedAt": "2026-06-27T20:27:50.466Z"
+}

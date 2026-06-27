@@ -1,0 +1,146 @@
+{
+  "agentMode": {
+    "acceptedFindingCount": 4,
+    "agents": [
+      {
+        "id": "injection-and-execution",
+        "label": "Injection and execution specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 10276,
+        "status": "completed"
+      },
+      {
+        "id": "auth-and-data-flow",
+        "label": "Auth and data-flow specialist",
+        "model": "xiaomi/mimo-v2.5-20260422",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 1483,
+        "status": "completed"
+      },
+      {
+        "id": "secrets-and-config",
+        "label": "Secrets and config specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 27821,
+        "status": "completed"
+      },
+      {
+        "id": "moa-false-positive-judge",
+        "label": "False-positive Judge",
+        "model": "deepseek-v4-pro",
+        "provider": "opencode-go",
+        "role": "judge",
+        "runtimeMs": 15697,
+        "status": "completed"
+      },
+      {
+        "id": "moa-aggregator",
+        "label": "MoA Aggregator",
+        "model": "MiniMax-M3",
+        "provider": "opencode-go",
+        "role": "aggregator",
+        "runtimeMs": 7911,
+        "status": "completed"
+      }
+    ],
+    "agentsUsed": [
+      "injection-and-execution",
+      "auth-and-data-flow",
+      "secrets-and-config",
+      "moa-false-positive-judge",
+      "moa-aggregator"
+    ],
+    "aggregator": {
+      "agentId": "moa-aggregator",
+      "label": "MoA Aggregator",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go"
+    },
+    "aggregatorModel": "MiniMax-M3",
+    "candidateFindingCount": 4,
+    "findings": {
+      "finding-49f0f6847d3c2d7e": {
+        "agentIds": [
+          "moa-aggregator"
+        ],
+        "judgeReason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-aggregated",
+        "sourceLabels": [
+          "moa-aggregated"
+        ]
+      },
+      "finding-b58b80fac121a4e9": {
+        "agentIds": [
+          "moa-aggregator"
+        ],
+        "judgeReason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-aggregated",
+        "sourceLabels": [
+          "moa-aggregated"
+        ]
+      },
+      "finding-b7927239085e07f9": {
+        "agentIds": [
+          "moa-aggregator"
+        ],
+        "judgeReason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-aggregated",
+        "sourceLabels": [
+          "moa-aggregated"
+        ]
+      },
+      "finding-faf13c772fcd015f": {
+        "agentIds": [
+          "moa-aggregator"
+        ],
+        "judgeReason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-aggregated",
+        "sourceLabels": [
+          "moa-aggregated"
+        ]
+      }
+    },
+    "mode": "moa-assisted",
+    "modeLabel": "MoA-assisted inspection",
+    "needsHumanReviewCount": 0,
+    "rejectedFindingCount": 0,
+    "scanMode": "moa-assisted",
+    "totalAgentRuntimeMs": 63296
+  },
+  "generatedAt": "2026-06-27T20:25:02.048Z",
+  "report": {
+    "generatedWithModel": true,
+    "redactionApplied": false
+  },
+  "scanId": "scan-9b8db99bda02255b",
+  "schemaVersion": "1.0",
+  "summary": {
+    "confirmedCves": 0,
+    "critical": 1,
+    "generatedWithModel": true,
+    "high": 2,
+    "info": 0,
+    "knownExploited": 0,
+    "low": 0,
+    "medium": 1,
+    "scannerFailures": 0,
+    "secrets": 1,
+    "total": 4
+  },
+  "target": {
+    "displayName": "python-flask-vulnerable",
+    "kind": "local-path",
+    "value": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\python-flask-vulnerable"
+  },
+  "workspaceId": "ws-09cd0f0cab58e3d8",
+  "workspaceName": "python-flask-vulnerable"
+}

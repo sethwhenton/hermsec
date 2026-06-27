@@ -1,0 +1,192 @@
+[
+  {
+    "agent": {
+      "candidateIds": [
+        "candidate-11b17fd1a421277a"
+      ],
+      "generatedAt": "2026-06-27T20:23:35.292Z",
+      "judge": {
+        "confidence": "high",
+        "reason": "Direct evidence of command injection via template literal in exec call with unsanitized query parameter.",
+        "reviewedBy": "moa-false-positive-judge",
+        "verdict": "accepted"
+      },
+      "mode": "moa-assisted",
+      "model": "deepseek-v4-flash",
+      "provider": "opencode-go",
+      "role": "injection-and-execution",
+      "source": "moa-specialist"
+    },
+    "category": "code",
+    "confidence": "high",
+    "cwe": [
+      "CWE-78"
+    ],
+    "description": "The /tools/ping route uses exec with a template literal containing user input from req.query.host, allowing arbitrary command execution.",
+    "evidence": "exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined);",
+    "fingerprint": "fp-c2017f284c5e0989",
+    "id": "finding-b6f553d7fae5a7fb",
+    "location": {
+      "endLine": 20,
+      "file": "src/routes/search.js",
+      "startLine": 18
+    },
+    "remediation": "Use execFile or spawn with argument array, validate the host parameter against an allowlist of valid hosts.",
+    "ruleId": "command-injection-exec",
+    "severity": "critical",
+    "title": "Command Injection in /tools/ping via unsanitized host parameter",
+    "tool": "hermsec-moa"
+  },
+  {
+    "agent": {
+      "candidateIds": [
+        "candidate-e971558d19f6efd9"
+      ],
+      "generatedAt": "2026-06-27T20:23:35.290Z",
+      "judge": {
+        "confidence": "high",
+        "reason": "Direct evidence of command injection via string concatenation in childProcess.exec.",
+        "reviewedBy": "moa-false-positive-judge",
+        "verdict": "accepted"
+      },
+      "mode": "moa-assisted",
+      "model": "deepseek-v4-flash",
+      "provider": "opencode-go",
+      "role": "injection-and-execution",
+      "source": "moa-specialist"
+    },
+    "category": "code",
+    "confidence": "high",
+    "cwe": [
+      "CWE-78"
+    ],
+    "description": "The runTool function uses child_process.exec with a concatenated user input from req.query.tool, allowing arbitrary command execution.",
+    "evidence": "return childProcess.exec(\"tool \" + tool);",
+    "fingerprint": "fp-be4f50b1e7b82d6a",
+    "id": "finding-8782c799b91eaafc",
+    "location": {
+      "endLine": 10,
+      "file": "src/app.js",
+      "startLine": 9
+    },
+    "remediation": "Use execFile or spawn with argument array, validate the tool parameter against a whitelist.",
+    "ruleId": "command-injection-exec",
+    "severity": "critical",
+    "title": "Command Injection in runTool via unsanitized tool parameter",
+    "tool": "hermsec-moa"
+  },
+  {
+    "agent": {
+      "candidateIds": [
+        "candidate-4e1868d87e825e10"
+      ],
+      "generatedAt": "2026-06-27T20:23:35.293Z",
+      "judge": {
+        "confidence": "high",
+        "reason": "Direct evidence of SQL injection via string concatenation in db.query.",
+        "reviewedBy": "moa-false-positive-judge",
+        "verdict": "accepted"
+      },
+      "mode": "moa-assisted",
+      "model": "deepseek-v4-flash",
+      "provider": "opencode-go",
+      "role": "injection-and-execution",
+      "source": "moa-specialist"
+    },
+    "category": "code",
+    "confidence": "high",
+    "cwe": [
+      "CWE-89"
+    ],
+    "description": "The search function concatenates user input directly into a SQL query string, allowing arbitrary SQL injection.",
+    "evidence": "db.query(\"SELECT * FROM users WHERE name = '\" + term + \"'\");",
+    "fingerprint": "fp-f3cba1dd781290c4",
+    "id": "finding-20c4034da1e1dd7f",
+    "location": {
+      "endLine": 5,
+      "file": "src/app.js",
+      "startLine": 4
+    },
+    "remediation": "Use parameterized queries or prepared statements (e.g., db.query('SELECT * FROM users WHERE name = ?', [term])).",
+    "ruleId": "sql-injection",
+    "severity": "critical",
+    "title": "SQL Injection in search via unsanitized q parameter",
+    "tool": "hermsec-moa"
+  },
+  {
+    "agent": {
+      "candidateIds": [
+        "candidate-1707ac58909177f9"
+      ],
+      "generatedAt": "2026-06-27T20:24:05.904Z",
+      "judge": {
+        "confidence": "high",
+        "reason": "Evidence shows an exposed debug endpoint '/debug-token' that leaks processed token data.",
+        "reviewedBy": "moa-false-positive-judge",
+        "verdict": "accepted"
+      },
+      "mode": "moa-assisted",
+      "model": "deepseek-v4-flash",
+      "provider": "opencode-go",
+      "role": "secrets-and-config",
+      "source": "moa-specialist"
+    },
+    "category": "config",
+    "confidence": "high",
+    "cwe": [
+      "CWE-200"
+    ],
+    "description": "The /debug-token endpoint (defined in src/routes/search.js) computes and returns an MD5 digest of a hardcoded token. Debug endpoints should not be enabled in production as they can leak sensitive information.",
+    "evidence": "router.get(\"/debug-token\", (req, res) => { const name = String(req.query.name ?? \"fixture-user\"); const digest = crypto.createHash(\"md5\").update(fakeFixtureToken).digest(\"hex\"); res.send(`<h1>${name}</h1><p>${digest}</p>`);",
+    "fingerprint": "fp-888f342be01d3eb5",
+    "id": "finding-a6a062da440676bf",
+    "location": {
+      "endLine": 33,
+      "file": "src/routes/search.js",
+      "startLine": 30
+    },
+    "remediation": "Remove or guard the /debug-token endpoint behind authentication, feature flags, or environment checks (e.g., only enable in development).",
+    "ruleId": "debug-endpoint-exposed",
+    "severity": "medium",
+    "title": "Debug Token Endpoint Exposed",
+    "tool": "hermsec-moa"
+  },
+  {
+    "agent": {
+      "candidateIds": [
+        "candidate-43fa4aaee6a88585"
+      ],
+      "generatedAt": "2026-06-27T20:23:35.294Z",
+      "judge": {
+        "confidence": "high",
+        "reason": "Direct evidence of SQL injection via template literal in query string construction.",
+        "reviewedBy": "moa-false-positive-judge",
+        "verdict": "accepted"
+      },
+      "mode": "moa-assisted",
+      "model": "deepseek-v4-flash",
+      "provider": "opencode-go",
+      "role": "injection-and-execution",
+      "source": "moa-specialist"
+    },
+    "category": "code",
+    "confidence": "high",
+    "cwe": [
+      "CWE-89"
+    ],
+    "description": "The /search route constructs a SQL query using a template literal with user input. While not immediately executed, the unsanitized input is a SQL injection vulnerability that could be exploited if the query is later used.",
+    "evidence": "const query = `SELECT * FROM users WHERE display_name = '${term}'`;",
+    "fingerprint": "fp-4702ffb3503ab376",
+    "id": "finding-f157dbe9f0e4e02f",
+    "location": {
+      "endLine": 14,
+      "file": "src/routes/search.js",
+      "startLine": 13
+    },
+    "remediation": "Use parameterized queries or prepared statements if the query is to be executed, or treat the input as untrusted and apply proper escaping.",
+    "ruleId": "sql-injection",
+    "severity": "medium",
+    "title": "SQL Injection in /search via unsanitized q parameter",
+    "tool": "hermsec-moa"
+  }
+]

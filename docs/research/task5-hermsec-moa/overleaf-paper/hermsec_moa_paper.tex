@@ -12,6 +12,8 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning}
 
+\newcommand{\LatestResultsPath}{\texttt{results/latest/results.json}}
+
 \begin{document}
 
 \title{HermSec: A User-Friendly Repository Security Scanner with a Comparison of Static, Single-Agent, Multi-Agent, and Hybrid Review Modes}
@@ -28,7 +30,7 @@ HermSec is a desktop security scanner for local repositories. It is built to hel
 
 This paper first presents HermSec as a product, then compares four review modes. Deep assisted scan runs static scanners and uses a model to explain scanner evidence. Single agent inspection lets one model inspect bounded code snippets without scanners. MoA inspection uses several specialist agents, a false-positive judge, and an aggregator without scanners. Scanner + MoA inspection runs scanners and MoA together, then uses a judge and final aggregator to validate both sets of findings.
 
-A broad earlier scanner-only test found 89 of 184 planted vulnerabilities across 11 languages. The final comparison used four smaller fixtures with 12 planted vulnerabilities. Deep assisted scan had the best recall at 0.667, but low precision at 0.090 because it produced many extra findings. Single agent inspection had precision 0.667, but recall 0.167. MoA inspection reached F1 0.476. Scanner + MoA reached the best F1 score at 0.500. The result suggests that HermSec works best when broad scanner coverage is combined with agent-based filtering.
+The final controlled run completed 24 of 24 mode-and-fixture runs using efficient non-US models through OpenCode Go. MoA Low had the best F1 score at 0.4762. Single Agent had the best precision at 0.6667 but low recall. Scanner + MoA High had the best recall at 0.5833 but also many false positives. The result shows that multi-agent review can reduce noise compared with scanner-heavy modes, but the hybrid mode still needs stronger candidate filtering.
 \end{abstract}
 
 \keywords{static analysis, software security, large language models, multi-agent systems, vulnerability detection, code review}
@@ -78,6 +80,8 @@ Figures~\ref{fig:hermsec-workflow} and~\ref{fig:hermsec-settings} show parts of 
 \section{HermSec Product Overview}
 HermSec is not only a benchmark script. It is a desktop application for normal developers who want a simple way to check a local project. The main screen is a chat interface. The user selects a project folder, chooses a scan mode, and watches the scan progress in the chat. When the scan ends, HermSec writes report files and gives links to the report folder and PDF.
 
+The product has four main surfaces. The home chat handles project selection, scan mode selection, progress, and final report links. Scanner settings show which tools are installed, enabled, missing, and relevant to the current project. Agent and provider settings let the user choose a provider, model, agent roles, judge behavior, and aggregation behavior. Doctor checks and automations help the user verify readiness before a scan or repeat a known workflow later.
+
 HermSec also has a project inspection step. Before running a scan, it checks the repository files, languages, manifests, lockfiles, and configuration files. From this profile, HermSec chooses the scanners that make sense for the project. For example, a Node.js project can use JavaScript rules, npm audit style checks, secret scanning, OSV, and Trivy. A Python project can use Python rules, Bandit, pip-audit, OSV, and Trivy. This keeps the scan workflow smaller and avoids installing every possible tool for every project.
 
 The scanner manager is part of the product. It shows which scanners are installed, missing, enabled, and used by the current project. Supported scanners can be installed into HermSec's managed tool directory instead of being forced into the user's global system path. Figure~\ref{fig:hermsec-scanners} shows this scanner settings screen.
@@ -120,6 +124,89 @@ MoA means mixture of agents. In this mode, HermSec runs a panel of specialist ag
 
 \subsection{Scanner + MoA Inspection}
 Scanner + MoA inspection is the hybrid mode added after the first tests. In this mode, scanners run and produce candidate findings. MoA agents also inspect the repository with bounded read-only code tools. Then a false-positive judge reviews both scanner findings and agent findings together. Finally, an aggregator writes the accepted and deduplicated findings into the normal HermSec report. The goal is to keep the broad coverage of scanners while using agents to reduce false positives and improve the final explanation.
+
+\begin{figure*}
+  \centering
+  \begin{minipage}[t]{.48\textwidth}
+    \centering
+    \textbf{Deep assisted scan}\\[.25em]
+    \begin{tikzpicture}[
+      font=\scriptsize,
+      box/.style={draw, rounded corners=2pt, align=center, inner sep=3pt, minimum width=3.7cm, minimum height=.46cm},
+      arrow/.style={-Latex, thick}
+    ]
+      \node[box] (profile) {Repository profile};
+      \node[box, below=.22cm of profile] (plan) {Select applicable scanners};
+      \node[box, below=.22cm of plan] (scan) {Run scanner stack};
+      \node[box, below=.22cm of scan] (triage) {Model triage of scanner evidence};
+      \node[box, below=.22cm of triage] (report) {Validated report};
+      \draw[arrow] (profile) -- (plan);
+      \draw[arrow] (plan) -- (scan);
+      \draw[arrow] (scan) -- (triage);
+      \draw[arrow] (triage) -- (report);
+    \end{tikzpicture}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{.48\textwidth}
+    \centering
+    \textbf{Single agent inspection}\\[.25em]
+    \begin{tikzpicture}[
+      font=\scriptsize,
+      box/.style={draw, rounded corners=2pt, align=center, inner sep=3pt, minimum width=3.7cm, minimum height=.46cm},
+      arrow/.style={-Latex, thick}
+    ]
+      \node[box] (profile) {Repository profile};
+      \node[box, below=.22cm of profile] (context) {Bounded read-only context};
+      \node[box, below=.22cm of context] (agent) {One model reviewer};
+      \node[box, below=.22cm of agent] (validate) {Evidence validation};
+      \node[box, below=.22cm of validate] (report) {Validated report};
+      \draw[arrow] (profile) -- (context);
+      \draw[arrow] (context) -- (agent);
+      \draw[arrow] (agent) -- (validate);
+      \draw[arrow] (validate) -- (report);
+    \end{tikzpicture}
+  \end{minipage}\\[1em]
+  \begin{minipage}[t]{.48\textwidth}
+    \centering
+    \textbf{MoA inspection}\\[.25em]
+    \begin{tikzpicture}[
+      font=\scriptsize,
+      box/.style={draw, rounded corners=2pt, align=center, inner sep=3pt, minimum width=3.7cm, minimum height=.46cm},
+      arrow/.style={-Latex, thick}
+    ]
+      \node[box] (profile) {Repository profile};
+      \node[box, below=.22cm of profile] (agents) {Specialist agent panel};
+      \node[box, below=.22cm of agents] (pool) {Candidate finding pool};
+      \node[box, below=.22cm of pool] (judge) {False-positive judge};
+      \node[box, below=.22cm of judge] (agg) {Aggregator and report};
+      \draw[arrow] (profile) -- (agents);
+      \draw[arrow] (agents) -- (pool);
+      \draw[arrow] (pool) -- (judge);
+      \draw[arrow] (judge) -- (agg);
+    \end{tikzpicture}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{.48\textwidth}
+    \centering
+    \textbf{Scanner + MoA inspection}\\[.25em]
+    \begin{tikzpicture}[
+      font=\scriptsize,
+      box/.style={draw, rounded corners=2pt, align=center, inner sep=3pt, minimum width=3.7cm, minimum height=.46cm},
+      arrow/.style={-Latex, thick}
+    ]
+      \node[box] (profile) {Repository profile};
+      \node[box, below=.22cm of profile] (parallel) {Scanners and agent panel};
+      \node[box, below=.22cm of parallel] (pool) {Combined candidates};
+      \node[box, below=.22cm of pool] (judge) {Judge, dedupe, cap};
+      \node[box, below=.22cm of judge] (agg) {Aggregator and report};
+      \draw[arrow] (profile) -- (parallel);
+      \draw[arrow] (parallel) -- (pool);
+      \draw[arrow] (pool) -- (judge);
+      \draw[arrow] (judge) -- (agg);
+    \end{tikzpicture}
+  \end{minipage}
+  \caption{Execution diagrams for the four review modes. The diagrams separate scanner-backed review, one-agent direct review, multi-agent review, and the hybrid path that joins scanner and agent candidates before judging and aggregation.}
+  \Description{Four small flow diagrams. Deep assisted runs selected scanners then model triage. Single agent uses bounded read-only context and one reviewer. MoA uses specialist agents, a candidate pool, a false-positive judge, and an aggregator. Scanner plus MoA runs scanners and agents, combines candidates, judges and deduplicates them, and writes the report.}
+  \label{fig:mode-diagrams}
+\end{figure*}
 
 \subsection{Safety Limits}
 The agent modes are limited on purpose. They cannot run shell commands. They cannot install packages. They cannot execute project scripts. They cannot read outside the selected repository. HermSec also skips noisy folders such as \texttt{.git}, \texttt{node\_modules}, build folders, and vendored code. These limits make the agent modes safer and easier to test.
@@ -171,9 +258,9 @@ The study asks four questions:
 \subsection{Datasets}
 Two datasets were used.
 
-The first dataset came from tests prepared by my colleague Ghazal. It had 13 vulnerable projects, 7 clean projects, 184 planted vulnerabilities, and 11 languages. This dataset was used to understand HermSec's earlier scanner-only coverage.
+The first dataset came from tests prepared by my colleague Ghazal. It covered a broader set of languages and was useful for identifying where the scanner harness needed stronger language-specific coverage. In this refresh, it is treated as exploratory product context only. The paper no longer carries forward its old aggregate scanner-only counts or rates.
 
-The second dataset was used for the final mode comparison. It had four small fixtures:
+The second dataset is the controlled fixture set used for the final mode comparison. The refreshed run used four fixtures with 12 expected findings in total. The fixture categories were:
 
 \begin{itemize}
   \item vulnerable Node.js/Express project,
@@ -182,7 +269,7 @@ The second dataset was used for the final mode comparison. It had four small fix
   \item clean Python/Flask project.
 \end{itemize}
 
-The two vulnerable fixtures had 12 planted vulnerabilities in total. The clean projects had no expected vulnerabilities.
+The clean projects had no expected vulnerabilities. The vulnerable projects had six expected findings each. The answer keys and run records are stored in \LatestResultsPath{}.
 
 \subsection{Harness Steps}
 The HermSec harness follows the same basic steps for every scan. First, it validates the local project path. Second, it walks the repository and records source files, languages, manifests, lockfiles, and ignored folders. Third, it chooses the scan plan. In scanner-based modes, it selects the scanners that match the project. In agent modes, it prepares bounded file, search, and snippet context. Fourth, it runs the selected mode with timeouts and progress events. Fifth, it normalizes findings into one schema. Finally, it writes the normal HermSec report.
@@ -190,18 +277,18 @@ The HermSec harness follows the same basic steps for every scan. First, it valid
 The normal finding schema stores the title, category, severity, confidence, evidence, remediation, tool, rule ID, CWE, location, and fingerprint. This matters because scanner output and agent output must be scored and reported in the same format.
 
 \subsection{Execution Setup}
-The final comparison used HermSec V3 on Windows. The configured provider was OpenCode Go. The main test model was \texttt{deepseek-v4-flash}. During product setup, HermSec was also configured to support OpenCode Go model choices such as \texttt{mimo-v2.5} and \texttt{minimax-m3} for agent panels. In the final reported test run, the CLI used \texttt{deepseek-v4-flash} for the model-backed modes so the comparison stayed consistent.
+The final comparison was run with HermSec V3 on Windows and recorded in \LatestResultsPath. The artifact includes the configured provider, model names, fixture identifiers, run status, fallback status, finding counts, and scored outcomes for every mode. The latest artifact has \texttt{executionMode} set to \texttt{actual}, so it is the measurement source used in this paper.
 
-Deep assisted, single agent, MoA, and Scanner + MoA were run across the same four fixtures. The Scanner + MoA run used the real CLI mode. It ran scanners first, ran MoA inspection, judged the combined candidates, and wrote the final report through the normal report template.
+Deep assisted, single agent, MoA, and Scanner + MoA were run across the same controlled fixture set. The Scanner + MoA run used the real CLI mode: scanners ran first, MoA inspection ran next, combined candidates were judged, and the final report was written through the normal report template.
 
-One important issue happened during the final test. The deep assisted reports were created, but the model explanation step fell back in all four runs. This means the deep assisted result should be read as a scanner-heavy baseline, not as a fully successful scanner-plus-model run.
+The Deep assisted provider timeout issue found during earlier smoke tests was addressed by using smaller model explanation chunks and a longer summary watchdog. In the final artifact, two vulnerable Deep assisted rows still used fallback explanations because the model text was rejected as unsupported by the evidence validator. This is safer than accepting invented evidence, but it means the Deep assisted results should be read mainly as scanner-backed findings with guarded model support.
 
 \subsection{Model and Cost Choices}
 Another core idea in HermSec is cost control. Static scanners are the cheapest part because they run locally or through managed command-line tools. Model-assisted modes can become expensive because every agent reads project context and writes structured findings. For that reason, HermSec was designed to use efficient models first and reserve larger models for aggregation only when needed.
 
-The final scored runs used \texttt{deepseek-v4-flash} through OpenCode Go. This model was selected because it is fast and suitable for structured JSON security output. DeepSeek's API documentation also describes context caching as enabled by default, which can reduce repeated prompt-prefix cost when the same system prompts and report schemas are reused \cite{deepseekcache,deepseekpricing}. This matters for HermSec because Single Agent, MoA, and Scanner + MoA repeat similar instructions across fixtures.
+The model routing is intentionally open to efficient non-US providers and models exposed through OpenCode Go or similar provider adapters. \texttt{deepseek-v4-flash} is useful for this design because DeepSeek documents context caching and pricing behavior that can reduce repeated prompt-prefix cost when the same system prompts and report schemas are reused \cite{deepseekcache,deepseekpricing}. Other efficient route models can be recorded in the result artifact's model policy. This matters for HermSec because Single Agent, MoA, and Scanner + MoA repeat similar instructions across fixtures.
 
-The app was also configured to make other efficient models available for later MoA routing. \texttt{mimo-v2.5} was considered for reference agents because MiMo V2.5 is described as an agent-capable long-context model with hybrid attention and KV-cache efficiency \cite{xiaomimimo25,xiaomimimo25inference}. \texttt{minimax-m3} was considered for aggregator work because MiniMax presents M3 as a coding and agentic model with long-context support \cite{minimaxm3}. These models were not used in the final metric table, so the results should be read as \texttt{deepseek-v4-flash} results only.
+\texttt{mimo-v2.5} and \texttt{minimax-m3} are also relevant to the cost-control direction. MiMo V2.5 is described as an agent-capable long-context model with hybrid attention and KV-cache efficiency \cite{xiaomimimo25,xiaomimimo25inference}. MiniMax presents M3 as a coding and agentic model with long-context support \cite{minimaxm3}. The final run used \texttt{deepseek-v4-flash} for Deep assisted and Single Agent. MoA and Scanner + MoA used \texttt{deepseek-v4-flash} and \texttt{mimo-v2.5} for specialist agents, \texttt{deepseek-v4-pro} for the false-positive judge, and \texttt{minimax-m3} for the aggregator.
 
 \subsection{Scoring}
 Each finding was compared with the ground truth by file path and CWE. A true positive means HermSec found a planted issue. A false positive means HermSec reported an issue that did not match the answer key. A false negative means HermSec missed a planted issue.
@@ -217,115 +304,96 @@ F1 &= \frac{2 \times Precision \times Recall}{Precision + Recall}.
 \]
 
 \subsection{Problems Faced During Testing}
-There were a few relevant problems during testing. First, the deep assisted model explanation step fell back, so the deep assisted score mostly represents scanner output. Second, the first Scanner + MoA run with too many scanner candidates caused the final aggregator to return empty content from the provider. We reduced the candidate cap for the test so the aggregator prompt stayed smaller and the run completed. Third, the scanner-heavy mode produced many findings outside the answer key. Some of those may still be useful in a real project, but for benchmark scoring they counted as false positives.
+There were a few relevant problems during testing. First, the Deep assisted explanation step initially hit provider timeout failures. This was improved by using smaller chunks and a longer watchdog. In the final run, two Deep assisted vulnerable rows still used fallback explanations because the model output did not pass evidence validation. Second, Scanner + MoA high initially failed when the false-positive judge received too many candidates in one request. This was fixed by batching the judge step and splitting failed batches. Third, scanner-heavy modes produced many findings outside the small answer key. Some of those findings may still be useful in a real project, but benchmark scoring counted only matches defined by the ground truth.
 
 During app development, the main challenge was making the product workflow clear. HermSec needed to show live progress, manage scanners, keep model settings simple, and still write a normal report at the end. The solution was to keep one report format for all modes and add mode metadata such as agents used, judge counts, and source labels.
 
 \section{Results}
-\subsection{Earlier Scanner Baseline}
-The broader scanner-only test found 89 of 184 planted vulnerabilities. This is a 48.4\% detection rate. The precision was 85.6\%, and the F1 score was 61.8\%.
+\subsection{Refresh Status}
+The refreshed scoring artifact is available at \LatestResultsPath. The old broad scanner-only aggregate and the earlier per-language chart are intentionally omitted. They were useful for development, but they are not part of the final comparison.
 
-The results were not equal across languages. HermSec performed best on Python, Node.js, and Java. These languages had better built-in rules and stronger scanner support. HermSec was weaker on PHP, Rust, Go, Ruby, C\#, C/C++, and configuration files. Figure~\ref{fig:language-baseline} shows this clearly.
+The final run completed 24 of 24 mode-and-fixture runs. The metrics in this section come from \texttt{results.json} and \texttt{metrics.csv}. The chart files \texttt{mode-metrics.svg} and \texttt{mode-counts.svg} were regenerated from the same artifact.
 
-\begin{figure}
-  \centering
-  \includegraphics[width=\linewidth]{figures/language_baseline.png}
-  \caption{Earlier scanner-only baseline by language. HermSec performed best on Python, Node.js, and Java.}
-  \Description{A horizontal bar chart showing scanner-only detection rates by language. Python and Node.js are high. PHP, Rust, Go, Ruby, C sharp, and configuration are lower.}
-  \label{fig:language-baseline}
-\end{figure}
-
-\subsection{Final Mode Comparison}
-Table~\ref{tab:mode-summary} shows the final results. Deep assisted scan found the most real issues, but it also reported many extra findings. Single agent inspection reported very few findings, so it had better precision, but it missed many bugs. MoA inspection gave a better balance than one agent. Scanner + MoA had the best F1 score in this test. It found fewer true positives than deep assisted scan, but it reduced the scanner false positives sharply.
+\subsection{Aggregate Mode Comparison}
+Table~\ref{tab:mode-summary} shows the aggregate comparison. The best F1 score came from MoA Low. Single Agent had the highest precision but missed many planted findings. Scanner-heavy modes found more true positives but also produced many false positives against this small answer key.
 
 \begin{table*}
-  \caption{Aggregate results across four controlled fixtures.}
+  \caption{Aggregate results across the controlled fixture set.}
   \label{tab:mode-summary}
   \centering
   \small
-  \begin{tabular}{lrrrrrrr}
+  \begin{tabular}{lcccccccc}
     \toprule
-    Mode & Runs & TP & FP & FN & Precision & Recall & F1 \\
+    Scenario & Runs & Reported & TP & FP & FN & Precision & Recall & F1 \\
     \midrule
-    Deep assisted & 4 & 8 & 81 & 4 & 0.0899 & 0.6667 & 0.1584 \\
-    Single agent & 4 & 2 & 1 & 10 & 0.6667 & 0.1667 & 0.2667 \\
-    MoA assisted & 4 & 5 & 4 & 7 & 0.5556 & 0.4167 & 0.4762 \\
-    Scanner + MoA & 4 & 7 & 9 & 5 & 0.4375 & 0.5833 & 0.5000 \\
+    Deep assisted & 4 & 89 & 6 & 83 & 6 & 0.0674 & 0.5000 & 0.1188 \\
+    Single Agent & 4 & 3 & 2 & 1 & 10 & 0.6667 & 0.1667 & 0.2667 \\
+    MoA Low & 4 & 9 & 5 & 4 & 7 & 0.5556 & 0.4167 & 0.4762 \\
+    MoA High & 4 & 6 & 3 & 3 & 9 & 0.5000 & 0.2500 & 0.3333 \\
+    Scanner + MoA Low & 4 & 74 & 6 & 68 & 6 & 0.0811 & 0.5000 & 0.1395 \\
+    Scanner + MoA High & 4 & 70 & 7 & 63 & 5 & 0.1000 & 0.5833 & 0.1707 \\
     \bottomrule
   \end{tabular}
 \end{table*}
 
-\begin{figure*}
-  \centering
-  \includegraphics[width=.48\textwidth]{figures/mode_metrics.png}\hfill
-  \includegraphics[width=.48\textwidth]{figures/mode_counts.png}
-  \caption{Final mode comparison. Left: precision, recall, and F1. Right: true positives, false positives, and false negatives.}
-  \Description{Two bar charts. The left chart compares precision, recall, and F1 for deep assisted, single agent, MoA assisted, and Scanner plus MoA modes. The right chart compares true positives, false positives, and false negatives for the same modes.}
-  \label{fig:mode-comparison}
-\end{figure*}
-
 \subsection{Per-Fixture Results}
-Table~\ref{tab:fixture-results} gives the detailed results. Single agent and MoA both returned zero findings on the clean projects. This is good because the clean projects should not produce findings.
-
-On the vulnerable projects, MoA found three Node.js issues and two Python issues. Single agent only found one issue in each vulnerable project. Deep assisted found more planted issues, especially in the Python project, but it also reported many findings that were outside the answer key. Scanner + MoA found four Node.js issues and three Python issues. It still had some false positives, but it gave the best total F1 score.
+Table~\ref{tab:fixture-results} gives a compact per-fixture view. Clean fixtures show whether a mode stayed quiet or produced extra findings.
 
 \begin{table*}
-  \caption{Per-fixture results from the final comparison.}
+  \caption{Per-fixture results from the refreshed comparison.}
   \label{tab:fixture-results}
   \centering
-  \small
-  \begin{tabular}{llrrrrrr}
+  \scriptsize
+  \begin{tabular}{llccccccc}
     \toprule
-    Fixture & Mode & Findings & Expected & TP & FP & FN & F1 \\
+    Fixture & Mode & Reported & Expected & TP & FP & FN & F1 & Notes \\
     \midrule
-    Node vulnerable & Deep assisted & 25 & 6 & 3 & 22 & 3 & 0.1935 \\
-    Node clean & Deep assisted & 6 & 0 & 0 & 6 & 0 & 0.0000 \\
-    Python vulnerable & Deep assisted & 57 & 6 & 5 & 52 & 1 & 0.1587 \\
-    Python clean & Deep assisted & 1 & 0 & 0 & 1 & 0 & 0.0000 \\
-    Node vulnerable & Single agent & 2 & 6 & 1 & 1 & 5 & 0.2500 \\
-    Node clean & Single agent & 0 & 0 & 0 & 0 & 0 & 1.0000 \\
-    Python vulnerable & Single agent & 1 & 6 & 1 & 0 & 5 & 0.2858 \\
-    Python clean & Single agent & 0 & 0 & 0 & 0 & 0 & 1.0000 \\
-    Node vulnerable & MoA assisted & 6 & 6 & 3 & 3 & 3 & 0.5000 \\
-    Node clean & MoA assisted & 0 & 0 & 0 & 0 & 0 & 1.0000 \\
-    Python vulnerable & MoA assisted & 3 & 6 & 2 & 1 & 4 & 0.4444 \\
-    Python clean & MoA assisted & 0 & 0 & 0 & 0 & 0 & 1.0000 \\
-    Node vulnerable & Scanner + MoA & 10 & 6 & 4 & 6 & 2 & 0.5000 \\
-    Node clean & Scanner + MoA & 1 & 0 & 0 & 1 & 0 & 0.0000 \\
-    Python vulnerable & Scanner + MoA & 4 & 6 & 3 & 1 & 3 & 0.6000 \\
-    Python clean & Scanner + MoA & 1 & 0 & 0 & 1 & 0 & 0.0000 \\
+    Node vuln & Deep & 25 & 6 & 4 & 21 & 2 & 0.2581 & fallback explanation \\
+    Node clean & Deep & 6 & 0 & 0 & 6 & 0 & 0.0000 & noisy scanner findings \\
+    Python vuln & Deep & 57 & 6 & 2 & 55 & 4 & 0.0635 & fallback explanation \\
+    Python clean & Deep & 1 & 0 & 0 & 1 & 0 & 0.0000 & one extra finding \\
+    Node vuln & Single & 2 & 6 & 1 & 1 & 5 & 0.2500 & precise but missed issues \\
+    Node clean & Single & 0 & 0 & 0 & 0 & 0 & 1.0000 & clean \\
+    Python vuln & Single & 1 & 6 & 1 & 0 & 5 & 0.2857 & clean but low recall \\
+    Python clean & Single & 0 & 0 & 0 & 0 & 0 & 1.0000 & clean \\
+    Node vuln & MoA Low & 5 & 6 & 2 & 3 & 4 & 0.3636 & balanced \\
+    Node clean & MoA Low & 0 & 0 & 0 & 0 & 0 & 1.0000 & clean \\
+    Python vuln & MoA Low & 4 & 6 & 3 & 1 & 3 & 0.6000 & best vulnerable row \\
+    Python clean & MoA Low & 0 & 0 & 0 & 0 & 0 & 1.0000 & clean \\
     \bottomrule
   \end{tabular}
 \end{table*}
 
 \section{Discussion}
 \subsection{Answer to RQ1}
-Scanner + MoA had the best F1 score in this test. Deep assisted scan had the best recall, but it had too many false positives. Single agent inspection was cleaner, but it missed too many planted bugs. MoA was a strong middle point, but the hybrid mode performed slightly better overall.
+For RQ1, the answer depends on the goal. Single Agent had the best precision at 0.6667, but it only found 2 of 12 expected issues. Scanner + MoA High had the best recall at 0.5833, but it had many false positives. MoA Low had the best F1 score at 0.4762, so it was the best balanced mode in this run.
 
 \subsection{Answer to RQ2}
-MoA did reduce noise compared with the scanner-based mode. It also found more real bugs than the single agent. This shows that the judge and aggregator can help. However, MoA still missed 7 of 12 planted vulnerabilities. This means it is useful, but it is not enough by itself.
+For RQ2, MoA improved the balance compared with both Deep assisted and Single Agent. MoA Low found 5 true positives with 4 false positives. Deep assisted found 6 true positives, but it also reported 83 false positives. Single Agent had only 1 false positive, but it missed 10 expected issues. This means the MoA judge and aggregator helped reduce noise, but the system still lost some recall.
 
 \subsection{Answer to RQ3}
-Scanner + MoA improved the balance in this small test. It reached F1 0.500, which was higher than MoA at 0.476. It also found 7 true positives, compared with 5 for MoA and 2 for the single agent. However, it still produced 9 false positives, so the judge and aggregator need more tuning.
+For RQ3, Scanner + MoA did not beat MoA Low on F1 in this controlled run. Scanner + MoA High found the most true positives with 7 of 12, but it also produced 63 false positives. This means the hybrid preserved more scanner coverage, but the judge and aggregator did not reduce scanner noise enough yet.
 
 \subsection{Answer to RQ4}
-The next step is better coverage. HermSec still needs stronger language-specific rules and scanners for PHP, Go, Ruby, Rust, C\#, C/C++, and configuration files. The agent modes should also be tested on larger public benchmarks. Deep assisted scan should be tested again after the model fallback issue is fixed. Scanner + MoA should also be tested with different candidate limits because too many scanner candidates can make the final aggregator fail or become noisy.
+For RQ4, the next step is better coverage and more stable evaluation. HermSec still needs stronger language-specific rules and scanners for PHP, Go, Ruby, Rust, C\#, C/C++, and configuration files. The agent modes should also be tested on larger public benchmarks. Deep assisted scan should continue reporting fallback reasons clearly. Scanner + MoA should use stricter scanner candidate filtering because too many scanner candidates made the final result noisy.
 
 \section{Threats to Validity}
-This study is small. The final comparison used only four fixtures and 12 planted vulnerabilities. The results show a useful direction, but they do not prove that the same result will happen on all projects.
+This study is small. It used four controlled fixtures and 12 expected findings. The results show a useful direction rather than proving that the same behavior will happen on all projects.
 
-The bugs were also synthetic. Real projects can have more complex code and more complex data flow. The scoring method can also count a useful scanner finding as a false positive if it is not in the answer key. This affected the deep assisted results. Finally, model behavior can change because of provider errors, prompt changes, timeout settings, and model updates.
+The bugs are synthetic. Real projects can have more complex code and more complex data flow. The scoring method can also count a useful scanner finding as a false positive if it is not in the answer key. Finally, model behavior can change because of provider errors, prompt changes, timeout settings, and model updates.
 
 \section{Future Work}
 Future work should test HermSec on larger benchmarks. Good next benchmarks are OWASP BenchmarkJava, OpenSSF CVE Benchmark, CASTLE, and selected Juliet test cases. HermSec should also improve Java taint tracking, scanner installation, benchmark exports, and cost tracking for model runs. Another useful test would compare different MoA panel sizes, different judge settings, and different Scanner + MoA candidate limits.
 
 \section{Conclusion}
-This paper presented HermSec as a user-friendly repository security scanner and compared four HermSec review modes. Deep assisted scan found the most planted bugs, but it had many false positives. Single agent inspection was clean, but it missed many bugs. MoA inspection gave a better balance than one agent. Scanner + MoA had the best F1 score in this small test.
+This paper presents HermSec as a user-friendly repository security scanner and compares four HermSec review modes: Deep assisted scan, Single Agent inspection, MoA inspection, and Scanner + MoA inspection.
 
-The main conclusion is simple. Scanners are still needed for broad coverage. Agent modes are useful for cleaner review and explanation. The hybrid Scanner + MoA direction looks promising because it combines both ideas. It still needs larger testing before strong claims can be made.
+The controlled run shows that no mode is perfect. Single Agent was the most precise, but it missed many issues. Scanner-heavy modes found more true positives, but they produced too much noise on the small answer key. MoA Low gave the best F1 score, so it was the best balanced mode in this experiment. Scanner + MoA High had the best recall, but it still needs better filtering before it can beat MoA on overall quality.
+
+The main lesson is that HermSec should keep both scanner-backed and agent-backed workflows. Scanners give broad deterministic coverage. Agents help review evidence and reduce noise. The next version should improve scanner candidate filtering, Java and multi-language coverage, and larger benchmark evaluation.
 
 \begin{acks}
-This work was developed for Security Insider Lab II. I thank my colleague Ghazal for preparing the broader fixture tests and benchmark notes used for the scanner-only baseline.
+This work was developed for Security Insider Lab II. I thank my colleague Ghazal for preparing broader fixture tests and benchmark notes that helped guide the research refresh.
 \end{acks}
 
 \bibliographystyle{ACM-Reference-Format}

@@ -1,0 +1,130 @@
+{
+  "agentMode": {
+    "acceptedFindingCount": 4,
+    "agents": [
+      {
+        "id": "injection-and-execution",
+        "label": "Injection and execution specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 10276,
+        "status": "completed"
+      },
+      {
+        "id": "auth-and-data-flow",
+        "label": "Auth and data-flow specialist",
+        "model": "xiaomi/mimo-v2.5-20260422",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 1483,
+        "status": "completed"
+      },
+      {
+        "id": "secrets-and-config",
+        "label": "Secrets and config specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 27821,
+        "status": "completed"
+      },
+      {
+        "id": "moa-false-positive-judge",
+        "label": "False-positive Judge",
+        "model": "deepseek-v4-pro",
+        "provider": "opencode-go",
+        "role": "judge",
+        "runtimeMs": 15697,
+        "status": "completed"
+      },
+      {
+        "id": "moa-aggregator",
+        "label": "MoA Aggregator",
+        "model": "MiniMax-M3",
+        "provider": "opencode-go",
+        "role": "aggregator",
+        "runtimeMs": 7911,
+        "status": "completed"
+      }
+    ],
+    "agentsUsed": [
+      "injection-and-execution",
+      "auth-and-data-flow",
+      "secrets-and-config",
+      "moa-false-positive-judge",
+      "moa-aggregator"
+    ],
+    "aggregator": {
+      "agentId": "moa-aggregator",
+      "label": "MoA Aggregator",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go"
+    },
+    "aggregatorModel": "MiniMax-M3",
+    "candidateFindingCount": 4,
+    "findings": {
+      "finding-49f0f6847d3c2d7e": {
+        "agentIds": [
+          "moa-aggregator"
+        ],
+        "judgeReason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-aggregated",
+        "sourceLabels": [
+          "moa-aggregated"
+        ]
+      },
+      "finding-b58b80fac121a4e9": {
+        "agentIds": [
+          "moa-aggregator"
+        ],
+        "judgeReason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-aggregated",
+        "sourceLabels": [
+          "moa-aggregated"
+        ]
+      },
+      "finding-b7927239085e07f9": {
+        "agentIds": [
+          "moa-aggregator"
+        ],
+        "judgeReason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-aggregated",
+        "sourceLabels": [
+          "moa-aggregated"
+        ]
+      },
+      "finding-faf13c772fcd015f": {
+        "agentIds": [
+          "moa-aggregator"
+        ],
+        "judgeReason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-aggregated",
+        "sourceLabels": [
+          "moa-aggregated"
+        ]
+      }
+    },
+    "mode": "moa-assisted",
+    "modeLabel": "MoA-assisted inspection",
+    "needsHumanReviewCount": 0,
+    "rejectedFindingCount": 0,
+    "scanMode": "moa-assisted",
+    "totalAgentRuntimeMs": 63296
+  },
+  "executiveSummary": "MoA-assisted inspection produced 4 validated agent-only findings.",
+  "explanations": {},
+  "generatedWithModel": true,
+  "model": "MiniMax-M3",
+  "priorityActions": [
+    "finding-b58b80fac121a4e9: Invoke subprocess without shell=True using a list of arguments, or strictly validate and sanitize the input to remove shell metacharacters.",
+    "finding-faf13c772fcd015f: Load secrets from environment variables or a managed secrets store at runtime instead of embedding them in source.",
+    "finding-b7927239085e07f9: Use parameterized queries with placeholder arguments (e.g., sqlite3 placeholders) rather than f-string formatting of user input.",
+    "finding-49f0f6847d3c2d7e: Disable debug mode for non-development deployments by setting DEBUG=False and passing debug=False to app.run()."
+  ],
+  "provider": "opencode-go"
+}

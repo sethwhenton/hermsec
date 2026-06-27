@@ -1,0 +1,85 @@
+{
+  "ok": true,
+  "message": "Scan completed: 1 finding(s). Report: <hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-23-01-336Z",
+  "data": {
+    "scan": {
+      "schemaVersion": "1.0",
+      "id": "scan-1736ec771ea4848d",
+      "target": "<hermsec-repo>\\tests\\fixtures\\repos\\python-flask-vulnerable",
+      "mode": "auto",
+      "startedAt": "2026-06-27T20:23:00.945Z",
+      "finishedAt": "2026-06-27T20:23:01.336Z",
+      "durationMs": 391,
+      "scannerStatuses": [
+        {
+          "id": "repository-discovery",
+          "label": "Repository discovery",
+          "status": "completed",
+          "message": "Discovered 5 files (python:1, json:1, yaml:1, text:2), package managers: pip, lockfiles: 0, ignored folders: none."
+        },
+        {
+          "id": "single-agent",
+          "label": "Single-agent inspection",
+          "status": "completed",
+          "message": "Single-agent inspection completed with 1 validated finding.",
+          "durationMs": 7814
+        }
+      ],
+      "findings": [
+        {
+          "id": "finding-761c5db27c1b1c5a",
+          "title": "Command Injection via subprocess with shell=True",
+          "category": "code",
+          "severity": "critical",
+          "confidence": "medium",
+          "description": "The 'name' query parameter is passed directly into a shell command via f-string interpolation and subprocess with shell=True, allowing arbitrary OS command injection. An attacker can inject shell metacharacters to execute arbitrary commands.",
+          "evidence": "22: subprocess.check_output(f\"echo {name}\", shell=True, text=True)",
+          "remediation": "Replace shell=True with a list of arguments (e.g., ['echo', name]) and avoid using f-string interpolation for command construction. Validate and sanitize user input.",
+          "tool": "hermsec-agent",
+          "ruleId": "command-injection-subprocess",
+          "cwe": [
+            "CWE-78"
+          ],
+          "location": {
+            "file": "app.py",
+            "startLine": 22,
+            "endLine": 22
+          },
+          "agent": {
+            "mode": "single-agent",
+            "source": "single-agent",
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "generatedAt": "2026-06-27T20:23:09.157Z",
+            "candidateIds": [
+              "candidate-73ab4ae5cd9fc509"
+            ]
+          },
+          "fingerprint": "fp-fe03ca9be6d00a37"
+        }
+      ],
+      "summary": {
+        "total": 1,
+        "critical": 1,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 0
+      },
+      "git": {
+        "branch": "main",
+        "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+        "dirty": true
+      }
+    },
+    "report": {
+      "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-23-01-336Z\\summary.json",
+      "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-23-01-336Z\\findings.json",
+      "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-23-01-336Z\\evidence.json",
+      "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-23-01-336Z\\run.json",
+      "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-23-01-336Z\\agent-summary.json",
+      "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-23-01-336Z\\delta.json",
+      "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-23-01-336Z\\report-document.json"
+    }
+  }
+}

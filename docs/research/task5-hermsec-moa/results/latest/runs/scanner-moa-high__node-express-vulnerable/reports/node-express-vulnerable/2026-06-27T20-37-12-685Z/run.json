@@ -1,0 +1,18 @@
+{
+  "durationMs": 12766,
+  "fallback": {
+    "actualReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-37-12-685Z",
+    "configuredReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-vulnerable\\reports",
+    "used": false
+  },
+  "finishedAt": "2026-06-27T20:37:12.685Z",
+  "git": {
+    "branch": "main",
+    "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+    "dirty": true
+  },
+  "id": "scan-cd624d375988bf89",
+  "mode": "auto",
+  "modeLabel": "Scanner + MoA inspection",
+  "startedAt": "2026-06-27T20:36:59.919Z"
+}

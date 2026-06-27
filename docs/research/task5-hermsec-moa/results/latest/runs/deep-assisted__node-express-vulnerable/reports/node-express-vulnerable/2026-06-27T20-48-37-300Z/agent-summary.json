@@ -1,0 +1,335 @@
+{
+  "executiveSummary": "25 scanner finding(s): 1 critical, 12 high, 10 medium, 2 low, 0 info. Some model text was rejected because it was not supported by scanner evidence; fallback explanations were used.",
+  "explanations": {
+    "finding-019805294a476f9b": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "pmg reported Command Injection in lodash at package-lock.json. Evidence: lodash <4.17.21 https://github.[REDACTED_SECRET]. Identifiers supplied by scanner evidence: GHSA-35JH-R3H4-6JHM.",
+      "impact": "HIGH dependency finding reported by pmg.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to 4.18.1 after dependency review.",
+      "title": "Command Injection in lodash"
+    },
+    "finding-31325d17858675c7": {
+      "confidenceReason": "Confidence is medium because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "hermsec-heuristics reported SQL query appears to include dynamic string construction at src/app.js:5. Evidence: src/app.js:5 return db.query(\"SELECT * FROM users WHERE name = '\" + term + \"'\");. Identifiers supplied by scanner evidence: CWE-89.",
+      "impact": "HIGH code finding reported by hermsec-heuristics.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Use parameterized queries or a query builder.",
+      "title": "SQL query appears to include dynamic string construction"
+    },
+    "finding-34a12328494fee7c": {
+      "confidenceReason": "High confidence based on known npm vulnerability advisory from PMG.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "express <4.20.0 is affected by GHSA-qw6h-vgh9-j6wx (npm package).",
+      "impact": "Potential cross-site scripting (XSS) attack via express response.redirect().",
+      "safeNextSteps": [
+        "Update package-lock.json to specify express version 4.22.2 or later.",
+        "Test the application for any breaking changes after the upgrade."
+      ],
+      "suggestedFix": "Upgrade express to 4.22.2 after dependency review.",
+      "title": "express vulnerable to XSS via response.redirect()"
+    },
+    "finding-365058e7fa14adc3": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "pmg reported lodash vulnerable to Code Injection via `_.template` imports key names at package-lock.json. Evidence: lodash >=4.0.0 <=4.17.23 https://github.[REDACTED_SECRET]. Identifiers supplied by scanner evidence: GHSA-R5FR-RJXR-66JC.",
+      "impact": "HIGH dependency finding reported by pmg.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to 4.18.1 after dependency review.",
+      "title": "lodash vulnerable to Code Injection via `_.template` imports key names"
+    },
+    "finding-3b3d25cd2cad6275": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "semgrep reported Shell execution through child_process at src/routes/search.js:19. Evidence: src/routes/search.js:19 Shell execution through child_process. Identifiers supplied by scanner evidence: CWE-78.",
+      "impact": "HIGH code finding reported by semgrep.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Review the matched code path and apply the Semgrep rule guidance.",
+      "title": "Shell execution through child_process"
+    },
+    "finding-44a1a2191ecca7b5": {
+      "confidenceReason": "Confidence is confirmed because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "hermsec-heuristics reported Hermsec fake secret fixture token at src/routes/search.js:7. Evidence: src/routes/search.js:7 export const fakeFixtureToken = \"HERMSEC_FAKE_TEST_TOKEN_[REDACTED]\";. Identifiers supplied by scanner evidence: CWE-798.",
+      "impact": "HIGH secret finding reported by hermsec-heuristics.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Move secrets to environment variables or a secret manager and rotate exposed credentials.",
+      "title": "Hermsec fake secret fixture token"
+    },
+    "finding-4eb6c10f5698be89": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "pmg reported Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions at package-lock.json. Evidence: lodash >=4.0.0 <=4.17.22 https://github.[REDACTED_SECRET]. Identifiers supplied by scanner evidence: GHSA-XXJR-MMJV-4GPG.",
+      "impact": "MEDIUM dependency finding reported by pmg.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to 4.18.1 after dependency review.",
+      "title": "Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions"
+    },
+    "finding-5d7c8a7ede9c55b6": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "pmg reported Express.js Open Redirect in malformed URLs at package-lock.json. Evidence: express <4.19.2 https://github.[REDACTED_SECRET]. Identifiers supplied by scanner evidence: GHSA-RV95-896H-C2VC.",
+      "impact": "MEDIUM dependency finding reported by pmg.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade express to 4.22.2 after dependency review.",
+      "title": "Express.js Open Redirect in malformed URLs"
+    },
+    "finding-7194eb872634eb85": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "osv-scanner reported Regular Expression Denial of Service (ReDoS) in lodash at package-lock.json. Evidence: lodash@4.17.20 is affected by GHSA-29mw-wpgm-hmr9, CVE-2020-28500.. Identifiers supplied by scanner evidence: CVE-2020-28500, GHSA-29MW-WPGM-HMR9.",
+      "impact": "MEDIUM dependency finding reported by osv-scanner.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to a fixed version: 4.17.21.",
+      "title": "Regular Expression Denial of Service (ReDoS) in lodash"
+    },
+    "finding-72f746cb8be1cd13": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "osv-scanner reported Command Injection in lodash at package-lock.json. Evidence: lodash@4.17.20 is affected by GHSA-35jh-r3h4-6jhm, CVE-2021-23337.. Identifiers supplied by scanner evidence: CVE-2021-23337, GHSA-35JH-R3H4-6JHM.",
+      "impact": "HIGH dependency finding reported by osv-scanner.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to a fixed version: 4.17.21.",
+      "title": "Command Injection in lodash"
+    },
+    "finding-79460a7a95ca1609": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "osv-scanner reported Express.js Open Redirect in malformed URLs at package-lock.json. Evidence: express@4.18.2 is affected by GHSA-rv95-896h-c2vc, CVE-2024-29041.. Identifiers supplied by scanner evidence: CVE-2024-29041, GHSA-RV95-896H-C2VC.",
+      "impact": "MEDIUM dependency finding reported by osv-scanner.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade express to a fixed version: 4.19.2, 5.0.0-beta.3.",
+      "title": "Express.js Open Redirect in malformed URLs"
+    },
+    "finding-875df24e9347bb86": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "osv-scanner reported lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit` at package-lock.json. Evidence: lodash@4.17.20 is affected by GHSA-f23m-r3pf-42rh, CVE-2026-2950.. Identifiers supplied by scanner evidence: CVE-2026-2950, GHSA-F23M-R3PF-42RH.",
+      "impact": "MEDIUM dependency finding reported by osv-scanner.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to a fixed version: 4.18.0.",
+      "title": "lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit`"
+    },
+    "finding-8f4d1fc6724ec637": {
+      "confidenceReason": "Confidence is medium because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "hermsec-heuristics reported SQL query appears to include dynamic string construction at src/routes/search.js:14. Evidence: src/routes/search.js:14 const query = `SELECT * FROM users WHERE display_name = '${term}'`;. Identifiers supplied by scanner evidence: CWE-89.",
+      "impact": "HIGH code finding reported by hermsec-heuristics.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Use parameterized queries or a query builder.",
+      "title": "SQL query appears to include dynamic string construction"
+    },
+    "finding-91e695b1e33f2931": {
+      "confidenceReason": "Confidence is medium because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "hermsec-heuristics reported Shell execution through child_process at src/routes/search.js:19. Evidence: src/routes/search.js:19 exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined);. Identifiers supplied by scanner evidence: CWE-78.",
+      "impact": "HIGH code finding reported by hermsec-heuristics.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Use spawn or execFile with fixed argv arrays and shell disabled.",
+      "title": "Shell execution through child_process"
+    },
+    "finding-968c8ccb0d1e10db": {
+      "confidenceReason": "Scanner reports high confidence due to known npm vulnerability advisory.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "lodash >=4.0.0 <4.17.21 is affected by GHSA-29MW-WPGM-HMR9 (npm package).",
+      "impact": "Potential denial of service vulnerability in lodash library.",
+      "safeNextSteps": [
+        "Review and update package-lock.json to specify lodash version 4.18.1 or later.",
+        "Test application to ensure compatibility with updated lodash version."
+      ],
+      "suggestedFix": "Upgrade lodash to 4.18.1 after dependency review.",
+      "title": "Regular Expression Denial of Service (ReDoS) in lodash"
+    },
+    "finding-9c6c61503e6a8d67": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "osv-scanner reported lodash vulnerable to Code Injection via `_.template` imports key names at package-lock.json. Evidence: lodash@4.17.20 is affected by GHSA-r5fr-rjxr-66jc, CVE-2026-4800.. Identifiers supplied by scanner evidence: CVE-2026-4800, GHSA-R5FR-RJXR-66JC.",
+      "impact": "HIGH dependency finding reported by osv-scanner.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to a fixed version: 4.18.0.",
+      "title": "lodash vulnerable to Code Injection via `_.template` imports key names"
+    },
+    "finding-b2174492de636519": {
+      "confidenceReason": "Medium confidence due to heuristic pattern detection of unescaped string interpolation in HTML context.",
+      "cveUsage": "not_applicable",
+      "evidenceSummary": "src/routes/search.js:33 uses res.send(`<h1>${name}</h1><p>${digest}</p>`) without sanitization.",
+      "impact": "Potential cross-site scripting (XSS) vulnerability via unescaped user input in HTML response.",
+      "safeNextSteps": [
+        "Review the code at src/routes/search.js line 33 to apply output encoding (e.g., HTML entity escaping).",
+        "Consider using a template engine with auto-escaping or a dedicated sanitization library."
+      ],
+      "suggestedFix": "Escape untrusted output before placing it in HTML responses.",
+      "title": "HTML response may include unsanitized input"
+    },
+    "finding-b80725495585908e": {
+      "confidenceReason": "High confidence due to OSV-Scanner reporting a known CVE with specific affected version.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "express@4.18.2 is affected by CVE-2024-43796 (GHSA-qw6h-vgh9-j6wx).",
+      "impact": "Potential cross-site scripting (XSS) attack via express response.redirect().",
+      "safeNextSteps": [
+        "Upgrade express from 4.18.2 to 4.20.0 or 5.0.0 in package-lock.json.",
+        "Run dependency audit and verify no other vulnerabilities remain."
+      ],
+      "suggestedFix": "Upgrade express to a fixed version: 4.20.0, 5.0.0.",
+      "title": "express vulnerable to XSS via response.redirect()"
+    },
+    "finding-c0abf04fd738039a": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "hermsec-heuristics reported Known vulnerable lodash version at package-lock.json. Evidence: package-lock.json pins lodash@4.17.20.. Identifiers supplied by scanner evidence: GHSA-35jh-r3h4-6jhm, CWE-79.",
+      "impact": "HIGH dependency finding reported by hermsec-heuristics.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to 4.17.21 or newer after dependency review.",
+      "title": "Known vulnerable lodash version"
+    },
+    "finding-d42a93124fa707d4": {
+      "confidenceReason": "Confidence is medium because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "hermsec-heuristics reported Shell execution through child_process at src/app.js:10. Evidence: src/app.js:10 return childProcess.exec(\"tool \" + tool);. Identifiers supplied by scanner evidence: CWE-78.",
+      "impact": "HIGH code finding reported by hermsec-heuristics.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Use spawn or execFile with fixed argv arrays and shell disabled.",
+      "title": "Shell execution through child_process"
+    },
+    "finding-da558c475a6f03b0": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "pmg reported lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit` at package-lock.json. Evidence: lodash <=4.17.23 https://github.[REDACTED_SECRET]. Identifiers supplied by scanner evidence: GHSA-F23M-R3PF-42RH.",
+      "impact": "MEDIUM dependency finding reported by pmg.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to 4.18.1 after dependency review.",
+      "title": "lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit`"
+    },
+    "finding-f4e47258a7e0e346": {
+      "confidenceReason": "Medium confidence due to heuristic pattern detection of unsanitized concatenation in HTML context.",
+      "cveUsage": "not_applicable",
+      "evidenceSummary": "src/app.js:14 uses res.send(\"<h1>\" + req.query.name + \"</h1>\") without sanitization.",
+      "impact": "Potential cross-site scripting (XSS) vulnerability via unescaped user input in HTML response.",
+      "safeNextSteps": [
+        "Review the code at src/app.js line 14 to apply output encoding (e.g., HTML entity escaping).",
+        "Consider using a template engine with auto-escaping or a dedicated sanitization library."
+      ],
+      "suggestedFix": "Escape untrusted output before placing it in HTML responses.",
+      "title": "HTML response may include unsanitized input"
+    },
+    "finding-f71ba54cee76cfe0": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "osv-scanner reported Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions at package-lock.json. Evidence: lodash@4.17.20 is affected by GHSA-xxjr-mmjv-4gpg, CVE-2025-13465.. Identifiers supplied by scanner evidence: CVE-2025-13465, GHSA-XXJR-MMJV-4GPG.",
+      "impact": "MEDIUM dependency finding reported by osv-scanner.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to a fixed version: 4.17.23.",
+      "title": "Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions"
+    },
+    "finding-f9e3cdf62dee35f2": {
+      "confidenceReason": "Confidence is medium because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "hermsec-heuristics reported Shell execution may include user-controlled input at src/routes/search.js:19. Evidence: src/routes/search.js:19 exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined);. Identifiers supplied by scanner evidence: CWE-78.",
+      "impact": "CRITICAL code finding reported by hermsec-heuristics.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Use fixed argv arrays and validate user-controlled values before execution.",
+      "title": "Shell execution may include user-controlled input"
+    },
+    "finding-fc661b2848ecca41": {
+      "confidenceReason": "Confidence is confirmed because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "hermsec-heuristics reported Hermsec fake secret fixture token at .env.example:1. Evidence: .env.example:1 API_KEY=[REDACTED]. Identifiers supplied by scanner evidence: CWE-798.",
+      "impact": "HIGH secret finding reported by hermsec-heuristics.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Move secrets to environment variables or a secret manager and rotate exposed credentials.",
+      "title": "Hermsec fake secret fixture token"
+    }
+  },
+  "fallbackReason": "unsupported-model-output",
+  "generatedWithModel": false,
+  "priorityActions": [
+    "finding-f9e3cdf62dee35f2: Use fixed argv arrays and validate user-controlled values before execution.",
+    "finding-019805294a476f9b: Upgrade lodash to 4.18.1 after dependency review.",
+    "finding-31325d17858675c7: Use parameterized queries or a query builder.",
+    "finding-365058e7fa14adc3: Upgrade lodash to 4.18.1 after dependency review.",
+    "finding-3b3d25cd2cad6275: Review the matched code path and apply the Semgrep rule guidance."
+  ],
+  "provider": "opencode-go"
+}

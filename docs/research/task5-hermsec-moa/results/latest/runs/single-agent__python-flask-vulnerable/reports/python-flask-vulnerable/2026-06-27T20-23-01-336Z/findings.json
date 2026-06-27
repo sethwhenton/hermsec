@@ -1,0 +1,33 @@
+[
+  {
+    "agent": {
+      "candidateIds": [
+        "candidate-73ab4ae5cd9fc509"
+      ],
+      "generatedAt": "2026-06-27T20:23:09.157Z",
+      "mode": "single-agent",
+      "model": "deepseek-v4-flash",
+      "provider": "opencode-go",
+      "source": "single-agent"
+    },
+    "category": "code",
+    "confidence": "medium",
+    "cwe": [
+      "CWE-78"
+    ],
+    "description": "The 'name' query parameter is passed directly into a shell command via f-string interpolation and subprocess with shell=True, allowing arbitrary OS command injection. An attacker can inject shell metacharacters to execute arbitrary commands.",
+    "evidence": "22: subprocess.check_output(f\"echo {name}\", shell=True, text=True)",
+    "fingerprint": "fp-fe03ca9be6d00a37",
+    "id": "finding-761c5db27c1b1c5a",
+    "location": {
+      "endLine": 22,
+      "file": "app.py",
+      "startLine": 22
+    },
+    "remediation": "Replace shell=True with a list of arguments (e.g., ['echo', name]) and avoid using f-string interpolation for command construction. Validate and sanitize user input.",
+    "ruleId": "command-injection-subprocess",
+    "severity": "critical",
+    "title": "Command Injection via subprocess with shell=True",
+    "tool": "hermsec-agent"
+  }
+]

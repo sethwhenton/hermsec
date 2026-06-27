@@ -8,6 +8,17 @@ import { runProductAgentScan } from "../../src/agent/productScan.js";
 import { assistModeFrom } from "../../src/core/progress.js";
 import { noModelProvider } from "../../src/model/noModel.js";
 import type { ModelProviderAdapter, ModelRequest, ProviderConfig, ProviderHealth } from "../../src/model/provider.js";
+import type { Finding } from "../../src/shared/types.js";
+
+const lowSpecialistIds = ["injection-and-execution", "auth-and-data-flow", "secrets-and-config"];
+const highSpecialistIds = [...lowSpecialistIds, "database-and-storage", "config-and-iac"];
+const judgeAndAggregatorIds = ["moa-false-positive-judge", "moa-aggregator"];
+const productAgentPanelEnvNames = [
+  "HERMSEC_PRODUCT_AGENT_SPECIALIST_COUNT",
+  "HERMSEC_PRODUCT_AGENT_PANEL",
+  "HERMSEC_PRODUCT_AGENT_PROFILE",
+  "HERMSEC_MOA_PANEL_PROFILE",
+] as const;
 
 test("assist mode normalization accepts scanner-model-summary as deep-assisted alias", () => {
   assert.equal(assistModeFrom("scanner-model-summary"), "deep-assisted");
@@ -78,30 +89,16 @@ test("single-agent mode normalizes validated model findings", async () => {
 
 test("moa-assisted mode runs specialists, judge, and aggregator", async () => {
   const repo = await fixtureRepo();
-  const provider = fakeProvider((request, count) => {
-    const content = request.messages.at(-1)?.content ?? "";
-    if (content.includes("false-positive judge")) {
-      return JSON.stringify({
-        judgments: [1, 2, 3].map((index) => ({
-          candidateId: `cand-${index}`,
-          verdict: "accepted",
-          confidence: "high",
-          reason: "Evidence points at the supplied snippet.",
-        })),
-      });
-    }
-    if (content.includes("MoA aggregator")) {
-      return findingResponse("agg-candidate", ["cand-1", "cand-2", "cand-3"]);
-    }
-    return findingResponse(`cand-${count}`);
-  });
+  const provider = fakeMoaProvider(3);
 
-  const result = await runProductAgentScan({
-    repoRoot: repo,
-    mode: "moa-assisted",
-    provider,
-    providerConfig: { timeoutMs: 10_000 },
-  });
+  const result = await withProductAgentPanelEnv({}, () =>
+    runProductAgentScan({
+      repoRoot: repo,
+      mode: "moa-assisted",
+      provider,
+      providerConfig: { timeoutMs: 10_000 },
+    }),
+  );
 
   assert.equal(result.ok, true);
   assert.equal(provider.requests.length, 5);
@@ -111,55 +108,49 @@ test("moa-assisted mode runs specialists, judge, and aggregator", async () => {
     assert.equal(result.findings[0]?.agent?.source, "moa-aggregator");
     assert.equal(result.findings[0]?.agent?.judge?.reviewedBy, "moa-false-positive-judge");
     assert.deepEqual(result.findings[0]?.agent?.sourceFindingIds, ["cand-1", "cand-2", "cand-3"]);
+    assert.deepEqual(result.agentMode.agentsUsed, [...lowSpecialistIds, ...judgeAndAggregatorIds]);
+    assert.deepEqual(result.agentMode.agents?.map((agent) => agent.id), [...lowSpecialistIds, ...judgeAndAggregatorIds]);
     for (const request of provider.requests) {
       assert.doesNotMatch(request.messages.at(-1)?.content ?? "", /scannerFindings|scanner-confirmed|scanner results/i);
     }
   }
 });
 
-test("moa-assisted mode honors per-role model selections", async () => {
+test("moa-assisted low-count panel routes only active role model selections", async () => {
   const repo = await fixtureRepo();
-  const provider = fakeProvider((request, count) => {
-    const content = request.messages.at(-1)?.content ?? "";
-    if (content.includes("false-positive judge")) {
-      return JSON.stringify({
-        judgments: [1, 2, 3].map((index) => ({
-          candidateId: `cand-${index}`,
-          verdict: "accepted",
-          confidence: "high",
-          reason: "Evidence points at the supplied snippet.",
-        })),
-      });
-    }
-    if (content.includes("MoA aggregator")) {
-      return findingResponse("agg-candidate", ["cand-1", "cand-2", "cand-3"]);
-    }
-    return findingResponse(`cand-${count}`);
-  });
+  const provider = fakeMoaProvider(1);
   const roleModels = new Map([
     ["injection-and-execution", "model-injection"],
     ["auth-and-data-flow", "model-auth"],
     ["secrets-and-config", "model-secrets"],
+    ["database-and-storage", "model-database"],
+    ["config-and-iac", "model-iac"],
     ["moa-false-positive-judge", "model-judge"],
     ["moa-aggregator", "model-aggregator"],
   ]);
+  const resolvedRoles: string[] = [];
 
-  const result = await runProductAgentScan({
-    repoRoot: repo,
-    mode: "moa-assisted",
-    provider,
-    providerConfig: { timeoutMs: 10_000, model: "fallback-model" },
-    modelResolver: async (roleId) => ({
+  const result = await withProductAgentPanelEnv(
+    { HERMSEC_PRODUCT_AGENT_SPECIALIST_COUNT: "1", HERMSEC_PRODUCT_AGENT_PANEL: "low" },
+    () => runProductAgentScan({
+      repoRoot: repo,
+      mode: "moa-assisted",
       provider,
-      providerConfig: { timeoutMs: 10_000, model: roleModels.get(roleId) ?? "fallback-model" },
+      providerConfig: { timeoutMs: 10_000, model: "fallback-model" },
+      modelResolver: async (roleId) => {
+        resolvedRoles.push(roleId);
+        return {
+          provider,
+          providerConfig: { timeoutMs: 10_000, model: roleModels.get(roleId) ?? "fallback-model" },
+        };
+      },
     }),
-  });
+  );
 
   assert.equal(result.ok, true);
+  assert.deepEqual(resolvedRoles, ["injection-and-execution", ...judgeAndAggregatorIds]);
   assert.deepEqual(provider.configs.map((config) => config?.model), [
     "model-injection",
-    "model-auth",
-    "model-secrets",
     "model-judge",
     "model-aggregator",
   ]);
@@ -168,11 +159,70 @@ test("moa-assisted mode honors per-role model selections", async () => {
     const models = result.agentMode.agents.map((agent) => agent.model);
     assert.deepEqual(models, [
       "model-injection",
-      "model-auth",
-      "model-secrets",
       "model-judge",
       "model-aggregator",
     ]);
+    assert.deepEqual(result.agentMode.agentsUsed, ["injection-and-execution", ...judgeAndAggregatorIds]);
+    assert.equal(result.agentMode.candidateFindingCount, 1);
+  }
+});
+
+test("moa-assisted high panel expands specialists and routes each configured model", async () => {
+  const repo = await fixtureRepo();
+  const provider = fakeMoaProvider(5);
+  const roleModels = new Map([
+    ["injection-and-execution", "model-injection"],
+    ["auth-and-data-flow", "model-auth"],
+    ["secrets-and-config", "model-secrets"],
+    ["database-and-storage", "model-database"],
+    ["config-and-iac", "model-iac"],
+    ["moa-false-positive-judge", "model-judge"],
+    ["moa-aggregator", "model-aggregator"],
+  ]);
+  const resolvedRoles: string[] = [];
+
+  const result = await withProductAgentPanelEnv({ HERMSEC_PRODUCT_AGENT_PANEL: "high" }, () =>
+    runProductAgentScan({
+      repoRoot: repo,
+      mode: "moa-assisted",
+      provider,
+      providerConfig: { timeoutMs: 10_000, model: "fallback-model" },
+      modelResolver: async (roleId) => {
+        resolvedRoles.push(roleId);
+        return {
+          provider,
+          providerConfig: { timeoutMs: 10_000, model: roleModels.get(roleId) ?? "fallback-model" },
+        };
+      },
+    }),
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(provider.requests.length, 7);
+  assert.deepEqual(resolvedRoles, [...highSpecialistIds, ...judgeAndAggregatorIds]);
+  assert.deepEqual(provider.configs.map((config) => config?.model), [
+    "model-injection",
+    "model-auth",
+    "model-secrets",
+    "model-database",
+    "model-iac",
+    "model-judge",
+    "model-aggregator",
+  ]);
+  if (result.ok) {
+    assert.deepEqual(result.agentMode.agentsUsed, [...highSpecialistIds, ...judgeAndAggregatorIds]);
+    assert.deepEqual(result.agentMode.agents?.map((agent) => agent.id), [...highSpecialistIds, ...judgeAndAggregatorIds]);
+    assert.deepEqual(result.agentMode.agents?.map((agent) => agent.model), [
+      "model-injection",
+      "model-auth",
+      "model-secrets",
+      "model-database",
+      "model-iac",
+      "model-judge",
+      "model-aggregator",
+    ]);
+    assert.equal(result.agentMode.candidateFindingCount, 5);
+    assert.deepEqual(result.findings[0]?.agent?.sourceFindingIds, ["cand-1", "cand-2", "cand-3", "cand-4", "cand-5"]);
   }
 });
 
@@ -201,29 +251,15 @@ test("scanner + MoA mode judges scanner and agent candidates together", async ()
     return JSON.stringify({ findings: [] });
   });
 
-  const result = await runProductAgentScan({
-    repoRoot: repo,
-    mode: "scanner-moa-assisted",
-    provider,
-    providerConfig: { timeoutMs: 10_000 },
-    scannerFindings: [
-      {
-        id: "scanner-eval",
-        title: "Unsafe eval from scanner",
-        category: "code",
-        severity: "high",
-        confidence: "confirmed",
-        description: "Scanner reported request-controlled eval.",
-        evidence: "src/app.js line 1 calls eval(req.query.value).",
-        remediation: "Remove eval and replace it with safe parsing.",
-        tool: "semgrep",
-        ruleId: "javascript.lang.security.audit.eval-detected",
-        cwe: ["CWE-95"],
-        location: { file: "src/app.js", startLine: 1, endLine: 1 },
-        fingerprint: "fp-scanner-eval",
-      },
-    ],
-  });
+  const result = await withProductAgentPanelEnv({}, () =>
+    runProductAgentScan({
+      repoRoot: repo,
+      mode: "scanner-moa-assisted",
+      provider,
+      providerConfig: { timeoutMs: 10_000 },
+      scannerFindings: [scannerEvalFinding()],
+    }),
+  );
 
   assert.equal(result.ok, true);
   assert.equal(provider.requests.length, 5);
@@ -237,6 +273,45 @@ test("scanner + MoA mode judges scanner and agent candidates together", async ()
     assert.equal(result.agentMode.candidateFindingCount, 1);
     assert.equal(result.agentMode.acceptedFindingCount, 1);
     assert.equal(result.agentMode.rejectedFindingCount, 0);
+    assert.deepEqual(result.agentMode.agentsUsed, ["scanner-stack", ...lowSpecialistIds, ...judgeAndAggregatorIds]);
+    assert.deepEqual(result.agentMode.agents?.map((agent) => agent.id), ["scanner-stack", ...lowSpecialistIds, ...judgeAndAggregatorIds]);
+  }
+});
+
+test("scanner + MoA high panel expands specialist fan-out while preserving scanner routing", async () => {
+  const repo = await fixtureRepo();
+  const provider = fakeProvider((request) => {
+    const content = request.messages.at(-1)?.content ?? "";
+    if (content.includes("false-positive judge")) {
+      assert.match(content, /scanner-backed/);
+      assert.match(content, /scanner:scanner-eval/);
+      return acceptedJudgmentResponse(["scanner:scanner-eval"]);
+    }
+    if (content.includes("scanner + MoA final aggregator")) {
+      assert.match(content, /scanner:scanner-eval/);
+      return findingResponse("hybrid-agg", ["scanner:scanner-eval"]);
+    }
+    return JSON.stringify({ findings: [] });
+  });
+
+  const result = await withProductAgentPanelEnv({ HERMSEC_PRODUCT_AGENT_PANEL: "high" }, () =>
+    runProductAgentScan({
+      repoRoot: repo,
+      mode: "scanner-moa-assisted",
+      provider,
+      providerConfig: { timeoutMs: 10_000 },
+      scannerFindings: [scannerEvalFinding()],
+    }),
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(provider.requests.length, 7);
+  if (result.ok) {
+    assert.equal(result.findings.length, 1);
+    assert.equal(result.agentMode.candidateFindingCount, 1);
+    assert.equal(result.agentMode.acceptedFindingCount, 1);
+    assert.deepEqual(result.agentMode.agentsUsed, ["scanner-stack", ...highSpecialistIds, ...judgeAndAggregatorIds]);
+    assert.deepEqual(result.agentMode.agents?.map((agent) => agent.id), ["scanner-stack", ...highSpecialistIds, ...judgeAndAggregatorIds]);
   }
 });
 
@@ -296,4 +371,78 @@ function findingResponse(candidateId: string, sourceFindingIds: string[] = []): 
       },
     ],
   });
+}
+
+function fakeMoaProvider(candidateCount: number): ReturnType<typeof fakeProvider> {
+  const ids = candidateIds(candidateCount);
+  return fakeProvider((request, count) => {
+    const content = request.messages.at(-1)?.content ?? "";
+    if (content.includes("false-positive judge")) {
+      return acceptedJudgmentResponse(ids);
+    }
+    if (content.includes("MoA aggregator")) {
+      return findingResponse("agg-candidate", ids);
+    }
+    return findingResponse(`cand-${count}`);
+  });
+}
+
+function candidateIds(count: number): string[] {
+  return Array.from({ length: count }, (_, index) => `cand-${index + 1}`);
+}
+
+function acceptedJudgmentResponse(ids: readonly string[]): string {
+  return JSON.stringify({
+    judgments: ids.map((candidateId) => ({
+      candidateId,
+      verdict: "accepted",
+      confidence: "high",
+      reason: "Evidence points at the supplied snippet.",
+    })),
+  });
+}
+
+function scannerEvalFinding(): Finding {
+  return {
+    id: "scanner-eval",
+    title: "Unsafe eval from scanner",
+    category: "code",
+    severity: "high",
+    confidence: "confirmed",
+    description: "Scanner reported request-controlled eval.",
+    evidence: "src/app.js line 1 calls eval(req.query.value).",
+    remediation: "Remove eval and replace it with safe parsing.",
+    tool: "semgrep",
+    ruleId: "javascript.lang.security.audit.eval-detected",
+    cwe: ["CWE-95"],
+    location: { file: "src/app.js", startLine: 1, endLine: 1 },
+    fingerprint: "fp-scanner-eval",
+  };
+}
+
+async function withProductAgentPanelEnv<T>(
+  values: Partial<Record<(typeof productAgentPanelEnvNames)[number], string>>,
+  run: () => Promise<T>,
+): Promise<T> {
+  const previous = new Map(productAgentPanelEnvNames.map((name) => [name, process.env[name]]));
+  try {
+    for (const name of productAgentPanelEnvNames) {
+      const value = values[name];
+      if (value === undefined) {
+        delete process.env[name];
+      } else {
+        process.env[name] = value;
+      }
+    }
+    return await run();
+  } finally {
+    for (const name of productAgentPanelEnvNames) {
+      const value = previous.get(name);
+      if (value === undefined) {
+        delete process.env[name];
+      } else {
+        process.env[name] = value;
+      }
+    }
+  }
 }

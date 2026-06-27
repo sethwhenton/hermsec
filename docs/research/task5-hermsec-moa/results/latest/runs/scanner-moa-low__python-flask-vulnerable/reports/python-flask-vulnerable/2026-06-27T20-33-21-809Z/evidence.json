@@ -1,0 +1,420 @@
+{
+  "bundleId": "evidence-4190906b2f2b1ae0",
+  "findingEvidence": {
+    "finding-0f595fbef013f4d6": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2024-57, CVE-2024-39329, BIT-django-2024-39329, GHSA-x7q2-wr7g-xqmf.",
+        "ruleId": "pip-audit:PYSEC-2024-57",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-161214d1eed442bc": [
+      {
+        "location": {
+          "file": "app.py",
+          "startLine": 15
+        },
+        "message": "app.py:15 Possible SQL injection vector through string-based query construction.",
+        "ruleId": "B608",
+        "scanner": "bandit"
+      }
+    ],
+    "finding-1b07d79630a40fd5": [
+      {
+        "location": {
+          "endLine": 22,
+          "file": "app.py",
+          "startLine": 22
+        },
+        "message": "subprocess.check_output(f\"echo {name}\", shell=True, text=True)",
+        "ruleId": "command-injection-shell-true",
+        "scanner": "hermsec-scanner-moa"
+      }
+    ],
+    "finding-1fb5546ad4cdca07": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2026-53, BIT-django-2026-4292, CVE-2026-4292, GHSA-mmwr-2jhp-mc7j.",
+        "ruleId": "pip-audit:PYSEC-2026-53",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-233500de48472042": [
+      {
+        "location": {
+          "endLine": 8,
+          "file": "app.py",
+          "startLine": 8
+        },
+        "message": "app.py line 8: app.config[\"DEBUG\"] = True app.py line 42: app.run(debug=True, host=\"127.0.0.1\")",
+        "ruleId": "flask-debug-enabled",
+        "scanner": "hermsec-scanner-moa"
+      }
+    ],
+    "finding-2a662179f20fedac": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2026-43, BIT-django-2025-14550, CVE-2025-14550, GHSA-33mw-q7rj-mjwj.",
+        "ruleId": "pip-audit:PYSEC-2026-43",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-2da8bf57c3beedf7": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2024-28, GHSA-xxj9-f6rv-m3x4, CVE-2024-24680, BIT-django-2024-24680.",
+        "ruleId": "pip-audit:PYSEC-2024-28",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-30d7af736c067ecf": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2026-49, GHSA-933h-hp56-hf7m, BIT-django-2026-33034, CVE-2026-33034.",
+        "ruleId": "pip-audit:PYSEC-2026-49",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-4940470cf86bbc97": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2026-42, BIT-django-2025-13473, GHSA-2mcm-79hx-8fxw, CVE-2025-13473.",
+        "ruleId": "pip-audit:PYSEC-2026-42",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-4d631eba5901a15a": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2025-108, GHSA-frmv-pr5f-9mcr, BIT-django-2025-64459, CVE-2025-64459.",
+        "ruleId": "pip-audit:PYSEC-2025-108",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-553fcfa7d373c22c": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2024-58, GHSA-9jmf-237g-qf46, BIT-django-2024-39330, CVE-2024-39330.",
+        "ruleId": "pip-audit:PYSEC-2024-58",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-5759826843b92b57": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2023-222, GHSA-qmf9-6jqf-j8fq, BIT-django-2023-46695, CVE-2023-46695.",
+        "ruleId": "pip-audit:PYSEC-2023-222",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-59e543d0f5b92291": [
+      {
+        "location": {
+          "file": "app.py",
+          "startLine": 42
+        },
+        "message": "app.py:42 A Flask app appears to be run with debug=True, which exposes the Werkzeug debugger and allows the execution of arbitrary code.",
+        "ruleId": "B201",
+        "scanner": "bandit"
+      }
+    ],
+    "finding-61f54bb2a229b9c4": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2026-52, BIT-django-2026-4277, GHSA-pwjp-ccjc-ghwg, CVE-2026-4277.",
+        "ruleId": "pip-audit:PYSEC-2026-52",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-6286deb685eb0215": [
+      {
+        "location": {
+          "file": "app.py",
+          "startLine": 42
+        },
+        "message": "app.py:42 app.run(debug=True, host=\"127.0.0.1\")",
+        "ruleId": "hermsec.python.debug-true",
+        "scanner": "hermsec-heuristics"
+      }
+    ],
+    "finding-6746dbbd8d8e1e3b": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2025-37, BIT-django-2025-32873, GHSA-8j24-cjrq-gr2m, CVE-2025-32873.",
+        "ruleId": "pip-audit:PYSEC-2025-37",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-6e29a11e0cc9821d": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2024-58, CVE-2024-39330, GHSA-9jmf-237g-qf46, BIT-django-2024-39330.",
+        "ruleId": "pip-audit:PYSEC-2024-58",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-76e0ee6b7af74773": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2026-47, GHSA-6426-9fv3-65x8, BIT-django-2026-1312, CVE-2026-1312.",
+        "ruleId": "pip-audit:PYSEC-2026-47",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-79648cd2f4b0451f": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2024-59, CVE-2024-39614, GHSA-f6f8-9mx6-9mx2, BIT-django-2024-39614.",
+        "ruleId": "pip-audit:PYSEC-2024-59",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-89c7f141b309a9a2": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by CVE-2025-59682, BIT-django-2025-59682, GHSA-q95w-c7qg-hrff.",
+        "ruleId": "pip-audit:CVE-2025-59682",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-92e2ec5bf5cdeb83": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2026-45, CVE-2026-1285, GHSA-4rrr-2h4v-f3j9, BIT-django-2026-1285.",
+        "ruleId": "pip-audit:PYSEC-2026-45",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-991a30f91ac44426": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by CVE-2026-25674, GHSA-mjgh-79qc-68w3, BIT-django-2026-25674.",
+        "ruleId": "pip-audit:CVE-2026-25674",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-9ec04da14758c908": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2026-51, CVE-2026-3902, GHSA-mvfq-ggxm-9mc5, BIT-django-2026-3902.",
+        "ruleId": "pip-audit:PYSEC-2026-51",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-9fdafd73600719c0": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2026-46, GHSA-gvg8-93h5-g6qq, CVE-2026-1287, BIT-django-2026-1287.",
+        "ruleId": "pip-audit:PYSEC-2026-46",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-a2713a54df22bf82": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2024-56, BIT-django-2024-38875, CVE-2024-38875, GHSA-qg2p-9jwr-mmqf.",
+        "ruleId": "pip-audit:PYSEC-2024-56",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-ab0a01e020936a2a": [
+      {
+        "location": {
+          "file": "app.py",
+          "startLine": 22
+        },
+        "message": "app.py:22 subprocess call with shell=True identified, security issue.",
+        "ruleId": "B602",
+        "scanner": "bandit"
+      }
+    ],
+    "finding-ad5e6ba69c40063c": [
+      {
+        "location": {
+          "file": "app.py",
+          "startLine": 22
+        },
+        "message": "app.py:22 subprocess.check_output(f\"echo {name}\", shell=True, text=True)",
+        "ruleId": "hermsec.python.subprocess-shell",
+        "scanner": "hermsec-heuristics"
+      }
+    ],
+    "finding-b58346c3abe32f02": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2025-107, GHSA-qw25-v68c-qjf3, BIT-django-2025-64458, CVE-2025-64458.",
+        "ruleId": "pip-audit:PYSEC-2025-107",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-b6e9847405c68393": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2026-44, BIT-django-2026-1207, CVE-2026-1207, GHSA-mwm9-4648-f68q.",
+        "ruleId": "pip-audit:PYSEC-2026-44",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-b85501840e8f7659": [
+      {
+        "location": {
+          "file": "app.py",
+          "startLine": 22
+        },
+        "message": "app.py:22 Python subprocess shell mode enabled",
+        "ruleId": "C.Users.whent.AppData.Local.Temp.hermsec-semgrep-OCGTcL.hermsec.python-subprocess-shell",
+        "scanner": "semgrep"
+      }
+    ],
+    "finding-c44681bed92945fd": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2025-106, GHSA-hpr9-3m2g-3j9p, CVE-2025-59681, BIT-django-2025-59681.",
+        "ruleId": "pip-audit:PYSEC-2025-106",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-d02e3f648fb7691a": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2026-48, CVE-2026-33033, BIT-django-2026-33033, GHSA-5mf9-h53q-7mhq.",
+        "ruleId": "pip-audit:PYSEC-2026-48",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-d2861bc2a152161b": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2025-105, BIT-django-2025-57833, CVE-2025-57833, GHSA-6w2r-r2m5-xq5w.",
+        "ruleId": "pip-audit:PYSEC-2025-105",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-d88e78175b200595": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by CVE-2026-25673, BIT-django-2026-25673, GHSA-8p8v-wh79-9r56.",
+        "ruleId": "pip-audit:CVE-2026-25673",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-df5ff9f08d375620": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2025-109, BIT-django-2025-64460, GHSA-vrcr-9hj9-jcg6, CVE-2025-64460.",
+        "ruleId": "pip-audit:PYSEC-2025-109",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-df94066397398095": [
+      {
+        "location": {
+          "endLine": 15,
+          "file": "app.py",
+          "startLine": 15
+        },
+        "message": "query = f\"SELECT * FROM users WHERE display_name = '{term}'\"",
+        "ruleId": "sql-injection-fstring",
+        "scanner": "hermsec-scanner-moa"
+      }
+    ],
+    "finding-eebedbc6bf643f8e": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2025-104, CVE-2025-13372, BIT-django-2025-13372, GHSA-rqw2-ghq9-44m7.",
+        "ruleId": "pip-audit:PYSEC-2025-104",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-f49b9ad6002f4bab": [
+      {
+        "location": {
+          "file": "app.py",
+          "startLine": 37
+        },
+        "message": "app.py:37 Use of weak MD5 hash for security. Consider usedforsecurity=False",
+        "ruleId": "B324",
+        "scanner": "bandit"
+      }
+    ],
+    "finding-f9c90720b2faf255": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2024-59, CVE-2024-39614, BIT-django-2024-39614, GHSA-f6f8-9mx6-9mx2.",
+        "ruleId": "pip-audit:PYSEC-2024-59",
+        "scanner": "pip-audit"
+      }
+    ],
+    "finding-faec3c5d94108ef8": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "django@4.2.1 is affected by PYSEC-2024-57, CVE-2024-39329, BIT-django-2024-39329, GHSA-x7q2-wr7g-xqmf.",
+        "ruleId": "pip-audit:PYSEC-2024-57",
+        "scanner": "pip-audit"
+      }
+    ]
+  },
+  "rawArtifacts": [],
+  "redactionApplied": false
+}

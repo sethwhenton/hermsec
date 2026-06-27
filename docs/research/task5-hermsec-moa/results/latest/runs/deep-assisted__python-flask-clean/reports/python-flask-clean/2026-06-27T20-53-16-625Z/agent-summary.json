@@ -1,0 +1,22 @@
+{
+  "executiveSummary": "1 scanner finding(s): 0 critical, 0 high, 1 medium, 0 low, 0 info. Findings explained from supplied scanner evidence.",
+  "explanations": {
+    "finding-3aef6630933b3c74": {
+      "confidenceReason": "Scanner confidence set to high based on CVE and GHSA identifiers.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported flask@3.0.3 is affected by CVE-2026-27205, GHSA-68rp-wp8r-4726.",
+      "impact": "Improper caching of responses can lead to session information leakage or cross-user data exposure.",
+      "safeNextSteps": [
+        "Upgrade flask to 3.1.3",
+        "Verify no other dependencies are affected by the same vulnerability"
+      ],
+      "suggestedFix": "Upgrade flask to version 3.1.3 as per pip-audit remediation.",
+      "title": "Flask 3.0.3 affected by CVE-2026-27205"
+    }
+  },
+  "generatedWithModel": true,
+  "priorityActions": [
+    "finding-3aef6630933b3c74: Upgrade flask to one of the fixed versions: 3.1.3."
+  ],
+  "provider": "opencode-go"
+}

@@ -1,0 +1,511 @@
+{
+  "delta": {
+    "baseScanId": "scan-495e81916776635b",
+    "currentScanId": "scan-92137526aa713c55",
+    "fixedFindingIds": [],
+    "improvedFindingIds": [],
+    "newFindingIds": [
+      "finding-3aef6630933b3c74"
+    ],
+    "summaryText": "1 new, 0 fixed, 0 unchanged, 0 worsened, 0 improved",
+    "unchangedFindingIds": [],
+    "worsenedFindingIds": []
+  },
+  "evidence": {
+    "bundleId": "evidence-0ccf0f81d8f71254",
+    "findingEvidence": {
+      "finding-3aef6630933b3c74": [
+        {
+          "location": {
+            "file": "requirements.txt"
+          },
+          "message": "flask@3.0.3 is affected by CVE-2026-27205, GHSA-68rp-wp8r-4726.",
+          "ruleId": "pip-audit:CVE-2026-27205",
+          "scanner": "pip-audit"
+        }
+      ]
+    },
+    "rawArtifacts": [],
+    "redactionApplied": false
+  },
+  "explanations": {
+    "finding-3aef6630933b3c74": {
+      "confidenceReason": "Scanner confidence set to high based on CVE and GHSA identifiers.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported flask@3.0.3 is affected by CVE-2026-27205, GHSA-68rp-wp8r-4726.",
+      "impact": "Improper caching of responses can lead to session information leakage or cross-user data exposure.",
+      "safeNextSteps": [
+        "Upgrade flask to 3.1.3",
+        "Verify no other dependencies are affected by the same vulnerability"
+      ],
+      "suggestedFix": "Upgrade flask to version 3.1.3 as per pip-audit remediation.",
+      "title": "Flask 3.0.3 affected by CVE-2026-27205"
+    }
+  },
+  "findings": [
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "flask@3.0.3 is affected by CVE-2026-27205, GHSA-68rp-wp8r-4726.",
+      "fingerprint": "fp-3aef6630933b3c74",
+      "id": "finding-3aef6630933b3c74",
+      "identifiers": {
+        "cve": [
+          "CVE-2026-27205"
+        ],
+        "ghsa": [
+          "GHSA-68RP-WP8R-4726"
+        ],
+        "osv": []
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "installedVersion": "3.0.3",
+        "name": "flask"
+      },
+      "remediation": "Upgrade flask to one of the fixed versions: 3.1.3.",
+      "ruleId": "pip-audit:CVE-2026-27205",
+      "severity": "medium",
+      "title": "When the `session` object is accessed, Flask should set the `Vary: Cookie` header. This instructs caches not to cache the response, as it...",
+      "tool": "pip-audit"
+    }
+  ],
+  "generatedAt": "2026-06-27T20:53:16.625Z",
+  "intelligence": [
+    {
+      "cve": "CVE-2026-27205",
+      "ecosystem": "PyPI",
+      "findingIds": [
+        "finding-3aef6630933b3c74"
+      ],
+      "fixVersion": "3.1.3",
+      "id": "osv:GHSA-68rp-wp8r-4726",
+      "identifiers": {
+        "cve": [
+          "CVE-2026-27205"
+        ],
+        "cwe": [
+          "CWE-524"
+        ],
+        "ghsa": [
+          "GHSA-68rp-wp8r-4726"
+        ],
+        "osv": []
+      },
+      "installedVersion": "3.0.3",
+      "knownExploited": false,
+      "matchedPackages": [
+        "pypi:flask@3.0.3"
+      ],
+      "modifiedAt": "2026-06-17T10:26:50.700",
+      "packageLabel": "PyPI:flask@3.0.3",
+      "packageName": "flask",
+      "priority": "urgent",
+      "publishedAt": "2026-02-19T20:45:41Z",
+      "reasons": [
+        "Direct pypi dependency flask@3.0.3 matches >=0 <3.1.3",
+        "A previous finding referenced the same advisory identifier",
+        "Finding finding-3aef6630933b3c74 references CVE-2026-27205, ghsa-68rp-wp8r-4726",
+        "Finding finding-3aef6630933b3c74 package pypi:flask@3.0.3 matches >=0 <3.1.3"
+      ],
+      "severity": "medium",
+      "source": "GitHub Advisory, NVD, OSV",
+      "title": "Flask session does not add `Vary: Cookie` header when accessed in some ways",
+      "url": "https://osv.[REDACTED_SECRET]",
+      "whyItMatters": "When the `session` object is accessed, Flask should set the `Vary: Cookie` header. This instructs caches not to cache the response, as it may contain information specific to a logged in user. This is handled in most cases, but some forms of access such as the Python `in` operator were overlooked.\n\nThe severity depends on the application's use of the session, and the cache's behavior regarding cookies. The risk depends on all these conditions being met.\n\n1. The application must be hosted behind a"
+    },
+    {
+      "cve": "CVE-2023-30861",
+      "ecosystem": "PyPI",
+      "findingIds": [
+        "finding-3aef6630933b3c74"
+      ],
+      "fixVersion": "70f906c51ce49c485f1d355703e9cc3386b1cc2b",
+      "id": "osv:GHSA-m2qf-hxjv-5gpq",
+      "identifiers": {
+        "cve": [
+          "CVE-2023-30861"
+        ],
+        "cwe": [
+          "CWE-539"
+        ],
+        "ghsa": [
+          "GHSA-m2qf-hxjv-5gpq"
+        ],
+        "osv": [
+          "PYSEC-2023-62"
+        ]
+      },
+      "installedVersion": "3.0.3",
+      "knownExploited": false,
+      "matchedPackages": [
+        "pypi:flask@3.0.3"
+      ],
+      "modifiedAt": "2025-02-21T05:42:17.337040Z",
+      "packageLabel": "PyPI:flask@3.0.3",
+      "packageName": "flask",
+      "priority": "high",
+      "publishedAt": "2023-05-01T19:22:20Z",
+      "reasons": [
+        "Direct pypi dependency flask@3.0.3 matches >=0 <70f906c51ce49c485f1d355703e9cc3386b1cc2b",
+        "Finding finding-3aef6630933b3c74 package pypi:flask@3.0.3 matches >=0 <70f906c51ce49c485f1d355703e9cc3386b1cc2b"
+      ],
+      "severity": "high",
+      "source": "GitHub Advisory, OSV",
+      "title": "Flask vulnerable to possible disclosure of permanent session cookie due to missing Vary: Cookie header",
+      "url": "https://osv.[REDACTED_SECRET]",
+      "whyItMatters": "When all of the following conditions are met, a response containing data intended for one client may be cached and subsequently sent by a proxy to other clients. If the proxy also caches `Set-Cookie` headers, it may send one client's `session` cookie to other clients. The severity depends on the application's use of the session, and the proxy's behavior regarding cookies. The risk depends on _all_ these conditions being met.\n\n1. The application must be hosted behind a caching proxy that does not"
+    }
+  ],
+  "limitations": [
+    "Hermsec reports only scanner and advisory evidence supplied to this run.",
+    "Model or fallback explanations cannot add CVEs, file paths, package names, versions, or line numbers."
+  ],
+  "run": {
+    "durationMs": 13260,
+    "fallback": {
+      "actualReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-53-16-625Z",
+      "configuredReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-clean\\reports",
+      "used": false
+    },
+    "finishedAt": "2026-06-27T20:53:16.625Z",
+    "git": {
+      "branch": "main",
+      "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+      "dirty": true
+    },
+    "id": "scan-92137526aa713c55",
+    "mode": "auto",
+    "startedAt": "2026-06-27T20:53:03.365Z"
+  },
+  "scanId": "scan-92137526aa713c55",
+  "schemaVersion": "1.0",
+  "summary": {
+    "confirmedCves": 2,
+    "critical": 0,
+    "generatedWithModel": true,
+    "high": 0,
+    "info": 0,
+    "knownExploited": 0,
+    "low": 0,
+    "medium": 1,
+    "scannerFailures": 0,
+    "secrets": 0,
+    "total": 1
+  },
+  "target": {
+    "displayName": "python-flask-clean",
+    "kind": "local-path",
+    "value": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\python-flask-clean"
+  },
+  "tools": [
+    {
+      "id": "bandit",
+      "label": "Bandit",
+      "message": "Bandit was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "durationMs": 1009,
+      "id": "bandit-run",
+      "label": "Bandit scan",
+      "message": "Bandit completed with 0 findings.",
+      "status": "completed"
+    },
+    {
+      "id": "brakeman",
+      "label": "Brakeman",
+      "message": "Brakeman was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "brakeman-run",
+      "label": "Brakeman scan",
+      "message": "Brakeman had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "cargo",
+      "label": "cargo-audit",
+      "message": "cargo-audit was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "cargo-run",
+      "label": "cargo-audit scan",
+      "message": "cargo-audit had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "checkov",
+      "label": "Checkov",
+      "message": "Checkov was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "checkov-run",
+      "label": "Checkov scan",
+      "message": "Checkov was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage.",
+      "status": "skipped"
+    },
+    {
+      "id": "composer",
+      "label": "Composer audit",
+      "message": "Composer audit was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "composer-run",
+      "label": "Composer audit scan",
+      "message": "Composer audit had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "cppcheck",
+      "label": "Cppcheck",
+      "message": "Cppcheck was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "cppcheck-run",
+      "label": "Cppcheck scan",
+      "message": "Cppcheck had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "dependency-check",
+      "label": "OWASP Dependency-Check",
+      "message": "OWASP Dependency-Check was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "dependency-check-run",
+      "label": "OWASP Dependency-Check scan",
+      "message": "OWASP Dependency-Check was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage.",
+      "status": "skipped"
+    },
+    {
+      "id": "dotnet",
+      "label": ".NET vulnerable packages",
+      "message": ".NET vulnerable packages was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "id": "dotnet-run",
+      "label": ".NET vulnerable packages scan",
+      "message": ".NET vulnerable packages had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "flawfinder",
+      "label": "Flawfinder",
+      "message": "Flawfinder was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "flawfinder-run",
+      "label": "Flawfinder scan",
+      "message": "Flawfinder had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "git",
+      "label": "Git",
+      "message": "Git was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "id": "gitleaks",
+      "label": "Gitleaks",
+      "message": "Gitleaks was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "durationMs": 1027,
+      "id": "gitleaks-run",
+      "label": "Gitleaks scan",
+      "message": "Gitleaks completed with 0 findings.",
+      "status": "completed"
+    },
+    {
+      "id": "gosec",
+      "label": "gosec",
+      "message": "gosec was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "gosec-run",
+      "label": "gosec scan",
+      "message": "gosec had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "govulncheck",
+      "label": "govulncheck",
+      "message": "govulncheck was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "govulncheck-run",
+      "label": "govulncheck scan",
+      "message": "govulncheck had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "durationMs": 1,
+      "id": "hermsec-config",
+      "label": "Hermsec config heuristics",
+      "message": "Hermsec config heuristics completed with 0 findings.",
+      "status": "completed"
+    },
+    {
+      "id": "hermsec-java",
+      "label": "Hermsec Java servlet heuristics",
+      "message": "Hermsec Java servlet heuristics had no matching inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "hermsec-js-ts",
+      "label": "Hermsec JS/TS heuristics",
+      "message": "Hermsec JS/TS heuristics had no matching inputs.",
+      "status": "skipped"
+    },
+    {
+      "durationMs": 1,
+      "id": "hermsec-packages",
+      "label": "Hermsec package manifest heuristics",
+      "message": "Hermsec package manifest heuristics completed with 0 findings.",
+      "status": "completed"
+    },
+    {
+      "durationMs": 1,
+      "id": "hermsec-python",
+      "label": "Hermsec Python heuristics",
+      "message": "Hermsec Python heuristics completed with 0 findings.",
+      "status": "completed"
+    },
+    {
+      "durationMs": 6,
+      "id": "hermsec-secrets",
+      "label": "Hermsec secret heuristics",
+      "message": "Hermsec secret heuristics completed with 0 findings.",
+      "status": "completed"
+    },
+    {
+      "id": "osv-scanner",
+      "label": "OSV-Scanner",
+      "message": "OSV-Scanner was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "id": "osv-scanner-run",
+      "label": "OSV-Scanner scan",
+      "message": "OSV-Scanner had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "pip-audit",
+      "label": "pip-audit",
+      "message": "pip-audit was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "durationMs": 3059,
+      "id": "pip-audit-run",
+      "label": "pip-audit scan",
+      "message": "pip-audit completed with 1 finding.",
+      "status": "completed"
+    },
+    {
+      "id": "pmg",
+      "label": "SafeDep PMG npm audit",
+      "message": "SafeDep PMG npm audit was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "id": "pmg-run",
+      "label": "SafeDep PMG npm audit scan",
+      "message": "SafeDep PMG npm audit had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "psalm",
+      "label": "Psalm taint analysis",
+      "message": "Psalm taint analysis was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "psalm-run",
+      "label": "Psalm taint analysis scan",
+      "message": "Psalm taint analysis had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "repository-discovery",
+      "label": "Repository discovery",
+      "message": "Discovered 5 files (python:1, json:1, yaml:1, text:2), package managers: pip, lockfiles: 0, ignored folders: none.",
+      "status": "completed"
+    },
+    {
+      "id": "retire",
+      "label": "Retire.js",
+      "message": "Retire.js was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "retire-run",
+      "label": "Retire.js scan",
+      "message": "Retire.js had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "semgrep",
+      "label": "Semgrep",
+      "message": "Semgrep was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "durationMs": 6994,
+      "id": "semgrep-run",
+      "label": "Semgrep scan",
+      "message": "Semgrep completed with 0 findings.",
+      "status": "completed"
+    },
+    {
+      "id": "spotbugs",
+      "label": "FindSecBugs / SpotBugs",
+      "message": "FindSecBugs / SpotBugs was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "spotbugs-run",
+      "label": "FindSecBugs / SpotBugs scan",
+      "message": "FindSecBugs / SpotBugs had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "trivy",
+      "label": "Trivy",
+      "message": "Trivy was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "trivy-run",
+      "label": "Trivy scan",
+      "message": "Trivy was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage.",
+      "status": "skipped"
+    },
+    {
+      "id": "trufflehog",
+      "label": "TruffleHog",
+      "message": "TruffleHog was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    }
+  ],
+  "workspaceId": "ws-ad0101c595d12f94",
+  "workspaceName": "python-flask-clean"
+}

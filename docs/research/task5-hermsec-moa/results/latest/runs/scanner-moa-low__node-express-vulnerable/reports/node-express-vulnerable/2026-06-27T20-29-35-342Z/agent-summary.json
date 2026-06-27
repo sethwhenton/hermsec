@@ -1,0 +1,425 @@
+{
+  "agentMode": {
+    "acceptedFindingCount": 10,
+    "agents": [
+      {
+        "id": "scanner-stack",
+        "label": "Scanner Stack",
+        "provider": "hermsec-scanners",
+        "role": "scanner",
+        "status": "completed"
+      },
+      {
+        "id": "injection-and-execution",
+        "label": "Injection and execution specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 17529,
+        "status": "completed"
+      },
+      {
+        "id": "auth-and-data-flow",
+        "label": "Auth and data-flow specialist",
+        "model": "xiaomi/mimo-v2.5-20260422",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 1267,
+        "status": "completed"
+      },
+      {
+        "id": "secrets-and-config",
+        "label": "Secrets and config specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 19923,
+        "status": "completed"
+      },
+      {
+        "id": "moa-false-positive-judge",
+        "label": "False-positive Judge",
+        "model": "deepseek-v4-pro",
+        "provider": "opencode-go",
+        "role": "judge",
+        "runtimeMs": 85234,
+        "status": "completed"
+      },
+      {
+        "id": "moa-aggregator",
+        "label": "Scanner + MoA Aggregator",
+        "model": "MiniMax-M3",
+        "provider": "opencode-go",
+        "role": "aggregator",
+        "runtimeMs": 34643,
+        "status": "completed"
+      }
+    ],
+    "agentsUsed": [
+      "scanner-stack",
+      "injection-and-execution",
+      "auth-and-data-flow",
+      "secrets-and-config",
+      "moa-false-positive-judge",
+      "moa-aggregator"
+    ],
+    "aggregator": {
+      "agentId": "moa-aggregator",
+      "label": "Scanner + MoA Aggregator",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go"
+    },
+    "aggregatorModel": "MiniMax-M3",
+    "candidateFindingCount": 30,
+    "findings": {
+      "finding-019805294a476f9b": {
+        "agentIds": [
+          "pmg"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-21b766e03a7b636a": {
+        "agentIds": [
+          "semgrep"
+        ],
+        "judgeReason": "Semgrep detection of child_process exec with shell command on line 19, matching same vulnerability.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-31325d17858675c7": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-34a12328494fee7c": {
+        "agentIds": [
+          "pmg"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-365058e7fa14adc3": {
+        "agentIds": [
+          "pmg"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-44a1a2191ecca7b5": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-48d696ae26d91c25": {
+        "agentIds": [
+          "injection-and-execution"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-4abae600128673dd": {
+        "agentIds": [
+          "injection-and-execution"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-4eb6c10f5698be89": {
+        "agentIds": [
+          "pmg"
+        ],
+        "judgeReason": "pmg confirms lodash >=4.0.0 <=4.17.22 affected by same prototype pollution.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-5d7c8a7ede9c55b6": {
+        "agentIds": [
+          "pmg"
+        ],
+        "judgeReason": "pmg confirms express <4.19.2 affected by same open redirect CVE.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-7194eb872634eb85": {
+        "agentIds": [
+          "osv-scanner"
+        ],
+        "judgeReason": "lodash@4.17.20 affected by ReDoS CVE-2020-28500.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-72f746cb8be1cd13": {
+        "agentIds": [
+          "osv-scanner"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-79460a7a95ca1609": {
+        "agentIds": [
+          "osv-scanner"
+        ],
+        "judgeReason": "express@4.18.2 affected by known CVE-2024-29041 open redirect.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-7e7dd78c70ec8bd6": {
+        "agentIds": [
+          "secrets-and-config"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-875df24e9347bb86": {
+        "agentIds": [
+          "osv-scanner"
+        ],
+        "judgeReason": "lodash@4.17.20 affected by CVE-2026-2950 prototype pollution via array path bypass.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-8f4d1fc6724ec637": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "Direct SQL injection via template literal with unsanitized term variable.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-91e695b1e33f2931": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "Command injection via exec with unsanitized req.query.host.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-968c8ccb0d1e10db": {
+        "agentIds": [
+          "pmg"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-9c6c61503e6a8d67": {
+        "agentIds": [
+          "osv-scanner"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-a4df09b6c58e3f34": {
+        "agentIds": [
+          "injection-and-execution"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-b2174492de636519": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-b80725495585908e": {
+        "agentIds": [
+          "osv-scanner"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-c0abf04fd738039a": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-c34b7a632d435b5d": {
+        "agentIds": [
+          "injection-and-execution"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-d42a93124fa707d4": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-da558c475a6f03b0": {
+        "agentIds": [
+          "pmg"
+        ],
+        "judgeReason": "pmg confirms lodash <=4.17.23 affected by same prototype pollution.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-f4e47258a7e0e346": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-f71ba54cee76cfe0": {
+        "agentIds": [
+          "osv-scanner"
+        ],
+        "judgeReason": "lodash@4.17.20 affected by CVE-2025-13465 prototype pollution.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-f9e3cdf62dee35f2": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-fc661b2848ecca41": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      }
+    },
+    "mode": "scanner-moa-assisted",
+    "modeLabel": "Scanner + MoA inspection",
+    "needsHumanReviewCount": 20,
+    "rejectedFindingCount": 0,
+    "scanMode": "scanner-moa-assisted",
+    "totalAgentRuntimeMs": 158830
+  },
+  "executiveSummary": "Scanner + MoA inspection produced 30 validated scanner and agent findings.",
+  "explanations": {},
+  "generatedWithModel": true,
+  "model": "MiniMax-M3",
+  "priorityActions": [
+    "finding-4abae600128673dd: Avoid shell execution. Use spawn with argument array, or validate/escape the tool input strictly.",
+    "finding-c34b7a632d435b5d: Avoid shell execution. Use spawn with an argument array, or apply thorough input validation. The host parameter should be restricted to known patterns.",
+    "finding-f9e3cdf62dee35f2: Use fixed argv arrays and validate user-controlled values before execution.",
+    "finding-fc661b2848ecca41: Move secrets to environment variables or a secret manager and rotate exposed credentials.",
+    "finding-72f746cb8be1cd13: Upgrade lodash to a fixed version: 4.17.21."
+  ],
+  "provider": "opencode-go"
+}

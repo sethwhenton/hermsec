@@ -1,0 +1,17 @@
+{
+  "baseScanId": "scan-ce6249aeacf2c492",
+  "currentScanId": "scan-df714d2c27f7dcc5",
+  "fixedFindingIds": [
+    "finding-3634e335aa21615a",
+    "finding-7019dba50fce9299",
+    "finding-78719257fc1c2afc"
+  ],
+  "improvedFindingIds": [],
+  "newFindingIds": [
+    "finding-499332388425438c",
+    "finding-c6cbfa8ae3511fdb"
+  ],
+  "summaryText": "2 new, 3 fixed, 0 unchanged, 0 worsened, 0 improved",
+  "unchangedFindingIds": [],
+  "worsenedFindingIds": []
+}

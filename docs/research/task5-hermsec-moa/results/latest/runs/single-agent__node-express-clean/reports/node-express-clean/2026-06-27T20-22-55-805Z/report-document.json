@@ -1,0 +1,116 @@
+{
+  "agentMode": {
+    "acceptedFindingCount": 0,
+    "agents": [
+      {
+        "id": "single-agent-inspector",
+        "label": "Single Agent Inspector",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "security-inspector",
+        "runtimeMs": 4663,
+        "status": "completed"
+      }
+    ],
+    "agentsUsed": [
+      "single-agent-inspector"
+    ],
+    "candidateFindingCount": 0,
+    "findings": {},
+    "mode": "single-agent",
+    "modeLabel": "Single-agent inspection",
+    "needsHumanReviewCount": 0,
+    "rejectedFindingCount": 0,
+    "scanMode": "single-agent",
+    "totalAgentRuntimeMs": 4663
+  },
+  "delta": {
+    "baseScanId": "scan-ff54c63983f09934",
+    "currentScanId": "scan-08a07758e74fc9c7",
+    "fixedFindingIds": [
+      "finding-34a12328494fee7c",
+      "finding-5d7c8a7ede9c55b6",
+      "finding-79460a7a95ca1609",
+      "finding-7aeee916077462b4",
+      "finding-b1bdc12ef0d825ab",
+      "finding-b80725495585908e"
+    ],
+    "improvedFindingIds": [],
+    "newFindingIds": [],
+    "summaryText": "0 new, 6 fixed, 0 unchanged, 0 worsened, 0 improved",
+    "unchangedFindingIds": [],
+    "worsenedFindingIds": []
+  },
+  "evidence": {
+    "bundleId": "evidence-db3c399ca24c78b0",
+    "findingEvidence": {},
+    "rawArtifacts": [],
+    "redactionApplied": false
+  },
+  "explanations": {},
+  "findings": [],
+  "generatedAt": "2026-06-27T20:22:55.805Z",
+  "intelligence": [],
+  "limitations": [
+    "Single-agent inspection is agent-only; scanner and advisory enrichment were not run.",
+    "Single-agent code inspection used bounded read-only file, search, and snippet context.",
+    "The model response contained no validated product-mode findings.",
+    "Hermsec reports only scanner and advisory evidence supplied to this run.",
+    "Model or fallback explanations cannot add CVEs, file paths, package names, versions, or line numbers."
+  ],
+  "run": {
+    "durationMs": 353,
+    "fallback": {
+      "actualReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-22-55-805Z",
+      "configuredReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-clean\\reports",
+      "used": false
+    },
+    "finishedAt": "2026-06-27T20:22:55.805Z",
+    "git": {
+      "branch": "main",
+      "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+      "dirty": true
+    },
+    "id": "scan-08a07758e74fc9c7",
+    "mode": "auto",
+    "modeLabel": "Single-agent inspection",
+    "startedAt": "2026-06-27T20:22:55.452Z"
+  },
+  "scanId": "scan-08a07758e74fc9c7",
+  "schemaVersion": "1.0",
+  "summary": {
+    "confirmedCves": 0,
+    "critical": 0,
+    "generatedWithModel": true,
+    "high": 0,
+    "info": 0,
+    "knownExploited": 0,
+    "low": 0,
+    "medium": 0,
+    "scannerFailures": 0,
+    "secrets": 0,
+    "total": 0
+  },
+  "target": {
+    "displayName": "node-express-clean",
+    "kind": "local-path",
+    "value": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\node-express-clean"
+  },
+  "tools": [
+    {
+      "id": "repository-discovery",
+      "label": "Repository discovery",
+      "message": "Discovered 8 files (javascript:3, json:3, yaml:1, text:1), package managers: npm, lockfiles: 1, ignored folders: none.",
+      "status": "completed"
+    },
+    {
+      "durationMs": 4664,
+      "id": "single-agent",
+      "label": "Single-agent inspection",
+      "message": "Single-agent inspection completed with 0 validated findings.",
+      "status": "completed"
+    }
+  ],
+  "workspaceId": "ws-9b2c1fad29deb44f",
+  "workspaceName": "node-express-clean"
+}

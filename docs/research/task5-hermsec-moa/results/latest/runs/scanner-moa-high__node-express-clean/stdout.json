@@ -1,0 +1,432 @@
+{
+  "ok": true,
+  "message": "Scan completed: 2 finding(s). Report: <hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-40-33-552Z",
+  "data": {
+    "scan": {
+      "schemaVersion": "1.0",
+      "id": "scan-df714d2c27f7dcc5",
+      "target": "<hermsec-repo>\\tests\\fixtures\\repos\\node-express-clean",
+      "mode": "auto",
+      "startedAt": "2026-06-27T20:40:21.967Z",
+      "finishedAt": "2026-06-27T20:40:33.552Z",
+      "durationMs": 11585,
+      "scannerStatuses": [
+        {
+          "id": "repository-discovery",
+          "label": "Repository discovery",
+          "status": "completed",
+          "message": "Discovered 8 files (javascript:3, json:3, yaml:1, text:1), package managers: npm, lockfiles: 1, ignored folders: none."
+        },
+        {
+          "id": "git",
+          "label": "Git",
+          "status": "ready",
+          "message": "Git was detected on PATH and is available for the online scan pipeline."
+        },
+        {
+          "id": "semgrep",
+          "label": "Semgrep",
+          "status": "ready",
+          "message": "Semgrep was detected on PATH and is available for the online scan pipeline."
+        },
+        {
+          "id": "gitleaks",
+          "label": "Gitleaks",
+          "status": "ready",
+          "message": "Gitleaks was detected on PATH and is available for the online scan pipeline."
+        },
+        {
+          "id": "trufflehog",
+          "label": "TruffleHog",
+          "status": "skipped",
+          "message": "TruffleHog was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "trivy",
+          "label": "Trivy",
+          "status": "skipped",
+          "message": "Trivy was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "checkov",
+          "label": "Checkov",
+          "status": "skipped",
+          "message": "Checkov was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "bandit",
+          "label": "Bandit",
+          "status": "ready",
+          "message": "Bandit was detected on PATH and is available for the online scan pipeline."
+        },
+        {
+          "id": "osv-scanner",
+          "label": "OSV-Scanner",
+          "status": "ready",
+          "message": "OSV-Scanner was detected on PATH and is available for the online scan pipeline."
+        },
+        {
+          "id": "pip-audit",
+          "label": "pip-audit",
+          "status": "ready",
+          "message": "pip-audit was detected on PATH and is available for the online scan pipeline."
+        },
+        {
+          "id": "pmg",
+          "label": "SafeDep PMG npm audit",
+          "status": "ready",
+          "message": "SafeDep PMG npm audit was detected on PATH and is available for the online scan pipeline."
+        },
+        {
+          "id": "retire",
+          "label": "Retire.js",
+          "status": "skipped",
+          "message": "Retire.js was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "spotbugs",
+          "label": "FindSecBugs / SpotBugs",
+          "status": "skipped",
+          "message": "FindSecBugs / SpotBugs was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "dependency-check",
+          "label": "OWASP Dependency-Check",
+          "status": "skipped",
+          "message": "OWASP Dependency-Check was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "psalm",
+          "label": "Psalm taint analysis",
+          "status": "skipped",
+          "message": "Psalm taint analysis was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "composer",
+          "label": "Composer audit",
+          "status": "skipped",
+          "message": "Composer audit was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "gosec",
+          "label": "gosec",
+          "status": "skipped",
+          "message": "gosec was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "govulncheck",
+          "label": "govulncheck",
+          "status": "skipped",
+          "message": "govulncheck was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "cargo",
+          "label": "cargo-audit",
+          "status": "skipped",
+          "message": "cargo-audit was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "brakeman",
+          "label": "Brakeman",
+          "status": "skipped",
+          "message": "Brakeman was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "flawfinder",
+          "label": "Flawfinder",
+          "status": "skipped",
+          "message": "Flawfinder was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "cppcheck",
+          "label": "Cppcheck",
+          "status": "skipped",
+          "message": "Cppcheck was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "dotnet",
+          "label": ".NET vulnerable packages",
+          "status": "ready",
+          "message": ".NET vulnerable packages was detected on PATH and is available for the online scan pipeline."
+        },
+        {
+          "id": "hermsec-secrets",
+          "label": "Hermsec secret heuristics",
+          "status": "completed",
+          "message": "Hermsec secret heuristics completed with 0 findings.",
+          "durationMs": 6
+        },
+        {
+          "id": "hermsec-js-ts",
+          "label": "Hermsec JS/TS heuristics",
+          "status": "completed",
+          "message": "Hermsec JS/TS heuristics completed with 2 findings.",
+          "durationMs": 5
+        },
+        {
+          "id": "hermsec-python",
+          "label": "Hermsec Python heuristics",
+          "status": "skipped",
+          "message": "Hermsec Python heuristics had no matching inputs."
+        },
+        {
+          "id": "hermsec-java",
+          "label": "Hermsec Java servlet heuristics",
+          "status": "skipped",
+          "message": "Hermsec Java servlet heuristics had no matching inputs."
+        },
+        {
+          "id": "hermsec-packages",
+          "label": "Hermsec package manifest heuristics",
+          "status": "completed",
+          "message": "Hermsec package manifest heuristics completed with 0 findings.",
+          "durationMs": 3
+        },
+        {
+          "id": "hermsec-config",
+          "label": "Hermsec config heuristics",
+          "status": "completed",
+          "message": "Hermsec config heuristics completed with 0 findings.",
+          "durationMs": 2
+        },
+        {
+          "id": "semgrep-run",
+          "label": "Semgrep scan",
+          "status": "completed",
+          "message": "Semgrep completed with 0 findings.",
+          "durationMs": 5690
+        },
+        {
+          "id": "gitleaks-run",
+          "label": "Gitleaks scan",
+          "status": "completed",
+          "message": "Gitleaks completed with 0 findings.",
+          "durationMs": 858
+        },
+        {
+          "id": "trivy-run",
+          "label": "Trivy scan",
+          "status": "skipped",
+          "message": "Trivy was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage."
+        },
+        {
+          "id": "checkov-run",
+          "label": "Checkov scan",
+          "status": "skipped",
+          "message": "Checkov was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage."
+        },
+        {
+          "id": "bandit-run",
+          "label": "Bandit scan",
+          "status": "skipped",
+          "message": "Bandit had no matching external scanner inputs."
+        },
+        {
+          "id": "osv-scanner-run",
+          "label": "OSV-Scanner scan",
+          "status": "completed",
+          "message": "OSV-Scanner completed with 2 findings.",
+          "durationMs": 1234
+        },
+        {
+          "id": "pip-audit-run",
+          "label": "pip-audit scan",
+          "status": "skipped",
+          "message": "pip-audit had no matching external scanner inputs."
+        },
+        {
+          "id": "pmg-run",
+          "label": "SafeDep PMG npm audit scan",
+          "status": "completed",
+          "message": "SafeDep PMG npm audit completed with 2 findings.",
+          "durationMs": 2789
+        },
+        {
+          "id": "retire-run",
+          "label": "Retire.js scan",
+          "status": "skipped",
+          "message": "Retire.js was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage."
+        },
+        {
+          "id": "spotbugs-run",
+          "label": "FindSecBugs / SpotBugs scan",
+          "status": "skipped",
+          "message": "FindSecBugs / SpotBugs had no matching external scanner inputs."
+        },
+        {
+          "id": "dependency-check-run",
+          "label": "OWASP Dependency-Check scan",
+          "status": "skipped",
+          "message": "OWASP Dependency-Check was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage."
+        },
+        {
+          "id": "psalm-run",
+          "label": "Psalm taint analysis scan",
+          "status": "skipped",
+          "message": "Psalm taint analysis had no matching external scanner inputs."
+        },
+        {
+          "id": "composer-run",
+          "label": "Composer audit scan",
+          "status": "skipped",
+          "message": "Composer audit had no matching external scanner inputs."
+        },
+        {
+          "id": "gosec-run",
+          "label": "gosec scan",
+          "status": "skipped",
+          "message": "gosec had no matching external scanner inputs."
+        },
+        {
+          "id": "govulncheck-run",
+          "label": "govulncheck scan",
+          "status": "skipped",
+          "message": "govulncheck had no matching external scanner inputs."
+        },
+        {
+          "id": "cargo-run",
+          "label": "cargo-audit scan",
+          "status": "skipped",
+          "message": "cargo-audit had no matching external scanner inputs."
+        },
+        {
+          "id": "brakeman-run",
+          "label": "Brakeman scan",
+          "status": "skipped",
+          "message": "Brakeman had no matching external scanner inputs."
+        },
+        {
+          "id": "flawfinder-run",
+          "label": "Flawfinder scan",
+          "status": "skipped",
+          "message": "Flawfinder had no matching external scanner inputs."
+        },
+        {
+          "id": "cppcheck-run",
+          "label": "Cppcheck scan",
+          "status": "skipped",
+          "message": "Cppcheck had no matching external scanner inputs."
+        },
+        {
+          "id": "dotnet-run",
+          "label": ".NET vulnerable packages scan",
+          "status": "skipped",
+          "message": ".NET vulnerable packages had no matching external scanner inputs."
+        },
+        {
+          "id": "scanner-moa-assisted",
+          "label": "Scanner + MoA inspection",
+          "status": "completed",
+          "message": "Scanner + MoA inspection completed with 2 validated findings.",
+          "durationMs": 72474
+        }
+      ],
+      "findings": [
+        {
+          "id": "finding-c6cbfa8ae3511fdb",
+          "title": "Outdated express dependency vulnerable to known advisories",
+          "category": "dependency",
+          "severity": "medium",
+          "confidence": "high",
+          "description": "The pinned express@4.18.2 is affected by multiple known vulnerabilities (open redirect and XSS via response.redirect). Both advisories are remediated by upgrading to a current express 4.x release.",
+          "evidence": "express@4.18.2 is affected by GHSA-rv95-896h-c2vc (CVE-2024-29041, open redirect) and GHSA-qw6h-vgh9-j6wx (CVE-2024-43796, XSS via response.redirect). pmg corroborates express<4.19.2 and express<4.20.0 ranges.",
+          "remediation": "Upgrade express to a fixed 4.x release (>=4.22.2) and regenerate the lockfile. Run the dependency scanner again to confirm both advisories are cleared.",
+          "tool": "hermsec-scanner-moa",
+          "ruleId": "npm:express-multiple-advisories",
+          "cwe": [
+            "CWE-601",
+            "CWE-79"
+          ],
+          "location": {
+            "file": "package-lock.json",
+            "startLine": 1,
+            "endLine": 1
+          },
+          "agent": {
+            "mode": "scanner-moa-assisted",
+            "source": "moa-aggregator",
+            "provider": "opencode-go",
+            "model": "MiniMax-M3",
+            "generatedAt": "2026-06-27T20:41:46.031Z",
+            "candidateIds": [
+              "candidate-fc937a3ffb4628d9"
+            ],
+            "sourceFindingIds": [
+              "scanner:finding-79460a7a95ca1609",
+              "scanner:finding-5d7c8a7ede9c55b6",
+              "scanner:finding-b80725495585908e",
+              "scanner:finding-34a12328494fee7c"
+            ],
+            "judge": {
+              "verdict": "accepted",
+              "reviewedBy": "moa-false-positive-judge",
+              "reason": "Aggregated from MoA candidates that passed false-positive judging."
+            }
+          },
+          "fingerprint": "fp-d532ddd5eb4e578f"
+        },
+        {
+          "id": "finding-499332388425438c",
+          "title": "HTML response embeds untrusted input without escaping",
+          "category": "code",
+          "severity": "medium",
+          "confidence": "high",
+          "description": "A route handler renders user-controlled values directly into an HTML string returned via res.send, allowing stored/reflected cross-site scripting.",
+          "evidence": "src/routes/search.js:34 res.send(`<h1>${name}</h1><p>${digest}</p>`); — name and digest are interpolated into HTML with no escaping.",
+          "remediation": "Escape both name and digest before interpolation, or render via a templating engine with auto-escaping enabled and set a restrictive Content-Security-Policy header. Validate and normalize inputs at the boundary.",
+          "tool": "hermsec-scanner-moa",
+          "ruleId": "hermsec.code.unsanitized-html-response",
+          "cwe": [
+            "CWE-79"
+          ],
+          "location": {
+            "file": "src/routes/search.js",
+            "startLine": 34,
+            "endLine": 34
+          },
+          "agent": {
+            "mode": "scanner-moa-assisted",
+            "source": "moa-aggregator",
+            "provider": "opencode-go",
+            "model": "MiniMax-M3",
+            "generatedAt": "2026-06-27T20:41:46.032Z",
+            "candidateIds": [
+              "candidate-825196015a48b69c"
+            ],
+            "sourceFindingIds": [
+              "scanner:finding-b1bdc12ef0d825ab"
+            ],
+            "judge": {
+              "verdict": "accepted",
+              "reviewedBy": "moa-false-positive-judge",
+              "reason": "Aggregated from MoA candidates that passed false-positive judging."
+            }
+          },
+          "fingerprint": "fp-57c670b361befe0d"
+        }
+      ],
+      "summary": {
+        "total": 2,
+        "critical": 0,
+        "high": 0,
+        "medium": 2,
+        "low": 0,
+        "info": 0
+      },
+      "git": {
+        "branch": "main",
+        "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+        "dirty": true
+      }
+    },
+    "report": {
+      "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-40-33-552Z\\summary.json",
+      "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-40-33-552Z\\findings.json",
+      "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-40-33-552Z\\evidence.json",
+      "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-40-33-552Z\\run.json",
+      "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-40-33-552Z\\agent-summary.json",
+      "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-40-33-552Z\\delta.json",
+      "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-40-33-552Z\\report-document.json"
+    }
+  }
+}

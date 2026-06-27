@@ -1,0 +1,19 @@
+{
+  "bundleId": "evidence-6ffc81d9b898bd5c",
+  "findingEvidence": {
+    "finding-761c5db27c1b1c5a": [
+      {
+        "location": {
+          "endLine": 22,
+          "file": "app.py",
+          "startLine": 22
+        },
+        "message": "22: subprocess.check_output(f\"echo {name}\", shell=True, text=True)",
+        "ruleId": "command-injection-subprocess",
+        "scanner": "hermsec-agent"
+      }
+    ]
+  },
+  "rawArtifacts": [],
+  "redactionApplied": false
+}

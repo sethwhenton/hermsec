@@ -1,0 +1,55 @@
+{
+  "bundleId": "evidence-6a6ab2e1d44efd87",
+  "findingEvidence": {
+    "finding-49f0f6847d3c2d7e": [
+      {
+        "location": {
+          "endLine": 8,
+          "file": "app.py",
+          "startLine": 8
+        },
+        "message": "app.config[\"DEBUG\"] = True and app.run(debug=True, host=\"127.0.0.1\") at app.py line 8.",
+        "ruleId": "debug-mode-enabled",
+        "scanner": "hermsec-moa"
+      }
+    ],
+    "finding-b58b80fac121a4e9": [
+      {
+        "location": {
+          "endLine": 22,
+          "file": "app.py",
+          "startLine": 22
+        },
+        "message": "subprocess.check_output(f\"echo {name}\", shell=True, text=True) at app.py line 22 where name is taken from request.args.get(\"name\").",
+        "ruleId": "COMMAND-INJECTION-001",
+        "scanner": "hermsec-moa"
+      }
+    ],
+    "finding-b7927239085e07f9": [
+      {
+        "location": {
+          "endLine": 15,
+          "file": "app.py",
+          "startLine": 15
+        },
+        "message": "query = f\"SELECT * FROM users WHERE display_name = '{term}'\" at app.py line 15 where term is taken from request.args.get(\"q\").",
+        "ruleId": "SQL-INJECTION-001",
+        "scanner": "hermsec-moa"
+      }
+    ],
+    "finding-faf13c772fcd015f": [
+      {
+        "location": {
+          "endLine": 9,
+          "file": "app.py",
+          "startLine": 9
+        },
+        "message": "Assignment of a token-like value to FAKE_FIXTURE_TOKEN at app.py line 9.",
+        "ruleId": "hardcoded-secret-token",
+        "scanner": "hermsec-moa"
+      }
+    ]
+  },
+  "rawArtifacts": [],
+  "redactionApplied": false
+}

@@ -1,0 +1,69 @@
+{
+  "bundleId": "evidence-75b672c837f3de69",
+  "findingEvidence": {
+    "finding-34a12328494fee7c": [
+      {
+        "location": {
+          "file": "package-lock.json"
+        },
+        "message": "express <4.20.0 https://github.[REDACTED_SECRET]",
+        "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+        "scanner": "pmg"
+      }
+    ],
+    "finding-5d7c8a7ede9c55b6": [
+      {
+        "location": {
+          "file": "package-lock.json"
+        },
+        "message": "express <4.19.2 https://github.[REDACTED_SECRET]",
+        "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+        "scanner": "pmg"
+      }
+    ],
+    "finding-79460a7a95ca1609": [
+      {
+        "location": {
+          "file": "package-lock.json"
+        },
+        "message": "express@4.18.2 is affected by GHSA-rv95-896h-c2vc, CVE-2024-29041.",
+        "ruleId": "osv:GHSA-rv95-896h-c2vc",
+        "scanner": "osv-scanner"
+      }
+    ],
+    "finding-7aeee916077462b4": [
+      {
+        "location": {
+          "file": "src/app.js",
+          "startLine": 7
+        },
+        "message": "src/app.js:7 res.send(`<h1>${escapeHtml(String(req.query.name ?? \"\"))}</h1>`);",
+        "ruleId": "hermsec.code.unsanitized-html-response",
+        "scanner": "hermsec-heuristics"
+      }
+    ],
+    "finding-b1bdc12ef0d825ab": [
+      {
+        "location": {
+          "file": "src/routes/search.js",
+          "startLine": 34
+        },
+        "message": "src/routes/search.js:34 res.send(`<h1>${name}</h1><p>${digest}</p>`);",
+        "ruleId": "hermsec.code.unsanitized-html-response",
+        "scanner": "hermsec-heuristics"
+      }
+    ],
+    "finding-b80725495585908e": [
+      {
+        "location": {
+          "file": "package-lock.json"
+        },
+        "message": "express@4.18.2 is affected by GHSA-qw6h-vgh9-j6wx, CVE-2024-43796.",
+        "ruleId": "osv:GHSA-qw6h-vgh9-j6wx",
+        "scanner": "osv-scanner"
+      }
+    ]
+  },
+  "rawArtifacts": [],
+  "redactionApplied": false
+}

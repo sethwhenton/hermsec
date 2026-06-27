@@ -1,0 +1,413 @@
+{
+  "agentMode": {
+    "acceptedFindingCount": 4,
+    "agents": [
+      {
+        "id": "injection-and-execution",
+        "label": "Injection and execution specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 10276,
+        "status": "completed"
+      },
+      {
+        "id": "auth-and-data-flow",
+        "label": "Auth and data-flow specialist",
+        "model": "xiaomi/mimo-v2.5-20260422",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 1483,
+        "status": "completed"
+      },
+      {
+        "id": "secrets-and-config",
+        "label": "Secrets and config specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 27821,
+        "status": "completed"
+      },
+      {
+        "id": "moa-false-positive-judge",
+        "label": "False-positive Judge",
+        "model": "deepseek-v4-pro",
+        "provider": "opencode-go",
+        "role": "judge",
+        "runtimeMs": 15697,
+        "status": "completed"
+      },
+      {
+        "id": "moa-aggregator",
+        "label": "MoA Aggregator",
+        "model": "MiniMax-M3",
+        "provider": "opencode-go",
+        "role": "aggregator",
+        "runtimeMs": 7911,
+        "status": "completed"
+      }
+    ],
+    "agentsUsed": [
+      "injection-and-execution",
+      "auth-and-data-flow",
+      "secrets-and-config",
+      "moa-false-positive-judge",
+      "moa-aggregator"
+    ],
+    "aggregator": {
+      "agentId": "moa-aggregator",
+      "label": "MoA Aggregator",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go"
+    },
+    "aggregatorModel": "MiniMax-M3",
+    "candidateFindingCount": 4,
+    "findings": {
+      "finding-49f0f6847d3c2d7e": {
+        "agentIds": [
+          "moa-aggregator"
+        ],
+        "judgeReason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-aggregated",
+        "sourceLabels": [
+          "moa-aggregated"
+        ]
+      },
+      "finding-b58b80fac121a4e9": {
+        "agentIds": [
+          "moa-aggregator"
+        ],
+        "judgeReason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-aggregated",
+        "sourceLabels": [
+          "moa-aggregated"
+        ]
+      },
+      "finding-b7927239085e07f9": {
+        "agentIds": [
+          "moa-aggregator"
+        ],
+        "judgeReason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-aggregated",
+        "sourceLabels": [
+          "moa-aggregated"
+        ]
+      },
+      "finding-faf13c772fcd015f": {
+        "agentIds": [
+          "moa-aggregator"
+        ],
+        "judgeReason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-aggregated",
+        "sourceLabels": [
+          "moa-aggregated"
+        ]
+      }
+    },
+    "mode": "moa-assisted",
+    "modeLabel": "MoA-assisted inspection",
+    "needsHumanReviewCount": 0,
+    "rejectedFindingCount": 0,
+    "scanMode": "moa-assisted",
+    "totalAgentRuntimeMs": 63296
+  },
+  "delta": {
+    "baseScanId": "scan-1736ec771ea4848d",
+    "currentScanId": "scan-9b8db99bda02255b",
+    "fixedFindingIds": [
+      "finding-761c5db27c1b1c5a"
+    ],
+    "improvedFindingIds": [],
+    "newFindingIds": [
+      "finding-49f0f6847d3c2d7e",
+      "finding-b58b80fac121a4e9",
+      "finding-b7927239085e07f9",
+      "finding-faf13c772fcd015f"
+    ],
+    "summaryText": "4 new, 1 fixed, 0 unchanged, 0 worsened, 0 improved",
+    "unchangedFindingIds": [],
+    "worsenedFindingIds": []
+  },
+  "evidence": {
+    "bundleId": "evidence-6a6ab2e1d44efd87",
+    "findingEvidence": {
+      "finding-49f0f6847d3c2d7e": [
+        {
+          "location": {
+            "endLine": 8,
+            "file": "app.py",
+            "startLine": 8
+          },
+          "message": "app.config[\"DEBUG\"] = True and app.run(debug=True, host=\"127.0.0.1\") at app.py line 8.",
+          "ruleId": "debug-mode-enabled",
+          "scanner": "hermsec-moa"
+        }
+      ],
+      "finding-b58b80fac121a4e9": [
+        {
+          "location": {
+            "endLine": 22,
+            "file": "app.py",
+            "startLine": 22
+          },
+          "message": "subprocess.check_output(f\"echo {name}\", shell=True, text=True) at app.py line 22 where name is taken from request.args.get(\"name\").",
+          "ruleId": "COMMAND-INJECTION-001",
+          "scanner": "hermsec-moa"
+        }
+      ],
+      "finding-b7927239085e07f9": [
+        {
+          "location": {
+            "endLine": 15,
+            "file": "app.py",
+            "startLine": 15
+          },
+          "message": "query = f\"SELECT * FROM users WHERE display_name = '{term}'\" at app.py line 15 where term is taken from request.args.get(\"q\").",
+          "ruleId": "SQL-INJECTION-001",
+          "scanner": "hermsec-moa"
+        }
+      ],
+      "finding-faf13c772fcd015f": [
+        {
+          "location": {
+            "endLine": 9,
+            "file": "app.py",
+            "startLine": 9
+          },
+          "message": "Assignment of a token-like value to FAKE_FIXTURE_TOKEN at app.py line 9.",
+          "ruleId": "hardcoded-secret-token",
+          "scanner": "hermsec-moa"
+        }
+      ]
+    },
+    "rawArtifacts": [],
+    "redactionApplied": false
+  },
+  "explanations": {},
+  "findings": [
+    {
+      "agent": {
+        "candidateIds": [
+          "candidate-4cde55962b36620f"
+        ],
+        "generatedAt": "2026-06-27T20:26:05.342Z",
+        "judge": {
+          "reason": "Aggregated from MoA candidates that passed false-positive judging.",
+          "reviewedBy": "moa-false-positive-judge",
+          "verdict": "accepted"
+        },
+        "mode": "moa-assisted",
+        "model": "MiniMax-M3",
+        "provider": "opencode-go",
+        "source": "moa-aggregator",
+        "sourceFindingIds": [
+          "candidate-b41f3760a7b16da2"
+        ]
+      },
+      "category": "code",
+      "confidence": "high",
+      "cwe": [
+        "CWE-78"
+      ],
+      "description": "The /run endpoint passes user-controlled input from query parameters into a shell command executed via subprocess.check_output with shell=True, allowing arbitrary command execution.",
+      "evidence": "subprocess.check_output(f\"echo {name}\", shell=True, text=True) at app.py line 22 where name is taken from request.args.get(\"name\").",
+      "fingerprint": "fp-84833be951d9ab81",
+      "id": "finding-b58b80fac121a4e9",
+      "location": {
+        "endLine": 22,
+        "file": "app.py",
+        "startLine": 22
+      },
+      "remediation": "Invoke subprocess without shell=True using a list of arguments, or strictly validate and sanitize the input to remove shell metacharacters.",
+      "ruleId": "COMMAND-INJECTION-001",
+      "severity": "critical",
+      "title": "OS Command Injection in /run endpoint",
+      "tool": "hermsec-moa"
+    },
+    {
+      "agent": {
+        "candidateIds": [
+          "candidate-08f5a67af654cda3"
+        ],
+        "generatedAt": "2026-06-27T20:26:05.346Z",
+        "judge": {
+          "reason": "Aggregated from MoA candidates that passed false-positive judging.",
+          "reviewedBy": "moa-false-positive-judge",
+          "verdict": "accepted"
+        },
+        "mode": "moa-assisted",
+        "model": "MiniMax-M3",
+        "provider": "opencode-go",
+        "source": "moa-aggregator",
+        "sourceFindingIds": [
+          "candidate-c883e34e4492cd2d"
+        ]
+      },
+      "category": "secret",
+      "confidence": "high",
+      "cwe": [
+        "CWE-798"
+      ],
+      "description": "A token-like secret is assigned to a module-level constant in source, exposing the credential to anyone with repository access.",
+      "evidence": "Assignment of a token-like value to FAKE_FIXTURE_TOKEN at app.py line 9.",
+      "fingerprint": "fp-449cddc71fdee946",
+      "id": "finding-faf13c772fcd015f",
+      "location": {
+        "endLine": 9,
+        "file": "app.py",
+        "startLine": 9
+      },
+      "remediation": "Load secrets from environment variables or a managed secrets store at runtime instead of embedding them in source.",
+      "ruleId": "hardcoded-secret-token",
+      "severity": "high",
+      "title": "Hardcoded Token Secret",
+      "tool": "hermsec-moa"
+    },
+    {
+      "agent": {
+        "candidateIds": [
+          "candidate-e4d8eed5b7868db2"
+        ],
+        "generatedAt": "2026-06-27T20:26:05.344Z",
+        "judge": {
+          "reason": "Aggregated from MoA candidates that passed false-positive judging.",
+          "reviewedBy": "moa-false-positive-judge",
+          "verdict": "accepted"
+        },
+        "mode": "moa-assisted",
+        "model": "MiniMax-M3",
+        "provider": "opencode-go",
+        "source": "moa-aggregator",
+        "sourceFindingIds": [
+          "candidate-2b1824edec08d568"
+        ]
+      },
+      "category": "code",
+      "confidence": "high",
+      "cwe": [
+        "CWE-89"
+      ],
+      "description": "The /search endpoint builds a SQL query via f-string interpolation of user-controlled input, enabling SQL injection.",
+      "evidence": "query = f\"SELECT * FROM users WHERE display_name = '{term}'\" at app.py line 15 where term is taken from request.args.get(\"q\").",
+      "fingerprint": "fp-ba26111c32d51827",
+      "id": "finding-b7927239085e07f9",
+      "location": {
+        "endLine": 15,
+        "file": "app.py",
+        "startLine": 15
+      },
+      "remediation": "Use parameterized queries with placeholder arguments (e.g., sqlite3 placeholders) rather than f-string formatting of user input.",
+      "ruleId": "SQL-INJECTION-001",
+      "severity": "high",
+      "title": "SQL Injection in /search endpoint",
+      "tool": "hermsec-moa"
+    },
+    {
+      "agent": {
+        "candidateIds": [
+          "candidate-548cbdcb7de44cd2"
+        ],
+        "generatedAt": "2026-06-27T20:26:05.349Z",
+        "judge": {
+          "reason": "Aggregated from MoA candidates that passed false-positive judging.",
+          "reviewedBy": "moa-false-positive-judge",
+          "verdict": "accepted"
+        },
+        "mode": "moa-assisted",
+        "model": "MiniMax-M3",
+        "provider": "opencode-go",
+        "source": "moa-aggregator",
+        "sourceFindingIds": [
+          "candidate-7d8f4de86f05abd0"
+        ]
+      },
+      "category": "config",
+      "confidence": "high",
+      "cwe": [
+        "CWE-489"
+      ],
+      "description": "Flask debug mode is enabled both via configuration and app.run, which can expose the interactive debugger and detailed error pages if the service is reachable in non-development contexts.",
+      "evidence": "app.config[\"DEBUG\"] = True and app.run(debug=True, host=\"127.0.0.1\") at app.py line 8.",
+      "fingerprint": "fp-bf3fb68c7db400d0",
+      "id": "finding-49f0f6847d3c2d7e",
+      "location": {
+        "endLine": 8,
+        "file": "app.py",
+        "startLine": 8
+      },
+      "remediation": "Disable debug mode for non-development deployments by setting DEBUG=False and passing debug=False to app.run().",
+      "ruleId": "debug-mode-enabled",
+      "severity": "medium",
+      "title": "Flask Debug Mode Enabled",
+      "tool": "hermsec-moa"
+    }
+  ],
+  "generatedAt": "2026-06-27T20:25:02.048Z",
+  "intelligence": [],
+  "limitations": [
+    "MoA-assisted inspection is agent-only; scanner and advisory enrichment were not run.",
+    "MoA ran 3 specialist role(s), a false-positive judge, and an aggregator.",
+    "Hermsec reports only scanner and advisory evidence supplied to this run.",
+    "Model or fallback explanations cannot add CVEs, file paths, package names, versions, or line numbers."
+  ],
+  "run": {
+    "durationMs": 272,
+    "fallback": {
+      "actualReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-25-02-048Z",
+      "configuredReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-vulnerable\\reports",
+      "used": false
+    },
+    "finishedAt": "2026-06-27T20:25:02.048Z",
+    "git": {
+      "branch": "main",
+      "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+      "dirty": true
+    },
+    "id": "scan-9b8db99bda02255b",
+    "mode": "auto",
+    "modeLabel": "MoA-assisted inspection",
+    "startedAt": "2026-06-27T20:25:01.776Z"
+  },
+  "scanId": "scan-9b8db99bda02255b",
+  "schemaVersion": "1.0",
+  "summary": {
+    "confirmedCves": 0,
+    "critical": 1,
+    "generatedWithModel": true,
+    "high": 2,
+    "info": 0,
+    "knownExploited": 0,
+    "low": 0,
+    "medium": 1,
+    "scannerFailures": 0,
+    "secrets": 1,
+    "total": 4
+  },
+  "target": {
+    "displayName": "python-flask-vulnerable",
+    "kind": "local-path",
+    "value": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\python-flask-vulnerable"
+  },
+  "tools": [
+    {
+      "durationMs": 63296,
+      "id": "moa-assisted",
+      "label": "MoA-assisted inspection",
+      "message": "MoA-assisted inspection completed with 4 validated findings.",
+      "status": "completed"
+    },
+    {
+      "id": "repository-discovery",
+      "label": "Repository discovery",
+      "message": "Discovered 5 files (python:1, json:1, yaml:1, text:2), package managers: pip, lockfiles: 0, ignored folders: none.",
+      "status": "completed"
+    }
+  ],
+  "workspaceId": "ws-09cd0f0cab58e3d8",
+  "workspaceName": "python-flask-vulnerable"
+}

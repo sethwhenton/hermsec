@@ -1,0 +1,555 @@
+{
+  "agentMode": {
+    "acceptedFindingCount": 50,
+    "agents": [
+      {
+        "id": "scanner-stack",
+        "label": "Scanner Stack",
+        "provider": "hermsec-scanners",
+        "role": "scanner",
+        "status": "completed"
+      },
+      {
+        "id": "injection-and-execution",
+        "label": "Injection and execution specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 8179,
+        "status": "completed"
+      },
+      {
+        "id": "auth-and-data-flow",
+        "label": "Auth and data-flow specialist",
+        "model": "xiaomi/mimo-v2.5-20260422",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 1267,
+        "status": "completed"
+      },
+      {
+        "id": "secrets-and-config",
+        "label": "Secrets and config specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 23318,
+        "status": "completed"
+      },
+      {
+        "id": "database-and-storage",
+        "label": "Database and storage specialist",
+        "model": "xiaomi/mimo-v2.5-20260422",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 1697,
+        "status": "completed"
+      },
+      {
+        "id": "config-and-iac",
+        "label": "Config and IaC specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 4438,
+        "status": "completed"
+      },
+      {
+        "id": "moa-false-positive-judge",
+        "label": "False-positive Judge",
+        "model": "deepseek-v4-pro",
+        "provider": "opencode-go",
+        "role": "judge",
+        "runtimeMs": 144848,
+        "status": "completed"
+      },
+      {
+        "id": "moa-aggregator",
+        "label": "Scanner + MoA Aggregator",
+        "model": "MiniMax-M3",
+        "provider": "opencode-go",
+        "role": "aggregator",
+        "runtimeMs": 32138,
+        "status": "completed"
+      }
+    ],
+    "agentsUsed": [
+      "scanner-stack",
+      "injection-and-execution",
+      "auth-and-data-flow",
+      "secrets-and-config",
+      "database-and-storage",
+      "config-and-iac",
+      "moa-false-positive-judge",
+      "moa-aggregator"
+    ],
+    "aggregator": {
+      "agentId": "moa-aggregator",
+      "label": "Scanner + MoA Aggregator",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go"
+    },
+    "aggregatorModel": "MiniMax-M3",
+    "candidateFindingCount": 62,
+    "findings": {
+      "finding-161214d1eed442bc": {
+        "agentIds": [
+          "bandit"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-1fb5546ad4cdca07": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 affected by CVE-2026-4292 (admin changelist forms issue), confirmed by PYSEC, GHSA, BIT advisories.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-2a662179f20fedac": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 is affected by PYSEC-2026-43 with CVE-2025-14550 and GHSA references; a known ASGIRequest vulnerability.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-2da8bf57c3beedf7": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 affected by CVE-2024-24680 (intcomma template filter), confirmed by PYSEC, GHSA, BIT advisories.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-30d7af736c067ecf": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 affected by CVE-2026-33034 (ASGI missing Content-Length), confirmed by PYSEC, GHSA, BIT advisories.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-3c6d14f60f48d2b2": {
+        "agentIds": [
+          "secrets-and-config"
+        ],
+        "judgeReason": "Concrete evidence of Flask debug mode enabled via DEBUG=True and debug=True in app.run(), which exposes sensitive information in production.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-4940470cf86bbc97": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 is affected by PYSEC-2026-42 with CVE-2025-13473 and GHSA references; a known modwsgi password check bypass.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-4d631eba5901a15a": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-4f69678927fb9c20": {
+        "agentIds": [
+          "semgrep"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-553fcfa7d373c22c": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "duplicate of scanner:finding-6e29a11e0cc9821d; still valid CVE-2024-39330",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-5759826843b92b57": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 affected by CVE-2023-46695 (NFKC normalization DoS), confirmed by PYSEC, GHSA, BIT advisories.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-59e543d0f5b92291": {
+        "agentIds": [
+          "bandit"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-61f54bb2a229b9c4": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 affected by CVE-2026-4277 (permissions on inline model instances), confirmed by PYSEC, GHSA, BIT advisories.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-6286deb685eb0215": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-6746dbbd8d8e1e3b": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 affected by CVE-2025-32873 (strip_tags issue), confirmed by PYSEC, GHSA, BIT advisories.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-6e29a11e0cc9821d": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "django 4.2.1 < 4.2.14 matches affected range for CVE-2024-39330",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-76e0ee6b7af74773": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 is affected by PYSEC-2026-47 with CVE-2026-1312 and GHSA references; a known SQL injection in QuerySet.order_by().",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-79648cd2f4b0451f": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "django 4.2.1 < 4.2.14 matches affected range for CVE-2024-39614",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-89c7f141b309a9a2": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "django 4.2.1 < 4.2.25 matches affected range for CVE-2025-59682",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-90158fb6d6656532": {
+        "agentIds": [
+          "secrets-and-config"
+        ],
+        "judgeReason": "Hardcoded secret token detected in app.py line 9.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-92e2ec5bf5cdeb83": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 is affected by PYSEC-2026-45 with CVE-2026-1285 and GHSA references; a known issue in Truncator.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-95152a167afff424": {
+        "agentIds": [
+          "injection-and-execution"
+        ],
+        "judgeReason": "Clear SQL injection: string interpolation of user input directly in SQL query.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-991a30f91ac44426": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 is affected by CVE-2026-25674 with GHSA reference; a known race condition in file storage.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-9ec04da14758c908": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 affected by CVE-2026-3902 (ASGIRequest spoofing), confirmed by PYSEC, GHSA, BIT advisories.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-9fd1259137756352": {
+        "agentIds": [
+          "secrets-and-config"
+        ],
+        "judgeReason": "MD5 usage is detected, but the variable name 'FAKE_FIXTURE_TOKEN' suggests this might be for testing or non-critical purposes, making the finding context-dependent.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-9fdafd73600719c0": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 is affected by PYSEC-2026-46 with CVE-2026-1287 and GHSA references; a known SQL injection in FilteredRelation.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-a2713a54df22bf82": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 affected by CVE-2024-38875 (urlize DoS), confirmed by PYSEC, GHSA, BIT advisories.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-ab0a01e020936a2a": {
+        "agentIds": [
+          "bandit"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-ad5e6ba69c40063c": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-b58346c3abe32f02": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-b6e9847405c68393": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 is affected by PYSEC-2026-44 with CVE-2026-1207 and GHSA references; a known raster lookups vulnerability.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-c44681bed92945fd": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "django 4.2.1 < 4.2.25 matches affected range for CVE-2025-59681",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-ca505fe42dd31371": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-d02e3f648fb7691a": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 affected by CVE-2026-33033 (MultiPartParser degradation), confirmed by PYSEC, GHSA, BIT advisories.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-d2861bc2a152161b": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 affected by CVE-2025-57833 (FilteredRelation SQL injection), confirmed by PYSEC, GHSA, BIT advisories.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-d88e78175b200595": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 is affected by CVE-2026-25673 with GHSA reference; a known URL parsing issue.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-df5ff9f08d375620": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 is affected by PYSEC-2025-109 with CVE-2025-64460 and GHSA references; a known algorithmic complexity issue.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-eebedbc6bf643f8e": {
+        "agentIds": [
+          "pip-audit"
+        ],
+        "judgeReason": "Concrete evidence: django@4.2.1 is affected by PYSEC-2025-104 with CVE-2025-13372 and GHSA references; a known SQL injection vulnerability.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-f49b9ad6002f4bab": {
+        "agentIds": [
+          "bandit"
+        ],
+        "judgeReason": "No explicit judge decision was returned.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-fa146c3a01093f62": {
+        "agentIds": [
+          "injection-and-execution"
+        ],
+        "judgeReason": "Clear command injection: use of shell=True with user-supplied input in subprocess.check_output.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      }
+    },
+    "mode": "scanner-moa-assisted",
+    "modeLabel": "Scanner + MoA inspection",
+    "needsHumanReviewCount": 11,
+    "rejectedFindingCount": 1,
+    "scanMode": "scanner-moa-assisted",
+    "totalAgentRuntimeMs": 216047
+  },
+  "executiveSummary": "Scanner + MoA inspection produced 40 validated scanner and agent findings.",
+  "explanations": {},
+  "generatedWithModel": true,
+  "model": "MiniMax-M3",
+  "priorityActions": [
+    "finding-fa146c3a01093f62: Use subprocess.run with a list of arguments instead of shell=True to avoid shell injection.",
+    "finding-90158fb6d6656532: Remove hardcoded token and use environment variables or a secrets manager. For local testing, use a config file not checked into version control.",
+    "finding-ca505fe42dd31371: Move secrets to environment variables or a secret manager and rotate exposed credentials.",
+    "finding-95152a167afff424: Use parameterized queries (e.g., ? placeholders) to safely bind user input.",
+    "finding-4f69678927fb9c20: Review the matched code path and apply the Semgrep rule guidance."
+  ],
+  "provider": "opencode-go"
+}

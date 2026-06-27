@@ -1,0 +1,45 @@
+{
+  "agentMode": {
+    "acceptedFindingCount": 1,
+    "agents": [
+      {
+        "id": "single-agent-inspector",
+        "label": "Single Agent Inspector",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "security-inspector",
+        "runtimeMs": 7813,
+        "status": "completed"
+      }
+    ],
+    "agentsUsed": [
+      "single-agent-inspector"
+    ],
+    "candidateFindingCount": 1,
+    "findings": {
+      "finding-761c5db27c1b1c5a": {
+        "agentIds": [
+          "single-agent"
+        ],
+        "sourceLabel": "single-agent-inspected",
+        "sourceLabels": [
+          "single-agent-inspected"
+        ]
+      }
+    },
+    "mode": "single-agent",
+    "modeLabel": "Single-agent inspection",
+    "needsHumanReviewCount": 0,
+    "rejectedFindingCount": 0,
+    "scanMode": "single-agent",
+    "totalAgentRuntimeMs": 7813
+  },
+  "executiveSummary": "Single-agent inspection produced 1 validated agent-only finding.",
+  "explanations": {},
+  "generatedWithModel": true,
+  "model": "deepseek-v4-flash",
+  "priorityActions": [
+    "finding-761c5db27c1b1c5a: Replace shell=True with a list of arguments (e.g., ['echo', name]) and avoid using f-string interpolation for command construction. Validate and sanitize user input."
+  ],
+  "provider": "opencode-go"
+}

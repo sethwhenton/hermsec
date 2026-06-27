@@ -1,0 +1,31 @@
+{
+  "bundleId": "evidence-a1099620f73b574c",
+  "findingEvidence": {
+    "finding-29d66c8cfa313e07": [
+      {
+        "location": {
+          "endLine": 10,
+          "file": "src/app.js",
+          "startLine": 10
+        },
+        "message": "childProcess.exec(\"tool \" + tool); (line 10, src/app.js)",
+        "ruleId": "command-injection",
+        "scanner": "hermsec-agent"
+      }
+    ],
+    "finding-72a366f9ced461de": [
+      {
+        "location": {
+          "endLine": 19,
+          "file": "src/routes/search.js",
+          "startLine": 19
+        },
+        "message": "exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined); (line 19, src/routes/search.js)",
+        "ruleId": "command-injection",
+        "scanner": "hermsec-agent"
+      }
+    ]
+  },
+  "rawArtifacts": [],
+  "redactionApplied": false
+}

@@ -1,0 +1,158 @@
+[
+  {
+    "agent": {
+      "candidateIds": [
+        "candidate-4cde55962b36620f"
+      ],
+      "generatedAt": "2026-06-27T20:26:05.342Z",
+      "judge": {
+        "reason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "reviewedBy": "moa-false-positive-judge",
+        "verdict": "accepted"
+      },
+      "mode": "moa-assisted",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go",
+      "source": "moa-aggregator",
+      "sourceFindingIds": [
+        "candidate-b41f3760a7b16da2"
+      ]
+    },
+    "category": "code",
+    "confidence": "high",
+    "cwe": [
+      "CWE-78"
+    ],
+    "description": "The /run endpoint passes user-controlled input from query parameters into a shell command executed via subprocess.check_output with shell=True, allowing arbitrary command execution.",
+    "evidence": "subprocess.check_output(f\"echo {name}\", shell=True, text=True) at app.py line 22 where name is taken from request.args.get(\"name\").",
+    "fingerprint": "fp-84833be951d9ab81",
+    "id": "finding-b58b80fac121a4e9",
+    "location": {
+      "endLine": 22,
+      "file": "app.py",
+      "startLine": 22
+    },
+    "remediation": "Invoke subprocess without shell=True using a list of arguments, or strictly validate and sanitize the input to remove shell metacharacters.",
+    "ruleId": "COMMAND-INJECTION-001",
+    "severity": "critical",
+    "title": "OS Command Injection in /run endpoint",
+    "tool": "hermsec-moa"
+  },
+  {
+    "agent": {
+      "candidateIds": [
+        "candidate-08f5a67af654cda3"
+      ],
+      "generatedAt": "2026-06-27T20:26:05.346Z",
+      "judge": {
+        "reason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "reviewedBy": "moa-false-positive-judge",
+        "verdict": "accepted"
+      },
+      "mode": "moa-assisted",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go",
+      "source": "moa-aggregator",
+      "sourceFindingIds": [
+        "candidate-c883e34e4492cd2d"
+      ]
+    },
+    "category": "secret",
+    "confidence": "high",
+    "cwe": [
+      "CWE-798"
+    ],
+    "description": "A token-like secret is assigned to a module-level constant in source, exposing the credential to anyone with repository access.",
+    "evidence": "Assignment of a token-like value to FAKE_FIXTURE_TOKEN at app.py line 9.",
+    "fingerprint": "fp-449cddc71fdee946",
+    "id": "finding-faf13c772fcd015f",
+    "location": {
+      "endLine": 9,
+      "file": "app.py",
+      "startLine": 9
+    },
+    "remediation": "Load secrets from environment variables or a managed secrets store at runtime instead of embedding them in source.",
+    "ruleId": "hardcoded-secret-token",
+    "severity": "high",
+    "title": "Hardcoded Token Secret",
+    "tool": "hermsec-moa"
+  },
+  {
+    "agent": {
+      "candidateIds": [
+        "candidate-e4d8eed5b7868db2"
+      ],
+      "generatedAt": "2026-06-27T20:26:05.344Z",
+      "judge": {
+        "reason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "reviewedBy": "moa-false-positive-judge",
+        "verdict": "accepted"
+      },
+      "mode": "moa-assisted",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go",
+      "source": "moa-aggregator",
+      "sourceFindingIds": [
+        "candidate-2b1824edec08d568"
+      ]
+    },
+    "category": "code",
+    "confidence": "high",
+    "cwe": [
+      "CWE-89"
+    ],
+    "description": "The /search endpoint builds a SQL query via f-string interpolation of user-controlled input, enabling SQL injection.",
+    "evidence": "query = f\"SELECT * FROM users WHERE display_name = '{term}'\" at app.py line 15 where term is taken from request.args.get(\"q\").",
+    "fingerprint": "fp-ba26111c32d51827",
+    "id": "finding-b7927239085e07f9",
+    "location": {
+      "endLine": 15,
+      "file": "app.py",
+      "startLine": 15
+    },
+    "remediation": "Use parameterized queries with placeholder arguments (e.g., sqlite3 placeholders) rather than f-string formatting of user input.",
+    "ruleId": "SQL-INJECTION-001",
+    "severity": "high",
+    "title": "SQL Injection in /search endpoint",
+    "tool": "hermsec-moa"
+  },
+  {
+    "agent": {
+      "candidateIds": [
+        "candidate-548cbdcb7de44cd2"
+      ],
+      "generatedAt": "2026-06-27T20:26:05.349Z",
+      "judge": {
+        "reason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "reviewedBy": "moa-false-positive-judge",
+        "verdict": "accepted"
+      },
+      "mode": "moa-assisted",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go",
+      "source": "moa-aggregator",
+      "sourceFindingIds": [
+        "candidate-7d8f4de86f05abd0"
+      ]
+    },
+    "category": "config",
+    "confidence": "high",
+    "cwe": [
+      "CWE-489"
+    ],
+    "description": "Flask debug mode is enabled both via configuration and app.run, which can expose the interactive debugger and detailed error pages if the service is reachable in non-development contexts.",
+    "evidence": "app.config[\"DEBUG\"] = True and app.run(debug=True, host=\"127.0.0.1\") at app.py line 8.",
+    "fingerprint": "fp-bf3fb68c7db400d0",
+    "id": "finding-49f0f6847d3c2d7e",
+    "location": {
+      "endLine": 8,
+      "file": "app.py",
+      "startLine": 8
+    },
+    "remediation": "Disable debug mode for non-development deployments by setting DEBUG=False and passing debug=False to app.run().",
+    "ruleId": "debug-mode-enabled",
+    "severity": "medium",
+    "title": "Flask Debug Mode Enabled",
+    "tool": "hermsec-moa"
+  }
+]

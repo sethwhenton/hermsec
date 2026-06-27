@@ -1,0 +1,739 @@
+{
+  "executiveSummary": "57 scanner finding(s): 0 critical, 6 high, 49 medium, 2 low, 0 info. Some model text was rejected because it was not supported by scanner evidence; fallback explanations were used.",
+  "explanations": {
+    "finding-0956da05f9392f0f": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 5.1 before 5.1.1, 5.0 before 5.0.9, and 4.2 before 4.2.16. The urlize() and urlizetrunc() template filt... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2024-102, CVE-2024-45230, BIT-django-2024-45230, GHSA-5hgc-2vfp-mqvc.. Identifiers supplied by scanner evidence: CVE-2024-45230, GHSA-5HGC-2VFP-MQVC, PYSEC-2024-102.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.16, 5.0.9, 5.1.1.",
+      "title": "An issue was discovered in Django 5.1 before 5.1.1, 5.0 before 5.0.9, and 4.2 before 4.2.16. The urlize() and urlizetrunc() template filt..."
+    },
+    "finding-0f595fbef013f4d6": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 5.0 before 5.0.7 and 4.2 before 4.2.14. The `django.contrib.auth.backends.ModelBackend.authenticate()` ... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2024-57, GHSA-x7q2-wr7g-xqmf, BIT-django-2024-39329, CVE-2024-39329.. Identifiers supplied by scanner evidence: CVE-2024-39329, GHSA-X7Q2-WR7G-XQMF, PYSEC-2024-57.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.14, 5.0.7.",
+      "title": "An issue was discovered in Django 5.0 before 5.0.7 and 4.2 before 4.2.14. The `django.contrib.auth.backends.ModelBackend.authenticate()` ..."
+    },
+    "finding-161214d1eed442bc": {
+      "confidenceReason": "Low confidence because it is a static analysis finding; manual review needed to confirm exploitability.",
+      "cveUsage": "not_applicable",
+      "evidenceSummary": "Bandit reported a possible SQL injection vector through string-based query construction in app.py:15.",
+      "impact": "Defensive impact: Potential SQL injection vulnerability could lead to unauthorized database access or data manipulation.",
+      "safeNextSteps": [
+        "Review app.py line 15 for raw SQL queries",
+        "Use an ORM or parameterized queries to prevent SQL injection"
+      ],
+      "suggestedFix": "Review the affected Python code and apply Bandit's recommended defensive pattern (e.g., use parameterized queries).",
+      "title": "Possible SQL injection in app.py"
+    },
+    "finding-1fb5546ad4cdca07": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in 6.0 before 6.0.4, 5.2 before 5.2.13, and 4.2 before 4.2.30. Admin changelist forms using `ModelAdmin.list_edit... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2026-53, GHSA-mmwr-2jhp-mc7j, BIT-django-2026-4292, CVE-2026-4292.. Identifiers supplied by scanner evidence: CVE-2026-4292, GHSA-MMWR-2JHP-MC7J, PYSEC-2026-53.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.30, 5.2.13, 6.0.4.",
+      "title": "An issue was discovered in 6.0 before 6.0.4, 5.2 before 5.2.13, and 4.2 before 4.2.30. Admin changelist forms using `ModelAdmin.list_edit..."
+    },
+    "finding-253828979fbe8544": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 5.1 before 5.1.5, 5.0 before 5.0.11, and 4.2 before 4.2.18. Lack of upper-bound limit enforcement in st... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2025-1, CVE-2024-56374, BIT-django-2024-56374, GHSA-qcgg-j2x8-h9g8.. Identifiers supplied by scanner evidence: CVE-2024-56374, GHSA-QCGG-J2X8-H9G8, PYSEC-2025-1.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.18, 5.0.11, 5.1.5.",
+      "title": "An issue was discovered in Django 5.1 before 5.1.5, 5.0 before 5.0.11, and 4.2 before 4.2.18. Lack of upper-bound limit enforcement in st..."
+    },
+    "finding-26947ee73d7c0fdb": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 5.0 before 5.0.8 and 4.2 before 4.2.15. The floatformat template filter is subject to significant memor... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2024-67, GHSA-jh75-99hh-qvx9, BIT-django-2024-41989, CVE-2024-41989.. Identifiers supplied by scanner evidence: CVE-2024-41989, GHSA-JH75-99HH-QVX9, PYSEC-2024-67.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.15, 5.0.8.",
+      "title": "An issue was discovered in Django 5.0 before 5.0.8 and 4.2 before 4.2.15. The floatformat template filter is subject to significant memor..."
+    },
+    "finding-2a662179f20fedac": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in 6.0 before 6.0.2, 5.2 before 5.2.11, and 4.2 before 4.2.28. `ASGIRequest` allows a remote attacker to cause a ... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2026-43, GHSA-33mw-q7rj-mjwj, BIT-django-2025-14550, CVE-2025-14550.. Identifiers supplied by scanner evidence: CVE-2025-14550, GHSA-33MW-Q7RJ-MJWJ, PYSEC-2026-43.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.28, 5.2.11, 6.0.2.",
+      "title": "An issue was discovered in 6.0 before 6.0.2, 5.2 before 5.2.11, and 4.2 before 4.2.28. `ASGIRequest` allows a remote attacker to cause a ..."
+    },
+    "finding-2da8bf57c3beedf7": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 3.2 before 3.2.24, 4.2 before 4.2.10, and Django 5.0 before 5.0.2. The intcomma template filter was sub... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2024-28, CVE-2024-24680, GHSA-xxj9-f6rv-m3x4, BIT-django-2024-24680.. Identifiers supplied by scanner evidence: CVE-2024-24680, GHSA-XXJ9-F6RV-M3X4, PYSEC-2024-28.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 3.2.24, 4.2.10, 5.0.2.",
+      "title": "An issue was discovered in Django 3.2 before 3.2.24, 4.2 before 4.2.10, and Django 5.0 before 5.0.2. The intcomma template filter was sub..."
+    },
+    "finding-30d7af736c067ecf": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in 6.0 before 6.0.4, 5.2 before 5.2.13, and 4.2 before 4.2.30. ASGI requests with a missing or understated `Conte... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2026-49, CVE-2026-33034, BIT-django-2026-33034, GHSA-933h-hp56-hf7m.. Identifiers supplied by scanner evidence: CVE-2026-33034, GHSA-933H-HP56-HF7M, PYSEC-2026-49.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.30, 5.2.13, 6.0.4.",
+      "title": "An issue was discovered in 6.0 before 6.0.4, 5.2 before 5.2.13, and 4.2 before 4.2.30. ASGI requests with a missing or understated `Conte..."
+    },
+    "finding-321b0ac0e68726ad": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported Flask is a lightweight WSGI web application framework. When all of the following conditions are met, a response containing data intended ... at requirements.txt. Evidence: flask@2.2.2 is affected by PYSEC-2023-62, CVE-2023-30861, GHSA-m2qf-hxjv-5gpq.. Identifiers supplied by scanner evidence: CVE-2023-30861, GHSA-M2QF-HXJV-5GPQ, PYSEC-2023-62.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade flask to one of the fixed versions: 2.2.5, 2.3.2.",
+      "title": "Flask is a lightweight WSGI web application framework. When all of the following conditions are met, a response containing data intended ..."
+    },
+    "finding-386ddb0a19273456": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 5.1 before 5.1.7, 5.0 before 5.0.13, and 4.2 before 4.2.20. The django.utils.text.wrap() method and wor... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2025-13, CVE-2025-26699, GHSA-p3fp-8748-vqfq, BIT-django-2025-26699.. Identifiers supplied by scanner evidence: CVE-2025-26699, GHSA-P3FP-8748-VQFQ, PYSEC-2025-13.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.20, 5.0.13, 5.1.7.",
+      "title": "An issue was discovered in Django 5.1 before 5.1.7, 5.0 before 5.0.13, and 4.2 before 4.2.20. The django.utils.text.wrap() method and wor..."
+    },
+    "finding-3bcfc9a2f9a8328e": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported In Django 3.2 before 3.2.20, 4 before 4.1.10, and 4.2 before 4.2.3, EmailValidator and URLValidator are subject to a potential ReDoS (reg... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2023-100, GHSA-jh3w-4vvf-mjgr, CVE-2023-36053, BIT-django-2023-36053.. Identifiers supplied by scanner evidence: CVE-2023-36053, GHSA-JH3W-4VVF-MJGR, PYSEC-2023-100.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 3.2.20, 4.1.10, 4.2.3.",
+      "title": "In Django 3.2 before 3.2.20, 4 before 4.1.10, and 4.2 before 4.2.3, EmailValidator and URLValidator are subject to a potential ReDoS (reg..."
+    },
+    "finding-4940470cf86bbc97": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in 6.0 before 6.0.2, 5.2 before 5.2.11, and 4.2 before 4.2.28. The `django.contrib.auth.handlers.modwsgi.check_pa... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2026-42, BIT-django-2025-13473, GHSA-2mcm-79hx-8fxw, CVE-2025-13473.. Identifiers supplied by scanner evidence: CVE-2025-13473, GHSA-2MCM-79HX-8FXW, PYSEC-2026-42.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.28, 5.2.11, 6.0.2.",
+      "title": "An issue was discovered in 6.0 before 6.0.2, 5.2 before 5.2.11, and 4.2 before 4.2.28. The `django.contrib.auth.handlers.modwsgi.check_pa..."
+    },
+    "finding-4a99f17a39465ea4": {
+      "confidenceReason": "High confidence because pip-audit identified the exact installed version and known vulnerability identifiers.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported django@4.2.1 affected by PYSEC-2024-47, GHSA-vm8q-m57g-pff3, CVE-2024-27351, BIT-django-2024-27351.",
+      "impact": "Defensive impact: A known vulnerability in Django 4.2.1 could lead to information disclosure as per CVE-2024-27351.",
+      "safeNextSteps": [
+        "Upgrade django to 4.2.11 or later",
+        "Verify no other dependencies are affected by CVE-2024-27351"
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 3.2.25, 4.2.11, 5.0.3.",
+      "title": "Django Truncator words() vulnerability (CVE-2024-27351)"
+    },
+    "finding-4d631eba5901a15a": {
+      "confidenceReason": "high",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "django@4.2.1 is affected by CVE-2025-64459",
+      "impact": "Vulnerability in QuerySet methods could allow something (from description).",
+      "safeNextSteps": [
+        "Apply patch",
+        "Run tests"
+      ],
+      "suggestedFix": "Upgrade django to 4.2.26, 5.1.14, or 5.2.8.",
+      "title": "An issue was discovered in 5.1 before 5.1.14, 4.2 before 4.2.26, and 5.2 before 5.2.8. The methods QuerySet.filter(), QuerySet.exclude..."
+    },
+    "finding-553fcfa7d373c22c": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 5.0 before 5.0.7 and 4.2 before 4.2.14. Derived classes of the django.core.files.storage.Storage base c... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2024-58, BIT-django-2024-39330, GHSA-9jmf-237g-qf46, CVE-2024-39330.. Identifiers supplied by scanner evidence: CVE-2024-39330, GHSA-9JMF-237G-QF46, PYSEC-2024-58.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.14, 5.0.7.",
+      "title": "An issue was discovered in Django 5.0 before 5.0.7 and 4.2 before 4.2.14. Derived classes of the django.core.files.storage.Storage base c..."
+    },
+    "finding-5759826843b92b57": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 3.2 before 3.2.23, 4.1 before 4.1.13, and 4.2 before 4.2.7. The NFKC normalization is slow on Windows. ... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2023-222, CVE-2023-46695, BIT-django-2023-46695, GHSA-qmf9-6jqf-j8fq.. Identifiers supplied by scanner evidence: CVE-2023-46695, GHSA-QMF9-6JQF-J8FQ, PYSEC-2023-222.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 3.2.23, 4.1.13, 4.2.7.",
+      "title": "An issue was discovered in Django 3.2 before 3.2.23, 4.1 before 4.1.13, and 4.2 before 4.2.7. The NFKC normalization is slow on Windows. ..."
+    },
+    "finding-59e543d0f5b92291": {
+      "confidenceReason": "medium",
+      "cveUsage": "not_present",
+      "evidenceSummary": "app.py:42 A Flask app appears to be run with debug=True",
+      "impact": "Running Flask with debug=True exposes the Werkzeug debugger, which can allow arbitrary code execution by an attacker.",
+      "safeNextSteps": [
+        "Set DEBUG=False in production",
+        "Use environment variable to control debug mode"
+      ],
+      "suggestedFix": "Review the affected Python code and apply Bandit's recommended defensive pattern (disable debug mode in production).",
+      "title": "A Flask app appears to be run with debug=True, which exposes the Werkzeug debugger and allows the execution of arbitrary code."
+    },
+    "finding-5d9c1ec8baa2d9fd": {
+      "confidenceReason": "High confidence that subprocess is used; actual exploitability depends on input validation.",
+      "cveUsage": "not_applicable",
+      "evidenceSummary": "Bandit reported possible security implications associated with the subprocess module in app.py:5.",
+      "impact": "Defensive impact: Use of subprocess can introduce command injection risks if not properly sanitized.",
+      "safeNextSteps": [
+        "Review app.py line 5 for subprocess usage",
+        "Ensure shell=False and input is sanitized"
+      ],
+      "suggestedFix": "Review the affected Python code and apply Bandit's recommended defensive pattern (e.g., use subprocess with shell=False, avoid shell=True).",
+      "title": "Subprocess module usage in app.py"
+    },
+    "finding-61f54bb2a229b9c4": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in 6.0 before 6.0.4, 5.2 before 5.2.13, and 4.2 before 4.2.30. Add permissions on inline model instances were not... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2026-52, BIT-django-2026-4277, GHSA-pwjp-ccjc-ghwg, CVE-2026-4277.. Identifiers supplied by scanner evidence: CVE-2026-4277, GHSA-PWJP-CCJC-GHWG, PYSEC-2026-52.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.30, 5.2.13, 6.0.4.",
+      "title": "An issue was discovered in 6.0 before 6.0.4, 5.2 before 5.2.13, and 4.2 before 4.2.30. Add permissions on inline model instances were not..."
+    },
+    "finding-6286deb685eb0215": {
+      "confidenceReason": "Medium confidence because it is a heuristic scan; pattern detected but may require manual verification.",
+      "cveUsage": "not_applicable",
+      "evidenceSummary": "Hermsec's offline heuristic scanner found app.py:42 app.run(debug=True, host=\"127.0.0.1\")",
+      "impact": "Defensive impact: Debug mode enabled in production can expose sensitive information and allow code execution in some contexts.",
+      "safeNextSteps": [
+        "Review app.py line 42 and set debug=False in production",
+        "Ensure environment variable controls debug mode"
+      ],
+      "suggestedFix": "Disable debug mode outside local development.",
+      "title": "Debug mode enabled in app.py"
+    },
+    "finding-6388f1397f3973e2": {
+      "confidenceReason": "high",
+      "cveUsage": "not_present",
+      "evidenceSummary": "app.py:22 Python subprocess shell mode enabled",
+      "impact": "Using shell=True in subprocess can lead to command injection if the command includes untrusted input.",
+      "safeNextSteps": [
+        "Replace with subprocess call without shell=True",
+        "Use list arguments instead of string"
+      ],
+      "suggestedFix": "Review the matched code path and apply the Semgrep rule guidance (avoid shell=True).",
+      "title": "Python subprocess shell mode enabled"
+    },
+    "finding-6746dbbd8d8e1e3b": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 4.2 before 4.2.21, 5.1 before 5.1.9, and 5.2 before 5.2.1. The django.utils.html.strip_tags() function ... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2025-37, BIT-django-2025-32873, GHSA-8j24-cjrq-gr2m, CVE-2025-32873.. Identifiers supplied by scanner evidence: CVE-2025-32873, GHSA-8J24-CJRQ-GR2M, PYSEC-2025-37.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.21, 5.1.9, 5.2.1.",
+      "title": "An issue was discovered in Django 4.2 before 4.2.21, 5.1 before 5.1.9, and 5.2 before 5.2.1. The django.utils.html.strip_tags() function ..."
+    },
+    "finding-6e29a11e0cc9821d": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 5.0 before 5.0.7 and 4.2 before 4.2.14. Derived classes of the `django.core.files.storage.Storage` base... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2024-58, GHSA-9jmf-237g-qf46, BIT-django-2024-39330, CVE-2024-39330.. Identifiers supplied by scanner evidence: CVE-2024-39330, GHSA-9JMF-237G-QF46, PYSEC-2024-58.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.14, 5.0.7.",
+      "title": "An issue was discovered in Django 5.0 before 5.0.7 and 4.2 before 4.2.14. Derived classes of the `django.core.files.storage.Storage` base..."
+    },
+    "finding-751bbd4e39232250": {
+      "confidenceReason": "High confidence because pip-audit identified the exact installed version and known vulnerability identifiers.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported django@4.2.1 affected by PYSEC-2023-226, CVE-2023-43665, BIT-django-2023-43665, GHSA-h8gc-pgj2-vjm3.",
+      "impact": "Defensive impact: A known vulnerability in Django 4.2.1 could lead to information disclosure as per CVE-2023-43665.",
+      "safeNextSteps": [
+        "Upgrade django to 4.2.6 or later",
+        "Verify no other dependencies are affected by CVE-2023-43665"
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 3.2.22, 4.1.12, 4.2.6.",
+      "title": "Django Truncator vulnerability (CVE-2023-43665)"
+    },
+    "finding-76e0ee6b7af74773": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in 6.0 before 6.0.2, 5.2 before 5.2.11, and 4.2 before 4.2.28. `.QuerySet.order_by()` is subject to SQL injection... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2026-47, GHSA-6426-9fv3-65x8, CVE-2026-1312, BIT-django-2026-1312.. Identifiers supplied by scanner evidence: CVE-2026-1312, GHSA-6426-9FV3-65X8, PYSEC-2026-47.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.28, 5.2.11, 6.0.2.",
+      "title": "An issue was discovered in 6.0 before 6.0.2, 5.2 before 5.2.11, and 4.2 before 4.2.28. `.QuerySet.order_by()` is subject to SQL injection..."
+    },
+    "finding-79648cd2f4b0451f": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 5.0 before 5.0.7 and 4.2 before 4.2.14. `get_supported_language_variant()` was subject to a potential d... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2024-59, CVE-2024-39614, GHSA-f6f8-9mx6-9mx2, BIT-django-2024-39614.. Identifiers supplied by scanner evidence: CVE-2024-39614, GHSA-F6F8-9MX6-9MX2, PYSEC-2024-59.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.14, 5.0.7.",
+      "title": "An issue was discovered in Django 5.0 before 5.0.7 and 4.2 before 4.2.14. `get_supported_language_variant()` was subject to a potential d..."
+    },
+    "finding-85c32c996af10430": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported In Django 3.2 before 3.2.21, 4.1 before 4.1.11, and 4.2 before 4.2.5, django.utils.encoding.uri_to_iri() is subject to a potential DoS (d... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2023-225, BIT-django-2023-41164, CVE-2023-41164, GHSA-7h4p-27mh-hmrw.. Identifiers supplied by scanner evidence: CVE-2023-41164, GHSA-7H4P-27MH-HMRW, PYSEC-2023-225.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 3.2.21, 4.1.11, 4.2.5.",
+      "title": "In Django 3.2 before 3.2.21, 4.1 before 4.1.11, and 4.2 before 4.2.5, django.utils.encoding.uri_to_iri() is subject to a potential DoS (d..."
+    },
+    "finding-87b41290a8289e67": {
+      "confidenceReason": "Medium confidence because pattern detected but may be a test token.",
+      "cveUsage": "not_applicable",
+      "evidenceSummary": "Bandit reported a possible hardcoded password in app.py:9: 'HERMSEC_FAKE_TEST_TOKEN_[REDACTED]'.",
+      "impact": "Defensive impact: Hardcoded credentials in source code can lead to credential compromise if source is exposed.",
+      "safeNextSteps": [
+        "Review app.py line 9 and remove hardcoded secrets",
+        "Use environment variables or a vault for secrets"
+      ],
+      "suggestedFix": "Review the affected Python code and apply Bandit's recommended defensive pattern (e.g., use environment variables, secrets manager).",
+      "title": "Possible hardcoded password in app.py"
+    },
+    "finding-89c7f141b309a9a2": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 4.2 before 4.2.25, 5.1 before 5.1.13, and 5.2 before 5.2.7. The django.utils.archive.extract() function... at requirements.txt. Evidence: django@4.2.1 is affected by CVE-2025-59682, BIT-django-2025-59682, GHSA-q95w-c7qg-hrff.. Identifiers supplied by scanner evidence: CVE-2025-59682, GHSA-Q95W-C7QG-HRFF.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.25, 5.1.13, 5.2.7.",
+      "title": "An issue was discovered in Django 4.2 before 4.2.25, 5.1 before 5.1.13, and 5.2 before 5.2.7. The django.utils.archive.extract() function..."
+    },
+    "finding-92e2ec5bf5cdeb83": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in 6.0 before 6.0.2, 5.2 before 5.2.11, and 4.2 before 4.2.28. `django.utils.text.Truncator.chars()` and `Truncat... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2026-45, CVE-2026-1285, GHSA-4rrr-2h4v-f3j9, BIT-django-2026-1285.. Identifiers supplied by scanner evidence: CVE-2026-1285, GHSA-4RRR-2H4V-F3J9, PYSEC-2026-45.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.28, 5.2.11, 6.0.2.",
+      "title": "An issue was discovered in 6.0 before 6.0.2, 5.2 before 5.2.11, and 4.2 before 4.2.28. `django.utils.text.Truncator.chars()` and `Truncat..."
+    },
+    "finding-98aa64bed3cc35c3": {
+      "confidenceReason": "High confidence because pip-audit identified the exact installed version and known vulnerability identifiers.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported flask@2.2.2 affected by CVE-2026-27205, GHSA-68rp-wp8r-4726.",
+      "impact": "Defensive impact: A known vulnerability in flask 2.2.2 could affect caching behavior leading to potential information disclosure as per CVE-2026-27205.",
+      "safeNextSteps": [
+        "Upgrade flask to 3.1.3",
+        "Verify no other dependencies are affected by CVE-2026-27205"
+      ],
+      "suggestedFix": "Upgrade flask to version 3.1.3.",
+      "title": "Flask session caching vulnerability (CVE-2026-27205)"
+    },
+    "finding-991a30f91ac44426": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in 6.0 before 6.0.3, 5.2 before 5.2.12, and 4.2 before 4.2.29. Race condition in file-system storage and file-bas... at requirements.txt. Evidence: django@4.2.1 is affected by CVE-2026-25674, GHSA-mjgh-79qc-68w3, BIT-django-2026-25674.. Identifiers supplied by scanner evidence: CVE-2026-25674, GHSA-MJGH-79QC-68W3.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.29, 5.2.12, 6.0.3.",
+      "title": "An issue was discovered in 6.0 before 6.0.3, 5.2 before 5.2.12, and 4.2 before 4.2.29. Race condition in file-system storage and file-bas..."
+    },
+    "finding-9ec04da14758c908": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in 6.0 before 6.0.4, 5.2 before 5.2.13, and 4.2 before 4.2.30. `ASGIRequest` allows a remote attacker to spoof he... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2026-51, GHSA-mvfq-ggxm-9mc5, BIT-django-2026-3902, CVE-2026-3902.. Identifiers supplied by scanner evidence: CVE-2026-3902, GHSA-MVFQ-GGXM-9MC5, PYSEC-2026-51.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.30, 5.2.13, 6.0.4.",
+      "title": "An issue was discovered in 6.0 before 6.0.4, 5.2 before 5.2.13, and 4.2 before 4.2.30. `ASGIRequest` allows a remote attacker to spoof he..."
+    },
+    "finding-9f16648c1f4c217c": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django v5.1.1, v5.0.9, and v4.2.16. The django.contrib.auth.forms.PasswordResetForm class, when used in a view... at requirements.txt. Evidence: django@4.2.1 is affected by CVE-2024-45231, GHSA-rrqc-c2jx-6jgv.. Identifiers supplied by scanner evidence: CVE-2024-45231, GHSA-RRQC-C2JX-6JGV.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.16, 5.0.9, 5.1.1.",
+      "title": "An issue was discovered in Django v5.1.1, v5.0.9, and v4.2.16. The django.contrib.auth.forms.PasswordResetForm class, when used in a view..."
+    },
+    "finding-9fdafd73600719c0": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in 6.0 before 6.0.2, 5.2 before 5.2.11, and 4.2 before 4.2.28. `FilteredRelation` is subject to SQL injection in ... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2026-46, BIT-django-2026-1287, GHSA-gvg8-93h5-g6qq, CVE-2026-1287.. Identifiers supplied by scanner evidence: CVE-2026-1287, GHSA-GVG8-93H5-G6QQ, PYSEC-2026-46.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.28, 5.2.11, 6.0.2.",
+      "title": "An issue was discovered in 6.0 before 6.0.2, 5.2 before 5.2.11, and 4.2 before 4.2.28. `FilteredRelation` is subject to SQL injection in ..."
+    },
+    "finding-a2713a54df22bf82": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 4.2 before 4.2.14 and 5.0 before 5.0.7. urlize and urlizetrunc were subject to a potential denial of se... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2024-56, CVE-2024-38875, GHSA-qg2p-9jwr-mmqf, BIT-django-2024-38875.. Identifiers supplied by scanner evidence: CVE-2024-38875, GHSA-QG2P-9JWR-MMQF, PYSEC-2024-56.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.14, 5.0.7.",
+      "title": "An issue was discovered in Django 4.2 before 4.2.14 and 5.0 before 5.0.7. urlize and urlizetrunc were subject to a potential denial of se..."
+    },
+    "finding-ab0a01e020936a2a": {
+      "confidenceReason": "high",
+      "cveUsage": "not_present",
+      "evidenceSummary": "app.py:22 subprocess call with shell=True identified",
+      "impact": "Using shell=True in subprocess can lead to command injection.",
+      "safeNextSteps": [
+        "Use subprocess with array of arguments",
+        "Avoid shell=True"
+      ],
+      "suggestedFix": "Review the affected Python code and apply Bandit's recommended defensive pattern (use shell=False).",
+      "title": "subprocess call with shell=True identified, security issue."
+    },
+    "finding-ad5e6ba69c40063c": {
+      "confidenceReason": "medium",
+      "cveUsage": "not_present",
+      "evidenceSummary": "app.py:22 subprocess.check_output(f\"echo {name}\", shell=True, text=True)",
+      "impact": "Using subprocess with shell=True can lead to command injection.",
+      "safeNextSteps": [
+        "Refactor to use subprocess.run without shell",
+        "Sanitize user input if necessary"
+      ],
+      "suggestedFix": "Use subprocess with argv arrays and shell=False.",
+      "title": "Subprocess shell mode enabled"
+    },
+    "finding-b1598f3e03f47f39": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 5.0 before 5.0.8 and 4.2 before 4.2.15. The urlize() and urlizetrunc() template filters are subject to ... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2024-68, GHSA-795c-9xpc-xw6g, BIT-django-2024-41990, CVE-2024-41990.. Identifiers supplied by scanner evidence: CVE-2024-41990, GHSA-795C-9XPC-XW6G, PYSEC-2024-68.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.15, 5.0.8.",
+      "title": "An issue was discovered in Django 5.0 before 5.0.8 and 4.2 before 4.2.15. The urlize() and urlizetrunc() template filters are subject to ..."
+    },
+    "finding-b3175d6a9a805cfa": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 5.1 before 5.1.4, 5.0 before 5.0.10, and 4.2 before 4.2.17. Direct usage of the django.db.models.fields... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2024-157, CVE-2024-53908, BIT-django-2024-53908, GHSA-m9g8-fxxm-xg86.. Identifiers supplied by scanner evidence: CVE-2024-53908, GHSA-M9G8-FXXM-XG86, PYSEC-2024-157.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.17, 4.2.17, 5.0.10, 5.0.10, 5.1.4, 5.1.4.",
+      "title": "An issue was discovered in Django 5.1 before 5.1.4, 5.0 before 5.0.10, and 4.2 before 4.2.17. Direct usage of the django.db.models.fields..."
+    },
+    "finding-b58346c3abe32f02": {
+      "confidenceReason": "high",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "django@4.2.1 is affected by PYSEC-2025-107, CVE-2025-64458",
+      "impact": "Affected Django versions are vulnerable to a denial of service due to slow NFKC normalization.",
+      "safeNextSteps": [
+        "Update requirements.txt",
+        "Test application after upgrade"
+      ],
+      "suggestedFix": "Upgrade django to 4.2.26, 5.1.14, or 5.2.8.",
+      "title": "An issue was discovered in 5.1 before 5.1.14, 4.2 before 4.2.26, and 5.2 before 5.2.8. NFKC normalization in Python is slow on Windows."
+    },
+    "finding-b5e43aa26de93fa1": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 5.2 before 5.2.2, 5.1 before 5.1.10, and 4.2 before 4.2.22. Internal HTTP response logging does not esc... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2025-47, BIT-django-2025-48432, GHSA-7xr5-9hcq-chf9, CVE-2025-48432.. Identifiers supplied by scanner evidence: CVE-2025-48432, GHSA-7XR5-9HCQ-CHF9, PYSEC-2025-47.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.22, 5.1.10, 5.2.2.",
+      "title": "An issue was discovered in Django 5.2 before 5.2.2, 5.1 before 5.1.10, and 4.2 before 4.2.22. Internal HTTP response logging does not esc..."
+    },
+    "finding-b6e9847405c68393": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in 6.0 before 6.0.2, 5.2 before 5.2.11, and 4.2 before 4.2.28. Raster lookups on ``RasterField`` (only implemente... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2026-44, BIT-django-2026-1207, CVE-2026-1207, GHSA-mwm9-4648-f68q.. Identifiers supplied by scanner evidence: CVE-2026-1207, GHSA-MWM9-4648-F68Q, PYSEC-2026-44.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.28, 5.2.11, 6.0.2.",
+      "title": "An issue was discovered in 6.0 before 6.0.2, 5.2 before 5.2.11, and 4.2 before 4.2.28. Raster lookups on ``RasterField`` (only implemente..."
+    },
+    "finding-bc03d5fd1eecc105": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 5.1 before 5.1.4, 5.0 before 5.0.10, and 4.2 before 4.2.17. The strip_tags() method and striptags templ... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2024-156, GHSA-8498-2h75-472j, CVE-2024-53907, BIT-django-2024-53907.. Identifiers supplied by scanner evidence: CVE-2024-53907, GHSA-8498-2H75-472J, PYSEC-2024-156.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.17, 4.2.17, 5.0.10, 5.0.10, 5.1.4, 5.1.4.",
+      "title": "An issue was discovered in Django 5.1 before 5.1.4, 5.0 before 5.0.10, and 4.2 before 4.2.17. The strip_tags() method and striptags templ..."
+    },
+    "finding-c44681bed92945fd": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 4.2 before 4.2.25, 5.1 before 5.1.13, and 5.2 before 5.2.7. QuerySet.annotate(), QuerySet.alias(), Quer... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2025-106, BIT-django-2025-59681, CVE-2025-59681, GHSA-hpr9-3m2g-3j9p.. Identifiers supplied by scanner evidence: CVE-2025-59681, GHSA-HPR9-3M2G-3J9P, PYSEC-2025-106.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.25, 5.1.13, 5.2.7.",
+      "title": "An issue was discovered in Django 4.2 before 4.2.25, 5.1 before 5.1.13, and 5.2 before 5.2.7. QuerySet.annotate(), QuerySet.alias(), Quer..."
+    },
+    "finding-ca505fe42dd31371": {
+      "confidenceReason": "confirmed",
+      "cveUsage": "not_applicable",
+      "evidenceSummary": "app.py:9 FAKE_FIXTURE_TOKEN = \"HERMSEC_FAKE_TEST_TOKEN_[REDACTED]\"",
+      "impact": "A secret-like value is present in source control, potentially exposing credentials.",
+      "safeNextSteps": [
+        "Verify if any other secrets are hardcoded",
+        "Rotate and revoke the exposed token"
+      ],
+      "suggestedFix": "Move secrets to environment variables or a secret manager and rotate exposed credentials.",
+      "title": "Hermsec fake secret fixture token"
+    },
+    "finding-d02e3f648fb7691a": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in 6.0 before 6.0.4, 5.2 before 5.2.13, and 4.2 before 4.2.30. `MultiPartParser` allows remote attackers to degra... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2026-48, CVE-2026-33033, GHSA-5mf9-h53q-7mhq, BIT-django-2026-33033.. Identifiers supplied by scanner evidence: CVE-2026-33033, GHSA-5MF9-H53Q-7MHQ, PYSEC-2026-48.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.30, 5.2.13, 6.0.4.",
+      "title": "An issue was discovered in 6.0 before 6.0.4, 5.2 before 5.2.13, and 4.2 before 4.2.30. `MultiPartParser` allows remote attackers to degra..."
+    },
+    "finding-d2861bc2a152161b": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 4.2 before 4.2.24, 5.1 before 5.1.12, and 5.2 before 5.2.6. FilteredRelation is subject to SQL injectio... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2025-105, GHSA-6w2r-r2m5-xq5w, BIT-django-2025-57833, CVE-2025-57833.. Identifiers supplied by scanner evidence: CVE-2025-57833, GHSA-6W2R-R2M5-XQ5W, PYSEC-2025-105.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.24, 5.1.12, 5.2.6.",
+      "title": "An issue was discovered in Django 4.2 before 4.2.24, 5.1 before 5.1.12, and 5.2 before 5.2.6. FilteredRelation is subject to SQL injectio..."
+    },
+    "finding-d88e78175b200595": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in 6.0 before 6.0.3, 5.2 before 5.2.12, and 4.2 before 4.2.29. `URLField.to_python()` in Django calls `urllib.par... at requirements.txt. Evidence: django@4.2.1 is affected by CVE-2026-25673, BIT-django-2026-25673, GHSA-8p8v-wh79-9r56.. Identifiers supplied by scanner evidence: CVE-2026-25673, GHSA-8P8V-WH79-9R56.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.29, 5.2.12, 6.0.3.",
+      "title": "An issue was discovered in 6.0 before 6.0.3, 5.2 before 5.2.12, and 4.2 before 4.2.29. `URLField.to_python()` in Django calls `urllib.par..."
+    },
+    "finding-df5ff9f08d375620": {
+      "confidenceReason": "high",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "django@4.2.1 is affected by CVE-2025-64460",
+      "impact": "Algorithmic complexity issue could lead to denial of service.",
+      "safeNextSteps": [
+        "Upgrade dependency",
+        "Monitor for related issues"
+      ],
+      "suggestedFix": "Upgrade django to 4.2.27, 5.1.15, or 5.2.9.",
+      "title": "An issue was discovered in 5.2 before 5.2.9, 5.1 before 5.1.15, and 4.2 before 4.2.27. Algorithmic complexity in django.core.serializers..."
+    },
+    "finding-e7b59d1e102f391e": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 5.0 before 5.0.8 and 4.2 before 4.2.15. The urlize and urlizetrunc template filters, and the AdminURLFi... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2024-69, CVE-2024-41991, GHSA-r836-hh6v-rg5g, BIT-django-2024-41991.. Identifiers supplied by scanner evidence: CVE-2024-41991, GHSA-R836-HH6V-RG5G, PYSEC-2024-69.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.15, 5.0.8.",
+      "title": "An issue was discovered in Django 5.0 before 5.0.8 and 4.2 before 4.2.15. The urlize and urlizetrunc template filters, and the AdminURLFi..."
+    },
+    "finding-eebedbc6bf643f8e": {
+      "confidenceReason": "high",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "django@4.2.1 is affected by CVE-2025-13372",
+      "impact": "SQL injection via FilteredRelation.",
+      "safeNextSteps": [
+        "Upgrade django",
+        "Review code using FilteredRelation"
+      ],
+      "suggestedFix": "Upgrade django to 4.2.27, 5.1.15, or 5.2.9.",
+      "title": "An issue was discovered in 5.2 before 5.2.9, 5.1 before 5.1.15, and 4.2 before 4.2.27. FilteredRelation is subject to SQL injection..."
+    },
+    "finding-f49b9ad6002f4bab": {
+      "confidenceReason": "high",
+      "cveUsage": "not_present",
+      "evidenceSummary": "app.py:37 Use of weak MD5 hash for security.",
+      "impact": "Using weak MD5 hash for security purposes can be exploited (collision attacks).",
+      "safeNextSteps": [
+        "Replace MD5 with a strong hash (e.g., SHA-256)",
+        "If not for security, set usedforsecurity=False"
+      ],
+      "suggestedFix": "Review the affected Python code and apply Bandit's recommended defensive pattern (use a stronger hash like SHA-256 or set usedforsecurity=False if not for security).",
+      "title": "Use of weak MD5 hash for security. Consider usedforsecurity=False"
+    },
+    "finding-f9c90720b2faf255": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 5.0 before 5.0.7 and 4.2 before 4.2.14. get_supported_language_variant() was subject to a potential den... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2024-59, CVE-2024-39614, GHSA-f6f8-9mx6-9mx2, BIT-django-2024-39614.. Identifiers supplied by scanner evidence: CVE-2024-39614, GHSA-F6F8-9MX6-9MX2, PYSEC-2024-59.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.14, 5.0.7.",
+      "title": "An issue was discovered in Django 5.0 before 5.0.7 and 4.2 before 4.2.14. get_supported_language_variant() was subject to a potential den..."
+    },
+    "finding-faec3c5d94108ef8": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 5.0 before 5.0.7 and 4.2 before 4.2.14. The django.contrib.auth.backends.ModelBackend.authenticate() me... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2024-57, CVE-2024-39329, GHSA-x7q2-wr7g-xqmf, BIT-django-2024-39329.. Identifiers supplied by scanner evidence: CVE-2024-39329, GHSA-X7Q2-WR7G-XQMF, PYSEC-2024-57.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.14, 5.0.7.",
+      "title": "An issue was discovered in Django 5.0 before 5.0.7 and 4.2 before 4.2.14. The django.contrib.auth.backends.ModelBackend.authenticate() me..."
+    },
+    "finding-fec7393f7f075bd2": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "pip-audit reported An issue was discovered in Django 5.0 before 5.0.8 and 4.2 before 4.2.15. QuerySet.values() and values_list() methods on models with a JS... at requirements.txt. Evidence: django@4.2.1 is affected by PYSEC-2024-70, CVE-2024-42005, GHSA-pv4p-cwwg-4rph, BIT-django-2024-42005.. Identifiers supplied by scanner evidence: CVE-2024-42005, GHSA-PV4P-CWWG-4RPH, PYSEC-2024-70.",
+      "impact": "MEDIUM dependency finding reported by pip-audit.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade django to one of the fixed versions: 4.2.15, 5.0.8.",
+      "title": "An issue was discovered in Django 5.0 before 5.0.8 and 4.2 before 4.2.15. QuerySet.values() and values_list() methods on models with a JS..."
+    }
+  },
+  "fallbackReason": "unsupported-model-output",
+  "generatedWithModel": false,
+  "priorityActions": [
+    "finding-59e543d0f5b92291: Review the affected Python code and apply Bandit's recommended defensive pattern.",
+    "finding-6388f1397f3973e2: Review the matched code path and apply the Semgrep rule guidance.",
+    "finding-ab0a01e020936a2a: Review the affected Python code and apply Bandit's recommended defensive pattern.",
+    "finding-ad5e6ba69c40063c: Use subprocess with argv arrays and shell=False.",
+    "finding-ca505fe42dd31371: Move secrets to environment variables or a secret manager and rotate exposed credentials."
+  ],
+  "provider": "opencode-go"
+}

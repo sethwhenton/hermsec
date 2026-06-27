@@ -1,0 +1,971 @@
+{
+  "delta": {
+    "baseScanId": "scan-df714d2c27f7dcc5",
+    "currentScanId": "scan-9004d14e3bf205de",
+    "fixedFindingIds": [
+      "finding-499332388425438c",
+      "finding-c6cbfa8ae3511fdb"
+    ],
+    "improvedFindingIds": [],
+    "newFindingIds": [
+      "finding-34a12328494fee7c",
+      "finding-5d7c8a7ede9c55b6",
+      "finding-79460a7a95ca1609",
+      "finding-7aeee916077462b4",
+      "finding-b1bdc12ef0d825ab",
+      "finding-b80725495585908e"
+    ],
+    "summaryText": "6 new, 2 fixed, 0 unchanged, 0 worsened, 0 improved",
+    "unchangedFindingIds": [],
+    "worsenedFindingIds": []
+  },
+  "evidence": {
+    "bundleId": "evidence-75b672c837f3de69",
+    "findingEvidence": {
+      "finding-34a12328494fee7c": [
+        {
+          "location": {
+            "file": "package-lock.json"
+          },
+          "message": "express <4.20.0 https://github.[REDACTED_SECRET]",
+          "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+          "scanner": "pmg"
+        }
+      ],
+      "finding-5d7c8a7ede9c55b6": [
+        {
+          "location": {
+            "file": "package-lock.json"
+          },
+          "message": "express <4.19.2 https://github.[REDACTED_SECRET]",
+          "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+          "scanner": "pmg"
+        }
+      ],
+      "finding-79460a7a95ca1609": [
+        {
+          "location": {
+            "file": "package-lock.json"
+          },
+          "message": "express@4.18.2 is affected by GHSA-rv95-896h-c2vc, CVE-2024-29041.",
+          "ruleId": "osv:GHSA-rv95-896h-c2vc",
+          "scanner": "osv-scanner"
+        }
+      ],
+      "finding-7aeee916077462b4": [
+        {
+          "location": {
+            "file": "src/app.js",
+            "startLine": 7
+          },
+          "message": "src/app.js:7 res.send(`<h1>${escapeHtml(String(req.query.name ?? \"\"))}</h1>`);",
+          "ruleId": "hermsec.code.unsanitized-html-response",
+          "scanner": "hermsec-heuristics"
+        }
+      ],
+      "finding-b1bdc12ef0d825ab": [
+        {
+          "location": {
+            "file": "src/routes/search.js",
+            "startLine": 34
+          },
+          "message": "src/routes/search.js:34 res.send(`<h1>${name}</h1><p>${digest}</p>`);",
+          "ruleId": "hermsec.code.unsanitized-html-response",
+          "scanner": "hermsec-heuristics"
+        }
+      ],
+      "finding-b80725495585908e": [
+        {
+          "location": {
+            "file": "package-lock.json"
+          },
+          "message": "express@4.18.2 is affected by GHSA-qw6h-vgh9-j6wx, CVE-2024-43796.",
+          "ruleId": "osv:GHSA-qw6h-vgh9-j6wx",
+          "scanner": "osv-scanner"
+        }
+      ]
+    },
+    "rawArtifacts": [],
+    "redactionApplied": false
+  },
+  "explanations": {
+    "finding-34a12328494fee7c": {
+      "confidenceReason": "High confidence because PMG uses npm audit data.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "PMG wrapped npm audit reported express <4.20.0 is affected by GHSA-QW6H-VGH9-J6WX (XSS via response.redirect()) in package-lock.json.",
+      "impact": "Cross-site scripting vulnerability in Express.js via response.redirect() could allow an attacker to inject scripts through redirect responses.",
+      "safeNextSteps": [
+        "Upgrade express to version 4.22.2",
+        "Review redirect handling for input validation"
+      ],
+      "suggestedFix": "Upgrade express to 4.22.2 after dependency review.",
+      "title": "express vulnerable to XSS via response.redirect()"
+    },
+    "finding-5d7c8a7ede9c55b6": {
+      "confidenceReason": "High confidence because PMG uses npm audit data which is generally accurate for known vulnerabilities.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "PMG wrapped npm audit reported express <4.19.2 is affected by GHSA-RV95-896H-C2VC (open redirect) in package-lock.json.",
+      "impact": "Open redirect vulnerability in Express.js could allow an attacker to redirect users to malicious external sites via malformed URLs.",
+      "safeNextSteps": [
+        "Upgrade express to version 4.22.2 as recommended",
+        "Review all redirect logic to ensure proper URL validation"
+      ],
+      "suggestedFix": "Upgrade express to 4.22.2 after dependency review.",
+      "title": "Express.js Open Redirect in malformed URLs"
+    },
+    "finding-79460a7a95ca1609": {
+      "confidenceReason": "High confidence because OSV-Scanner uses authoritative vulnerability databases.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "OSV-Scanner reported express@4.18.2 is affected by GHSA-rv95-896h-c2vc (CVE-2024-29041) in package-lock.json.",
+      "impact": "Open redirect vulnerability in Express.js (CVE-2024-29041) could allow an attacker to redirect users to malicious external sites via malformed URLs.",
+      "safeNextSteps": [
+        "Upgrade express to version 4.19.2 or later",
+        "Verify no other dependencies are affected by the same vulnerability"
+      ],
+      "suggestedFix": "Upgrade express to a fixed version: 4.19.2 or 5.0.0-beta.3.",
+      "title": "Express.js Open Redirect in malformed URLs"
+    },
+    "finding-7aeee916077462b4": {
+      "confidenceReason": "Medium confidence because the scanner heuristic identifies a pattern that may still be vulnerable even with escapeHtml.",
+      "cveUsage": "not_applicable",
+      "evidenceSummary": "Hermsec heuristic scanner found res.send(`<h1>${escapeHtml(String(req.query.name ?? \"\"))}</h1>`); at src/app.js:7, but escapeHtml is used; however the finding suggests it may still be risky. Confidence is medium.",
+      "impact": "Cross-site scripting (XSS) vulnerability via unsanitized user input in HTML response at src/app.js:7, potentially allowing attacker to inject scripts.",
+      "safeNextSteps": [
+        "Review the use of escapeHtml to ensure it is properly escaping all contexts",
+        "Consider using a templating engine that auto-escapes",
+        "Conduct manual code review of the response construction"
+      ],
+      "suggestedFix": "Escape untrusted output before placing it in HTML responses.",
+      "title": "HTML response may include unsanitized input"
+    },
+    "finding-b1bdc12ef0d825ab": {
+      "confidenceReason": "Medium confidence because the scanner heuristic identifies a pattern where variables are directly interpolated without escaping.",
+      "cveUsage": "not_applicable",
+      "evidenceSummary": "Hermsec heuristic scanner found res.send(`<h1>${name}</h1><p>${digest}</p>`); at src/routes/search.js:34 with no escaping applied.",
+      "impact": "Cross-site scripting (XSS) vulnerability via unsanitized user input in HTML response at src/routes/search.js:34, potentially allowing attacker to inject scripts.",
+      "safeNextSteps": [
+        "Apply HTML escaping to all interpolated variables",
+        "Consider using a templating engine with auto-escaping",
+        "Test for XSS"
+      ],
+      "suggestedFix": "Escape untrusted output before placing it in HTML responses.",
+      "title": "HTML response may include unsanitized input"
+    },
+    "finding-b80725495585908e": {
+      "confidenceReason": "High confidence because OSV-Scanner uses authoritative vulnerability databases.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "OSV-Scanner reported express@4.18.2 is affected by GHSA-qw6h-vgh9-j6wx (CVE-2024-43796) in package-lock.json.",
+      "impact": "Cross-site scripting vulnerability in Express.js via response.redirect() (CVE-2024-43796) could allow an attacker to inject scripts through redirect responses.",
+      "safeNextSteps": [
+        "Upgrade express to version 4.20.0 or later",
+        "Check for similar vulnerabilities in other dependencies"
+      ],
+      "suggestedFix": "Upgrade express to a fixed version: 4.20.0 or 5.0.0.",
+      "title": "express vulnerable to XSS via response.redirect()"
+    }
+  },
+  "findings": [
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "description": "PMG wrapped npm audit reported a known npm dependency vulnerability without installing packages.",
+      "evidence": "express <4.19.2 https://github.[REDACTED_SECRET]",
+      "fingerprint": "fp-5d7c8a7ede9c55b6",
+      "id": "finding-5d7c8a7ede9c55b6",
+      "identifiers": {
+        "cve": [],
+        "ghsa": [
+          "GHSA-RV95-896H-C2VC"
+        ],
+        "osv": []
+      },
+      "location": {
+        "file": "package-lock.json"
+      },
+      "package": {
+        "ecosystem": "npm",
+        "name": "express"
+      },
+      "remediation": "Upgrade express to 4.22.2 after dependency review.",
+      "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+      "severity": "medium",
+      "title": "Express.js Open Redirect in malformed URLs",
+      "tool": "pmg"
+    },
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "description": "OSV-Scanner reported a known vulnerability for a dependency in a recognized manifest or lockfile.",
+      "evidence": "express@4.18.2 is affected by GHSA-rv95-896h-c2vc, CVE-2024-29041.",
+      "fingerprint": "fp-79460a7a95ca1609",
+      "id": "finding-79460a7a95ca1609",
+      "identifiers": {
+        "cve": [
+          "CVE-2024-29041"
+        ],
+        "ghsa": [
+          "GHSA-RV95-896H-C2VC"
+        ],
+        "osv": []
+      },
+      "location": {
+        "file": "package-lock.json"
+      },
+      "package": {
+        "ecosystem": "npm",
+        "installedVersion": "4.18.2",
+        "name": "express"
+      },
+      "remediation": "Upgrade express to a fixed version: 4.19.2, 5.0.0-beta.3.",
+      "ruleId": "osv:GHSA-rv95-896h-c2vc",
+      "severity": "medium",
+      "title": "Express.js Open Redirect in malformed URLs",
+      "tool": "osv-scanner"
+    },
+    {
+      "category": "code",
+      "confidence": "medium",
+      "cwe": [
+        "CWE-79"
+      ],
+      "description": "Hermsec's offline heuristic scanner found a risky source pattern.",
+      "evidence": "src/app.js:7 res.send(`<h1>${escapeHtml(String(req.query.name ?? \"\"))}</h1>`);",
+      "fingerprint": "fp-7aeee916077462b4",
+      "id": "finding-7aeee916077462b4",
+      "location": {
+        "file": "src/app.js",
+        "startLine": 7
+      },
+      "remediation": "Escape untrusted output before placing it in HTML responses.",
+      "ruleId": "hermsec.code.unsanitized-html-response",
+      "severity": "medium",
+      "title": "HTML response may include unsanitized input",
+      "tool": "hermsec-heuristics"
+    },
+    {
+      "category": "code",
+      "confidence": "medium",
+      "cwe": [
+        "CWE-79"
+      ],
+      "description": "Hermsec's offline heuristic scanner found a risky source pattern.",
+      "evidence": "src/routes/search.js:34 res.send(`<h1>${name}</h1><p>${digest}</p>`);",
+      "fingerprint": "fp-b1bdc12ef0d825ab",
+      "id": "finding-b1bdc12ef0d825ab",
+      "location": {
+        "file": "src/routes/search.js",
+        "startLine": 34
+      },
+      "remediation": "Escape untrusted output before placing it in HTML responses.",
+      "ruleId": "hermsec.code.unsanitized-html-response",
+      "severity": "medium",
+      "title": "HTML response may include unsanitized input",
+      "tool": "hermsec-heuristics"
+    },
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "description": "PMG wrapped npm audit reported a known npm dependency vulnerability without installing packages.",
+      "evidence": "express <4.20.0 https://github.[REDACTED_SECRET]",
+      "fingerprint": "fp-34a12328494fee7c",
+      "id": "finding-34a12328494fee7c",
+      "identifiers": {
+        "cve": [],
+        "ghsa": [
+          "GHSA-QW6H-VGH9-J6WX"
+        ],
+        "osv": []
+      },
+      "location": {
+        "file": "package-lock.json"
+      },
+      "package": {
+        "ecosystem": "npm",
+        "name": "express"
+      },
+      "remediation": "Upgrade express to 4.22.2 after dependency review.",
+      "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+      "severity": "low",
+      "title": "express vulnerable to XSS via response.redirect()",
+      "tool": "pmg"
+    },
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "description": "OSV-Scanner reported a known vulnerability for a dependency in a recognized manifest or lockfile.",
+      "evidence": "express@4.18.2 is affected by GHSA-qw6h-vgh9-j6wx, CVE-2024-43796.",
+      "fingerprint": "fp-b80725495585908e",
+      "id": "finding-b80725495585908e",
+      "identifiers": {
+        "cve": [
+          "CVE-2024-43796"
+        ],
+        "ghsa": [
+          "GHSA-QW6H-VGH9-J6WX"
+        ],
+        "osv": []
+      },
+      "location": {
+        "file": "package-lock.json"
+      },
+      "package": {
+        "ecosystem": "npm",
+        "installedVersion": "4.18.2",
+        "name": "express"
+      },
+      "remediation": "Upgrade express to a fixed version: 4.20.0, 5.0.0.",
+      "ruleId": "osv:GHSA-qw6h-vgh9-j6wx",
+      "severity": "low",
+      "title": "express vulnerable to XSS via response.redirect()",
+      "tool": "osv-scanner"
+    }
+  ],
+  "generatedAt": "2026-06-27T20:50:00.286Z",
+  "intelligence": [
+    {
+      "cve": "CVE-2024-43796",
+      "ecosystem": "npm",
+      "findingIds": [
+        "finding-34a12328494fee7c",
+        "finding-5d7c8a7ede9c55b6",
+        "finding-79460a7a95ca1609",
+        "finding-b80725495585908e"
+      ],
+      "fixVersion": "4.20.0",
+      "id": "github-advisory:GHSA-qw6h-vgh9-j6wx",
+      "identifiers": {
+        "cve": [
+          "CVE-2024-43796"
+        ],
+        "cwe": [
+          "CWE-79"
+        ],
+        "ghsa": [
+          "GHSA-qw6h-vgh9-j6wx"
+        ],
+        "osv": []
+      },
+      "knownExploited": false,
+      "matchedPackages": [
+        "npm:express",
+        "npm:express@4.18.2"
+      ],
+      "modifiedAt": "2026-06-17T07:51:43.847",
+      "packageLabel": "npm:express",
+      "packageName": "express",
+      "priority": "urgent",
+      "publishedAt": "2024-09-10T19:41:04Z",
+      "reasons": [
+        "Direct npm dependency express matches < 4.20.0",
+        "Direct npm dependency express matches >= 5.0.0-alpha.1, < 5.0.0",
+        "Direct npm dependency express matches >=0 <4.20.0",
+        "Direct npm dependency express@4.18.2 matches >=0 <4.20.0",
+        "Direct npm dependency express matches >=5.0.0-alpha.1 <5.0.0",
+        "A previous finding referenced the same advisory identifier",
+        "Finding finding-79460a7a95ca1609 package npm:express@4.18.2 matches >=0 <4.20.0",
+        "Finding finding-5d7c8a7ede9c55b6 package npm:express matches < 4.20.0",
+        "Finding finding-7aeee916077462b4 shares CWE-79",
+        "Finding finding-b1bdc12ef0d825ab shares CWE-79",
+        "Finding finding-b80725495585908e references CVE-2024-43796, ghsa-qw6h-vgh9-j6wx",
+        "Finding finding-b80725495585908e package npm:express@4.18.2 matches >=0 <4.20.0",
+        "Finding finding-34a12328494fee7c references ghsa-qw6h-vgh9-j6wx",
+        "Finding finding-34a12328494fee7c package npm:express matches < 4.20.0"
+      ],
+      "severity": "medium",
+      "source": "GitHub Advisory, NVD, OSV",
+      "title": "express vulnerable to XSS via response.redirect()",
+      "url": "https://github.[REDACTED_SECRET]",
+      "whyItMatters": "### Impact\n\nIn express <4.20.0, passing untrusted user input - even after sanitizing it - to `response.redirect()` may execute untrusted code\n\n### Patches\n\nthis issue is patched in express 4.20.0\n\n### Workarounds\n\nusers are encouraged to upgrade to the patched version of express, but otherwise can workaround this issue by making sure any untrusted inputs are safe, ideally by validating them against an explicit allowlist\n\n### Details\n\nsuccessful exploitation of this vector requires the following:"
+    },
+    {
+      "cve": "CVE-2024-29041",
+      "ecosystem": "npm",
+      "findingIds": [
+        "finding-34a12328494fee7c",
+        "finding-5d7c8a7ede9c55b6",
+        "finding-79460a7a95ca1609",
+        "finding-b80725495585908e"
+      ],
+      "fixVersion": "4.19.2",
+      "id": "github-advisory:GHSA-rv95-896h-c2vc",
+      "identifiers": {
+        "cve": [
+          "CVE-2024-29041"
+        ],
+        "cwe": [
+          "CWE-1286",
+          "CWE-601"
+        ],
+        "ghsa": [
+          "GHSA-rv95-896h-c2vc"
+        ],
+        "osv": []
+      },
+      "knownExploited": false,
+      "matchedPackages": [
+        "npm:express",
+        "npm:express@4.18.2"
+      ],
+      "modifiedAt": "2026-06-17T07:22:18.493",
+      "packageLabel": "npm:express",
+      "packageName": "express",
+      "priority": "urgent",
+      "publishedAt": "2024-03-25T19:40:26Z",
+      "reasons": [
+        "Direct npm dependency express matches < 4.19.2",
+        "Direct npm dependency express matches >= 5.0.0-alpha.1, < 5.0.0-beta.3",
+        "Direct npm dependency express matches >=0 <4.19.2",
+        "Direct npm dependency express@4.18.2 matches >=0 <4.19.2",
+        "Direct npm dependency express matches >=5.0.0-alpha.1 <5.0.0-beta.3",
+        "A previous finding referenced the same advisory identifier",
+        "Finding finding-79460a7a95ca1609 references CVE-2024-29041, ghsa-rv95-896h-c2vc",
+        "Finding finding-79460a7a95ca1609 package npm:express@4.18.2 matches >=0 <4.19.2",
+        "Finding finding-5d7c8a7ede9c55b6 references ghsa-rv95-896h-c2vc",
+        "Finding finding-5d7c8a7ede9c55b6 package npm:express matches < 4.19.2",
+        "Finding finding-b80725495585908e package npm:express@4.18.2 matches >=0 <4.19.2",
+        "Finding finding-34a12328494fee7c package npm:express matches < 4.19.2"
+      ],
+      "severity": "medium",
+      "source": "GitHub Advisory, NVD, OSV",
+      "title": "Express.js Open Redirect in malformed URLs",
+      "url": "https://github.[REDACTED_SECRET]",
+      "whyItMatters": "### Impact\n\nVersions of Express.js prior to 4.19.2 and pre-release alpha and beta versions before 5.0.0-beta.3 are affected by an open redirect vulnerability using malformed URLs.\n\nWhen a user of Express performs a redirect using a user-provided URL Express performs an encode [using `encodeurl`](https://github.com/pillarjs/encodeurl) on the contents before passing it to the `location` header. This can cause malformed URLs to be evaluated in unexpected ways by common redirect allow list implement"
+    },
+    {
+      "cve": "CVE-2024-51999",
+      "ecosystem": "npm",
+      "findingIds": [
+        "finding-34a12328494fee7c",
+        "finding-5d7c8a7ede9c55b6"
+      ],
+      "fixVersion": "4.22.0",
+      "id": "github-advisory:GHSA-pj86-cfqh-vqx6",
+      "identifiers": {
+        "cve": [
+          "CVE-2024-51999"
+        ],
+        "cwe": [
+          "CWE-915"
+        ],
+        "ghsa": [
+          "GHSA-pj86-cfqh-vqx6"
+        ],
+        "osv": []
+      },
+      "knownExploited": false,
+      "matchedPackages": [
+        "npm:express"
+      ],
+      "modifiedAt": "2025-12-02T15:11:22Z",
+      "packageLabel": "npm:express",
+      "packageName": "express",
+      "priority": "urgent",
+      "publishedAt": "2025-12-01T18:59:17Z",
+      "reasons": [
+        "Direct npm dependency express matches < 4.22.0",
+        "Direct npm dependency express matches >= 5.0.0, < 5.2.0",
+        "Finding finding-5d7c8a7ede9c55b6 package npm:express matches < 4.22.0",
+        "Finding finding-34a12328494fee7c package npm:express matches < 4.22.0"
+      ],
+      "severity": "low",
+      "source": "GitHub Advisory",
+      "title": "Withdrawn Advisory: express improperly controls modification of query properties",
+      "url": "https://github.[REDACTED_SECRET]",
+      "whyItMatters": "## Withdrawn Advisory\nThis advisory has been withdrawn because it describes a correctness bug, not a vulnerability with real security impact. This link is maintained to preserve external references.\n\n## Original Description\n### Impact\n\nwhen using the extended query parser in express (`'query parser': 'extended'`), the `request.query` object inherits all object prototype properties, but these properties can be overwritten by query string parameter keys that match the property names\n\n> [!IMPORTANT"
+    },
+    {
+      "cve": "CVE-2026-4800",
+      "ecosystem": "npm",
+      "findingIds": [],
+      "fixVersion": "4.18.0",
+      "id": "github-advisory:GHSA-r5fr-rjxr-66jc",
+      "identifiers": {
+        "cve": [
+          "CVE-2026-4800"
+        ],
+        "cwe": [
+          "CWE-94"
+        ],
+        "ghsa": [
+          "GHSA-r5fr-rjxr-66jc"
+        ],
+        "osv": []
+      },
+      "installedVersion": "4.17.21",
+      "knownExploited": false,
+      "matchedPackages": [
+        "npm:lodash@4.17.21"
+      ],
+      "modifiedAt": "2026-06-17T10:57:15.217",
+      "packageLabel": "npm:lodash@4.17.21",
+      "packageName": "lodash",
+      "priority": "high",
+      "publishedAt": "2026-04-01T23:51:12Z",
+      "reasons": [
+        "Direct npm dependency lodash@4.17.21 matches >=4.0.0 <4.18.0"
+      ],
+      "severity": "critical",
+      "source": "GitHub Advisory, NVD, OSV",
+      "title": "lodash vulnerable to Code Injection via `_.template` imports key names",
+      "url": "https://github.[REDACTED_SECRET]",
+      "whyItMatters": "### Impact\n\nThe fix for [CVE-2021-23337](https://github.[REDACTED_SECRET]) added validation for the `variable` option in `_.template` but did not apply the same validation to `options.imports` key names. Both paths flow into the same `Function()` constructor sink.\n\nWhen an application passes untrusted input as `options.imports` key names, an attacker can inject default-parameter expressions that execute arbitrary code at template compilation time.\n\nAdditionally, `_.template` use"
+    },
+    {
+      "cve": "CVE-2025-13465",
+      "ecosystem": "npm",
+      "findingIds": [],
+      "fixVersion": "4.17.23",
+      "id": "github-advisory:GHSA-xxjr-mmjv-4gpg",
+      "identifiers": {
+        "cve": [
+          "CVE-2025-13465"
+        ],
+        "cwe": [
+          "CWE-1321"
+        ],
+        "ghsa": [
+          "GHSA-xxjr-mmjv-4gpg"
+        ],
+        "osv": []
+      },
+      "installedVersion": "4.17.21",
+      "knownExploited": false,
+      "matchedPackages": [
+        "npm:lodash@4.17.21"
+      ],
+      "modifiedAt": "2026-06-17T08:34:11.687",
+      "packageLabel": "npm:lodash@4.17.21",
+      "packageName": "lodash",
+      "priority": "high",
+      "publishedAt": "2026-01-21T23:01:22Z",
+      "reasons": [
+        "Direct npm dependency lodash@4.17.21 matches >=4.0.0 <4.17.23"
+      ],
+      "severity": "medium",
+      "source": "GitHub Advisory, NVD, OSV",
+      "title": "Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions",
+      "url": "https://github.[REDACTED_SECRET]",
+      "whyItMatters": "### Impact\n\nLodash versions 4.0.0 through 4.17.22 are vulnerable to prototype pollution in the `_.unset` and `_.omit` functions. An attacker can pass crafted paths which cause Lodash to delete methods from global prototypes. \n\nThe issue permits deletion of properties but does not allow overwriting their original behavior.  \n\n### Patches\n\nThis issue is patched on 4.17.23."
+    },
+    {
+      "cve": "CVE-2026-2950",
+      "ecosystem": "npm",
+      "findingIds": [],
+      "fixVersion": "4.18.0",
+      "id": "github-advisory:GHSA-f23m-r3pf-42rh",
+      "identifiers": {
+        "cve": [
+          "CVE-2026-2950"
+        ],
+        "cwe": [
+          "CWE-1321"
+        ],
+        "ghsa": [
+          "GHSA-f23m-r3pf-42rh"
+        ],
+        "osv": []
+      },
+      "installedVersion": "4.17.21",
+      "knownExploited": false,
+      "matchedPackages": [
+        "npm:lodash@4.17.21"
+      ],
+      "modifiedAt": "2026-06-17T10:32:05.873",
+      "packageLabel": "npm:lodash@4.17.21",
+      "packageName": "lodash",
+      "priority": "high",
+      "publishedAt": "2026-04-01T23:50:27Z",
+      "reasons": [
+        "Direct npm dependency lodash@4.17.21 matches >=0 <4.18.0"
+      ],
+      "severity": "medium",
+      "source": "GitHub Advisory, NVD, OSV",
+      "title": "lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit`",
+      "url": "https://github.[REDACTED_SECRET]",
+      "whyItMatters": "### Impact\n\nLodash versions 4.17.23 and earlier are vulnerable to prototype pollution in the `_.unset` and `_.omit` functions. The fix for [CVE-2025-13465](https://github.[REDACTED_SECRET]) only guards against string key members, so an attacker can bypass the check by passing array-wrapped path segments. This allows deletion of properties from built-in prototypes such as `Object.prototype`, `Number.prototype`, and `String.prototype`.\n\nThe issue permits del"
+    },
+    {
+      "cve": "CVE-2021-41720",
+      "ecosystem": "npm",
+      "findingIds": [],
+      "id": "github-advisory:GHSA-8p5q-j9m2-g8wr",
+      "identifiers": {
+        "cve": [
+          "CVE-2021-41720"
+        ],
+        "cwe": [
+          "CWE-77"
+        ],
+        "ghsa": [
+          "GHSA-8p5q-j9m2-g8wr"
+        ],
+        "osv": []
+      },
+      "installedVersion": "4.17.21",
+      "knownExploited": false,
+      "matchedPackages": [
+        "npm:lodash@4.17.21"
+      ],
+      "modifiedAt": "2023-02-01T05:06:10Z",
+      "packageLabel": "npm:lodash@4.17.21",
+      "packageName": "lodash",
+      "priority": "high",
+      "publishedAt": "2021-12-03T20:37:32Z",
+      "reasons": [
+        "Direct npm dependency lodash@4.17.21 matches <= 4.17.21"
+      ],
+      "severity": "low",
+      "source": "GitHub Advisory",
+      "title": "Withdrawn: Arbitrary code execution in lodash",
+      "url": "https://github.[REDACTED_SECRET]",
+      "whyItMatters": "# Withdrawn\n\nGitHub has chosen to publish this CVE as a withdrawn advisory due to it not being a security issue. See [this issue](https://github.com/lodash/lodash/issues/5261) for more details.\n\n# CVE description\n\n\"** DISPUTED ** A command injection vulnerability in Lodash 4.17.21 allows attackers to achieve arbitrary code execution via the template function. This is a different parameter, method, and version than CVE-2021-23337. NOTE: the vendor's position is that it's the developer's responsib"
+    }
+  ],
+  "limitations": [
+    "Hermsec reports only scanner and advisory evidence supplied to this run.",
+    "Model or fallback explanations cannot add CVEs, file paths, package names, versions, or line numbers."
+  ],
+  "run": {
+    "durationMs": 11421,
+    "fallback": {
+      "actualReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-50-00-286Z",
+      "configuredReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-clean\\reports",
+      "used": false
+    },
+    "finishedAt": "2026-06-27T20:50:00.286Z",
+    "git": {
+      "branch": "main",
+      "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+      "dirty": true
+    },
+    "id": "scan-9004d14e3bf205de",
+    "mode": "auto",
+    "startedAt": "2026-06-27T20:49:48.865Z"
+  },
+  "scanId": "scan-9004d14e3bf205de",
+  "schemaVersion": "1.0",
+  "summary": {
+    "confirmedCves": 7,
+    "critical": 0,
+    "generatedWithModel": true,
+    "high": 0,
+    "info": 0,
+    "knownExploited": 0,
+    "low": 2,
+    "medium": 4,
+    "scannerFailures": 0,
+    "secrets": 0,
+    "total": 6
+  },
+  "target": {
+    "displayName": "node-express-clean",
+    "kind": "local-path",
+    "value": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\node-express-clean"
+  },
+  "tools": [
+    {
+      "id": "bandit",
+      "label": "Bandit",
+      "message": "Bandit was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "id": "bandit-run",
+      "label": "Bandit scan",
+      "message": "Bandit had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "brakeman",
+      "label": "Brakeman",
+      "message": "Brakeman was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "brakeman-run",
+      "label": "Brakeman scan",
+      "message": "Brakeman had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "cargo",
+      "label": "cargo-audit",
+      "message": "cargo-audit was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "cargo-run",
+      "label": "cargo-audit scan",
+      "message": "cargo-audit had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "checkov",
+      "label": "Checkov",
+      "message": "Checkov was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "checkov-run",
+      "label": "Checkov scan",
+      "message": "Checkov was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage.",
+      "status": "skipped"
+    },
+    {
+      "id": "composer",
+      "label": "Composer audit",
+      "message": "Composer audit was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "composer-run",
+      "label": "Composer audit scan",
+      "message": "Composer audit had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "cppcheck",
+      "label": "Cppcheck",
+      "message": "Cppcheck was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "cppcheck-run",
+      "label": "Cppcheck scan",
+      "message": "Cppcheck had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "dependency-check",
+      "label": "OWASP Dependency-Check",
+      "message": "OWASP Dependency-Check was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "dependency-check-run",
+      "label": "OWASP Dependency-Check scan",
+      "message": "OWASP Dependency-Check was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage.",
+      "status": "skipped"
+    },
+    {
+      "id": "dotnet",
+      "label": ".NET vulnerable packages",
+      "message": ".NET vulnerable packages was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "id": "dotnet-run",
+      "label": ".NET vulnerable packages scan",
+      "message": ".NET vulnerable packages had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "flawfinder",
+      "label": "Flawfinder",
+      "message": "Flawfinder was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "flawfinder-run",
+      "label": "Flawfinder scan",
+      "message": "Flawfinder had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "git",
+      "label": "Git",
+      "message": "Git was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "id": "gitleaks",
+      "label": "Gitleaks",
+      "message": "Gitleaks was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "durationMs": 754,
+      "id": "gitleaks-run",
+      "label": "Gitleaks scan",
+      "message": "Gitleaks completed with 0 findings.",
+      "status": "completed"
+    },
+    {
+      "id": "gosec",
+      "label": "gosec",
+      "message": "gosec was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "gosec-run",
+      "label": "gosec scan",
+      "message": "gosec had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "govulncheck",
+      "label": "govulncheck",
+      "message": "govulncheck was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "govulncheck-run",
+      "label": "govulncheck scan",
+      "message": "govulncheck had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "durationMs": 2,
+      "id": "hermsec-config",
+      "label": "Hermsec config heuristics",
+      "message": "Hermsec config heuristics completed with 0 findings.",
+      "status": "completed"
+    },
+    {
+      "id": "hermsec-java",
+      "label": "Hermsec Java servlet heuristics",
+      "message": "Hermsec Java servlet heuristics had no matching inputs.",
+      "status": "skipped"
+    },
+    {
+      "durationMs": 4,
+      "id": "hermsec-js-ts",
+      "label": "Hermsec JS/TS heuristics",
+      "message": "Hermsec JS/TS heuristics completed with 2 findings.",
+      "status": "completed"
+    },
+    {
+      "durationMs": 4,
+      "id": "hermsec-packages",
+      "label": "Hermsec package manifest heuristics",
+      "message": "Hermsec package manifest heuristics completed with 0 findings.",
+      "status": "completed"
+    },
+    {
+      "id": "hermsec-python",
+      "label": "Hermsec Python heuristics",
+      "message": "Hermsec Python heuristics had no matching inputs.",
+      "status": "skipped"
+    },
+    {
+      "durationMs": 5,
+      "id": "hermsec-secrets",
+      "label": "Hermsec secret heuristics",
+      "message": "Hermsec secret heuristics completed with 0 findings.",
+      "status": "completed"
+    },
+    {
+      "id": "osv-scanner",
+      "label": "OSV-Scanner",
+      "message": "OSV-Scanner was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "durationMs": 772,
+      "id": "osv-scanner-run",
+      "label": "OSV-Scanner scan",
+      "message": "OSV-Scanner completed with 2 findings.",
+      "status": "completed"
+    },
+    {
+      "id": "pip-audit",
+      "label": "pip-audit",
+      "message": "pip-audit was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "id": "pip-audit-run",
+      "label": "pip-audit scan",
+      "message": "pip-audit had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "pmg",
+      "label": "SafeDep PMG npm audit",
+      "message": "SafeDep PMG npm audit was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "durationMs": 2794,
+      "id": "pmg-run",
+      "label": "SafeDep PMG npm audit scan",
+      "message": "SafeDep PMG npm audit completed with 2 findings.",
+      "status": "completed"
+    },
+    {
+      "id": "psalm",
+      "label": "Psalm taint analysis",
+      "message": "Psalm taint analysis was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "psalm-run",
+      "label": "Psalm taint analysis scan",
+      "message": "Psalm taint analysis had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "repository-discovery",
+      "label": "Repository discovery",
+      "message": "Discovered 8 files (javascript:3, json:3, yaml:1, text:1), package managers: npm, lockfiles: 1, ignored folders: none.",
+      "status": "completed"
+    },
+    {
+      "id": "retire",
+      "label": "Retire.js",
+      "message": "Retire.js was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "retire-run",
+      "label": "Retire.js scan",
+      "message": "Retire.js was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage.",
+      "status": "skipped"
+    },
+    {
+      "id": "semgrep",
+      "label": "Semgrep",
+      "message": "Semgrep was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "durationMs": 5970,
+      "id": "semgrep-run",
+      "label": "Semgrep scan",
+      "message": "Semgrep completed with 0 findings.",
+      "status": "completed"
+    },
+    {
+      "id": "spotbugs",
+      "label": "FindSecBugs / SpotBugs",
+      "message": "FindSecBugs / SpotBugs was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "spotbugs-run",
+      "label": "FindSecBugs / SpotBugs scan",
+      "message": "FindSecBugs / SpotBugs had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "trivy",
+      "label": "Trivy",
+      "message": "Trivy was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "trivy-run",
+      "label": "Trivy scan",
+      "message": "Trivy was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage.",
+      "status": "skipped"
+    },
+    {
+      "id": "trufflehog",
+      "label": "TruffleHog",
+      "message": "TruffleHog was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    }
+  ],
+  "workspaceId": "ws-9b2c1fad29deb44f",
+  "workspaceName": "node-express-clean"
+}

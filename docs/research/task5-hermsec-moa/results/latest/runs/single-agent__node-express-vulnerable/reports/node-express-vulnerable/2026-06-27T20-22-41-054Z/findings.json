@@ -1,0 +1,64 @@
+[
+  {
+    "agent": {
+      "candidateIds": [
+        "candidate-fd4d55d99b19163e"
+      ],
+      "generatedAt": "2026-06-27T20:22:55.121Z",
+      "mode": "single-agent",
+      "model": "deepseek-v4-flash",
+      "provider": "opencode-go",
+      "source": "single-agent"
+    },
+    "category": "code",
+    "confidence": "medium",
+    "cwe": [
+      "CWE-78"
+    ],
+    "description": "User-controlled 'tool' parameter is concatenated into a shell command via childProcess.exec, enabling arbitrary command execution.",
+    "evidence": "childProcess.exec(\"tool \" + tool); (line 10, src/app.js)",
+    "fingerprint": "fp-72159881b66ced07",
+    "id": "finding-29d66c8cfa313e07",
+    "location": {
+      "endLine": 10,
+      "file": "src/app.js",
+      "startLine": 10
+    },
+    "remediation": "Use child_process.execFile or spawn with an arguments array to avoid shell interpretation, or validate and sanitize the input.",
+    "ruleId": "command-injection",
+    "severity": "high",
+    "title": "Command injection in app.js runTool function",
+    "tool": "hermsec-agent"
+  },
+  {
+    "agent": {
+      "candidateIds": [
+        "candidate-8cf5baffc1ace09b"
+      ],
+      "generatedAt": "2026-06-27T20:22:55.123Z",
+      "mode": "single-agent",
+      "model": "deepseek-v4-flash",
+      "provider": "opencode-go",
+      "source": "single-agent"
+    },
+    "category": "code",
+    "confidence": "medium",
+    "cwe": [
+      "CWE-78"
+    ],
+    "description": "User-controlled 'host' query parameter is passed to exec without sanitization, leading to command injection.",
+    "evidence": "exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined); (line 19, src/routes/search.js)",
+    "fingerprint": "fp-4c5d848429c22cad",
+    "id": "finding-72a366f9ced461de",
+    "location": {
+      "endLine": 19,
+      "file": "src/routes/search.js",
+      "startLine": 19
+    },
+    "remediation": "Avoid shell execution; use execFile or spawn with arguments, or implement strict input validation.",
+    "ruleId": "command-injection",
+    "severity": "high",
+    "title": "Command injection in search.js ping route",
+    "tool": "hermsec-agent"
+  }
+]

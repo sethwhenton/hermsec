@@ -2,7 +2,7 @@
 
 Hermsec V3 is a local-first desktop security assistant for repositories. It inspects a project, chooses the right defensive scanners, auto-prepares supported missing tools by default, runs static analysis, shows live progress in chat, and writes local dashboard plus final PDF reports.
 
-The app is built for "scan my project and tell me what matters" workflows. It keeps the source repository safe: Hermsec does not install dependencies inside scanned projects, does not run package lifecycle scripts, and keeps model assistance grounded in scanner evidence.
+The app is built for "scan my project and tell me what matters" workflows. It keeps the source repository safe: Hermsec does not install dependencies inside scanned projects, does not run package lifecycle scripts, and keeps model assistance grounded in scanner evidence or bounded read-only repository evidence.
 
 The current product is V3 only. Earlier experimental UI surfaces have been removed from the active tree.
 
@@ -22,6 +22,17 @@ The current product is V3 only. Earlier experimental UI surfaces have been remov
   <img src="docs/assets/screenshots/agents-settings.png" alt="Hermsec agent settings" width="49%">
   <img src="docs/assets/screenshots/providers-settings.png" alt="Hermsec provider settings" width="49%">
 </p>
+
+## Product Overview
+
+Hermsec is organized around a chat-first local scan workflow. A user selects a repository, chooses a scan mode, watches live progress, and opens the generated report artifacts from the final chat summary.
+
+The product surfaces are:
+
+- Home chat for project selection, scan mode selection, progress, and report links.
+- Scanner settings for installed, missing, enabled, and project-relevant tools.
+- Agent and provider settings for model-backed Single Agent, MoA, judge, and aggregation behavior.
+- Doctor checks, automations, and local HTML/PDF/JSON reports for repeatable scans.
 
 ## Repository Layout
 
@@ -159,11 +170,11 @@ Benchmark work is supported from the root CLI and CI. The current Java gate targ
 The Task 5 research package is checked into [docs/research/task5-hermsec-moa](docs/research/task5-hermsec-moa). It contains:
 
 - the Overleaf-ready ACM paper source in [overleaf-paper](docs/research/task5-hermsec-moa/overleaf-paper),
-- the compiled paper PDF at [hermsec_moa_paper.pdf](docs/research/task5-hermsec-moa/overleaf-paper/hermsec_moa_paper.pdf),
+- the ACM paper source in [hermsec_moa_paper.tex](docs/research/task5-hermsec-moa/overleaf-paper/hermsec_moa_paper.tex),
 - the paper figures and app screenshots,
-- sanitized model/scanner finding summaries in [findings](docs/research/task5-hermsec-moa/findings).
+- fresh actual-run metrics in [results/latest](docs/research/task5-hermsec-moa/results/latest).
 
-The paper direction is: Hermsec as a user-friendly repository scanner, followed by a comparison of static scanner-backed review, single-agent review, multi-agent review, and the Scanner + MoA hybrid.
+The paper direction is: Hermsec as a user-friendly repository scanner, followed by a comparison of static scanner-backed review, single-agent review, multi-agent review, and the Scanner + MoA hybrid. The latest `results/latest/results.json` artifact is an actual OpenCode Go run across 24 mode-and-fixture cells, and the paper tables are filled from that result.
 
 ## Provider Keys
 

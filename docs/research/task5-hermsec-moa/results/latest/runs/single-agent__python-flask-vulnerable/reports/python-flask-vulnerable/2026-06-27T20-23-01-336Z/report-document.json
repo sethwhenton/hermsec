@@ -1,0 +1,223 @@
+{
+  "agentMode": {
+    "acceptedFindingCount": 1,
+    "agents": [
+      {
+        "id": "single-agent-inspector",
+        "label": "Single Agent Inspector",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "security-inspector",
+        "runtimeMs": 7813,
+        "status": "completed"
+      }
+    ],
+    "agentsUsed": [
+      "single-agent-inspector"
+    ],
+    "candidateFindingCount": 1,
+    "findings": {
+      "finding-761c5db27c1b1c5a": {
+        "agentIds": [
+          "single-agent"
+        ],
+        "sourceLabel": "single-agent-inspected",
+        "sourceLabels": [
+          "single-agent-inspected"
+        ]
+      }
+    },
+    "mode": "single-agent",
+    "modeLabel": "Single-agent inspection",
+    "needsHumanReviewCount": 0,
+    "rejectedFindingCount": 0,
+    "scanMode": "single-agent",
+    "totalAgentRuntimeMs": 7813
+  },
+  "delta": {
+    "baseScanId": "scan-d83007fcf994b744",
+    "currentScanId": "scan-1736ec771ea4848d",
+    "fixedFindingIds": [
+      "finding-0956da05f9392f0f",
+      "finding-0f595fbef013f4d6",
+      "finding-161214d1eed442bc",
+      "finding-1fb5546ad4cdca07",
+      "finding-253828979fbe8544",
+      "finding-26947ee73d7c0fdb",
+      "finding-2a662179f20fedac",
+      "finding-2da8bf57c3beedf7",
+      "finding-30d7af736c067ecf",
+      "finding-321b0ac0e68726ad",
+      "finding-386ddb0a19273456",
+      "finding-3bcfc9a2f9a8328e",
+      "finding-4940470cf86bbc97",
+      "finding-4a99f17a39465ea4",
+      "finding-4d631eba5901a15a",
+      "finding-4fca0abd8ea5dbc0",
+      "finding-553fcfa7d373c22c",
+      "finding-5759826843b92b57",
+      "finding-59e543d0f5b92291",
+      "finding-5d9c1ec8baa2d9fd",
+      "finding-61f54bb2a229b9c4",
+      "finding-6286deb685eb0215",
+      "finding-6746dbbd8d8e1e3b",
+      "finding-6e29a11e0cc9821d",
+      "finding-751bbd4e39232250",
+      "finding-76e0ee6b7af74773",
+      "finding-79648cd2f4b0451f",
+      "finding-85c32c996af10430",
+      "finding-87b41290a8289e67",
+      "finding-89c7f141b309a9a2",
+      "finding-92e2ec5bf5cdeb83",
+      "finding-98aa64bed3cc35c3",
+      "finding-991a30f91ac44426",
+      "finding-9ec04da14758c908",
+      "finding-9f16648c1f4c217c",
+      "finding-9fdafd73600719c0",
+      "finding-a2713a54df22bf82",
+      "finding-ab0a01e020936a2a",
+      "finding-ad5e6ba69c40063c",
+      "finding-b1598f3e03f47f39",
+      "finding-b3175d6a9a805cfa",
+      "finding-b58346c3abe32f02",
+      "finding-b5e43aa26de93fa1",
+      "finding-b6e9847405c68393",
+      "finding-bc03d5fd1eecc105",
+      "finding-c44681bed92945fd",
+      "finding-ca505fe42dd31371",
+      "finding-d02e3f648fb7691a",
+      "finding-d2861bc2a152161b",
+      "finding-d88e78175b200595",
+      "finding-df5ff9f08d375620",
+      "finding-e7b59d1e102f391e",
+      "finding-eebedbc6bf643f8e",
+      "finding-f49b9ad6002f4bab",
+      "finding-f9c90720b2faf255",
+      "finding-faec3c5d94108ef8",
+      "finding-fec7393f7f075bd2"
+    ],
+    "improvedFindingIds": [],
+    "newFindingIds": [
+      "finding-761c5db27c1b1c5a"
+    ],
+    "summaryText": "1 new, 57 fixed, 0 unchanged, 0 worsened, 0 improved",
+    "unchangedFindingIds": [],
+    "worsenedFindingIds": []
+  },
+  "evidence": {
+    "bundleId": "evidence-6ffc81d9b898bd5c",
+    "findingEvidence": {
+      "finding-761c5db27c1b1c5a": [
+        {
+          "location": {
+            "endLine": 22,
+            "file": "app.py",
+            "startLine": 22
+          },
+          "message": "22: subprocess.check_output(f\"echo {name}\", shell=True, text=True)",
+          "ruleId": "command-injection-subprocess",
+          "scanner": "hermsec-agent"
+        }
+      ]
+    },
+    "rawArtifacts": [],
+    "redactionApplied": false
+  },
+  "explanations": {},
+  "findings": [
+    {
+      "agent": {
+        "candidateIds": [
+          "candidate-73ab4ae5cd9fc509"
+        ],
+        "generatedAt": "2026-06-27T20:23:09.157Z",
+        "mode": "single-agent",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "source": "single-agent"
+      },
+      "category": "code",
+      "confidence": "medium",
+      "cwe": [
+        "CWE-78"
+      ],
+      "description": "The 'name' query parameter is passed directly into a shell command via f-string interpolation and subprocess with shell=True, allowing arbitrary OS command injection. An attacker can inject shell metacharacters to execute arbitrary commands.",
+      "evidence": "22: subprocess.check_output(f\"echo {name}\", shell=True, text=True)",
+      "fingerprint": "fp-fe03ca9be6d00a37",
+      "id": "finding-761c5db27c1b1c5a",
+      "location": {
+        "endLine": 22,
+        "file": "app.py",
+        "startLine": 22
+      },
+      "remediation": "Replace shell=True with a list of arguments (e.g., ['echo', name]) and avoid using f-string interpolation for command construction. Validate and sanitize user input.",
+      "ruleId": "command-injection-subprocess",
+      "severity": "critical",
+      "title": "Command Injection via subprocess with shell=True",
+      "tool": "hermsec-agent"
+    }
+  ],
+  "generatedAt": "2026-06-27T20:23:01.336Z",
+  "intelligence": [],
+  "limitations": [
+    "Single-agent inspection is agent-only; scanner and advisory enrichment were not run.",
+    "Single-agent code inspection used bounded read-only file, search, and snippet context.",
+    "Hermsec reports only scanner and advisory evidence supplied to this run.",
+    "Model or fallback explanations cannot add CVEs, file paths, package names, versions, or line numbers."
+  ],
+  "run": {
+    "durationMs": 391,
+    "fallback": {
+      "actualReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-23-01-336Z",
+      "configuredReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-vulnerable\\reports",
+      "used": false
+    },
+    "finishedAt": "2026-06-27T20:23:01.336Z",
+    "git": {
+      "branch": "main",
+      "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+      "dirty": true
+    },
+    "id": "scan-1736ec771ea4848d",
+    "mode": "auto",
+    "modeLabel": "Single-agent inspection",
+    "startedAt": "2026-06-27T20:23:00.945Z"
+  },
+  "scanId": "scan-1736ec771ea4848d",
+  "schemaVersion": "1.0",
+  "summary": {
+    "confirmedCves": 0,
+    "critical": 1,
+    "generatedWithModel": true,
+    "high": 0,
+    "info": 0,
+    "knownExploited": 0,
+    "low": 0,
+    "medium": 0,
+    "scannerFailures": 0,
+    "secrets": 0,
+    "total": 1
+  },
+  "target": {
+    "displayName": "python-flask-vulnerable",
+    "kind": "local-path",
+    "value": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\python-flask-vulnerable"
+  },
+  "tools": [
+    {
+      "id": "repository-discovery",
+      "label": "Repository discovery",
+      "message": "Discovered 5 files (python:1, json:1, yaml:1, text:2), package managers: pip, lockfiles: 0, ignored folders: none.",
+      "status": "completed"
+    },
+    {
+      "durationMs": 7814,
+      "id": "single-agent",
+      "label": "Single-agent inspection",
+      "message": "Single-agent inspection completed with 1 validated finding.",
+      "status": "completed"
+    }
+  ],
+  "workspaceId": "ws-09cd0f0cab58e3d8",
+  "workspaceName": "python-flask-vulnerable"
+}

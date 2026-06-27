@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "1.0",
+  "scanId": "scan-c8aa3d82e25c187a",
+  "target": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\node-express-vulnerable",
+  "generatedAt": "2026-06-27T20:22:41.054Z",
+  "findings": [
+    {
+      "id": "finding-29d66c8cfa313e07",
+      "title": "Command injection in app.js runTool function",
+      "category": "code",
+      "severity": "high",
+      "confidence": "medium",
+      "description": "User-controlled 'tool' parameter is concatenated into a shell command via childProcess.exec, enabling arbitrary command execution.",
+      "evidence": "childProcess.exec(\"tool \" + tool); (line 10, src/app.js)",
+      "remediation": "Use child_process.execFile or spawn with an arguments array to avoid shell interpretation, or validate and sanitize the input.",
+      "tool": "hermsec-agent",
+      "ruleId": "command-injection",
+      "cwe": [
+        "CWE-78"
+      ],
+      "location": {
+        "file": "src/app.js",
+        "startLine": 10,
+        "endLine": 10
+      },
+      "agent": {
+        "mode": "single-agent",
+        "source": "single-agent",
+        "provider": "opencode-go",
+        "model": "deepseek-v4-flash",
+        "generatedAt": "2026-06-27T20:22:55.121Z",
+        "candidateIds": [
+          "candidate-fd4d55d99b19163e"
+        ]
+      },
+      "fingerprint": "fp-72159881b66ced07"
+    },
+    {
+      "id": "finding-72a366f9ced461de",
+      "title": "Command injection in search.js ping route",
+      "category": "code",
+      "severity": "high",
+      "confidence": "medium",
+      "description": "User-controlled 'host' query parameter is passed to exec without sanitization, leading to command injection.",
+      "evidence": "exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined); (line 19, src/routes/search.js)",
+      "remediation": "Avoid shell execution; use execFile or spawn with arguments, or implement strict input validation.",
+      "tool": "hermsec-agent",
+      "ruleId": "command-injection",
+      "cwe": [
+        "CWE-78"
+      ],
+      "location": {
+        "file": "src/routes/search.js",
+        "startLine": 19,
+        "endLine": 19
+      },
+      "agent": {
+        "mode": "single-agent",
+        "source": "single-agent",
+        "provider": "opencode-go",
+        "model": "deepseek-v4-flash",
+        "generatedAt": "2026-06-27T20:22:55.123Z",
+        "candidateIds": [
+          "candidate-8cf5baffc1ace09b"
+        ]
+      },
+      "fingerprint": "fp-4c5d848429c22cad"
+    }
+  ]
+}

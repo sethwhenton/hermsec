@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-06-27T20:48:37.300Z",
+  "report": {
+    "generatedWithModel": false,
+    "redactionApplied": false
+  },
+  "scanId": "scan-56c86eec47faa79c",
+  "schemaVersion": "1.0",
+  "summary": {
+    "confirmedCves": 9,
+    "critical": 1,
+    "generatedWithModel": false,
+    "high": 12,
+    "info": 0,
+    "knownExploited": 0,
+    "low": 2,
+    "medium": 10,
+    "scannerFailures": 0,
+    "secrets": 2,
+    "total": 25
+  },
+  "target": {
+    "displayName": "node-express-vulnerable",
+    "kind": "local-path",
+    "value": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\node-express-vulnerable"
+  },
+  "workspaceId": "ws-cd7a61cac17ceb13",
+  "workspaceName": "node-express-vulnerable"
+}

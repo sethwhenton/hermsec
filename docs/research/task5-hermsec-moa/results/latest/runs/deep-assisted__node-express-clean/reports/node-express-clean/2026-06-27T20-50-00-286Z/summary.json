@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-06-27T20:50:00.286Z",
+  "report": {
+    "generatedWithModel": true,
+    "redactionApplied": false
+  },
+  "scanId": "scan-9004d14e3bf205de",
+  "schemaVersion": "1.0",
+  "summary": {
+    "confirmedCves": 7,
+    "critical": 0,
+    "generatedWithModel": true,
+    "high": 0,
+    "info": 0,
+    "knownExploited": 0,
+    "low": 2,
+    "medium": 4,
+    "scannerFailures": 0,
+    "secrets": 0,
+    "total": 6
+  },
+  "target": {
+    "displayName": "node-express-clean",
+    "kind": "local-path",
+    "value": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\node-express-clean"
+  },
+  "workspaceId": "ws-9b2c1fad29deb44f",
+  "workspaceName": "node-express-clean"
+}

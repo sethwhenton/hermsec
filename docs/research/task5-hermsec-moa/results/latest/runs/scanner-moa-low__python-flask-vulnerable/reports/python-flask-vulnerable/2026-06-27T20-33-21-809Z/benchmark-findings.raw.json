@@ -1,0 +1,1945 @@
+{
+  "schemaVersion": "1.0",
+  "scanId": "scan-36689ce1b1b59c22",
+  "target": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\python-flask-vulnerable",
+  "generatedAt": "2026-06-27T20:33:21.809Z",
+  "findings": [
+    {
+      "id": "finding-df94066397398095",
+      "title": "SQL Injection in SELECT query",
+      "category": "code",
+      "severity": "critical",
+      "confidence": "medium",
+      "description": "User-supplied input 'term' is directly interpolated into a SQL query string, allowing SQL injection.",
+      "evidence": "query = f\"SELECT * FROM users WHERE display_name = '{term}'\"",
+      "remediation": "Use parameterized queries (e.g., with placeholders like ? or :param) instead of string formatting.",
+      "tool": "hermsec-scanner-moa",
+      "ruleId": "sql-injection-fstring",
+      "cwe": [
+        "CWE-89"
+      ],
+      "location": {
+        "file": "app.py",
+        "startLine": 15,
+        "endLine": 15
+      },
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "moa-specialist",
+        "provider": "opencode-go",
+        "model": "deepseek-v4-flash",
+        "role": "injection-and-execution",
+        "generatedAt": "2026-06-27T20:33:28.480Z",
+        "candidateIds": [
+          "candidate-db722ee037681f81"
+        ],
+        "judge": {
+          "verdict": "needs-review",
+          "confidence": "low",
+          "reason": "No explicit judge decision was returned.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      },
+      "fingerprint": "fp-8c34a110733ac53b"
+    },
+    {
+      "id": "finding-1b07d79630a40fd5",
+      "title": "Command Injection via shell=True and formatted string",
+      "category": "code",
+      "severity": "critical",
+      "confidence": "medium",
+      "description": "User-supplied input 'name' is directly interpolated into a command string executed with shell=True, allowing arbitrary command execution.",
+      "evidence": "subprocess.check_output(f\"echo {name}\", shell=True, text=True)",
+      "remediation": "Avoid shell=True; use subprocess.run with a list of arguments. If shell is required, sanitize input thoroughly or use shlex.quote.",
+      "tool": "hermsec-scanner-moa",
+      "ruleId": "command-injection-shell-true",
+      "cwe": [
+        "CWE-78"
+      ],
+      "location": {
+        "file": "app.py",
+        "startLine": 22,
+        "endLine": 22
+      },
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "moa-specialist",
+        "provider": "opencode-go",
+        "model": "deepseek-v4-flash",
+        "role": "injection-and-execution",
+        "generatedAt": "2026-06-27T20:33:28.478Z",
+        "candidateIds": [
+          "candidate-af3014e867efa5ef"
+        ],
+        "judge": {
+          "verdict": "needs-review",
+          "confidence": "low",
+          "reason": "No explicit judge decision was returned.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      },
+      "fingerprint": "fp-ba01deddbb08160e"
+    },
+    {
+      "id": "finding-233500de48472042",
+      "title": "Debug mode enabled in production",
+      "category": "config",
+      "severity": "high",
+      "confidence": "medium",
+      "description": "The Flask application has debug mode enabled both in configuration (app.config[\"DEBUG\"] = True) and when running (app.run(debug=True)). In production, this can expose sensitive information and allow arbitrary code execution through the Werkzeug debugger.",
+      "evidence": "app.py line 8: app.config[\"DEBUG\"] = True app.py line 42: app.run(debug=True, host=\"127.0.0.1\")",
+      "remediation": "Set DEBUG=False in app.config and debug=False in app.run() for production deployments. Use environment variables or configuration files to toggle debug mode only in development.",
+      "tool": "hermsec-scanner-moa",
+      "ruleId": "flask-debug-enabled",
+      "cwe": [
+        "CWE-489",
+        "CWE-215"
+      ],
+      "location": {
+        "file": "app.py",
+        "startLine": 8,
+        "endLine": 8
+      },
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "moa-specialist",
+        "provider": "opencode-go",
+        "model": "deepseek-v4-flash",
+        "role": "secrets-and-config",
+        "generatedAt": "2026-06-27T20:33:48.802Z",
+        "candidateIds": [
+          "candidate-a23d0ff81c42d240"
+        ],
+        "judge": {
+          "verdict": "needs-review",
+          "confidence": "low",
+          "reason": "No explicit judge decision was returned.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      },
+      "fingerprint": "fp-defd619de7864c67"
+    },
+    {
+      "tool": "semgrep",
+      "title": "Python subprocess shell mode enabled",
+      "category": "code",
+      "severity": "high",
+      "confidence": "high",
+      "description": "Semgrep reported a static analysis finding from Hermsec's local ruleset or project scanner configuration.",
+      "evidence": "app.py:22 Python subprocess shell mode enabled",
+      "remediation": "Review the matched code path and apply the Semgrep rule guidance.",
+      "ruleId": "C.Users.whent.AppData.Local.Temp.hermsec-semgrep-OCGTcL.hermsec.python-subprocess-shell",
+      "cwe": [
+        "CWE-78"
+      ],
+      "location": {
+        "file": "app.py",
+        "startLine": 22
+      },
+      "id": "finding-b85501840e8f7659",
+      "fingerprint": "fp-b85501840e8f7659",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "semgrep",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-b85501840e8f7659"
+        ],
+        "sourceFindingIds": [
+          "finding-b85501840e8f7659"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "Subprocess shell=True is a genuine command injection risk.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "bandit",
+      "title": "subprocess call with shell=True identified, security issue.",
+      "category": "code",
+      "severity": "high",
+      "confidence": "high",
+      "description": "Bandit reported a Python static analysis finding.",
+      "evidence": "app.py:22 subprocess call with shell=True identified, security issue.",
+      "remediation": "Review the affected Python code and apply Bandit's recommended defensive pattern.",
+      "ruleId": "B602",
+      "location": {
+        "file": "app.py",
+        "startLine": 22
+      },
+      "id": "finding-ab0a01e020936a2a",
+      "fingerprint": "fp-ab0a01e020936a2a",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "bandit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-ab0a01e020936a2a"
+        ],
+        "sourceFindingIds": [
+          "finding-ab0a01e020936a2a"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "Subprocess shell=True is a genuine command injection risk.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "title": "Subprocess shell mode enabled",
+      "category": "code",
+      "severity": "high",
+      "confidence": "high",
+      "description": "Hermsec's offline heuristic scanner found a risky source pattern.",
+      "evidence": "app.py:22 subprocess.check_output(f\"echo {name}\", shell=True, text=True)",
+      "remediation": "Use subprocess with argv arrays and shell=False.",
+      "location": {
+        "file": "app.py",
+        "startLine": 22
+      },
+      "cwe": [
+        "CWE-78"
+      ],
+      "ruleId": "hermsec.python.subprocess-shell",
+      "tool": "hermsec-heuristics",
+      "id": "finding-ad5e6ba69c40063c",
+      "fingerprint": "fp-ad5e6ba69c40063c",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "hermsec-heuristics",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-ad5e6ba69c40063c"
+        ],
+        "sourceFindingIds": [
+          "finding-ad5e6ba69c40063c"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "Code evidence shows shell=True with user input, leading to command injection.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "bandit",
+      "title": "Use of weak MD5 hash for security. Consider usedforsecurity=False",
+      "category": "code",
+      "severity": "high",
+      "confidence": "high",
+      "description": "Bandit reported a Python static analysis finding.",
+      "evidence": "app.py:37 Use of weak MD5 hash for security. Consider usedforsecurity=False",
+      "remediation": "Review the affected Python code and apply Bandit's recommended defensive pattern.",
+      "ruleId": "B324",
+      "location": {
+        "file": "app.py",
+        "startLine": 37
+      },
+      "id": "finding-f49b9ad6002f4bab",
+      "fingerprint": "fp-f49b9ad6002f4bab",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "bandit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-f49b9ad6002f4bab"
+        ],
+        "sourceFindingIds": [
+          "finding-f49b9ad6002f4bab"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "needs-review",
+          "confidence": "medium",
+          "reason": "MD5 use may be for non-security purposes; insufficient context to confirm impact.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "bandit",
+      "title": "A Flask app appears to be run with debug=True, which exposes the Werkzeug debugger and allows the execution of arbitrary code.",
+      "category": "code",
+      "severity": "high",
+      "confidence": "high",
+      "description": "Bandit reported a Python static analysis finding.",
+      "evidence": "app.py:42 A Flask app appears to be run with debug=True, which exposes the Werkzeug debugger and allows the execution of arbitrary code.",
+      "remediation": "Review the affected Python code and apply Bandit's recommended defensive pattern.",
+      "ruleId": "B201",
+      "location": {
+        "file": "app.py",
+        "startLine": 42
+      },
+      "id": "finding-59e543d0f5b92291",
+      "fingerprint": "fp-59e543d0f5b92291",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "bandit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-59e543d0f5b92291"
+        ],
+        "sourceFindingIds": [
+          "finding-59e543d0f5b92291"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "Flask debug mode exposes the Werkzeug debugger and allows arbitrary code execution.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "bandit",
+      "title": "Possible SQL injection vector through string-based query construction.",
+      "category": "code",
+      "severity": "medium",
+      "confidence": "low",
+      "description": "Bandit reported a Python static analysis finding.",
+      "evidence": "app.py:15 Possible SQL injection vector through string-based query construction.",
+      "remediation": "Review the affected Python code and apply Bandit's recommended defensive pattern.",
+      "ruleId": "B608",
+      "location": {
+        "file": "app.py",
+        "startLine": 15
+      },
+      "id": "finding-161214d1eed442bc",
+      "fingerprint": "fp-161214d1eed442bc",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "bandit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-161214d1eed442bc"
+        ],
+        "sourceFindingIds": [
+          "finding-161214d1eed442bc"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "medium",
+          "reason": "Scanner indicates string-based SQL query construction; likely SQL injection vector.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "title": "Debug mode enabled",
+      "category": "code",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "Hermsec's offline heuristic scanner found a risky source pattern.",
+      "evidence": "app.py:42 app.run(debug=True, host=\"127.0.0.1\")",
+      "remediation": "Disable debug mode outside local development.",
+      "location": {
+        "file": "app.py",
+        "startLine": 42
+      },
+      "cwe": [
+        "CWE-489"
+      ],
+      "ruleId": "hermsec.python.debug-true",
+      "tool": "hermsec-heuristics",
+      "id": "finding-6286deb685eb0215",
+      "fingerprint": "fp-6286deb685eb0215",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "hermsec-heuristics",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-6286deb685eb0215"
+        ],
+        "sourceFindingIds": [
+          "finding-6286deb685eb0215"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "Code evidence shows debug=True, which is dangerous outside local development.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in 5.1 before 5.1.14, 4.2 before 4.2.26, and 5.2 before 5.2.8. NFKC normalization in Python is slow on Windows. A...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2025-107, GHSA-qw25-v68c-qjf3, BIT-django-2025-64458, CVE-2025-64458.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.26, 5.1.14, 5.2.8.",
+      "ruleId": "pip-audit:PYSEC-2025-107",
+      "identifiers": {
+        "cve": [
+          "CVE-2025-64458"
+        ],
+        "ghsa": [
+          "GHSA-QW25-V68C-QJF3"
+        ],
+        "osv": [
+          "PYSEC-2025-107"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-b58346c3abe32f02",
+      "fingerprint": "fp-b58346c3abe32f02",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-b58346c3abe32f02"
+        ],
+        "sourceFindingIds": [
+          "finding-b58346c3abe32f02"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "Confirmed CVE-2025-64458 in django 4.2.1.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in 5.1 before 5.1.14, 4.2 before 4.2.26, and 5.2 before 5.2.8. The methods `QuerySet.filter()`, `QuerySet.exclude...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2025-108, GHSA-frmv-pr5f-9mcr, BIT-django-2025-64459, CVE-2025-64459.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.26, 5.1.14, 5.2.8.",
+      "ruleId": "pip-audit:PYSEC-2025-108",
+      "identifiers": {
+        "cve": [
+          "CVE-2025-64459"
+        ],
+        "ghsa": [
+          "GHSA-FRMV-PR5F-9MCR"
+        ],
+        "osv": [
+          "PYSEC-2025-108"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-4d631eba5901a15a",
+      "fingerprint": "fp-4d631eba5901a15a",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-4d631eba5901a15a"
+        ],
+        "sourceFindingIds": [
+          "finding-4d631eba5901a15a"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "Confirmed CVE-2025-64459 in django 4.2.1.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in 5.2 before 5.2.9, 5.1 before 5.1.15, and 4.2 before 4.2.27. `FilteredRelation` is subject to SQL injection in ...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2025-104, CVE-2025-13372, BIT-django-2025-13372, GHSA-rqw2-ghq9-44m7.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.27, 5.1.15, 5.2.9.",
+      "ruleId": "pip-audit:PYSEC-2025-104",
+      "identifiers": {
+        "cve": [
+          "CVE-2025-13372"
+        ],
+        "ghsa": [
+          "GHSA-RQW2-GHQ9-44M7"
+        ],
+        "osv": [
+          "PYSEC-2025-104"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-eebedbc6bf643f8e",
+      "fingerprint": "fp-eebedbc6bf643f8e",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-eebedbc6bf643f8e"
+        ],
+        "sourceFindingIds": [
+          "finding-eebedbc6bf643f8e"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in 5.2 before 5.2.9, 5.1 before 5.1.15, and 4.2 before 4.2.27. Algorithmic complexity in `django.core.serializers...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2025-109, BIT-django-2025-64460, GHSA-vrcr-9hj9-jcg6, CVE-2025-64460.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.27, 5.1.15, 5.2.9.",
+      "ruleId": "pip-audit:PYSEC-2025-109",
+      "identifiers": {
+        "cve": [
+          "CVE-2025-64460"
+        ],
+        "ghsa": [
+          "GHSA-VRCR-9HJ9-JCG6"
+        ],
+        "osv": [
+          "PYSEC-2025-109"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-df5ff9f08d375620",
+      "fingerprint": "fp-df5ff9f08d375620",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-df5ff9f08d375620"
+        ],
+        "sourceFindingIds": [
+          "finding-df5ff9f08d375620"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in 6.0 before 6.0.2, 5.2 before 5.2.11, and 4.2 before 4.2.28. `.QuerySet.order_by()` is subject to SQL injection...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2026-47, GHSA-6426-9fv3-65x8, BIT-django-2026-1312, CVE-2026-1312.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.28, 5.2.11, 6.0.2.",
+      "ruleId": "pip-audit:PYSEC-2026-47",
+      "identifiers": {
+        "cve": [
+          "CVE-2026-1312"
+        ],
+        "ghsa": [
+          "GHSA-6426-9FV3-65X8"
+        ],
+        "osv": [
+          "PYSEC-2026-47"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-76e0ee6b7af74773",
+      "fingerprint": "fp-76e0ee6b7af74773",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-76e0ee6b7af74773"
+        ],
+        "sourceFindingIds": [
+          "finding-76e0ee6b7af74773"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in 6.0 before 6.0.2, 5.2 before 5.2.11, and 4.2 before 4.2.28. `ASGIRequest` allows a remote attacker to cause a ...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2026-43, BIT-django-2025-14550, CVE-2025-14550, GHSA-33mw-q7rj-mjwj.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.28, 5.2.11, 6.0.2.",
+      "ruleId": "pip-audit:PYSEC-2026-43",
+      "identifiers": {
+        "cve": [
+          "CVE-2025-14550"
+        ],
+        "ghsa": [
+          "GHSA-33MW-Q7RJ-MJWJ"
+        ],
+        "osv": [
+          "PYSEC-2026-43"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-2a662179f20fedac",
+      "fingerprint": "fp-2a662179f20fedac",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-2a662179f20fedac"
+        ],
+        "sourceFindingIds": [
+          "finding-2a662179f20fedac"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in 6.0 before 6.0.2, 5.2 before 5.2.11, and 4.2 before 4.2.28. `django.utils.text.Truncator.chars()` and `Truncat...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2026-45, CVE-2026-1285, GHSA-4rrr-2h4v-f3j9, BIT-django-2026-1285.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.28, 5.2.11, 6.0.2.",
+      "ruleId": "pip-audit:PYSEC-2026-45",
+      "identifiers": {
+        "cve": [
+          "CVE-2026-1285"
+        ],
+        "ghsa": [
+          "GHSA-4RRR-2H4V-F3J9"
+        ],
+        "osv": [
+          "PYSEC-2026-45"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-92e2ec5bf5cdeb83",
+      "fingerprint": "fp-92e2ec5bf5cdeb83",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-92e2ec5bf5cdeb83"
+        ],
+        "sourceFindingIds": [
+          "finding-92e2ec5bf5cdeb83"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in 6.0 before 6.0.2, 5.2 before 5.2.11, and 4.2 before 4.2.28. `FilteredRelation` is subject to SQL injection in ...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2026-46, GHSA-gvg8-93h5-g6qq, CVE-2026-1287, BIT-django-2026-1287.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.28, 5.2.11, 6.0.2.",
+      "ruleId": "pip-audit:PYSEC-2026-46",
+      "identifiers": {
+        "cve": [
+          "CVE-2026-1287"
+        ],
+        "ghsa": [
+          "GHSA-GVG8-93H5-G6QQ"
+        ],
+        "osv": [
+          "PYSEC-2026-46"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-9fdafd73600719c0",
+      "fingerprint": "fp-9fdafd73600719c0",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-9fdafd73600719c0"
+        ],
+        "sourceFindingIds": [
+          "finding-9fdafd73600719c0"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in 6.0 before 6.0.2, 5.2 before 5.2.11, and 4.2 before 4.2.28. Raster lookups on ``RasterField`` (only implemente...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2026-44, BIT-django-2026-1207, CVE-2026-1207, GHSA-mwm9-4648-f68q.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.28, 5.2.11, 6.0.2.",
+      "ruleId": "pip-audit:PYSEC-2026-44",
+      "identifiers": {
+        "cve": [
+          "CVE-2026-1207"
+        ],
+        "ghsa": [
+          "GHSA-MWM9-4648-F68Q"
+        ],
+        "osv": [
+          "PYSEC-2026-44"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-b6e9847405c68393",
+      "fingerprint": "fp-b6e9847405c68393",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-b6e9847405c68393"
+        ],
+        "sourceFindingIds": [
+          "finding-b6e9847405c68393"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in 6.0 before 6.0.2, 5.2 before 5.2.11, and 4.2 before 4.2.28. The `django.contrib.auth.handlers.modwsgi.check_pa...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2026-42, BIT-django-2025-13473, GHSA-2mcm-79hx-8fxw, CVE-2025-13473.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.28, 5.2.11, 6.0.2.",
+      "ruleId": "pip-audit:PYSEC-2026-42",
+      "identifiers": {
+        "cve": [
+          "CVE-2025-13473"
+        ],
+        "ghsa": [
+          "GHSA-2MCM-79HX-8FXW"
+        ],
+        "osv": [
+          "PYSEC-2026-42"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-4940470cf86bbc97",
+      "fingerprint": "fp-4940470cf86bbc97",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-4940470cf86bbc97"
+        ],
+        "sourceFindingIds": [
+          "finding-4940470cf86bbc97"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in 6.0 before 6.0.3, 5.2 before 5.2.12, and 4.2 before 4.2.29. `URLField.to_python()` in Django calls `urllib.par...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by CVE-2026-25673, BIT-django-2026-25673, GHSA-8p8v-wh79-9r56.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.29, 5.2.12, 6.0.3.",
+      "ruleId": "pip-audit:CVE-2026-25673",
+      "identifiers": {
+        "cve": [
+          "CVE-2026-25673"
+        ],
+        "ghsa": [
+          "GHSA-8P8V-WH79-9R56"
+        ],
+        "osv": []
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-d88e78175b200595",
+      "fingerprint": "fp-d88e78175b200595",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-d88e78175b200595"
+        ],
+        "sourceFindingIds": [
+          "finding-d88e78175b200595"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in 6.0 before 6.0.3, 5.2 before 5.2.12, and 4.2 before 4.2.29. Race condition in file-system storage and file-bas...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by CVE-2026-25674, GHSA-mjgh-79qc-68w3, BIT-django-2026-25674.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.29, 5.2.12, 6.0.3.",
+      "ruleId": "pip-audit:CVE-2026-25674",
+      "identifiers": {
+        "cve": [
+          "CVE-2026-25674"
+        ],
+        "ghsa": [
+          "GHSA-MJGH-79QC-68W3"
+        ],
+        "osv": []
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-991a30f91ac44426",
+      "fingerprint": "fp-991a30f91ac44426",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-991a30f91ac44426"
+        ],
+        "sourceFindingIds": [
+          "finding-991a30f91ac44426"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "django@4.2.1 is known vulnerable per multiple authoritative sources (CVE/PYSEC/GHSA).",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in 6.0 before 6.0.4, 5.2 before 5.2.13, and 4.2 before 4.2.30. `ASGIRequest` allows a remote attacker to spoof he...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2026-51, CVE-2026-3902, GHSA-mvfq-ggxm-9mc5, BIT-django-2026-3902.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.30, 5.2.13, 6.0.4.",
+      "ruleId": "pip-audit:PYSEC-2026-51",
+      "identifiers": {
+        "cve": [
+          "CVE-2026-3902"
+        ],
+        "ghsa": [
+          "GHSA-MVFQ-GGXM-9MC5"
+        ],
+        "osv": [
+          "PYSEC-2026-51"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-9ec04da14758c908",
+      "fingerprint": "fp-9ec04da14758c908",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-9ec04da14758c908"
+        ],
+        "sourceFindingIds": [
+          "finding-9ec04da14758c908"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "Concrete evidence with multiple identifiers (CVE-2026-3902, GHSA, BIT) for known Django vulnerability.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in 6.0 before 6.0.4, 5.2 before 5.2.13, and 4.2 before 4.2.30. `MultiPartParser` allows remote attackers to degra...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2026-48, CVE-2026-33033, BIT-django-2026-33033, GHSA-5mf9-h53q-7mhq.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.30, 5.2.13, 6.0.4.",
+      "ruleId": "pip-audit:PYSEC-2026-48",
+      "identifiers": {
+        "cve": [
+          "CVE-2026-33033"
+        ],
+        "ghsa": [
+          "GHSA-5MF9-H53Q-7MHQ"
+        ],
+        "osv": [
+          "PYSEC-2026-48"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-d02e3f648fb7691a",
+      "fingerprint": "fp-d02e3f648fb7691a",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-d02e3f648fb7691a"
+        ],
+        "sourceFindingIds": [
+          "finding-d02e3f648fb7691a"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "Concrete evidence with multiple identifiers (CVE-2026-33033, GHSA, BIT) for known Django vulnerability.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in 6.0 before 6.0.4, 5.2 before 5.2.13, and 4.2 before 4.2.30. Add permissions on inline model instances were not...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2026-52, BIT-django-2026-4277, GHSA-pwjp-ccjc-ghwg, CVE-2026-4277.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.30, 5.2.13, 6.0.4.",
+      "ruleId": "pip-audit:PYSEC-2026-52",
+      "identifiers": {
+        "cve": [
+          "CVE-2026-4277"
+        ],
+        "ghsa": [
+          "GHSA-PWJP-CCJC-GHWG"
+        ],
+        "osv": [
+          "PYSEC-2026-52"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-61f54bb2a229b9c4",
+      "fingerprint": "fp-61f54bb2a229b9c4",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-61f54bb2a229b9c4"
+        ],
+        "sourceFindingIds": [
+          "finding-61f54bb2a229b9c4"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "Concrete evidence with multiple identifiers (CVE-2026-4277, GHSA, BIT) for known Django vulnerability.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in 6.0 before 6.0.4, 5.2 before 5.2.13, and 4.2 before 4.2.30. Admin changelist forms using `ModelAdmin.list_edit...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2026-53, BIT-django-2026-4292, CVE-2026-4292, GHSA-mmwr-2jhp-mc7j.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.30, 5.2.13, 6.0.4.",
+      "ruleId": "pip-audit:PYSEC-2026-53",
+      "identifiers": {
+        "cve": [
+          "CVE-2026-4292"
+        ],
+        "ghsa": [
+          "GHSA-MMWR-2JHP-MC7J"
+        ],
+        "osv": [
+          "PYSEC-2026-53"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-1fb5546ad4cdca07",
+      "fingerprint": "fp-1fb5546ad4cdca07",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-1fb5546ad4cdca07"
+        ],
+        "sourceFindingIds": [
+          "finding-1fb5546ad4cdca07"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "Concrete evidence with multiple identifiers (CVE-2026-4292, GHSA, BIT) for known Django vulnerability.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in 6.0 before 6.0.4, 5.2 before 5.2.13, and 4.2 before 4.2.30. ASGI requests with a missing or understated `Conte...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2026-49, GHSA-933h-hp56-hf7m, BIT-django-2026-33034, CVE-2026-33034.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.30, 5.2.13, 6.0.4.",
+      "ruleId": "pip-audit:PYSEC-2026-49",
+      "identifiers": {
+        "cve": [
+          "CVE-2026-33034"
+        ],
+        "ghsa": [
+          "GHSA-933H-HP56-HF7M"
+        ],
+        "osv": [
+          "PYSEC-2026-49"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-30d7af736c067ecf",
+      "fingerprint": "fp-30d7af736c067ecf",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-30d7af736c067ecf"
+        ],
+        "sourceFindingIds": [
+          "finding-30d7af736c067ecf"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "Concrete evidence with multiple identifiers (CVE-2026-33034, GHSA, BIT) for known Django vulnerability.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in Django 3.2 before 3.2.23, 4.1 before 4.1.13, and 4.2 before 4.2.7. The NFKC normalization is slow on Windows. ...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2023-222, GHSA-qmf9-6jqf-j8fq, BIT-django-2023-46695, CVE-2023-46695.",
+      "remediation": "Upgrade django to one of the fixed versions: 3.2.23, 4.1.13, 4.2.7.",
+      "ruleId": "pip-audit:PYSEC-2023-222",
+      "identifiers": {
+        "cve": [
+          "CVE-2023-46695"
+        ],
+        "ghsa": [
+          "GHSA-QMF9-6JQF-J8FQ"
+        ],
+        "osv": [
+          "PYSEC-2023-222"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-5759826843b92b57",
+      "fingerprint": "fp-5759826843b92b57",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-5759826843b92b57"
+        ],
+        "sourceFindingIds": [
+          "finding-5759826843b92b57"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "Concrete evidence with multiple identifiers (CVE-2023-46695, GHSA, BIT) for known Django vulnerability.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in Django 3.2 before 3.2.24, 4.2 before 4.2.10, and Django 5.0 before 5.0.2. The intcomma template filter was sub...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2024-28, GHSA-xxj9-f6rv-m3x4, CVE-2024-24680, BIT-django-2024-24680.",
+      "remediation": "Upgrade django to one of the fixed versions: 3.2.24, 4.2.10, 5.0.2.",
+      "ruleId": "pip-audit:PYSEC-2024-28",
+      "identifiers": {
+        "cve": [
+          "CVE-2024-24680"
+        ],
+        "ghsa": [
+          "GHSA-XXJ9-F6RV-M3X4"
+        ],
+        "osv": [
+          "PYSEC-2024-28"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-2da8bf57c3beedf7",
+      "fingerprint": "fp-2da8bf57c3beedf7",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-2da8bf57c3beedf7"
+        ],
+        "sourceFindingIds": [
+          "finding-2da8bf57c3beedf7"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "Concrete evidence with multiple identifiers (CVE-2024-24680, GHSA, BIT) for known Django vulnerability.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in Django 4.2 before 4.2.14 and 5.0 before 5.0.7. urlize and urlizetrunc were subject to a potential denial of se...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2024-56, BIT-django-2024-38875, CVE-2024-38875, GHSA-qg2p-9jwr-mmqf.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.14, 5.0.7.",
+      "ruleId": "pip-audit:PYSEC-2024-56",
+      "identifiers": {
+        "cve": [
+          "CVE-2024-38875"
+        ],
+        "ghsa": [
+          "GHSA-QG2P-9JWR-MMQF"
+        ],
+        "osv": [
+          "PYSEC-2024-56"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-a2713a54df22bf82",
+      "fingerprint": "fp-a2713a54df22bf82",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-a2713a54df22bf82"
+        ],
+        "sourceFindingIds": [
+          "finding-a2713a54df22bf82"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "Concrete evidence with multiple identifiers (CVE-2024-38875, GHSA, BIT) for known Django vulnerability.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in Django 4.2 before 4.2.21, 5.1 before 5.1.9, and 5.2 before 5.2.1. The django.utils.html.strip_tags() function ...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2025-37, BIT-django-2025-32873, GHSA-8j24-cjrq-gr2m, CVE-2025-32873.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.21, 5.1.9, 5.2.1.",
+      "ruleId": "pip-audit:PYSEC-2025-37",
+      "identifiers": {
+        "cve": [
+          "CVE-2025-32873"
+        ],
+        "ghsa": [
+          "GHSA-8J24-CJRQ-GR2M"
+        ],
+        "osv": [
+          "PYSEC-2025-37"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-6746dbbd8d8e1e3b",
+      "fingerprint": "fp-6746dbbd8d8e1e3b",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-6746dbbd8d8e1e3b"
+        ],
+        "sourceFindingIds": [
+          "finding-6746dbbd8d8e1e3b"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "Concrete evidence with multiple identifiers (CVE-2025-32873, GHSA, BIT) for known Django vulnerability.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in Django 4.2 before 4.2.24, 5.1 before 5.1.12, and 5.2 before 5.2.6. FilteredRelation is subject to SQL injectio...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2025-105, BIT-django-2025-57833, CVE-2025-57833, GHSA-6w2r-r2m5-xq5w.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.24, 5.1.12, 5.2.6.",
+      "ruleId": "pip-audit:PYSEC-2025-105",
+      "identifiers": {
+        "cve": [
+          "CVE-2025-57833"
+        ],
+        "ghsa": [
+          "GHSA-6W2R-R2M5-XQ5W"
+        ],
+        "osv": [
+          "PYSEC-2025-105"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-d2861bc2a152161b",
+      "fingerprint": "fp-d2861bc2a152161b",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-d2861bc2a152161b"
+        ],
+        "sourceFindingIds": [
+          "finding-d2861bc2a152161b"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "accepted",
+          "confidence": "high",
+          "reason": "Concrete evidence with multiple identifiers (CVE-2025-57833, GHSA, BIT) for known Django vulnerability.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in Django 4.2 before 4.2.25, 5.1 before 5.1.13, and 5.2 before 5.2.7. QuerySet.annotate(), QuerySet.alias(), Quer...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2025-106, GHSA-hpr9-3m2g-3j9p, CVE-2025-59681, BIT-django-2025-59681.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.25, 5.1.13, 5.2.7.",
+      "ruleId": "pip-audit:PYSEC-2025-106",
+      "identifiers": {
+        "cve": [
+          "CVE-2025-59681"
+        ],
+        "ghsa": [
+          "GHSA-HPR9-3M2G-3J9P"
+        ],
+        "osv": [
+          "PYSEC-2025-106"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-c44681bed92945fd",
+      "fingerprint": "fp-c44681bed92945fd",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-c44681bed92945fd"
+        ],
+        "sourceFindingIds": [
+          "finding-c44681bed92945fd"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "needs-review",
+          "confidence": "low",
+          "reason": "No explicit judge decision was returned.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in Django 4.2 before 4.2.25, 5.1 before 5.1.13, and 5.2 before 5.2.7. The django.utils.archive.extract() function...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by CVE-2025-59682, BIT-django-2025-59682, GHSA-q95w-c7qg-hrff.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.25, 5.1.13, 5.2.7.",
+      "ruleId": "pip-audit:CVE-2025-59682",
+      "identifiers": {
+        "cve": [
+          "CVE-2025-59682"
+        ],
+        "ghsa": [
+          "GHSA-Q95W-C7QG-HRFF"
+        ],
+        "osv": []
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-89c7f141b309a9a2",
+      "fingerprint": "fp-89c7f141b309a9a2",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-89c7f141b309a9a2"
+        ],
+        "sourceFindingIds": [
+          "finding-89c7f141b309a9a2"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "needs-review",
+          "confidence": "low",
+          "reason": "No explicit judge decision was returned.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in Django 5.0 before 5.0.7 and 4.2 before 4.2.14. `get_supported_language_variant()` was subject to a potential d...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2024-59, CVE-2024-39614, GHSA-f6f8-9mx6-9mx2, BIT-django-2024-39614.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.14, 5.0.7.",
+      "ruleId": "pip-audit:PYSEC-2024-59",
+      "identifiers": {
+        "cve": [
+          "CVE-2024-39614"
+        ],
+        "ghsa": [
+          "GHSA-F6F8-9MX6-9MX2"
+        ],
+        "osv": [
+          "PYSEC-2024-59"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-79648cd2f4b0451f",
+      "fingerprint": "fp-79648cd2f4b0451f",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-79648cd2f4b0451f"
+        ],
+        "sourceFindingIds": [
+          "finding-79648cd2f4b0451f"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "needs-review",
+          "confidence": "low",
+          "reason": "No explicit judge decision was returned.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in Django 5.0 before 5.0.7 and 4.2 before 4.2.14. Derived classes of the `django.core.files.storage.Storage` base...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2024-58, CVE-2024-39330, GHSA-9jmf-237g-qf46, BIT-django-2024-39330.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.14, 5.0.7.",
+      "ruleId": "pip-audit:PYSEC-2024-58",
+      "identifiers": {
+        "cve": [
+          "CVE-2024-39330"
+        ],
+        "ghsa": [
+          "GHSA-9JMF-237G-QF46"
+        ],
+        "osv": [
+          "PYSEC-2024-58"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-6e29a11e0cc9821d",
+      "fingerprint": "fp-6e29a11e0cc9821d",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-6e29a11e0cc9821d"
+        ],
+        "sourceFindingIds": [
+          "finding-6e29a11e0cc9821d"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "needs-review",
+          "confidence": "low",
+          "reason": "No explicit judge decision was returned.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in Django 5.0 before 5.0.7 and 4.2 before 4.2.14. Derived classes of the django.core.files.storage.Storage base c...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2024-58, GHSA-9jmf-237g-qf46, BIT-django-2024-39330, CVE-2024-39330.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.14, 5.0.7.",
+      "ruleId": "pip-audit:PYSEC-2024-58",
+      "identifiers": {
+        "cve": [
+          "CVE-2024-39330"
+        ],
+        "ghsa": [
+          "GHSA-9JMF-237G-QF46"
+        ],
+        "osv": [
+          "PYSEC-2024-58"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-553fcfa7d373c22c",
+      "fingerprint": "fp-553fcfa7d373c22c",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-553fcfa7d373c22c"
+        ],
+        "sourceFindingIds": [
+          "finding-553fcfa7d373c22c"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "needs-review",
+          "confidence": "low",
+          "reason": "No explicit judge decision was returned.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in Django 5.0 before 5.0.7 and 4.2 before 4.2.14. get_supported_language_variant() was subject to a potential den...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2024-59, CVE-2024-39614, BIT-django-2024-39614, GHSA-f6f8-9mx6-9mx2.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.14, 5.0.7.",
+      "ruleId": "pip-audit:PYSEC-2024-59",
+      "identifiers": {
+        "cve": [
+          "CVE-2024-39614"
+        ],
+        "ghsa": [
+          "GHSA-F6F8-9MX6-9MX2"
+        ],
+        "osv": [
+          "PYSEC-2024-59"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-f9c90720b2faf255",
+      "fingerprint": "fp-f9c90720b2faf255",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-f9c90720b2faf255"
+        ],
+        "sourceFindingIds": [
+          "finding-f9c90720b2faf255"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "needs-review",
+          "confidence": "low",
+          "reason": "No explicit judge decision was returned.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in Django 5.0 before 5.0.7 and 4.2 before 4.2.14. The `django.contrib.auth.backends.ModelBackend.authenticate()` ...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2024-57, CVE-2024-39329, BIT-django-2024-39329, GHSA-x7q2-wr7g-xqmf.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.14, 5.0.7.",
+      "ruleId": "pip-audit:PYSEC-2024-57",
+      "identifiers": {
+        "cve": [
+          "CVE-2024-39329"
+        ],
+        "ghsa": [
+          "GHSA-X7Q2-WR7G-XQMF"
+        ],
+        "osv": [
+          "PYSEC-2024-57"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-0f595fbef013f4d6",
+      "fingerprint": "fp-0f595fbef013f4d6",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-0f595fbef013f4d6"
+        ],
+        "sourceFindingIds": [
+          "finding-0f595fbef013f4d6"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "needs-review",
+          "confidence": "low",
+          "reason": "No explicit judge decision was returned.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    },
+    {
+      "tool": "pip-audit",
+      "title": "An issue was discovered in Django 5.0 before 5.0.7 and 4.2 before 4.2.14. The django.contrib.auth.backends.ModelBackend.authenticate() me...",
+      "category": "dependency",
+      "severity": "medium",
+      "confidence": "high",
+      "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+      "evidence": "django@4.2.1 is affected by PYSEC-2024-57, CVE-2024-39329, BIT-django-2024-39329, GHSA-x7q2-wr7g-xqmf.",
+      "remediation": "Upgrade django to one of the fixed versions: 4.2.14, 5.0.7.",
+      "ruleId": "pip-audit:PYSEC-2024-57",
+      "identifiers": {
+        "cve": [
+          "CVE-2024-39329"
+        ],
+        "ghsa": [
+          "GHSA-X7Q2-WR7G-XQMF"
+        ],
+        "osv": [
+          "PYSEC-2024-57"
+        ]
+      },
+      "package": {
+        "ecosystem": "pypi",
+        "name": "django",
+        "installedVersion": "4.2.1"
+      },
+      "location": {
+        "file": "requirements.txt"
+      },
+      "id": "finding-faec3c5d94108ef8",
+      "fingerprint": "fp-faec3c5d94108ef8",
+      "agent": {
+        "mode": "scanner-moa-assisted",
+        "source": "scanner-backed",
+        "provider": "hermsec-scanners",
+        "role": "pip-audit",
+        "generatedAt": "2026-06-27T20:33:21.828Z",
+        "candidateIds": [
+          "scanner:finding-faec3c5d94108ef8"
+        ],
+        "sourceFindingIds": [
+          "finding-faec3c5d94108ef8"
+        ],
+        "model": "deepseek-v4-pro",
+        "judge": {
+          "verdict": "needs-review",
+          "confidence": "low",
+          "reason": "No explicit judge decision was returned.",
+          "reviewedBy": "moa-false-positive-judge"
+        }
+      }
+    }
+  ]
+}

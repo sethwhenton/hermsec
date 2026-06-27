@@ -1,0 +1,32 @@
+[
+  {
+    "category": "dependency",
+    "confidence": "high",
+    "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+    "evidence": "flask@3.0.3 is affected by CVE-2026-27205, GHSA-68rp-wp8r-4726.",
+    "fingerprint": "fp-3aef6630933b3c74",
+    "id": "finding-3aef6630933b3c74",
+    "identifiers": {
+      "cve": [
+        "CVE-2026-27205"
+      ],
+      "ghsa": [
+        "GHSA-68RP-WP8R-4726"
+      ],
+      "osv": []
+    },
+    "location": {
+      "file": "requirements.txt"
+    },
+    "package": {
+      "ecosystem": "pypi",
+      "installedVersion": "3.0.3",
+      "name": "flask"
+    },
+    "remediation": "Upgrade flask to one of the fixed versions: 3.1.3.",
+    "ruleId": "pip-audit:CVE-2026-27205",
+    "severity": "medium",
+    "title": "When the `session` object is accessed, Flask should set the `Vary: Cookie` header. This instructs caches not to cache the response, as it...",
+    "tool": "pip-audit"
+  }
+]

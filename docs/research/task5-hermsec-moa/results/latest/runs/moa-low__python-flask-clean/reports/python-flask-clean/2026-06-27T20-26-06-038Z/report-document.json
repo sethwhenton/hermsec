@@ -1,0 +1,156 @@
+{
+  "agentMode": {
+    "acceptedFindingCount": 0,
+    "agents": [
+      {
+        "id": "injection-and-execution",
+        "label": "Injection and execution specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 5061,
+        "status": "completed"
+      },
+      {
+        "id": "auth-and-data-flow",
+        "label": "Auth and data-flow specialist",
+        "model": "xiaomi/mimo-v2.5-20260422",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 2357,
+        "status": "completed"
+      },
+      {
+        "id": "secrets-and-config",
+        "label": "Secrets and config specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 4859,
+        "status": "completed"
+      },
+      {
+        "id": "moa-false-positive-judge",
+        "label": "False-positive Judge",
+        "model": "deepseek-v4-pro",
+        "provider": "opencode-go",
+        "role": "judge",
+        "runtimeMs": 2070,
+        "status": "completed"
+      },
+      {
+        "id": "moa-aggregator",
+        "label": "MoA Aggregator",
+        "model": "MiniMax-M3",
+        "provider": "opencode-go",
+        "role": "aggregator",
+        "runtimeMs": 1483,
+        "status": "completed"
+      }
+    ],
+    "agentsUsed": [
+      "injection-and-execution",
+      "auth-and-data-flow",
+      "secrets-and-config",
+      "moa-false-positive-judge",
+      "moa-aggregator"
+    ],
+    "aggregator": {
+      "agentId": "moa-aggregator",
+      "label": "MoA Aggregator",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go"
+    },
+    "aggregatorModel": "MiniMax-M3",
+    "candidateFindingCount": 0,
+    "findings": {},
+    "mode": "moa-assisted",
+    "modeLabel": "MoA-assisted inspection",
+    "needsHumanReviewCount": 0,
+    "rejectedFindingCount": 0,
+    "scanMode": "moa-assisted",
+    "totalAgentRuntimeMs": 15910
+  },
+  "delta": {
+    "baseScanId": "scan-2f05e9f9c0836871",
+    "currentScanId": "scan-5d515c2c819561cf",
+    "fixedFindingIds": [],
+    "improvedFindingIds": [],
+    "newFindingIds": [],
+    "summaryText": "0 new, 0 fixed, 0 unchanged, 0 worsened, 0 improved",
+    "unchangedFindingIds": [],
+    "worsenedFindingIds": []
+  },
+  "evidence": {
+    "bundleId": "evidence-622aba110b4ab360",
+    "findingEvidence": {},
+    "rawArtifacts": [],
+    "redactionApplied": false
+  },
+  "explanations": {},
+  "findings": [],
+  "generatedAt": "2026-06-27T20:26:06.038Z",
+  "intelligence": [],
+  "limitations": [
+    "MoA-assisted inspection is agent-only; scanner and advisory enrichment were not run.",
+    "MoA ran 3 specialist role(s), a false-positive judge, and an aggregator.",
+    "MoA completed but produced no validated product-mode findings.",
+    "Hermsec reports only scanner and advisory evidence supplied to this run.",
+    "Model or fallback explanations cannot add CVEs, file paths, package names, versions, or line numbers."
+  ],
+  "run": {
+    "durationMs": 314,
+    "fallback": {
+      "actualReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-26-06-038Z",
+      "configuredReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-clean\\reports",
+      "used": false
+    },
+    "finishedAt": "2026-06-27T20:26:06.038Z",
+    "git": {
+      "branch": "main",
+      "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+      "dirty": true
+    },
+    "id": "scan-5d515c2c819561cf",
+    "mode": "auto",
+    "modeLabel": "MoA-assisted inspection",
+    "startedAt": "2026-06-27T20:26:05.724Z"
+  },
+  "scanId": "scan-5d515c2c819561cf",
+  "schemaVersion": "1.0",
+  "summary": {
+    "confirmedCves": 0,
+    "critical": 0,
+    "generatedWithModel": true,
+    "high": 0,
+    "info": 0,
+    "knownExploited": 0,
+    "low": 0,
+    "medium": 0,
+    "scannerFailures": 0,
+    "secrets": 0,
+    "total": 0
+  },
+  "target": {
+    "displayName": "python-flask-clean",
+    "kind": "local-path",
+    "value": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\python-flask-clean"
+  },
+  "tools": [
+    {
+      "durationMs": 15910,
+      "id": "moa-assisted",
+      "label": "MoA-assisted inspection",
+      "message": "MoA-assisted inspection completed with 0 validated findings.",
+      "status": "completed"
+    },
+    {
+      "id": "repository-discovery",
+      "label": "Repository discovery",
+      "message": "Discovered 5 files (python:1, json:1, yaml:1, text:2), package managers: pip, lockfiles: 0, ignored folders: none.",
+      "status": "completed"
+    }
+  ],
+  "workspaceId": "ws-ad0101c595d12f94",
+  "workspaceName": "python-flask-clean"
+}

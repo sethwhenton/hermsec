@@ -1,0 +1,43 @@
+{
+  "bundleId": "evidence-013eee07cc22a4a1",
+  "findingEvidence": {
+    "finding-199a36715fca7297": [
+      {
+        "location": {
+          "endLine": 8,
+          "file": "app.py",
+          "startLine": 8
+        },
+        "message": "app.py line 8: app.config[\"DEBUG\"] = True; app.py line 42: app.run(debug=True, host=\"127.0.0.1\")",
+        "ruleId": "debug-mode-enabled",
+        "scanner": "hermsec-moa"
+      }
+    ],
+    "finding-25db1d868d4fb04a": [
+      {
+        "location": {
+          "endLine": 15,
+          "file": "app.py",
+          "startLine": 15
+        },
+        "message": "query = f\"SELECT * FROM users WHERE display_name = '{term}'\" (app.py line 15)",
+        "ruleId": "SQL-INJECTION-1",
+        "scanner": "hermsec-moa"
+      }
+    ],
+    "finding-8a66bd132f71f635": [
+      {
+        "location": {
+          "endLine": 22,
+          "file": "app.py",
+          "startLine": 22
+        },
+        "message": "subprocess.check_output(f\"echo {name}\", shell=True, text=True) (app.py line 22)",
+        "ruleId": "COMMAND-INJECTION-1",
+        "scanner": "hermsec-moa"
+      }
+    ]
+  },
+  "rawArtifacts": [],
+  "redactionApplied": false
+}

@@ -1,0 +1,53 @@
+{
+  "ok": true,
+  "message": "Scan completed: 0 finding(s). Report: <hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-24-41-507Z",
+  "data": {
+    "scan": {
+      "schemaVersion": "1.0",
+      "id": "scan-dca5ee4681c6202d",
+      "target": "<hermsec-repo>\\tests\\fixtures\\repos\\node-express-clean",
+      "mode": "auto",
+      "startedAt": "2026-06-27T20:24:41.114Z",
+      "finishedAt": "2026-06-27T20:24:41.507Z",
+      "durationMs": 393,
+      "scannerStatuses": [
+        {
+          "id": "repository-discovery",
+          "label": "Repository discovery",
+          "status": "completed",
+          "message": "Discovered 8 files (javascript:3, json:3, yaml:1, text:1), package managers: npm, lockfiles: 1, ignored folders: none."
+        },
+        {
+          "id": "moa-assisted",
+          "label": "MoA-assisted inspection",
+          "status": "completed",
+          "message": "MoA-assisted inspection completed with 0 validated findings.",
+          "durationMs": 19904
+        }
+      ],
+      "findings": [],
+      "summary": {
+        "total": 0,
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "info": 0
+      },
+      "git": {
+        "branch": "main",
+        "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+        "dirty": true
+      }
+    },
+    "report": {
+      "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-24-41-507Z\\summary.json",
+      "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-24-41-507Z\\findings.json",
+      "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-24-41-507Z\\evidence.json",
+      "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-24-41-507Z\\run.json",
+      "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-24-41-507Z\\agent-summary.json",
+      "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-24-41-507Z\\delta.json",
+      "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-24-41-507Z\\report-document.json"
+    }
+  }
+}

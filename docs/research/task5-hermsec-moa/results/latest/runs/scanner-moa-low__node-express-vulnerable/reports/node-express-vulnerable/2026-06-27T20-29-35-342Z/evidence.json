@@ -1,0 +1,327 @@
+{
+  "bundleId": "evidence-c5a03626b772f439",
+  "findingEvidence": {
+    "finding-019805294a476f9b": [
+      {
+        "location": {
+          "file": "package-lock.json"
+        },
+        "message": "lodash <4.17.21 https://github.[REDACTED_SECRET]",
+        "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+        "scanner": "pmg"
+      }
+    ],
+    "finding-21b766e03a7b636a": [
+      {
+        "location": {
+          "file": "src/routes/search.js",
+          "startLine": 19
+        },
+        "message": "src/routes/search.js:19 Shell execution through child_process",
+        "ruleId": "C.Users.whent.AppData.Local.Temp.hermsec-semgrep-yuTA0a.hermsec.javascript.child-process-exec",
+        "scanner": "semgrep"
+      }
+    ],
+    "finding-31325d17858675c7": [
+      {
+        "location": {
+          "file": "src/app.js",
+          "startLine": 5
+        },
+        "message": "src/app.js:5 return db.query(\"SELECT * FROM users WHERE name = '\" + term + \"'\");",
+        "ruleId": "hermsec.code.sql-dynamic-string",
+        "scanner": "hermsec-heuristics"
+      }
+    ],
+    "finding-34a12328494fee7c": [
+      {
+        "location": {
+          "file": "package-lock.json"
+        },
+        "message": "express <4.20.0 https://github.[REDACTED_SECRET]",
+        "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+        "scanner": "pmg"
+      }
+    ],
+    "finding-365058e7fa14adc3": [
+      {
+        "location": {
+          "file": "package-lock.json"
+        },
+        "message": "lodash >=4.0.0 <=4.17.23 https://github.[REDACTED_SECRET]",
+        "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+        "scanner": "pmg"
+      }
+    ],
+    "finding-44a1a2191ecca7b5": [
+      {
+        "location": {
+          "file": "src/routes/search.js",
+          "startLine": 7
+        },
+        "message": "src/routes/search.js:7 export const fakeFixtureToken = \"HERMSEC_FAKE_TEST_TOKEN_[REDACTED]\";",
+        "ruleId": "hermsec.secret.fake-fixture-token",
+        "scanner": "hermsec-heuristics"
+      }
+    ],
+    "finding-48d696ae26d91c25": [
+      {
+        "location": {
+          "endLine": 14,
+          "file": "src/routes/search.js",
+          "startLine": 14
+        },
+        "message": "const query = `SELECT * FROM users WHERE display_name = '${term}'`; at line 14 of src/routes/search.js",
+        "ruleId": "sql-injection-template-literal",
+        "scanner": "hermsec-scanner-moa"
+      }
+    ],
+    "finding-4abae600128673dd": [
+      {
+        "location": {
+          "endLine": 10,
+          "file": "src/app.js",
+          "startLine": 10
+        },
+        "message": "return childProcess.exec(\"tool \" + tool); at line 10 of src/app.js",
+        "ruleId": "command-injection-child-process-exec-nosanitized",
+        "scanner": "hermsec-scanner-moa"
+      }
+    ],
+    "finding-4eb6c10f5698be89": [
+      {
+        "location": {
+          "file": "package-lock.json"
+        },
+        "message": "lodash >=4.0.0 <=4.17.22 https://github.[REDACTED_SECRET]",
+        "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+        "scanner": "pmg"
+      }
+    ],
+    "finding-5d7c8a7ede9c55b6": [
+      {
+        "location": {
+          "file": "package-lock.json"
+        },
+        "message": "express <4.19.2 https://github.[REDACTED_SECRET]",
+        "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+        "scanner": "pmg"
+      }
+    ],
+    "finding-7194eb872634eb85": [
+      {
+        "location": {
+          "file": "package-lock.json"
+        },
+        "message": "lodash@4.17.20 is affected by GHSA-29mw-wpgm-hmr9, CVE-2020-28500.",
+        "ruleId": "osv:GHSA-29mw-wpgm-hmr9",
+        "scanner": "osv-scanner"
+      }
+    ],
+    "finding-72f746cb8be1cd13": [
+      {
+        "location": {
+          "file": "package-lock.json"
+        },
+        "message": "lodash@4.17.20 is affected by GHSA-35jh-r3h4-6jhm, CVE-2021-23337.",
+        "ruleId": "osv:GHSA-35jh-r3h4-6jhm",
+        "scanner": "osv-scanner"
+      }
+    ],
+    "finding-79460a7a95ca1609": [
+      {
+        "location": {
+          "file": "package-lock.json"
+        },
+        "message": "express@4.18.2 is affected by GHSA-rv95-896h-c2vc, CVE-2024-29041.",
+        "ruleId": "osv:GHSA-rv95-896h-c2vc",
+        "scanner": "osv-scanner"
+      }
+    ],
+    "finding-7e7dd78c70ec8bd6": [
+      {
+        "location": {
+          "endLine": 7,
+          "file": "src/routes/search.js",
+          "startLine": 7
+        },
+        "message": "export const fakeFixtureToken = \"HERMSEC_FAKE_TEST_TOKEN_[REDACTED]\";",
+        "ruleId": "hardcoded-secret-token",
+        "scanner": "hermsec-scanner-moa"
+      }
+    ],
+    "finding-875df24e9347bb86": [
+      {
+        "location": {
+          "file": "package-lock.json"
+        },
+        "message": "lodash@4.17.20 is affected by GHSA-f23m-r3pf-42rh, CVE-2026-2950.",
+        "ruleId": "osv:GHSA-f23m-r3pf-42rh",
+        "scanner": "osv-scanner"
+      }
+    ],
+    "finding-8f4d1fc6724ec637": [
+      {
+        "location": {
+          "file": "src/routes/search.js",
+          "startLine": 14
+        },
+        "message": "src/routes/search.js:14 const query = `SELECT * FROM users WHERE display_name = '${term}'`;",
+        "ruleId": "hermsec.code.sql-dynamic-string",
+        "scanner": "hermsec-heuristics"
+      }
+    ],
+    "finding-91e695b1e33f2931": [
+      {
+        "location": {
+          "file": "src/routes/search.js",
+          "startLine": 19
+        },
+        "message": "src/routes/search.js:19 exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined);",
+        "ruleId": "hermsec.code.child-process-exec",
+        "scanner": "hermsec-heuristics"
+      }
+    ],
+    "finding-968c8ccb0d1e10db": [
+      {
+        "location": {
+          "file": "package-lock.json"
+        },
+        "message": "lodash >=4.0.0 <4.17.21 https://github.[REDACTED_SECRET]",
+        "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+        "scanner": "pmg"
+      }
+    ],
+    "finding-9c6c61503e6a8d67": [
+      {
+        "location": {
+          "file": "package-lock.json"
+        },
+        "message": "lodash@4.17.20 is affected by GHSA-r5fr-rjxr-66jc, CVE-2026-4800.",
+        "ruleId": "osv:GHSA-r5fr-rjxr-66jc",
+        "scanner": "osv-scanner"
+      }
+    ],
+    "finding-a4df09b6c58e3f34": [
+      {
+        "location": {
+          "endLine": 5,
+          "file": "src/app.js",
+          "startLine": 5
+        },
+        "message": "return db.query(\"SELECT * FROM users WHERE name = '\" + term + \"'\"); at line 5 of src/app.js",
+        "ruleId": "sql-injection-concatenation-in-query",
+        "scanner": "hermsec-scanner-moa"
+      }
+    ],
+    "finding-b2174492de636519": [
+      {
+        "location": {
+          "file": "src/routes/search.js",
+          "startLine": 33
+        },
+        "message": "src/routes/search.js:33 res.send(`<h1>${name}</h1><p>${digest}</p>`);",
+        "ruleId": "hermsec.code.unsanitized-html-response",
+        "scanner": "hermsec-heuristics"
+      }
+    ],
+    "finding-b80725495585908e": [
+      {
+        "location": {
+          "file": "package-lock.json"
+        },
+        "message": "express@4.18.2 is affected by GHSA-qw6h-vgh9-j6wx, CVE-2024-43796.",
+        "ruleId": "osv:GHSA-qw6h-vgh9-j6wx",
+        "scanner": "osv-scanner"
+      }
+    ],
+    "finding-c0abf04fd738039a": [
+      {
+        "location": {
+          "file": "package-lock.json"
+        },
+        "message": "package-lock.json pins lodash@4.17.20.",
+        "ruleId": "hermsec.package.lodash-known-vulnerable",
+        "scanner": "hermsec-heuristics"
+      }
+    ],
+    "finding-c34b7a632d435b5d": [
+      {
+        "location": {
+          "endLine": 19,
+          "file": "src/routes/search.js",
+          "startLine": 19
+        },
+        "message": "exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined); at line 19 of src/routes/search.js",
+        "ruleId": "command-injection-exec-template-literal",
+        "scanner": "hermsec-scanner-moa"
+      }
+    ],
+    "finding-d42a93124fa707d4": [
+      {
+        "location": {
+          "file": "src/app.js",
+          "startLine": 10
+        },
+        "message": "src/app.js:10 return childProcess.exec(\"tool \" + tool);",
+        "ruleId": "hermsec.code.child-process-exec",
+        "scanner": "hermsec-heuristics"
+      }
+    ],
+    "finding-da558c475a6f03b0": [
+      {
+        "location": {
+          "file": "package-lock.json"
+        },
+        "message": "lodash <=4.17.23 https://github.[REDACTED_SECRET]",
+        "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+        "scanner": "pmg"
+      }
+    ],
+    "finding-f4e47258a7e0e346": [
+      {
+        "location": {
+          "file": "src/app.js",
+          "startLine": 14
+        },
+        "message": "src/app.js:14 res.send(\"<h1>\" + req.query.name + \"</h1>\");",
+        "ruleId": "hermsec.code.unsanitized-html-response",
+        "scanner": "hermsec-heuristics"
+      }
+    ],
+    "finding-f71ba54cee76cfe0": [
+      {
+        "location": {
+          "file": "package-lock.json"
+        },
+        "message": "lodash@4.17.20 is affected by GHSA-xxjr-mmjv-4gpg, CVE-2025-13465.",
+        "ruleId": "osv:GHSA-xxjr-mmjv-4gpg",
+        "scanner": "osv-scanner"
+      }
+    ],
+    "finding-f9e3cdf62dee35f2": [
+      {
+        "location": {
+          "file": "src/routes/search.js",
+          "startLine": 19
+        },
+        "message": "src/routes/search.js:19 exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined);",
+        "ruleId": "hermsec.code.command-injection-input",
+        "scanner": "hermsec-heuristics"
+      }
+    ],
+    "finding-fc661b2848ecca41": [
+      {
+        "location": {
+          "file": ".env.example",
+          "startLine": 1
+        },
+        "message": ".env.example:1 API_KEY=[REDACTED]",
+        "ruleId": "hermsec.secret.fake-fixture-token",
+        "scanner": "hermsec-heuristics"
+      }
+    ]
+  },
+  "rawArtifacts": [],
+  "redactionApplied": false
+}

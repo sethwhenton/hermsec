@@ -1,0 +1,44 @@
+{
+  "baseScanId": "scan-cd624d375988bf89",
+  "currentScanId": "scan-56c86eec47faa79c",
+  "fixedFindingIds": [
+    "finding-5b5723782c7a2b0e",
+    "finding-62bc974b465e8211",
+    "finding-679f2139ed0715f4",
+    "finding-cd6c8512dbf655c8",
+    "finding-e0b89cf63f40137b",
+    "finding-e4b130132aca1a96"
+  ],
+  "improvedFindingIds": [],
+  "newFindingIds": [
+    "finding-3b3d25cd2cad6275",
+    "finding-44a1a2191ecca7b5",
+    "finding-fc661b2848ecca41"
+  ],
+  "summaryText": "3 new, 6 fixed, 22 unchanged, 0 worsened, 0 improved",
+  "unchangedFindingIds": [
+    "finding-019805294a476f9b",
+    "finding-31325d17858675c7",
+    "finding-34a12328494fee7c",
+    "finding-365058e7fa14adc3",
+    "finding-4eb6c10f5698be89",
+    "finding-5d7c8a7ede9c55b6",
+    "finding-7194eb872634eb85",
+    "finding-72f746cb8be1cd13",
+    "finding-79460a7a95ca1609",
+    "finding-875df24e9347bb86",
+    "finding-8f4d1fc6724ec637",
+    "finding-91e695b1e33f2931",
+    "finding-968c8ccb0d1e10db",
+    "finding-9c6c61503e6a8d67",
+    "finding-b2174492de636519",
+    "finding-b80725495585908e",
+    "finding-c0abf04fd738039a",
+    "finding-d42a93124fa707d4",
+    "finding-da558c475a6f03b0",
+    "finding-f4e47258a7e0e346",
+    "finding-f71ba54cee76cfe0",
+    "finding-f9e3cdf62dee35f2"
+  ],
+  "worsenedFindingIds": []
+}

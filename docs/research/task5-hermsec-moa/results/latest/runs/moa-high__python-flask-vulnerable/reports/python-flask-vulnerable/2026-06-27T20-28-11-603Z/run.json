@@ -1,0 +1,18 @@
+{
+  "durationMs": 425,
+  "fallback": {
+    "actualReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-28-11-603Z",
+    "configuredReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-vulnerable\\reports",
+    "used": false
+  },
+  "finishedAt": "2026-06-27T20:28:11.603Z",
+  "git": {
+    "branch": "main",
+    "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+    "dirty": true
+  },
+  "id": "scan-2f91f7970d246cc0",
+  "mode": "auto",
+  "modeLabel": "MoA-assisted inspection",
+  "startedAt": "2026-06-27T20:28:11.178Z"
+}

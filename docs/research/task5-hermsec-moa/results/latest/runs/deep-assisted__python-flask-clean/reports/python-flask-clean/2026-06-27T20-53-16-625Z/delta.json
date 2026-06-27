@@ -1,0 +1,12 @@
+{
+  "baseScanId": "scan-495e81916776635b",
+  "currentScanId": "scan-92137526aa713c55",
+  "fixedFindingIds": [],
+  "improvedFindingIds": [],
+  "newFindingIds": [
+    "finding-3aef6630933b3c74"
+  ],
+  "summaryText": "1 new, 0 fixed, 0 unchanged, 0 worsened, 0 improved",
+  "unchangedFindingIds": [],
+  "worsenedFindingIds": []
+}

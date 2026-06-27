@@ -1,0 +1,438 @@
+{
+  "agentMode": {
+    "acceptedFindingCount": 23,
+    "agents": [
+      {
+        "id": "scanner-stack",
+        "label": "Scanner Stack",
+        "provider": "hermsec-scanners",
+        "role": "scanner",
+        "status": "completed"
+      },
+      {
+        "id": "injection-and-execution",
+        "label": "Injection and execution specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 28615,
+        "status": "completed"
+      },
+      {
+        "id": "auth-and-data-flow",
+        "label": "Auth and data-flow specialist",
+        "model": "xiaomi/mimo-v2.5-20260422",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 1129,
+        "status": "completed"
+      },
+      {
+        "id": "secrets-and-config",
+        "label": "Secrets and config specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 34172,
+        "status": "completed"
+      },
+      {
+        "id": "database-and-storage",
+        "label": "Database and storage specialist",
+        "model": "xiaomi/mimo-v2.5-20260422",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 2935,
+        "status": "completed"
+      },
+      {
+        "id": "config-and-iac",
+        "label": "Config and IaC specialist",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "specialist",
+        "runtimeMs": 2589,
+        "status": "completed"
+      },
+      {
+        "id": "moa-false-positive-judge",
+        "label": "False-positive Judge",
+        "model": "deepseek-v4-pro",
+        "provider": "opencode-go",
+        "role": "judge",
+        "runtimeMs": 84158,
+        "status": "completed"
+      },
+      {
+        "id": "moa-aggregator",
+        "label": "Scanner + MoA Aggregator",
+        "model": "MiniMax-M3",
+        "provider": "opencode-go",
+        "role": "aggregator",
+        "runtimeMs": 34813,
+        "status": "completed"
+      }
+    ],
+    "agentsUsed": [
+      "scanner-stack",
+      "injection-and-execution",
+      "auth-and-data-flow",
+      "secrets-and-config",
+      "database-and-storage",
+      "config-and-iac",
+      "moa-false-positive-judge",
+      "moa-aggregator"
+    ],
+    "aggregator": {
+      "agentId": "moa-aggregator",
+      "label": "Scanner + MoA Aggregator",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go"
+    },
+    "aggregatorModel": "MiniMax-M3",
+    "candidateFindingCount": 33,
+    "findings": {
+      "finding-019805294a476f9b": {
+        "agentIds": [
+          "pmg"
+        ],
+        "judgeReason": "Known vulnerable lodash version confirmed by multiple scanners.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-31325d17858675c7": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "User-controlled input directly concatenated into SQL query string without parameterization.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-34a12328494fee7c": {
+        "agentIds": [
+          "pmg"
+        ],
+        "judgeReason": "npm audit advisory confirms express version is vulnerable.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-365058e7fa14adc3": {
+        "agentIds": [
+          "pmg"
+        ],
+        "judgeReason": "Unverified advisory; redacted GitHub link and broad version range, possibly duplicate of CVE-2021-23337.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-4eb6c10f5698be89": {
+        "agentIds": [
+          "pmg"
+        ],
+        "judgeReason": "npm audit lodash >=4.0.0 <=4.17.22 prototype pollution, matches known CVE.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-5b5723782c7a2b0e": {
+        "agentIds": [
+          "database-and-storage"
+        ],
+        "judgeReason": "Direct string concatenation in SQL query leads to SQL injection vulnerability.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-5d7c8a7ede9c55b6": {
+        "agentIds": [
+          "pmg"
+        ],
+        "judgeReason": "npm audit confirms express <4.19.2 open redirect vulnerability.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-62bc974b465e8211": {
+        "agentIds": [
+          "secrets-and-config"
+        ],
+        "judgeReason": "Debug endpoint publicly exposes a token hash using weak MD5; remains a security concern even if token is a test fixture.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-679f2139ed0715f4": {
+        "agentIds": [
+          "semgrep"
+        ],
+        "judgeReason": "Semgrep confirmed child_process exec with dynamic input on same line, valid CWE-78.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-7194eb872634eb85": {
+        "agentIds": [
+          "osv-scanner"
+        ],
+        "judgeReason": "OSV-scanner lodash@4.17.20 GHSA-29mw-wpgm-hmr9 ReDoS vulnerability confirmed.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-72f746cb8be1cd13": {
+        "agentIds": [
+          "osv-scanner"
+        ],
+        "judgeReason": "Known vulnerability CVE-2021-23337 in lodash@4.17.20 with confirmed advisory.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-79460a7a95ca1609": {
+        "agentIds": [
+          "osv-scanner"
+        ],
+        "judgeReason": "OSV-scanner identified express@4.18.2 affected by GHSA-rv95-896h-c2vc, CVE-2024-29041.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-875df24e9347bb86": {
+        "agentIds": [
+          "osv-scanner"
+        ],
+        "judgeReason": "OSV-scanner flags lodash@4.17.20 for GHSA-f23m-r3pf-42rh prototype pollution via array bypass.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-8f4d1fc6724ec637": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "Direct template literal SQL string interpolation, clear SQL injection CWE-89.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-91e695b1e33f2931": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "exec with dynamic user input from request query, concrete command injection CWE-78.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-968c8ccb0d1e10db": {
+        "agentIds": [
+          "pmg"
+        ],
+        "judgeReason": "Concrete advisory evidence from npm audit for lodash ReDoS vulnerability.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-9c6c61503e6a8d67": {
+        "agentIds": [
+          "osv-scanner"
+        ],
+        "judgeReason": "Unverified advisory; CVE-2026-4800 not yet assigned and GHSA may be incorrect, though lodash version is in affected range.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-b2174492de636519": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "Template literal with variables in HTML response; potential XSS, though variable source unknown.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-b80725495585908e": {
+        "agentIds": [
+          "osv-scanner"
+        ],
+        "judgeReason": "OSV advisory confirms express version is vulnerable to XSS in redirect.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-c0abf04fd738039a": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "Pinned version lodash@4.17.20 matches known vulnerable range.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-cd6c8512dbf655c8": {
+        "agentIds": [
+          "injection-and-execution"
+        ],
+        "judgeReason": "Model-generated command injection; needs verification.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-d42a93124fa707d4": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "User-controlled variable interpolated into shell command without validation or array arguments.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-da558c475a6f03b0": {
+        "agentIds": [
+          "pmg"
+        ],
+        "judgeReason": "npm audit lodash <=4.17.23 matches GHSA-f23m-r3pf-42rh prototype pollution.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-e0b89cf63f40137b": {
+        "agentIds": [
+          "injection-and-execution"
+        ],
+        "judgeReason": "Model-generated code shows command injection; possible hallucination, needs verification.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-e4b130132aca1a96": {
+        "agentIds": [
+          "injection-and-execution"
+        ],
+        "judgeReason": "Model-generated code shows SQL injection; needs verification in actual codebase.",
+        "judgeStatus": "needs-review",
+        "sourceLabel": "moa-specialist",
+        "sourceLabels": [
+          "moa-specialist"
+        ]
+      },
+      "finding-f4e47258a7e0e346": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "Clear unsanitized user input in HTML response at src/app.js:14.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-f71ba54cee76cfe0": {
+        "agentIds": [
+          "osv-scanner"
+        ],
+        "judgeReason": "OSV-scanner shows lodash@4.17.20 affected by GHSA-xxjr-mmjv-4gpg prototype pollution.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      },
+      "finding-f9e3cdf62dee35f2": {
+        "agentIds": [
+          "hermsec-heuristics"
+        ],
+        "judgeReason": "Direct interpolation of user-controlled query parameter into shell command without sanitization.",
+        "judgeStatus": "accepted",
+        "sourceLabel": "scanner-backed",
+        "sourceLabels": [
+          "scanner-backed"
+        ]
+      }
+    },
+    "mode": "scanner-moa-assisted",
+    "modeLabel": "Scanner + MoA inspection",
+    "needsHumanReviewCount": 5,
+    "rejectedFindingCount": 5,
+    "scanMode": "scanner-moa-assisted",
+    "totalAgentRuntimeMs": 188696
+  },
+  "generatedAt": "2026-06-27T20:37:12.685Z",
+  "report": {
+    "generatedWithModel": true,
+    "redactionApplied": false
+  },
+  "scanId": "scan-cd624d375988bf89",
+  "schemaVersion": "1.0",
+  "summary": {
+    "confirmedCves": 9,
+    "critical": 5,
+    "generatedWithModel": true,
+    "high": 10,
+    "info": 0,
+    "knownExploited": 0,
+    "low": 2,
+    "medium": 11,
+    "scannerFailures": 0,
+    "secrets": 0,
+    "total": 28
+  },
+  "target": {
+    "displayName": "node-express-vulnerable",
+    "kind": "local-path",
+    "value": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\node-express-vulnerable"
+  },
+  "workspaceId": "ws-cd7a61cac17ceb13",
+  "workspaceName": "node-express-vulnerable"
+}

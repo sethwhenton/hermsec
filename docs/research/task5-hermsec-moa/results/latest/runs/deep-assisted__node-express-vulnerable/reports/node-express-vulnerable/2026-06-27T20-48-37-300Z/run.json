@@ -1,0 +1,17 @@
+{
+  "durationMs": 14871,
+  "fallback": {
+    "actualReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-48-37-300Z",
+    "configuredReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-vulnerable\\reports",
+    "used": false
+  },
+  "finishedAt": "2026-06-27T20:48:37.300Z",
+  "git": {
+    "branch": "main",
+    "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+    "dirty": true
+  },
+  "id": "scan-56c86eec47faa79c",
+  "mode": "auto",
+  "startedAt": "2026-06-27T20:48:22.429Z"
+}

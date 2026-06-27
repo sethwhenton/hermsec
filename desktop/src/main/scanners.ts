@@ -209,6 +209,11 @@ function agentModelEnvForCli(settings: ReturnType<typeof readSettings>): Record<
     singleAgent?: AgentModelRoute;
     moa?: Record<string, AgentModelRoute>;
   } = {};
+  const panelSize = settings.agents?.moa?.panelSize;
+  if (panelSize === 3 || panelSize === 5 || panelSize === 7) {
+    env.HERMSEC_PRODUCT_AGENT_SPECIALIST_COUNT = String(Math.max(1, panelSize - 2));
+    env.HERMSEC_PRODUCT_AGENT_PANEL = panelSize >= 7 ? "high" : "low";
+  }
 
   const singleRoute = routeForSelection(settings, settings.agents?.singleAgent, env);
   if (singleRoute) {

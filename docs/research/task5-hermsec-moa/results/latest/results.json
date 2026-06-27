@@ -1,0 +1,2978 @@
+{
+  "schemaVersion": "1.0",
+  "generatedAt": "2026-06-27T20:20:30.489Z",
+  "executionMode": "actual",
+  "subset": "medium",
+  "outputRoot": "docs/research/task5-hermsec-moa/results/latest",
+  "provider": "opencode-go",
+  "modelPolicy": {
+    "provider": "opencode-go",
+    "providerLabel": "OpenCode Go",
+    "credentialEnv": "OPENCODE_GO_API_KEY",
+    "allowedModels": [
+      {
+        "id": "deepseek-v4-flash",
+        "origin": "non-US",
+        "role": "main specialist and deep-assisted triage model"
+      },
+      {
+        "id": "mimo-v2.5",
+        "origin": "non-US",
+        "role": "alternate specialist model for code/context diversity"
+      },
+      {
+        "id": "deepseek-v4-pro",
+        "origin": "non-US",
+        "role": "false-positive judge only"
+      },
+      {
+        "id": "minimax-m3",
+        "origin": "non-US",
+        "role": "final aggregator model"
+      }
+    ],
+    "excludedModels": [
+      {
+        "id": "gpt-*",
+        "reason": "US flagship family excluded by the experiment policy."
+      },
+      {
+        "id": "claude-*",
+        "reason": "US flagship family excluded by the experiment policy."
+      },
+      {
+        "id": "gemini-*",
+        "reason": "US flagship family excluded by the experiment policy."
+      },
+      {
+        "id": "grok-*",
+        "reason": "US flagship family excluded by the experiment policy."
+      },
+      {
+        "id": "llama-*",
+        "reason": "US flagship family excluded by the experiment policy."
+      }
+    ]
+  },
+  "credentialSource": ".env.local",
+  "git": {
+    "branch": "main",
+    "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+    "dirty": true
+  },
+  "warnings": [],
+  "matrix": [
+    {
+      "id": "deep-assisted",
+      "label": "Deep assisted",
+      "assistMode": "deep-assisted",
+      "modelTier": "efficient-default",
+      "provider": "opencode-go",
+      "defaultModel": "deepseek-v4-flash",
+      "routeModels": [
+        "deepseek-v4-flash"
+      ],
+      "scannerBacked": true
+    },
+    {
+      "id": "single-agent",
+      "label": "Single agent",
+      "assistMode": "single-agent",
+      "modelTier": "efficient-default",
+      "provider": "opencode-go",
+      "defaultModel": "deepseek-v4-flash",
+      "routeModels": [
+        "deepseek-v4-flash"
+      ],
+      "scannerBacked": false,
+      "routeConfig": {
+        "singleAgent": {
+          "provider": "opencode-go",
+          "model": "deepseek-v4-flash",
+          "apiKeyEnv": "OPENCODE_GO_API_KEY",
+          "allowRemoteProviders": true
+        }
+      },
+      "env": {
+        "HERMSEC_PRODUCT_AGENT_SPECIALIST_COUNT": "1",
+        "HERMSEC_PRODUCT_AGENT_PANEL": "single"
+      }
+    },
+    {
+      "id": "moa-low",
+      "label": "MoA low",
+      "assistMode": "moa-assisted",
+      "modelTier": "low",
+      "provider": "opencode-go",
+      "defaultModel": "deepseek-v4-flash",
+      "routeModels": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "scannerBacked": false,
+      "routeConfig": {
+        "moa": {
+          "injection-and-execution": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "auth-and-data-flow": {
+            "provider": "opencode-go",
+            "model": "mimo-v2.5",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "secrets-and-config": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "moa-false-positive-judge": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-pro",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "moa-aggregator": {
+            "provider": "opencode-go",
+            "model": "minimax-m3",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          }
+        }
+      },
+      "env": {
+        "HERMSEC_PRODUCT_AGENT_SPECIALIST_COUNT": "3",
+        "HERMSEC_PRODUCT_AGENT_PANEL": "low",
+        "HERMSEC_PRODUCT_AGENT_CANDIDATE_LIMIT": "60"
+      }
+    },
+    {
+      "id": "moa-high",
+      "label": "MoA high",
+      "assistMode": "moa-assisted",
+      "modelTier": "high",
+      "provider": "opencode-go",
+      "defaultModel": "deepseek-v4-flash",
+      "routeModels": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "scannerBacked": false,
+      "routeConfig": {
+        "moa": {
+          "injection-and-execution": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "auth-and-data-flow": {
+            "provider": "opencode-go",
+            "model": "mimo-v2.5",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "secrets-and-config": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "database-and-storage": {
+            "provider": "opencode-go",
+            "model": "mimo-v2.5",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "config-and-iac": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "moa-false-positive-judge": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-pro",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "moa-aggregator": {
+            "provider": "opencode-go",
+            "model": "minimax-m3",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          }
+        }
+      },
+      "env": {
+        "HERMSEC_PRODUCT_AGENT_SPECIALIST_COUNT": "5",
+        "HERMSEC_PRODUCT_AGENT_PANEL": "high",
+        "HERMSEC_PRODUCT_AGENT_CANDIDATE_LIMIT": "120"
+      }
+    },
+    {
+      "id": "scanner-moa-low",
+      "label": "Scanner+MoA low",
+      "assistMode": "scanner-moa-assisted",
+      "modelTier": "low",
+      "provider": "opencode-go",
+      "defaultModel": "deepseek-v4-flash",
+      "routeModels": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "scannerBacked": true,
+      "routeConfig": {
+        "moa": {
+          "injection-and-execution": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "auth-and-data-flow": {
+            "provider": "opencode-go",
+            "model": "mimo-v2.5",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "secrets-and-config": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "moa-false-positive-judge": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-pro",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "moa-aggregator": {
+            "provider": "opencode-go",
+            "model": "minimax-m3",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          }
+        }
+      },
+      "env": {
+        "HERMSEC_PRODUCT_AGENT_SPECIALIST_COUNT": "3",
+        "HERMSEC_PRODUCT_AGENT_PANEL": "low",
+        "HERMSEC_PRODUCT_AGENT_CANDIDATE_LIMIT": "60",
+        "HERMSEC_SCANNER_MOA_SCANNER_CANDIDATE_LIMIT": "80"
+      }
+    },
+    {
+      "id": "scanner-moa-high",
+      "label": "Scanner+MoA high",
+      "assistMode": "scanner-moa-assisted",
+      "modelTier": "high",
+      "provider": "opencode-go",
+      "defaultModel": "deepseek-v4-flash",
+      "routeModels": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "scannerBacked": true,
+      "routeConfig": {
+        "moa": {
+          "injection-and-execution": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "auth-and-data-flow": {
+            "provider": "opencode-go",
+            "model": "mimo-v2.5",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "secrets-and-config": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "database-and-storage": {
+            "provider": "opencode-go",
+            "model": "mimo-v2.5",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "config-and-iac": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "moa-false-positive-judge": {
+            "provider": "opencode-go",
+            "model": "deepseek-v4-pro",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          },
+          "moa-aggregator": {
+            "provider": "opencode-go",
+            "model": "minimax-m3",
+            "apiKeyEnv": "OPENCODE_GO_API_KEY",
+            "allowRemoteProviders": true
+          }
+        }
+      },
+      "env": {
+        "HERMSEC_PRODUCT_AGENT_SPECIALIST_COUNT": "5",
+        "HERMSEC_PRODUCT_AGENT_PANEL": "high",
+        "HERMSEC_PRODUCT_AGENT_CANDIDATE_LIMIT": "120",
+        "HERMSEC_SCANNER_MOA_SCANNER_CANDIDATE_LIMIT": "120"
+      }
+    }
+  ],
+  "publicBenchmarks": {
+    "schemaVersion": "1.0",
+    "generatedAt": "2026-06-27T20:20:30.489Z",
+    "note": "Public benchmark chunks are prepared for the publishable actual run. The controlled fixture matrix remains the local smoke/scoring harness until model-backed public-suite execution is enabled.",
+    "suites": [
+      {
+        "id": "owasp-benchmark-java",
+        "label": "OWASP BenchmarkJava",
+        "status": "available",
+        "source": "OWASP-Benchmark/BenchmarkJava",
+        "localPath": ".hermsec-benchmarks/BenchmarkJava",
+        "selection": "Up to 3 vulnerable and 2 safe cases per selected Java category.",
+        "selectedCaseCount": 45,
+        "categories": [
+          "sqli",
+          "xss",
+          "cmdi",
+          "pathtraver",
+          "ldapi",
+          "xpathi",
+          "crypto",
+          "hash",
+          "weakrand"
+        ],
+        "cases": [
+          {
+            "testName": "BenchmarkTest00008",
+            "category": "sqli",
+            "vulnerable": true,
+            "cwe": "CWE-89"
+          },
+          {
+            "testName": "BenchmarkTest00018",
+            "category": "sqli",
+            "vulnerable": true,
+            "cwe": "CWE-89"
+          },
+          {
+            "testName": "BenchmarkTest00024",
+            "category": "sqli",
+            "vulnerable": true,
+            "cwe": "CWE-89"
+          },
+          {
+            "testName": "BenchmarkTest00052",
+            "category": "sqli",
+            "vulnerable": false,
+            "cwe": "CWE-89"
+          },
+          {
+            "testName": "BenchmarkTest00104",
+            "category": "sqli",
+            "vulnerable": false,
+            "cwe": "CWE-89"
+          },
+          {
+            "testName": "BenchmarkTest00013",
+            "category": "xss",
+            "vulnerable": true,
+            "cwe": "CWE-79"
+          },
+          {
+            "testName": "BenchmarkTest00014",
+            "category": "xss",
+            "vulnerable": true,
+            "cwe": "CWE-79"
+          },
+          {
+            "testName": "BenchmarkTest00030",
+            "category": "xss",
+            "vulnerable": true,
+            "cwe": "CWE-79"
+          },
+          {
+            "testName": "BenchmarkTest00147",
+            "category": "xss",
+            "vulnerable": false,
+            "cwe": "CWE-79"
+          },
+          {
+            "testName": "BenchmarkTest00151",
+            "category": "xss",
+            "vulnerable": false,
+            "cwe": "CWE-79"
+          },
+          {
+            "testName": "BenchmarkTest00006",
+            "category": "cmdi",
+            "vulnerable": true,
+            "cwe": "CWE-78"
+          },
+          {
+            "testName": "BenchmarkTest00007",
+            "category": "cmdi",
+            "vulnerable": true,
+            "cwe": "CWE-78"
+          },
+          {
+            "testName": "BenchmarkTest00015",
+            "category": "cmdi",
+            "vulnerable": true,
+            "cwe": "CWE-78"
+          },
+          {
+            "testName": "BenchmarkTest00051",
+            "category": "cmdi",
+            "vulnerable": false,
+            "cwe": "CWE-78"
+          },
+          {
+            "testName": "BenchmarkTest00090",
+            "category": "cmdi",
+            "vulnerable": false,
+            "cwe": "CWE-78"
+          },
+          {
+            "testName": "BenchmarkTest00001",
+            "category": "pathtraver",
+            "vulnerable": true,
+            "cwe": "CWE-22"
+          },
+          {
+            "testName": "BenchmarkTest00002",
+            "category": "pathtraver",
+            "vulnerable": true,
+            "cwe": "CWE-22"
+          },
+          {
+            "testName": "BenchmarkTest00011",
+            "category": "pathtraver",
+            "vulnerable": true,
+            "cwe": "CWE-22"
+          },
+          {
+            "testName": "BenchmarkTest00063",
+            "category": "pathtraver",
+            "vulnerable": false,
+            "cwe": "CWE-22"
+          },
+          {
+            "testName": "BenchmarkTest00064",
+            "category": "pathtraver",
+            "vulnerable": false,
+            "cwe": "CWE-22"
+          },
+          {
+            "testName": "BenchmarkTest00012",
+            "category": "ldapi",
+            "vulnerable": true,
+            "cwe": "CWE-90"
+          },
+          {
+            "testName": "BenchmarkTest00021",
+            "category": "ldapi",
+            "vulnerable": true,
+            "cwe": "CWE-90"
+          },
+          {
+            "testName": "BenchmarkTest00044",
+            "category": "ldapi",
+            "vulnerable": true,
+            "cwe": "CWE-90"
+          },
+          {
+            "testName": "BenchmarkTest00138",
+            "category": "ldapi",
+            "vulnerable": false,
+            "cwe": "CWE-90"
+          },
+          {
+            "testName": "BenchmarkTest00139",
+            "category": "ldapi",
+            "vulnerable": false,
+            "cwe": "CWE-90"
+          },
+          {
+            "testName": "BenchmarkTest00207",
+            "category": "xpathi",
+            "vulnerable": true,
+            "cwe": "CWE-643"
+          },
+          {
+            "testName": "BenchmarkTest00442",
+            "category": "xpathi",
+            "vulnerable": true,
+            "cwe": "CWE-643"
+          },
+          {
+            "testName": "BenchmarkTest00607",
+            "category": "xpathi",
+            "vulnerable": true,
+            "cwe": "CWE-643"
+          },
+          {
+            "testName": "BenchmarkTest00116",
+            "category": "xpathi",
+            "vulnerable": false,
+            "cwe": "CWE-643"
+          },
+          {
+            "testName": "BenchmarkTest00117",
+            "category": "xpathi",
+            "vulnerable": false,
+            "cwe": "CWE-643"
+          },
+          {
+            "testName": "BenchmarkTest00005",
+            "category": "crypto",
+            "vulnerable": true,
+            "cwe": "CWE-327"
+          },
+          {
+            "testName": "BenchmarkTest00019",
+            "category": "crypto",
+            "vulnerable": true,
+            "cwe": "CWE-327"
+          },
+          {
+            "testName": "BenchmarkTest00020",
+            "category": "crypto",
+            "vulnerable": true,
+            "cwe": "CWE-327"
+          },
+          {
+            "testName": "BenchmarkTest00054",
+            "category": "crypto",
+            "vulnerable": false,
+            "cwe": "CWE-327"
+          },
+          {
+            "testName": "BenchmarkTest00058",
+            "category": "crypto",
+            "vulnerable": false,
+            "cwe": "CWE-327"
+          },
+          {
+            "testName": "BenchmarkTest00003",
+            "category": "hash",
+            "vulnerable": true,
+            "cwe": "CWE-328"
+          },
+          {
+            "testName": "BenchmarkTest00029",
+            "category": "hash",
+            "vulnerable": true,
+            "cwe": "CWE-328"
+          },
+          {
+            "testName": "BenchmarkTest00046",
+            "category": "hash",
+            "vulnerable": true,
+            "cwe": "CWE-328"
+          },
+          {
+            "testName": "BenchmarkTest00009",
+            "category": "hash",
+            "vulnerable": false,
+            "cwe": "CWE-328"
+          },
+          {
+            "testName": "BenchmarkTest00022",
+            "category": "hash",
+            "vulnerable": false,
+            "cwe": "CWE-328"
+          },
+          {
+            "testName": "BenchmarkTest00023",
+            "category": "weakrand",
+            "vulnerable": true,
+            "cwe": "CWE-330"
+          },
+          {
+            "testName": "BenchmarkTest00066",
+            "category": "weakrand",
+            "vulnerable": true,
+            "cwe": "CWE-330"
+          },
+          {
+            "testName": "BenchmarkTest00067",
+            "category": "weakrand",
+            "vulnerable": true,
+            "cwe": "CWE-330"
+          },
+          {
+            "testName": "BenchmarkTest00010",
+            "category": "weakrand",
+            "vulnerable": false,
+            "cwe": "CWE-330"
+          },
+          {
+            "testName": "BenchmarkTest00042",
+            "category": "weakrand",
+            "vulnerable": false,
+            "cwe": "CWE-330"
+          }
+        ]
+      },
+      {
+        "id": "openssf-cve-benchmark",
+        "label": "OpenSSF CVE Benchmark",
+        "status": "available",
+        "source": "ossf-cve-benchmark/ossf-cve-benchmark",
+        "localPath": ".hermsec-benchmarks/ossf-cve-benchmark",
+        "selection": "First 20 CVE descriptors from the shallow clone, preserving vulnerable repository metadata.",
+        "selectedCaseCount": 20,
+        "cases": [
+          {
+            "cve": "CVE-2016-1000229",
+            "repository": "https://github.com/linxiaowu66/swagger-ui.git",
+            "cwes": [
+              "CWE-079",
+              "CWE-116"
+            ],
+            "prePatchFile": "src/main/javascript/helpers/handlebars.js",
+            "prePatchLine": 68
+          },
+          {
+            "cve": "CVE-2016-10735",
+            "repository": "https://github.com/twbs/bootstrap.git",
+            "cwes": [
+              "CWE-079",
+              "CWE-116"
+            ],
+            "prePatchFile": "js/src/util.js",
+            "prePatchLine": 120
+          },
+          {
+            "cve": "CVE-2017-0931",
+            "repository": "https://github.com/guardian/html-janitor.git",
+            "cwes": [
+              "CWE-079",
+              "CWE-116"
+            ],
+            "prePatchFile": "src/html-janitor.js",
+            "prePatchLine": 43
+          },
+          {
+            "cve": "CVE-2017-1000006",
+            "repository": "https://github.com/plotly/plotly.js.git",
+            "cwes": [
+              "CWE-079",
+              "CWE-116",
+              "CWE-020"
+            ],
+            "prePatchFile": "src/lib/svg_text_utils.js",
+            "prePatchLine": 270
+          },
+          {
+            "cve": "CVE-2017-1000219",
+            "repository": "https://github.com/KyleRoss/windows-cpu.git",
+            "cwes": [
+              "CWE-078",
+              "CWE-088"
+            ],
+            "prePatchFile": "index.js",
+            "prePatchLine": 82
+          },
+          {
+            "cve": "CVE-2017-1000427",
+            "repository": "https://github.com/markedjs/marked.git",
+            "cwes": [
+              "CWE-020"
+            ],
+            "prePatchFile": "lib/marked.js",
+            "prePatchLine": 878
+          },
+          {
+            "cve": "CVE-2017-1001004",
+            "repository": "https://github.com/josdejong/typed-function.git",
+            "cwes": [
+              "CWE-094",
+              "CWE-079",
+              "CWE-116"
+            ],
+            "prePatchFile": "typed-function.js",
+            "prePatchLine": 1118
+          },
+          {
+            "cve": "CVE-2017-10910",
+            "repository": "https://github.com/mqttjs/MQTT.js.git",
+            "cwes": [
+              "CWE-770"
+            ],
+            "prePatchFile": "lib/client.js",
+            "prePatchLine": 267
+          },
+          {
+            "cve": "CVE-2017-15010",
+            "repository": "https://github.com/salesforce/tough-cookie.git",
+            "cwes": [
+              "CWE-730",
+              "CWE-400"
+            ],
+            "prePatchFile": "lib/cookie.js",
+            "prePatchLine": 61
+          },
+          {
+            "cve": "CVE-2017-16003",
+            "repository": "https://github.com/felixrieseberg/windows-build-tools.git",
+            "cwes": [
+              "CWE-829"
+            ],
+            "prePatchFile": "src/download.js",
+            "prePatchLine": 38
+          },
+          {
+            "cve": "CVE-2017-16006",
+            "repository": "https://github.com/jonschlinkert/remarkable.git",
+            "cwes": [
+              "CWE-020"
+            ],
+            "prePatchFile": "lib/parser_inline.js",
+            "prePatchLine": 151
+          },
+          {
+            "cve": "CVE-2017-16011",
+            "repository": "https://github.com/jquery/jquery.git",
+            "cwes": [
+              "CWE-79"
+            ],
+            "prePatchFile": "src/core.js",
+            "prePatchLine": 52
+          },
+          {
+            "cve": "CVE-2017-16014",
+            "repository": "https://github.com/http-party/node-http-proxy.git",
+            "cwes": [
+              "CWE-730"
+            ],
+            "prePatchFile": "lib/node-http-proxy.js",
+            "prePatchLine": 225
+          },
+          {
+            "cve": "CVE-2017-16018",
+            "repository": "https://github.com/restify/node-restify.git",
+            "cwes": [
+              "CWE-079",
+              "CWE-116"
+            ],
+            "prePatchFile": "lib/server.js",
+            "prePatchLine": 202
+          },
+          {
+            "cve": "CVE-2017-16023",
+            "repository": "https://github.com/sindresorhus/decamelize.git",
+            "cwes": [
+              "CWE-730",
+              "CWE-400"
+            ],
+            "prePatchFile": "index.js",
+            "prePatchLine": 8
+          },
+          {
+            "cve": "CVE-2017-16026",
+            "repository": "https://github.com/request/request.git",
+            "cwes": [
+              "CWE-770"
+            ],
+            "prePatchFile": "lib/multipart.js",
+            "prePatchLine": 71
+          },
+          {
+            "cve": "CVE-2017-16028",
+            "repository": "https://github.com/jonschlinkert/randomatic.git",
+            "cwes": [
+              "CWE-338"
+            ],
+            "prePatchFile": "index.js",
+            "prePatchLine": 81
+          },
+          {
+            "cve": "CVE-2017-16029",
+            "repository": "https://github.com/henrytseng/hostr.git",
+            "cwes": [
+              "CWE-022",
+              "CWE-023",
+              "CWE-036",
+              "CWE-073",
+              "CWE-099"
+            ],
+            "prePatchFile": "lib/routes/statics.js",
+            "prePatchLine": 31
+          },
+          {
+            "cve": "CVE-2017-16030",
+            "repository": "https://github.com/3rd-Eden/useragent.git",
+            "cwes": [
+              "CWE-730",
+              "CWE-400"
+            ],
+            "prePatchFile": "lib/regexps.js",
+            "prePatchLine": 887
+          },
+          {
+            "cve": "CVE-2017-16031",
+            "repository": "https://github.com/socketio/socket.io.git",
+            "cwes": [
+              "CWE-338"
+            ],
+            "prePatchFile": "lib/manager.js",
+            "prePatchLine": 755
+          }
+        ]
+      },
+      {
+        "id": "castle-c250",
+        "label": "CASTLE C250",
+        "status": "available",
+        "source": "CASTLE-Benchmark/CASTLE-Benchmark",
+        "localPath": ".hermsec-benchmarks/CASTLE-Benchmark",
+        "selection": "Up to 2 vulnerable and 1 safe C program per selected CWE.",
+        "selectedCaseCount": 27,
+        "cwes": [
+          "CWE-22",
+          "CWE-78",
+          "CWE-89",
+          "CWE-125",
+          "CWE-134",
+          "CWE-190",
+          "CWE-327",
+          "CWE-416",
+          "CWE-787"
+        ],
+        "cases": [
+          {
+            "name": "CASTLE-22-1.c",
+            "vulnerable": true,
+            "cwe": "CWE-22",
+            "lines": [
+              16,
+              19
+            ],
+            "description": "Improper limitation of a pathname leads to path traversal vulnerability."
+          },
+          {
+            "name": "CASTLE-22-2.c",
+            "vulnerable": true,
+            "cwe": "CWE-22",
+            "lines": [
+              8,
+              20,
+              29
+            ],
+            "description": "Unimplemented validation of a pathname leads to path traversal vulnerability."
+          },
+          {
+            "name": "CASTLE-22-7.c",
+            "vulnerable": false,
+            "cwe": "CWE-22",
+            "lines": [],
+            "description": "Proper path validation prevents path traversal."
+          },
+          {
+            "name": "CASTLE-78-1.c",
+            "vulnerable": true,
+            "cwe": "CWE-78",
+            "lines": [
+              13,
+              16
+            ],
+            "description": "Missing input validation of fgets input allows for OS command injection"
+          },
+          {
+            "name": "CASTLE-78-2.c",
+            "vulnerable": true,
+            "cwe": "CWE-78",
+            "lines": [
+              9,
+              10
+            ],
+            "description": "Missing input validation of command line arguments allows for OS command injection"
+          },
+          {
+            "name": "CASTLE-78-7.c",
+            "vulnerable": false,
+            "cwe": "CWE-78",
+            "lines": [],
+            "description": "OS command input is verified sufficiently."
+          },
+          {
+            "name": "CASTLE-89-1.c",
+            "vulnerable": true,
+            "cwe": "CWE-89",
+            "lines": [
+              25,
+              28
+            ],
+            "description": "Missing input validation of fgets input allows for SQL injection."
+          },
+          {
+            "name": "CASTLE-89-2.c",
+            "vulnerable": true,
+            "cwe": "CWE-89",
+            "lines": [
+              40,
+              43
+            ],
+            "description": "Insufficient inpit validation of fgets input allows for SQL injection."
+          },
+          {
+            "name": "CASTLE-89-7.c",
+            "vulnerable": false,
+            "cwe": "CWE-89",
+            "lines": [],
+            "description": "Static SQL query is not vulnerable to injection."
+          },
+          {
+            "name": "CASTLE-125-1.c",
+            "vulnerable": true,
+            "cwe": "CWE-125",
+            "lines": [
+              7
+            ],
+            "description": "Upper array boundary error violation."
+          },
+          {
+            "name": "CASTLE-125-2.c",
+            "vulnerable": true,
+            "cwe": "CWE-125",
+            "lines": [
+              8
+            ],
+            "description": "Upper array boundary error violation."
+          },
+          {
+            "name": "CASTLE-125-7.c",
+            "vulnerable": false,
+            "cwe": "CWE-125",
+            "lines": [],
+            "description": "No read out of bounds in any iterations."
+          },
+          {
+            "name": "CASTLE-134-1.c",
+            "vulnerable": true,
+            "cwe": "CWE-134",
+            "lines": [
+              9
+            ],
+            "description": "The format string is sourced fron an input without sanitization"
+          },
+          {
+            "name": "CASTLE-134-2.c",
+            "vulnerable": true,
+            "cwe": "CWE-134",
+            "lines": [
+              9
+            ],
+            "description": "The format string is sourced fron an input without sanitization"
+          },
+          {
+            "name": "CASTLE-134-7.c",
+            "vulnerable": false,
+            "cwe": "CWE-134",
+            "lines": [],
+            "description": "The format string not sourced from outside the program"
+          },
+          {
+            "name": "CASTLE-190-1.c",
+            "vulnerable": true,
+            "cwe": "CWE-190",
+            "lines": [
+              6
+            ],
+            "description": "Arithmetic overflow in multiplication."
+          },
+          {
+            "name": "CASTLE-190-2.c",
+            "vulnerable": true,
+            "cwe": "CWE-190",
+            "lines": [
+              6
+            ],
+            "description": "Integer overflow in atoi function."
+          },
+          {
+            "name": "CASTLE-190-7.c",
+            "vulnerable": false,
+            "cwe": "CWE-190",
+            "lines": [],
+            "description": "There are no arithmetic overflows in any of these functions."
+          },
+          {
+            "name": "CASTLE-327-1.c",
+            "vulnerable": true,
+            "cwe": "CWE-327",
+            "lines": [
+              24,
+              32,
+              38,
+              44
+            ],
+            "description": "Password is hashed with MD5."
+          },
+          {
+            "name": "CASTLE-327-2.c",
+            "vulnerable": true,
+            "cwe": "CWE-327",
+            "lines": [
+              11,
+              26,
+              34,
+              40,
+              46
+            ],
+            "description": "Password is hashed with MD5 missdirected by function names."
+          },
+          {
+            "name": "CASTLE-327-7.c",
+            "vulnerable": false,
+            "cwe": "CWE-327",
+            "lines": [],
+            "description": "Password is hashed with SHA256."
+          },
+          {
+            "name": "CASTLE-416-1.c",
+            "vulnerable": true,
+            "cwe": "CWE-416",
+            "lines": [
+              20
+            ],
+            "description": "Memory is used after being freed"
+          },
+          {
+            "name": "CASTLE-416-2.c",
+            "vulnerable": true,
+            "cwe": "CWE-416",
+            "lines": [
+              10,
+              31,
+              32
+            ],
+            "description": "Memory is used after being freed"
+          },
+          {
+            "name": "CASTLE-416-7.c",
+            "vulnerable": false,
+            "cwe": "CWE-416",
+            "lines": [],
+            "description": "Both allocated memory chunks are freed, and not used after free"
+          },
+          {
+            "name": "CASTLE-787-1.c",
+            "vulnerable": true,
+            "cwe": "CWE-787",
+            "lines": [
+              7
+            ],
+            "description": "Buffer overflow in scanf function."
+          },
+          {
+            "name": "CASTLE-787-2.c",
+            "vulnerable": true,
+            "cwe": "CWE-787",
+            "lines": [
+              7
+            ],
+            "description": "Buffer overflow in strcpy function."
+          },
+          {
+            "name": "CASTLE-787-7.c",
+            "vulnerable": false,
+            "cwe": "CWE-787",
+            "lines": [],
+            "description": "Not vulnerable, since memory allocation is properly null-checked."
+          }
+        ]
+      },
+      {
+        "id": "nist-juliet-subset",
+        "label": "NIST Juliet subset",
+        "status": "missing",
+        "localPath": ".hermsec-benchmarks/Juliet",
+        "selectedCaseCount": 0,
+        "cases": [],
+        "source": "NIST Juliet 1.1 C/C++ and Java",
+        "selection": "Not downloaded locally; keep as planned expansion unless the suite is added to the ignored benchmark cache."
+      }
+    ]
+  },
+  "summary": [
+    {
+      "scenarioId": "deep-assisted",
+      "scenarioLabel": "Deep assisted",
+      "executionMode": "actual",
+      "publishable": true,
+      "assistMode": "deep-assisted",
+      "modelTier": "efficient-default",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash"
+      ],
+      "runs": 4,
+      "okRuns": 4,
+      "expected": 12,
+      "actual": 89,
+      "truePositive": 6,
+      "falsePositive": 83,
+      "falseNegative": 6,
+      "precision": 0.0674,
+      "recall": 0.5,
+      "f1": 0.1188,
+      "durationMs": 301291
+    },
+    {
+      "scenarioId": "single-agent",
+      "scenarioLabel": "Single agent",
+      "executionMode": "actual",
+      "publishable": true,
+      "assistMode": "single-agent",
+      "modelTier": "efficient-default",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash"
+      ],
+      "runs": 4,
+      "okRuns": 4,
+      "expected": 12,
+      "actual": 3,
+      "truePositive": 2,
+      "falsePositive": 1,
+      "falseNegative": 10,
+      "precision": 0.6667,
+      "recall": 0.1667,
+      "f1": 0.2667,
+      "durationMs": 32315
+    },
+    {
+      "scenarioId": "moa-low",
+      "scenarioLabel": "MoA low",
+      "executionMode": "actual",
+      "publishable": true,
+      "assistMode": "moa-assisted",
+      "modelTier": "low",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "runs": 4,
+      "okRuns": 4,
+      "expected": 12,
+      "actual": 9,
+      "truePositive": 5,
+      "falsePositive": 4,
+      "falseNegative": 7,
+      "precision": 0.5556,
+      "recall": 0.4167,
+      "f1": 0.4762,
+      "durationMs": 189451
+    },
+    {
+      "scenarioId": "moa-high",
+      "scenarioLabel": "MoA high",
+      "executionMode": "actual",
+      "publishable": true,
+      "assistMode": "moa-assisted",
+      "modelTier": "high",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "runs": 4,
+      "okRuns": 4,
+      "expected": 12,
+      "actual": 6,
+      "truePositive": 3,
+      "falsePositive": 3,
+      "falseNegative": 9,
+      "precision": 0.5,
+      "recall": 0.25,
+      "f1": 0.3333,
+      "durationMs": 181284
+    },
+    {
+      "scenarioId": "scanner-moa-low",
+      "scenarioLabel": "Scanner+MoA low",
+      "executionMode": "actual",
+      "publishable": true,
+      "assistMode": "scanner-moa-assisted",
+      "modelTier": "low",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "runs": 4,
+      "okRuns": 4,
+      "expected": 12,
+      "actual": 74,
+      "truePositive": 6,
+      "falsePositive": 68,
+      "falseNegative": 6,
+      "precision": 0.0811,
+      "recall": 0.5,
+      "f1": 0.1395,
+      "durationMs": 456236
+    },
+    {
+      "scenarioId": "scanner-moa-high",
+      "scenarioLabel": "Scanner+MoA high",
+      "executionMode": "actual",
+      "publishable": true,
+      "assistMode": "scanner-moa-assisted",
+      "modelTier": "high",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "runs": 4,
+      "okRuns": 4,
+      "expected": 12,
+      "actual": 70,
+      "truePositive": 7,
+      "falsePositive": 63,
+      "falseNegative": 5,
+      "precision": 0.1,
+      "recall": 0.5833,
+      "f1": 0.1707,
+      "durationMs": 559252
+    }
+  ],
+  "runs": [
+    {
+      "runId": "deep-assisted__node-express-vulnerable",
+      "source": "actual",
+      "scenarioId": "deep-assisted",
+      "scenarioLabel": "Deep assisted",
+      "assistMode": "deep-assisted",
+      "modelTier": "efficient-default",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash"
+      ],
+      "fixtureId": "node-express-vulnerable",
+      "fixturePath": "tests/fixtures/repos/node-express-vulnerable",
+      "expectedFindingCount": 6,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 86641,
+      "stdoutBytes": 38367,
+      "stderrBytes": 12598,
+      "metrics": {
+        "totalExpected": 6,
+        "totalActual": 25,
+        "truePositive": 4,
+        "falsePositive": 21,
+        "falseNegative": 2,
+        "precision": 0.16,
+        "recall": 0.6667,
+        "f1": 0.2581,
+        "matches": [
+          {
+            "expectedId": "node-command-echo",
+            "findingId": "finding-3b3d25cd2cad6275",
+            "score": 85
+          },
+          {
+            "expectedId": "node-fake-secret",
+            "findingId": "finding-44a1a2191ecca7b5",
+            "score": 85
+          },
+          {
+            "expectedId": "node-reflected-html",
+            "findingId": "finding-b2174492de636519",
+            "score": 85
+          },
+          {
+            "expectedId": "node-sqli-user-search",
+            "findingId": "finding-8f4d1fc6724ec637",
+            "score": 85
+          }
+        ],
+        "unmatchedExpected": [
+          "node-path-read",
+          "node-weak-md5"
+        ],
+        "unmatchedActual": [
+          "finding-f9e3cdf62dee35f2",
+          "finding-fc661b2848ecca41",
+          "finding-72f746cb8be1cd13",
+          "finding-019805294a476f9b",
+          "finding-c0abf04fd738039a",
+          "finding-9c6c61503e6a8d67",
+          "finding-365058e7fa14adc3",
+          "finding-31325d17858675c7",
+          "finding-d42a93124fa707d4",
+          "finding-91e695b1e33f2931",
+          "finding-79460a7a95ca1609",
+          "finding-5d7c8a7ede9c55b6",
+          "finding-f71ba54cee76cfe0",
+          "finding-4eb6c10f5698be89",
+          "finding-875df24e9347bb86",
+          "finding-da558c475a6f03b0",
+          "finding-7194eb872634eb85",
+          "finding-968c8ccb0d1e10db",
+          "finding-f4e47258a7e0e346",
+          "finding-b80725495585908e",
+          "finding-34a12328494fee7c"
+        ],
+        "ignoredActual": []
+      },
+      "findingCount": 25,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-48-37-300Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-48-37-300Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-48-37-300Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-48-37-300Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-48-37-300Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-48-37-300Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-48-37-300Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/retry-deep-assisted/runs/deep-assisted__node-express-vulnerable/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/retry-deep-assisted/runs/deep-assisted__node-express-vulnerable/stderr.log"
+      },
+      "stderrTail": "emaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:48:37.302Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Deep model triage\",\"status\":\"completed\",\"message\":\"Model phase used fallback summary: unsupported-model-output\",\"findingCount\":25,\"durationMs\":70986,\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:49:48.288Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"running\",\"message\":\"Cross-checking dependency inventory and scanner identifiers against KEV/CVE advisory feeds.\",\"findingCount\":25,\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:49:48.288Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"completed\",\"message\":\"Matched 9 advisory item(s) against 4 inventoried package(s).\",\"findingCount\":9,\"durationMs\":214,\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:49:48.502Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:49:48.502Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":58,\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:49:48.560Z\"}\n"
+    },
+    {
+      "runId": "deep-assisted__node-express-clean",
+      "source": "actual",
+      "scenarioId": "deep-assisted",
+      "scenarioLabel": "Deep assisted",
+      "assistMode": "deep-assisted",
+      "modelTier": "efficient-default",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash"
+      ],
+      "fixtureId": "node-express-clean",
+      "fixturePath": "tests/fixtures/repos/node-express-clean",
+      "expectedFindingCount": 0,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 35287,
+      "stdoutBytes": 20052,
+      "stderrBytes": 12585,
+      "metrics": {
+        "totalExpected": 0,
+        "totalActual": 6,
+        "truePositive": 0,
+        "falsePositive": 6,
+        "falseNegative": 0,
+        "precision": 0,
+        "recall": 1,
+        "f1": 0,
+        "matches": [],
+        "unmatchedExpected": [],
+        "unmatchedActual": [
+          "finding-79460a7a95ca1609",
+          "finding-5d7c8a7ede9c55b6",
+          "finding-7aeee916077462b4",
+          "finding-b1bdc12ef0d825ab",
+          "finding-b80725495585908e",
+          "finding-34a12328494fee7c"
+        ],
+        "ignoredActual": []
+      },
+      "findingCount": 6,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-50-00-286Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-50-00-286Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-50-00-286Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-50-00-286Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-50-00-286Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-50-00-286Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-50-00-286Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/retry-deep-assisted/runs/deep-assisted__node-express-clean/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/retry-deep-assisted/runs/deep-assisted__node-express-clean/stderr.log"
+      },
+      "stderrTail": "ted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:50:00.287Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Deep model triage\",\"status\":\"completed\",\"message\":\"Model phase completed using scanner-backed evidence.\",\"findingCount\":6,\"durationMs\":23443,\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:50:23.730Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"running\",\"message\":\"Cross-checking dependency inventory and scanner identifiers against KEV/CVE advisory feeds.\",\"findingCount\":6,\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:50:23.731Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"completed\",\"message\":\"Matched 7 advisory item(s) against 3 inventoried package(s).\",\"findingCount\":7,\"durationMs\":101,\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:50:23.832Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:50:23.832Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":49,\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:50:23.881Z\"}\n"
+    },
+    {
+      "runId": "deep-assisted__python-flask-vulnerable",
+      "source": "actual",
+      "scenarioId": "deep-assisted",
+      "scenarioLabel": "Deep assisted",
+      "assistMode": "deep-assisted",
+      "modelTier": "efficient-default",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash"
+      ],
+      "fixtureId": "python-flask-vulnerable",
+      "fixturePath": "tests/fixtures/repos/python-flask-vulnerable",
+      "expectedFindingCount": 6,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 159167,
+      "stdoutBytes": 79726,
+      "stderrBytes": 12477,
+      "metrics": {
+        "totalExpected": 6,
+        "totalActual": 57,
+        "truePositive": 2,
+        "falsePositive": 55,
+        "falseNegative": 4,
+        "precision": 0.0351,
+        "recall": 0.3333,
+        "f1": 0.0635,
+        "matches": [
+          {
+            "expectedId": "python-command-shell",
+            "findingId": "finding-6388f1397f3973e2",
+            "score": 85
+          },
+          {
+            "expectedId": "python-fake-secret",
+            "findingId": "finding-ca505fe42dd31371",
+            "score": 85
+          }
+        ],
+        "unmatchedExpected": [
+          "python-sqli-user-search",
+          "python-path-read",
+          "python-template-string",
+          "python-weak-md5"
+        ],
+        "unmatchedActual": [
+          "finding-ab0a01e020936a2a",
+          "finding-ad5e6ba69c40063c",
+          "finding-f49b9ad6002f4bab",
+          "finding-59e543d0f5b92291",
+          "finding-161214d1eed442bc",
+          "finding-6286deb685eb0215",
+          "finding-b58346c3abe32f02",
+          "finding-4d631eba5901a15a",
+          "finding-eebedbc6bf643f8e",
+          "finding-df5ff9f08d375620",
+          "finding-76e0ee6b7af74773",
+          "finding-2a662179f20fedac",
+          "finding-92e2ec5bf5cdeb83",
+          "finding-9fdafd73600719c0",
+          "finding-b6e9847405c68393",
+          "finding-4940470cf86bbc97",
+          "finding-d88e78175b200595",
+          "finding-991a30f91ac44426",
+          "finding-9ec04da14758c908",
+          "finding-d02e3f648fb7691a",
+          "finding-61f54bb2a229b9c4",
+          "finding-1fb5546ad4cdca07",
+          "finding-30d7af736c067ecf",
+          "finding-5759826843b92b57",
+          "finding-2da8bf57c3beedf7",
+          "finding-a2713a54df22bf82",
+          "finding-6746dbbd8d8e1e3b",
+          "finding-d2861bc2a152161b",
+          "finding-c44681bed92945fd",
+          "finding-89c7f141b309a9a2",
+          "finding-79648cd2f4b0451f",
+          "finding-6e29a11e0cc9821d",
+          "finding-553fcfa7d373c22c",
+          "finding-f9c90720b2faf255",
+          "finding-0f595fbef013f4d6",
+          "finding-faec3c5d94108ef8",
+          "finding-fec7393f7f075bd2",
+          "finding-26947ee73d7c0fdb",
+          "finding-e7b59d1e102f391e",
+          "finding-b1598f3e03f47f39",
+          "finding-0956da05f9392f0f",
+          "finding-b3175d6a9a805cfa",
+          "finding-bc03d5fd1eecc105",
+          "finding-253828979fbe8544",
+          "finding-386ddb0a19273456",
+          "finding-b5e43aa26de93fa1",
+          "finding-9f16648c1f4c217c",
+          "finding-321b0ac0e68726ad",
+          "finding-3bcfc9a2f9a8328e",
+          "finding-85c32c996af10430",
+          "finding-751bbd4e39232250",
+          "finding-4a99f17a39465ea4",
+          "finding-98aa64bed3cc35c3",
+          "finding-5d9c1ec8baa2d9fd",
+          "finding-87b41290a8289e67"
+        ],
+        "ignoredActual": []
+      },
+      "findingCount": 57,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-50-35-651Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-50-35-651Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-50-35-651Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-50-35-651Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-50-35-651Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-50-35-651Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-50-35-651Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/retry-deep-assisted/runs/deep-assisted__python-flask-vulnerable/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/retry-deep-assisted/runs/deep-assisted__python-flask-vulnerable/stderr.log"
+      },
+      "stderrTail": "Version\":\"1.0\",\"timestamp\":\"2026-06-27T20:50:35.657Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Deep model triage\",\"status\":\"completed\",\"message\":\"Model phase used fallback summary: unsupported-model-output\",\"findingCount\":57,\"durationMs\":146882,\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:53:02.539Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"running\",\"message\":\"Cross-checking dependency inventory and scanner identifiers against KEV/CVE advisory feeds.\",\"findingCount\":57,\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:53:02.539Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"completed\",\"message\":\"Matched 44 advisory item(s) against 2 inventoried package(s).\",\"findingCount\":44,\"durationMs\":424,\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:53:02.963Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:53:02.963Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":85,\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:53:03.048Z\"}\n"
+    },
+    {
+      "runId": "deep-assisted__python-flask-clean",
+      "source": "actual",
+      "scenarioId": "deep-assisted",
+      "scenarioLabel": "Deep assisted",
+      "assistMode": "deep-assisted",
+      "modelTier": "efficient-default",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash"
+      ],
+      "fixtureId": "python-flask-clean",
+      "fixturePath": "tests/fixtures/repos/python-flask-clean",
+      "expectedFindingCount": 0,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 20196,
+      "stdoutBytes": 15315,
+      "stderrBytes": 12462,
+      "metrics": {
+        "totalExpected": 0,
+        "totalActual": 1,
+        "truePositive": 0,
+        "falsePositive": 1,
+        "falseNegative": 0,
+        "precision": 0,
+        "recall": 1,
+        "f1": 0,
+        "matches": [],
+        "unmatchedExpected": [],
+        "unmatchedActual": [
+          "finding-3aef6630933b3c74"
+        ],
+        "ignoredActual": []
+      },
+      "findingCount": 1,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-53-16-625Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-53-16-625Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-53-16-625Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-53-16-625Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-53-16-625Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-53-16-625Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-53-16-625Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/retry-deep-assisted/runs/deep-assisted__python-flask-clean/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/retry-deep-assisted/runs/deep-assisted__python-flask-clean/stderr.log"
+      },
+      "stderrTail": "isted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:53:16.626Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Deep model triage\",\"status\":\"completed\",\"message\":\"Model phase completed using scanner-backed evidence.\",\"findingCount\":1,\"durationMs\":6514,\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:53:23.140Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"running\",\"message\":\"Cross-checking dependency inventory and scanner identifiers against KEV/CVE advisory feeds.\",\"findingCount\":1,\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:53:23.140Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"completed\",\"message\":\"Matched 2 advisory item(s) against 1 inventoried package(s).\",\"findingCount\":2,\"durationMs\":94,\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:53:23.234Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:53:23.234Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":39,\"assistMode\":\"deep-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:53:23.273Z\"}\n"
+    },
+    {
+      "runId": "single-agent__node-express-vulnerable",
+      "source": "actual",
+      "scenarioId": "single-agent",
+      "scenarioLabel": "Single agent",
+      "assistMode": "single-agent",
+      "modelTier": "efficient-default",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash"
+      ],
+      "fixtureId": "node-express-vulnerable",
+      "fixturePath": "tests/fixtures/repos/node-express-vulnerable",
+      "expectedFindingCount": 6,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 14950,
+      "stdoutBytes": 5797,
+      "stderrBytes": 1821,
+      "metrics": {
+        "totalExpected": 6,
+        "totalActual": 2,
+        "truePositive": 1,
+        "falsePositive": 1,
+        "falseNegative": 5,
+        "precision": 0.5,
+        "recall": 0.1667,
+        "f1": 0.25,
+        "matches": [
+          {
+            "expectedId": "node-command-echo",
+            "findingId": "finding-72a366f9ced461de",
+            "score": 85
+          }
+        ],
+        "unmatchedExpected": [
+          "node-sqli-user-search",
+          "node-path-read",
+          "node-reflected-html",
+          "node-weak-md5",
+          "node-fake-secret"
+        ],
+        "unmatchedActual": [
+          "finding-29d66c8cfa313e07"
+        ],
+        "ignoredActual": []
+      },
+      "findingCount": 2,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-22-41-054Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-22-41-054Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-22-41-054Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-22-41-054Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-22-41-054Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-22-41-054Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-22-41-054Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/single-agent__node-express-vulnerable/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/single-agent__node-express-vulnerable/stderr.log"
+      },
+      "stderrTail": "aVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:22:40.613Z\"}\nHERMSEC_PROGRESS {\"id\":\"repository-discovery\",\"stage\":\"repository\",\"label\":\"Repository discovery\",\"status\":\"completed\",\"message\":\"Discovered 10 files (javascript:3, json:4, yaml:1, text:2), package managers: npm, lockfiles: 1, ignored folders: none.\",\"details\":[{\"label\":\"Files inspected\",\"status\":\"completed\",\"value\":\"10\"}],\"durationMs\":441,\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:22:41.054Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Single-agent inspection\",\"status\":\"running\",\"message\":\"Model is inspecting bounded repository snippets for additional product findings.\",\"findingCount\":0,\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:22:41.055Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Single-agent inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":2,\"durationMs\":14069,\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:22:55.124Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:22:55.125Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":44,\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:22:55.169Z\"}\n"
+    },
+    {
+      "runId": "single-agent__node-express-clean",
+      "source": "actual",
+      "scenarioId": "single-agent",
+      "scenarioLabel": "Single agent",
+      "assistMode": "single-agent",
+      "modelTier": "efficient-default",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash"
+      ],
+      "fixtureId": "node-express-clean",
+      "fixturePath": "tests/fixtures/repos/node-express-clean",
+      "expectedFindingCount": 0,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 5353,
+      "stdoutBytes": 3186,
+      "stderrBytes": 1818,
+      "metrics": {
+        "totalExpected": 0,
+        "totalActual": 0,
+        "truePositive": 0,
+        "falsePositive": 0,
+        "falseNegative": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "matches": [],
+        "unmatchedExpected": [],
+        "unmatchedActual": [],
+        "ignoredActual": []
+      },
+      "findingCount": 0,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-22-55-805Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-22-55-805Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-22-55-805Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-22-55-805Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-22-55-805Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-22-55-805Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-22-55-805Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/single-agent__node-express-clean/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/single-agent__node-express-clean/stderr.log"
+      },
+      "stderrTail": "hemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:22:55.455Z\"}\nHERMSEC_PROGRESS {\"id\":\"repository-discovery\",\"stage\":\"repository\",\"label\":\"Repository discovery\",\"status\":\"completed\",\"message\":\"Discovered 8 files (javascript:3, json:3, yaml:1, text:1), package managers: npm, lockfiles: 1, ignored folders: none.\",\"details\":[{\"label\":\"Files inspected\",\"status\":\"completed\",\"value\":\"8\"}],\"durationMs\":349,\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:22:55.804Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Single-agent inspection\",\"status\":\"running\",\"message\":\"Model is inspecting bounded repository snippets for additional product findings.\",\"findingCount\":0,\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:22:55.805Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Single-agent inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":0,\"durationMs\":4671,\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:23:00.476Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:23:00.476Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":45,\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:23:00.521Z\"}\n"
+    },
+    {
+      "runId": "single-agent__python-flask-vulnerable",
+      "source": "actual",
+      "scenarioId": "single-agent",
+      "scenarioLabel": "Single agent",
+      "assistMode": "single-agent",
+      "modelTier": "efficient-default",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash"
+      ],
+      "fixtureId": "python-flask-vulnerable",
+      "fixturePath": "tests/fixtures/repos/python-flask-vulnerable",
+      "expectedFindingCount": 6,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 8667,
+      "stdoutBytes": 4704,
+      "stderrBytes": 1814,
+      "metrics": {
+        "totalExpected": 6,
+        "totalActual": 1,
+        "truePositive": 1,
+        "falsePositive": 0,
+        "falseNegative": 5,
+        "precision": 1,
+        "recall": 0.1667,
+        "f1": 0.2857,
+        "matches": [
+          {
+            "expectedId": "python-command-shell",
+            "findingId": "finding-761c5db27c1b1c5a",
+            "score": 75
+          }
+        ],
+        "unmatchedExpected": [
+          "python-sqli-user-search",
+          "python-path-read",
+          "python-template-string",
+          "python-weak-md5",
+          "python-fake-secret"
+        ],
+        "unmatchedActual": [],
+        "ignoredActual": []
+      },
+      "findingCount": 1,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-23-01-336Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-23-01-336Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-23-01-336Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-23-01-336Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-23-01-336Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-23-01-336Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-23-01-336Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/single-agent__python-flask-vulnerable/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/single-agent__python-flask-vulnerable/stderr.log"
+      },
+      "stderrTail": ",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:23:00.949Z\"}\nHERMSEC_PROGRESS {\"id\":\"repository-discovery\",\"stage\":\"repository\",\"label\":\"Repository discovery\",\"status\":\"completed\",\"message\":\"Discovered 5 files (python:1, json:1, yaml:1, text:2), package managers: pip, lockfiles: 0, ignored folders: none.\",\"details\":[{\"label\":\"Files inspected\",\"status\":\"completed\",\"value\":\"5\"}],\"durationMs\":387,\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:23:01.336Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Single-agent inspection\",\"status\":\"running\",\"message\":\"Model is inspecting bounded repository snippets for additional product findings.\",\"findingCount\":0,\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:23:01.337Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Single-agent inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":1,\"durationMs\":7821,\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:23:09.158Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:23:09.158Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":42,\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:23:09.200Z\"}\n"
+    },
+    {
+      "runId": "single-agent__python-flask-clean",
+      "source": "actual",
+      "scenarioId": "single-agent",
+      "scenarioLabel": "Single agent",
+      "assistMode": "single-agent",
+      "modelTier": "efficient-default",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash"
+      ],
+      "fixtureId": "python-flask-clean",
+      "fixturePath": "tests/fixtures/repos/python-flask-clean",
+      "expectedFindingCount": 0,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 3345,
+      "stdoutBytes": 3182,
+      "stderrBytes": 1814,
+      "metrics": {
+        "totalExpected": 0,
+        "totalActual": 0,
+        "truePositive": 0,
+        "falsePositive": 0,
+        "falseNegative": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "matches": [],
+        "unmatchedExpected": [],
+        "unmatchedActual": [],
+        "ignoredActual": []
+      },
+      "findingCount": 0,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-23-09-839Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-23-09-839Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-23-09-839Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-23-09-839Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-23-09-839Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-23-09-839Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-23-09-839Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/single-agent__python-flask-clean/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/single-agent__python-flask-clean/stderr.log"
+      },
+      "stderrTail": ",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:23:09.542Z\"}\nHERMSEC_PROGRESS {\"id\":\"repository-discovery\",\"stage\":\"repository\",\"label\":\"Repository discovery\",\"status\":\"completed\",\"message\":\"Discovered 5 files (python:1, json:1, yaml:1, text:2), package managers: pip, lockfiles: 0, ignored folders: none.\",\"details\":[{\"label\":\"Files inspected\",\"status\":\"completed\",\"value\":\"5\"}],\"durationMs\":298,\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:23:09.839Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Single-agent inspection\",\"status\":\"running\",\"message\":\"Model is inspecting bounded repository snippets for additional product findings.\",\"findingCount\":0,\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:23:09.840Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Single-agent inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":0,\"durationMs\":2669,\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:23:12.509Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:23:12.509Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":43,\"assistMode\":\"single-agent\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:23:12.552Z\"}\n"
+    },
+    {
+      "runId": "moa-low__node-express-vulnerable",
+      "source": "actual",
+      "scenarioId": "moa-low",
+      "scenarioLabel": "MoA low",
+      "assistMode": "moa-assisted",
+      "modelTier": "low",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "fixtureId": "node-express-vulnerable",
+      "fixturePath": "tests/fixtures/repos/node-express-vulnerable",
+      "expectedFindingCount": 6,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 88229,
+      "stdoutBytes": 11532,
+      "stderrBytes": 1840,
+      "metrics": {
+        "totalExpected": 6,
+        "totalActual": 5,
+        "truePositive": 2,
+        "falsePositive": 3,
+        "falseNegative": 4,
+        "precision": 0.4,
+        "recall": 0.3333,
+        "f1": 0.3636,
+        "matches": [
+          {
+            "expectedId": "node-command-echo",
+            "findingId": "finding-b6f553d7fae5a7fb",
+            "score": 75
+          },
+          {
+            "expectedId": "node-sqli-user-search",
+            "findingId": "finding-f157dbe9f0e4e02f",
+            "score": 75
+          }
+        ],
+        "unmatchedExpected": [
+          "node-path-read",
+          "node-reflected-html",
+          "node-weak-md5",
+          "node-fake-secret"
+        ],
+        "unmatchedActual": [
+          "finding-20c4034da1e1dd7f",
+          "finding-8782c799b91eaafc",
+          "finding-a6a062da440676bf"
+        ],
+        "ignoredActual": []
+      },
+      "findingCount": 5,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-23-13-223Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-23-13-223Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-23-13-223Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-23-13-223Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-23-13-223Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-23-13-223Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-23-13-223Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/moa-low__node-express-vulnerable/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/moa-low__node-express-vulnerable/stderr.log"
+      },
+      "stderrTail": "mestamp\":\"2026-06-27T20:23:12.849Z\"}\nHERMSEC_PROGRESS {\"id\":\"repository-discovery\",\"stage\":\"repository\",\"label\":\"Repository discovery\",\"status\":\"completed\",\"message\":\"Discovered 10 files (javascript:3, json:4, yaml:1, text:2), package managers: npm, lockfiles: 1, ignored folders: none.\",\"details\":[{\"label\":\"Files inspected\",\"status\":\"completed\",\"value\":\"10\"}],\"durationMs\":374,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:23:13.223Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"MoA-assisted inspection\",\"status\":\"running\",\"message\":\"Model specialists, false-positive judge, and aggregator are inspecting bounded repository snippets.\",\"findingCount\":0,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:23:13.224Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"MoA-assisted inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":5,\"durationMs\":87514,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:24:40.738Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:24:40.738Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":46,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:24:40.784Z\"}\n"
+    },
+    {
+      "runId": "moa-low__node-express-clean",
+      "source": "actual",
+      "scenarioId": "moa-low",
+      "scenarioLabel": "MoA low",
+      "assistMode": "moa-assisted",
+      "modelTier": "low",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "fixtureId": "node-express-clean",
+      "fixturePath": "tests/fixtures/repos/node-express-clean",
+      "expectedFindingCount": 0,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 20664,
+      "stdoutBytes": 3147,
+      "stderrBytes": 1838,
+      "metrics": {
+        "totalExpected": 0,
+        "totalActual": 0,
+        "truePositive": 0,
+        "falsePositive": 0,
+        "falseNegative": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "matches": [],
+        "unmatchedExpected": [],
+        "unmatchedActual": [],
+        "ignoredActual": []
+      },
+      "findingCount": 0,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-24-41-507Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-24-41-507Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-24-41-507Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-24-41-507Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-24-41-507Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-24-41-507Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-24-41-507Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/moa-low__node-express-clean/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/moa-low__node-express-clean/stderr.log"
+      },
+      "stderrTail": "timestamp\":\"2026-06-27T20:24:41.117Z\"}\nHERMSEC_PROGRESS {\"id\":\"repository-discovery\",\"stage\":\"repository\",\"label\":\"Repository discovery\",\"status\":\"completed\",\"message\":\"Discovered 8 files (javascript:3, json:3, yaml:1, text:1), package managers: npm, lockfiles: 1, ignored folders: none.\",\"details\":[{\"label\":\"Files inspected\",\"status\":\"completed\",\"value\":\"8\"}],\"durationMs\":389,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:24:41.506Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"MoA-assisted inspection\",\"status\":\"running\",\"message\":\"Model specialists, false-positive judge, and aggregator are inspecting bounded repository snippets.\",\"findingCount\":0,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:24:41.508Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"MoA-assisted inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":0,\"durationMs\":19912,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:25:01.420Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:25:01.420Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":39,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:25:01.459Z\"}\n"
+    },
+    {
+      "runId": "moa-low__python-flask-vulnerable",
+      "source": "actual",
+      "scenarioId": "moa-low",
+      "scenarioLabel": "MoA low",
+      "assistMode": "moa-assisted",
+      "modelTier": "low",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "fixtureId": "python-flask-vulnerable",
+      "fixturePath": "tests/fixtures/repos/python-flask-vulnerable",
+      "expectedFindingCount": 6,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 63964,
+      "stdoutBytes": 9706,
+      "stderrBytes": 1834,
+      "metrics": {
+        "totalExpected": 6,
+        "totalActual": 4,
+        "truePositive": 3,
+        "falsePositive": 1,
+        "falseNegative": 3,
+        "precision": 0.75,
+        "recall": 0.5,
+        "f1": 0.6,
+        "matches": [
+          {
+            "expectedId": "python-fake-secret",
+            "findingId": "finding-faf13c772fcd015f",
+            "score": 85
+          },
+          {
+            "expectedId": "python-sqli-user-search",
+            "findingId": "finding-b7927239085e07f9",
+            "score": 85
+          },
+          {
+            "expectedId": "python-command-shell",
+            "findingId": "finding-b58b80fac121a4e9",
+            "score": 75
+          }
+        ],
+        "unmatchedExpected": [
+          "python-path-read",
+          "python-template-string",
+          "python-weak-md5"
+        ],
+        "unmatchedActual": [
+          "finding-49f0f6847d3c2d7e"
+        ],
+        "ignoredActual": []
+      },
+      "findingCount": 4,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-25-02-048Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-25-02-048Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-25-02-048Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-25-02-048Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-25-02-048Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-25-02-048Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-25-02-048Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/moa-low__python-flask-vulnerable/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/moa-low__python-flask-vulnerable/stderr.log"
+      },
+      "stderrTail": "0\",\"timestamp\":\"2026-06-27T20:25:01.778Z\"}\nHERMSEC_PROGRESS {\"id\":\"repository-discovery\",\"stage\":\"repository\",\"label\":\"Repository discovery\",\"status\":\"completed\",\"message\":\"Discovered 5 files (python:1, json:1, yaml:1, text:2), package managers: pip, lockfiles: 0, ignored folders: none.\",\"details\":[{\"label\":\"Files inspected\",\"status\":\"completed\",\"value\":\"5\"}],\"durationMs\":270,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:25:02.048Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"MoA-assisted inspection\",\"status\":\"running\",\"message\":\"Model specialists, false-positive judge, and aggregator are inspecting bounded repository snippets.\",\"findingCount\":0,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:25:02.048Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"MoA-assisted inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":4,\"durationMs\":63303,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:26:05.351Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:26:05.351Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":70,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:26:05.421Z\"}\n"
+    },
+    {
+      "runId": "moa-low__python-flask-clean",
+      "source": "actual",
+      "scenarioId": "moa-low",
+      "scenarioLabel": "MoA low",
+      "assistMode": "moa-assisted",
+      "modelTier": "low",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "fixtureId": "python-flask-clean",
+      "fixturePath": "tests/fixtures/repos/python-flask-clean",
+      "expectedFindingCount": 0,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 16594,
+      "stdoutBytes": 3143,
+      "stderrBytes": 1834,
+      "metrics": {
+        "totalExpected": 0,
+        "totalActual": 0,
+        "truePositive": 0,
+        "falsePositive": 0,
+        "falseNegative": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "matches": [],
+        "unmatchedExpected": [],
+        "unmatchedActual": [],
+        "ignoredActual": []
+      },
+      "findingCount": 0,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-26-06-038Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-26-06-038Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-26-06-038Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-26-06-038Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-26-06-038Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-26-06-038Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-26-06-038Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/moa-low__python-flask-clean/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/moa-low__python-flask-clean/stderr.log"
+      },
+      "stderrTail": "0\",\"timestamp\":\"2026-06-27T20:26:05.726Z\"}\nHERMSEC_PROGRESS {\"id\":\"repository-discovery\",\"stage\":\"repository\",\"label\":\"Repository discovery\",\"status\":\"completed\",\"message\":\"Discovered 5 files (python:1, json:1, yaml:1, text:2), package managers: pip, lockfiles: 0, ignored folders: none.\",\"details\":[{\"label\":\"Files inspected\",\"status\":\"completed\",\"value\":\"5\"}],\"durationMs\":312,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:26:06.038Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"MoA-assisted inspection\",\"status\":\"running\",\"message\":\"Model specialists, false-positive judge, and aggregator are inspecting bounded repository snippets.\",\"findingCount\":0,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:26:06.039Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"MoA-assisted inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":0,\"durationMs\":15915,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:26:21.954Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:26:21.954Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":69,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:26:22.023Z\"}\n"
+    },
+    {
+      "runId": "moa-high__node-express-vulnerable",
+      "source": "actual",
+      "scenarioId": "moa-high",
+      "scenarioLabel": "MoA high",
+      "assistMode": "moa-assisted",
+      "modelTier": "high",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "fixtureId": "node-express-vulnerable",
+      "fixturePath": "tests/fixtures/repos/node-express-vulnerable",
+      "expectedFindingCount": 6,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 88119,
+      "stdoutBytes": 8366,
+      "stderrBytes": 1840,
+      "metrics": {
+        "totalExpected": 6,
+        "totalActual": 3,
+        "truePositive": 1,
+        "falsePositive": 2,
+        "falseNegative": 5,
+        "precision": 0.3333,
+        "recall": 0.1667,
+        "f1": 0.2222,
+        "matches": [
+          {
+            "expectedId": "node-command-echo",
+            "findingId": "finding-39f04bd3c517ef56",
+            "score": 75
+          }
+        ],
+        "unmatchedExpected": [
+          "node-sqli-user-search",
+          "node-path-read",
+          "node-reflected-html",
+          "node-weak-md5",
+          "node-fake-secret"
+        ],
+        "unmatchedActual": [
+          "finding-8c7d0480c465ee36",
+          "finding-3e46f6e9757c74ac"
+        ],
+        "ignoredActual": []
+      },
+      "findingCount": 3,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-26-22-604Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-26-22-604Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-26-22-604Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-26-22-604Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-26-22-604Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-26-22-604Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-26-22-604Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/moa-high__node-express-vulnerable/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/moa-high__node-express-vulnerable/stderr.log"
+      },
+      "stderrTail": "mestamp\":\"2026-06-27T20:26:22.302Z\"}\nHERMSEC_PROGRESS {\"id\":\"repository-discovery\",\"stage\":\"repository\",\"label\":\"Repository discovery\",\"status\":\"completed\",\"message\":\"Discovered 10 files (javascript:3, json:4, yaml:1, text:2), package managers: npm, lockfiles: 1, ignored folders: none.\",\"details\":[{\"label\":\"Files inspected\",\"status\":\"completed\",\"value\":\"10\"}],\"durationMs\":302,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:26:22.604Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"MoA-assisted inspection\",\"status\":\"running\",\"message\":\"Model specialists, false-positive judge, and aggregator are inspecting bounded repository snippets.\",\"findingCount\":0,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:26:22.605Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"MoA-assisted inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":3,\"durationMs\":87509,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:27:50.114Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:27:50.114Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":39,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:27:50.153Z\"}\n"
+    },
+    {
+      "runId": "moa-high__node-express-clean",
+      "source": "actual",
+      "scenarioId": "moa-high",
+      "scenarioLabel": "MoA high",
+      "assistMode": "moa-assisted",
+      "modelTier": "high",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "fixtureId": "node-express-clean",
+      "fixturePath": "tests/fixtures/repos/node-express-clean",
+      "expectedFindingCount": 0,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 20669,
+      "stdoutBytes": 3155,
+      "stderrBytes": 1838,
+      "metrics": {
+        "totalExpected": 0,
+        "totalActual": 0,
+        "truePositive": 0,
+        "falsePositive": 0,
+        "falseNegative": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "matches": [],
+        "unmatchedExpected": [],
+        "unmatchedActual": [],
+        "ignoredActual": []
+      },
+      "findingCount": 0,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-27-50-758Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-27-50-758Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-27-50-758Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-27-50-758Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-27-50-758Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-27-50-758Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-27-50-758Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/moa-high__node-express-clean/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/moa-high__node-express-clean/stderr.log"
+      },
+      "stderrTail": "timestamp\":\"2026-06-27T20:27:50.468Z\"}\nHERMSEC_PROGRESS {\"id\":\"repository-discovery\",\"stage\":\"repository\",\"label\":\"Repository discovery\",\"status\":\"completed\",\"message\":\"Discovered 8 files (javascript:3, json:3, yaml:1, text:1), package managers: npm, lockfiles: 1, ignored folders: none.\",\"details\":[{\"label\":\"Files inspected\",\"status\":\"completed\",\"value\":\"8\"}],\"durationMs\":290,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:27:50.758Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"MoA-assisted inspection\",\"status\":\"running\",\"message\":\"Model specialists, false-positive judge, and aggregator are inspecting bounded repository snippets.\",\"findingCount\":0,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:27:50.759Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"MoA-assisted inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":0,\"durationMs\":20024,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:28:10.783Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:28:10.783Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":42,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:28:10.825Z\"}\n"
+    },
+    {
+      "runId": "moa-high__python-flask-vulnerable",
+      "source": "actual",
+      "scenarioId": "moa-high",
+      "scenarioLabel": "MoA high",
+      "assistMode": "moa-assisted",
+      "modelTier": "high",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "fixtureId": "python-flask-vulnerable",
+      "fixturePath": "tests/fixtures/repos/python-flask-vulnerable",
+      "expectedFindingCount": 6,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 54634,
+      "stdoutBytes": 8330,
+      "stderrBytes": 1834,
+      "metrics": {
+        "totalExpected": 6,
+        "totalActual": 3,
+        "truePositive": 2,
+        "falsePositive": 1,
+        "falseNegative": 4,
+        "precision": 0.6667,
+        "recall": 0.3333,
+        "f1": 0.4444,
+        "matches": [
+          {
+            "expectedId": "python-sqli-user-search",
+            "findingId": "finding-25db1d868d4fb04a",
+            "score": 85
+          },
+          {
+            "expectedId": "python-command-shell",
+            "findingId": "finding-8a66bd132f71f635",
+            "score": 75
+          }
+        ],
+        "unmatchedExpected": [
+          "python-path-read",
+          "python-template-string",
+          "python-weak-md5",
+          "python-fake-secret"
+        ],
+        "unmatchedActual": [
+          "finding-199a36715fca7297"
+        ],
+        "ignoredActual": []
+      },
+      "findingCount": 3,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-28-11-603Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-28-11-603Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-28-11-603Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-28-11-603Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-28-11-603Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-28-11-603Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-28-11-603Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/moa-high__python-flask-vulnerable/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/moa-high__python-flask-vulnerable/stderr.log"
+      },
+      "stderrTail": "0\",\"timestamp\":\"2026-06-27T20:28:11.182Z\"}\nHERMSEC_PROGRESS {\"id\":\"repository-discovery\",\"stage\":\"repository\",\"label\":\"Repository discovery\",\"status\":\"completed\",\"message\":\"Discovered 5 files (python:1, json:1, yaml:1, text:2), package managers: pip, lockfiles: 0, ignored folders: none.\",\"details\":[{\"label\":\"Files inspected\",\"status\":\"completed\",\"value\":\"5\"}],\"durationMs\":422,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:28:11.603Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"MoA-assisted inspection\",\"status\":\"running\",\"message\":\"Model specialists, false-positive judge, and aggregator are inspecting bounded repository snippets.\",\"findingCount\":0,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:28:11.604Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"MoA-assisted inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":3,\"durationMs\":53822,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:29:05.426Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:29:05.426Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":40,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:29:05.466Z\"}\n"
+    },
+    {
+      "runId": "moa-high__python-flask-clean",
+      "source": "actual",
+      "scenarioId": "moa-high",
+      "scenarioLabel": "MoA high",
+      "assistMode": "moa-assisted",
+      "modelTier": "high",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "fixtureId": "python-flask-clean",
+      "fixturePath": "tests/fixtures/repos/python-flask-clean",
+      "expectedFindingCount": 0,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 17862,
+      "stdoutBytes": 3151,
+      "stderrBytes": 1834,
+      "metrics": {
+        "totalExpected": 0,
+        "totalActual": 0,
+        "truePositive": 0,
+        "falsePositive": 0,
+        "falseNegative": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "matches": [],
+        "unmatchedExpected": [],
+        "unmatchedActual": [],
+        "ignoredActual": []
+      },
+      "findingCount": 0,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-29-06-020Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-29-06-020Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-29-06-020Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-29-06-020Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-29-06-020Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-29-06-020Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-high__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-29-06-020Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/moa-high__python-flask-clean/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/moa-high__python-flask-clean/stderr.log"
+      },
+      "stderrTail": "0\",\"timestamp\":\"2026-06-27T20:29:05.748Z\"}\nHERMSEC_PROGRESS {\"id\":\"repository-discovery\",\"stage\":\"repository\",\"label\":\"Repository discovery\",\"status\":\"completed\",\"message\":\"Discovered 5 files (python:1, json:1, yaml:1, text:2), package managers: pip, lockfiles: 0, ignored folders: none.\",\"details\":[{\"label\":\"Files inspected\",\"status\":\"completed\",\"value\":\"5\"}],\"durationMs\":272,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:29:06.020Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"MoA-assisted inspection\",\"status\":\"running\",\"message\":\"Model specialists, false-positive judge, and aggregator are inspecting bounded repository snippets.\",\"findingCount\":0,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:29:06.021Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"MoA-assisted inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":0,\"durationMs\":17278,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:29:23.299Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:29:23.299Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":37,\"assistMode\":\"moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:29:23.336Z\"}\n"
+    },
+    {
+      "runId": "scanner-moa-low__node-express-vulnerable",
+      "source": "actual",
+      "scenarioId": "scanner-moa-low",
+      "scenarioLabel": "Scanner+MoA low",
+      "assistMode": "scanner-moa-assisted",
+      "modelTier": "low",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "fixtureId": "node-express-vulnerable",
+      "fixturePath": "tests/fixtures/repos/node-express-vulnerable",
+      "expectedFindingCount": 6,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 171148,
+      "stdoutBytes": 64934,
+      "stderrBytes": 12926,
+      "metrics": {
+        "totalExpected": 6,
+        "totalActual": 30,
+        "truePositive": 4,
+        "falsePositive": 26,
+        "falseNegative": 2,
+        "precision": 0.1333,
+        "recall": 0.6667,
+        "f1": 0.2222,
+        "matches": [
+          {
+            "expectedId": "node-command-echo",
+            "findingId": "finding-21b766e03a7b636a",
+            "score": 85
+          },
+          {
+            "expectedId": "node-fake-secret",
+            "findingId": "finding-44a1a2191ecca7b5",
+            "score": 85
+          },
+          {
+            "expectedId": "node-reflected-html",
+            "findingId": "finding-b2174492de636519",
+            "score": 85
+          },
+          {
+            "expectedId": "node-sqli-user-search",
+            "findingId": "finding-48d696ae26d91c25",
+            "score": 85
+          }
+        ],
+        "unmatchedExpected": [
+          "node-path-read",
+          "node-weak-md5"
+        ],
+        "unmatchedActual": [
+          "finding-4abae600128673dd",
+          "finding-c34b7a632d435b5d",
+          "finding-f9e3cdf62dee35f2",
+          "finding-fc661b2848ecca41",
+          "finding-72f746cb8be1cd13",
+          "finding-019805294a476f9b",
+          "finding-c0abf04fd738039a",
+          "finding-9c6c61503e6a8d67",
+          "finding-365058e7fa14adc3",
+          "finding-a4df09b6c58e3f34",
+          "finding-31325d17858675c7",
+          "finding-d42a93124fa707d4",
+          "finding-7e7dd78c70ec8bd6",
+          "finding-8f4d1fc6724ec637",
+          "finding-91e695b1e33f2931",
+          "finding-79460a7a95ca1609",
+          "finding-5d7c8a7ede9c55b6",
+          "finding-f71ba54cee76cfe0",
+          "finding-4eb6c10f5698be89",
+          "finding-875df24e9347bb86",
+          "finding-da558c475a6f03b0",
+          "finding-7194eb872634eb85",
+          "finding-968c8ccb0d1e10db",
+          "finding-f4e47258a7e0e346",
+          "finding-b80725495585908e",
+          "finding-34a12328494fee7c"
+        ],
+        "ignoredActual": []
+      },
+      "findingCount": 30,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-29-35-342Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-29-35-342Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-29-35-342Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-29-35-342Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-29-35-342Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-29-35-342Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-29-35-342Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/scanner-moa-low__node-express-vulnerable/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/scanner-moa-low__node-express-vulnerable/stderr.log"
+      },
+      "stderrTail": ".343Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Scanner + MoA inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":30,\"durationMs\":158839,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:32:14.182Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"running\",\"message\":\"Cross-checking dependency inventory and scanner identifiers against KEV/CVE advisory feeds.\",\"findingCount\":30,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:32:14.182Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"completed\",\"message\":\"Matched 9 advisory item(s) against 4 inventoried package(s).\",\"findingCount\":9,\"durationMs\":239,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:32:14.421Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:32:14.421Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":58,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:32:14.479Z\"}\n"
+    },
+    {
+      "runId": "scanner-moa-low__node-express-clean",
+      "source": "actual",
+      "scenarioId": "scanner-moa-low",
+      "scenarioLabel": "Scanner+MoA low",
+      "assistMode": "scanner-moa-assisted",
+      "modelTier": "low",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "fixtureId": "node-express-clean",
+      "fixturePath": "tests/fixtures/repos/node-express-clean",
+      "expectedFindingCount": 0,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 56161,
+      "stdoutBytes": 19714,
+      "stderrBytes": 12918,
+      "metrics": {
+        "totalExpected": 0,
+        "totalActual": 3,
+        "truePositive": 0,
+        "falsePositive": 3,
+        "falseNegative": 0,
+        "precision": 0,
+        "recall": 1,
+        "f1": 0,
+        "matches": [],
+        "unmatchedExpected": [],
+        "unmatchedActual": [
+          "finding-3634e335aa21615a",
+          "finding-7019dba50fce9299",
+          "finding-78719257fc1c2afc"
+        ],
+        "ignoredActual": []
+      },
+      "findingCount": 3,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-32-26-608Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-32-26-608Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-32-26-608Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-32-26-608Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-32-26-608Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-32-26-608Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-32-26-608Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/scanner-moa-low__node-express-clean/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/scanner-moa-low__node-express-clean/stderr.log"
+      },
+      "stderrTail": "2:26.611Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Scanner + MoA inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":3,\"durationMs\":43899,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:33:10.509Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"running\",\"message\":\"Cross-checking dependency inventory and scanner identifiers against KEV/CVE advisory feeds.\",\"findingCount\":3,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:33:10.509Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"completed\",\"message\":\"Matched 6 advisory item(s) against 2 inventoried package(s).\",\"findingCount\":6,\"durationMs\":97,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:33:10.606Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:33:10.606Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":47,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:33:10.654Z\"}\n"
+    },
+    {
+      "runId": "scanner-moa-low__python-flask-vulnerable",
+      "source": "actual",
+      "scenarioId": "scanner-moa-low",
+      "scenarioLabel": "Scanner+MoA low",
+      "assistMode": "scanner-moa-assisted",
+      "modelTier": "low",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "fixtureId": "python-flask-vulnerable",
+      "fixturePath": "tests/fixtures/repos/python-flask-vulnerable",
+      "expectedFindingCount": 6,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 193220,
+      "stdoutBytes": 89117,
+      "stderrBytes": 12803,
+      "metrics": {
+        "totalExpected": 6,
+        "totalActual": 40,
+        "truePositive": 2,
+        "falsePositive": 38,
+        "falseNegative": 4,
+        "precision": 0.05,
+        "recall": 0.3333,
+        "f1": 0.087,
+        "matches": [
+          {
+            "expectedId": "python-command-shell",
+            "findingId": "finding-ad5e6ba69c40063c",
+            "score": 85
+          },
+          {
+            "expectedId": "python-sqli-user-search",
+            "findingId": "finding-df94066397398095",
+            "score": 75
+          }
+        ],
+        "unmatchedExpected": [
+          "python-path-read",
+          "python-template-string",
+          "python-weak-md5",
+          "python-fake-secret"
+        ],
+        "unmatchedActual": [
+          "finding-1b07d79630a40fd5",
+          "finding-233500de48472042",
+          "finding-b85501840e8f7659",
+          "finding-ab0a01e020936a2a",
+          "finding-f49b9ad6002f4bab",
+          "finding-59e543d0f5b92291",
+          "finding-161214d1eed442bc",
+          "finding-6286deb685eb0215",
+          "finding-b58346c3abe32f02",
+          "finding-4d631eba5901a15a",
+          "finding-eebedbc6bf643f8e",
+          "finding-df5ff9f08d375620",
+          "finding-76e0ee6b7af74773",
+          "finding-2a662179f20fedac",
+          "finding-92e2ec5bf5cdeb83",
+          "finding-9fdafd73600719c0",
+          "finding-b6e9847405c68393",
+          "finding-4940470cf86bbc97",
+          "finding-d88e78175b200595",
+          "finding-991a30f91ac44426",
+          "finding-9ec04da14758c908",
+          "finding-d02e3f648fb7691a",
+          "finding-61f54bb2a229b9c4",
+          "finding-1fb5546ad4cdca07",
+          "finding-30d7af736c067ecf",
+          "finding-5759826843b92b57",
+          "finding-2da8bf57c3beedf7",
+          "finding-a2713a54df22bf82",
+          "finding-6746dbbd8d8e1e3b",
+          "finding-d2861bc2a152161b",
+          "finding-c44681bed92945fd",
+          "finding-89c7f141b309a9a2",
+          "finding-79648cd2f4b0451f",
+          "finding-6e29a11e0cc9821d",
+          "finding-553fcfa7d373c22c",
+          "finding-f9c90720b2faf255",
+          "finding-0f595fbef013f4d6",
+          "finding-faec3c5d94108ef8"
+        ],
+        "ignoredActual": []
+      },
+      "findingCount": 40,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-33-21-809Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-33-21-809Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-33-21-809Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-33-21-809Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-33-21-809Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-33-21-809Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-33-21-809Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/scanner-moa-low__python-flask-vulnerable/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/scanner-moa-low__python-flask-vulnerable/stderr.log"
+      },
+      "stderrTail": "13Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Scanner + MoA inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":40,\"durationMs\":181648,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:36:23.461Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"running\",\"message\":\"Cross-checking dependency inventory and scanner identifiers against KEV/CVE advisory feeds.\",\"findingCount\":40,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:36:23.462Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"completed\",\"message\":\"Matched 44 advisory item(s) against 2 inventoried package(s).\",\"findingCount\":44,\"durationMs\":355,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:36:23.817Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:36:23.817Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":62,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:36:23.879Z\"}\n"
+    },
+    {
+      "runId": "scanner-moa-low__python-flask-clean",
+      "source": "actual",
+      "scenarioId": "scanner-moa-low",
+      "scenarioLabel": "Scanner+MoA low",
+      "assistMode": "scanner-moa-assisted",
+      "modelTier": "low",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "fixtureId": "python-flask-clean",
+      "fixturePath": "tests/fixtures/repos/python-flask-clean",
+      "expectedFindingCount": 0,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 35707,
+      "stdoutBytes": 16173,
+      "stderrBytes": 12794,
+      "metrics": {
+        "totalExpected": 0,
+        "totalActual": 1,
+        "truePositive": 0,
+        "falsePositive": 1,
+        "falseNegative": 0,
+        "precision": 0,
+        "recall": 1,
+        "f1": 0,
+        "matches": [],
+        "unmatchedExpected": [],
+        "unmatchedActual": [
+          "finding-86a9026676959873"
+        ],
+        "ignoredActual": []
+      },
+      "findingCount": 1,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-36-33-853Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-36-33-853Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-36-33-853Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-36-33-853Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-36-33-853Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-36-33-853Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-low__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-36-33-853Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/scanner-moa-low__python-flask-clean/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/scanner-moa-low__python-flask-clean/stderr.log"
+      },
+      "stderrTail": "6:33.853Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Scanner + MoA inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":1,\"durationMs\":25598,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:36:59.451Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"running\",\"message\":\"Cross-checking dependency inventory and scanner identifiers against KEV/CVE advisory feeds.\",\"findingCount\":1,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:36:59.451Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"completed\",\"message\":\"Matched 2 advisory item(s) against 1 inventoried package(s).\",\"findingCount\":2,\"durationMs\":92,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:36:59.543Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:36:59.544Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":46,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:36:59.590Z\"}\n"
+    },
+    {
+      "runId": "scanner-moa-high__node-express-vulnerable",
+      "source": "actual",
+      "scenarioId": "scanner-moa-high",
+      "scenarioLabel": "Scanner+MoA high",
+      "assistMode": "scanner-moa-assisted",
+      "modelTier": "high",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "fixtureId": "node-express-vulnerable",
+      "fixturePath": "tests/fixtures/repos/node-express-vulnerable",
+      "expectedFindingCount": 6,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 202087,
+      "stdoutBytes": 62647,
+      "stderrBytes": 12926,
+      "metrics": {
+        "totalExpected": 6,
+        "totalActual": 28,
+        "truePositive": 3,
+        "falsePositive": 25,
+        "falseNegative": 3,
+        "precision": 0.1071,
+        "recall": 0.5,
+        "f1": 0.1765,
+        "matches": [
+          {
+            "expectedId": "node-command-echo",
+            "findingId": "finding-679f2139ed0715f4",
+            "score": 85
+          },
+          {
+            "expectedId": "node-reflected-html",
+            "findingId": "finding-b2174492de636519",
+            "score": 85
+          },
+          {
+            "expectedId": "node-sqli-user-search",
+            "findingId": "finding-8f4d1fc6724ec637",
+            "score": 85
+          }
+        ],
+        "unmatchedExpected": [
+          "node-path-read",
+          "node-weak-md5",
+          "node-fake-secret"
+        ],
+        "unmatchedActual": [
+          "finding-e4b130132aca1a96",
+          "finding-5b5723782c7a2b0e",
+          "finding-e0b89cf63f40137b",
+          "finding-cd6c8512dbf655c8",
+          "finding-f9e3cdf62dee35f2",
+          "finding-72f746cb8be1cd13",
+          "finding-019805294a476f9b",
+          "finding-c0abf04fd738039a",
+          "finding-9c6c61503e6a8d67",
+          "finding-365058e7fa14adc3",
+          "finding-31325d17858675c7",
+          "finding-d42a93124fa707d4",
+          "finding-91e695b1e33f2931",
+          "finding-79460a7a95ca1609",
+          "finding-5d7c8a7ede9c55b6",
+          "finding-f71ba54cee76cfe0",
+          "finding-4eb6c10f5698be89",
+          "finding-875df24e9347bb86",
+          "finding-da558c475a6f03b0",
+          "finding-7194eb872634eb85",
+          "finding-968c8ccb0d1e10db",
+          "finding-f4e47258a7e0e346",
+          "finding-62bc974b465e8211",
+          "finding-b80725495585908e",
+          "finding-34a12328494fee7c"
+        ],
+        "ignoredActual": []
+      },
+      "findingCount": 28,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-37-12-685Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-37-12-685Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-37-12-685Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-37-12-685Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-37-12-685Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-37-12-685Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-37-12-685Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/scanner-moa-high__node-express-vulnerable/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/scanner-moa-high__node-express-vulnerable/stderr.log"
+      },
+      "stderrTail": ".688Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Scanner + MoA inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":28,\"durationMs\":188709,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:40:21.396Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"running\",\"message\":\"Cross-checking dependency inventory and scanner identifiers against KEV/CVE advisory feeds.\",\"findingCount\":28,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:40:21.396Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"completed\",\"message\":\"Matched 9 advisory item(s) against 4 inventoried package(s).\",\"findingCount\":9,\"durationMs\":238,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:40:21.634Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:40:21.634Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":56,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:40:21.690Z\"}\n"
+    },
+    {
+      "runId": "scanner-moa-high__node-express-clean",
+      "source": "actual",
+      "scenarioId": "scanner-moa-high",
+      "scenarioLabel": "Scanner+MoA high",
+      "assistMode": "scanner-moa-assisted",
+      "modelTier": "high",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "fixtureId": "node-express-clean",
+      "fixturePath": "tests/fixtures/repos/node-express-clean",
+      "expectedFindingCount": 0,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 84437,
+      "stdoutBytes": 18258,
+      "stderrBytes": 12919,
+      "metrics": {
+        "totalExpected": 0,
+        "totalActual": 2,
+        "truePositive": 0,
+        "falsePositive": 2,
+        "falseNegative": 0,
+        "precision": 0,
+        "recall": 1,
+        "f1": 0,
+        "matches": [],
+        "unmatchedExpected": [],
+        "unmatchedActual": [
+          "finding-c6cbfa8ae3511fdb",
+          "finding-499332388425438c"
+        ],
+        "ignoredActual": []
+      },
+      "findingCount": 2,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-40-33-552Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-40-33-552Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-40-33-552Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-40-33-552Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-40-33-552Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-40-33-552Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__node-express-clean\\reports\\node-express-clean\\2026-06-27T20-40-33-552Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/scanner-moa-high__node-express-clean/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/scanner-moa-high__node-express-clean/stderr.log"
+      },
+      "stderrTail": "0:33.552Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Scanner + MoA inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":2,\"durationMs\":72482,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:41:46.034Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"running\",\"message\":\"Cross-checking dependency inventory and scanner identifiers against KEV/CVE advisory feeds.\",\"findingCount\":2,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:41:46.034Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"completed\",\"message\":\"Matched 6 advisory item(s) against 2 inventoried package(s).\",\"findingCount\":6,\"durationMs\":75,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:41:46.109Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:41:46.109Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":36,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:41:46.145Z\"}\n"
+    },
+    {
+      "runId": "scanner-moa-high__python-flask-vulnerable",
+      "source": "actual",
+      "scenarioId": "scanner-moa-high",
+      "scenarioLabel": "Scanner+MoA high",
+      "assistMode": "scanner-moa-assisted",
+      "modelTier": "high",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "fixtureId": "python-flask-vulnerable",
+      "fixturePath": "tests/fixtures/repos/python-flask-vulnerable",
+      "expectedFindingCount": 6,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 227850,
+      "stdoutBytes": 88819,
+      "stderrBytes": 12803,
+      "metrics": {
+        "totalExpected": 6,
+        "totalActual": 40,
+        "truePositive": 4,
+        "falsePositive": 36,
+        "falseNegative": 2,
+        "precision": 0.1,
+        "recall": 0.6667,
+        "f1": 0.1739,
+        "matches": [
+          {
+            "expectedId": "python-command-shell",
+            "findingId": "finding-4f69678927fb9c20",
+            "score": 85
+          },
+          {
+            "expectedId": "python-fake-secret",
+            "findingId": "finding-90158fb6d6656532",
+            "score": 85
+          },
+          {
+            "expectedId": "python-sqli-user-search",
+            "findingId": "finding-95152a167afff424",
+            "score": 85
+          },
+          {
+            "expectedId": "python-template-string",
+            "findingId": "finding-9fd1259137756352",
+            "score": 60
+          }
+        ],
+        "unmatchedExpected": [
+          "python-path-read",
+          "python-weak-md5"
+        ],
+        "unmatchedActual": [
+          "finding-fa146c3a01093f62",
+          "finding-ca505fe42dd31371",
+          "finding-ab0a01e020936a2a",
+          "finding-ad5e6ba69c40063c",
+          "finding-f49b9ad6002f4bab",
+          "finding-59e543d0f5b92291",
+          "finding-3c6d14f60f48d2b2",
+          "finding-161214d1eed442bc",
+          "finding-6286deb685eb0215",
+          "finding-b58346c3abe32f02",
+          "finding-4d631eba5901a15a",
+          "finding-eebedbc6bf643f8e",
+          "finding-df5ff9f08d375620",
+          "finding-76e0ee6b7af74773",
+          "finding-2a662179f20fedac",
+          "finding-92e2ec5bf5cdeb83",
+          "finding-9fdafd73600719c0",
+          "finding-b6e9847405c68393",
+          "finding-4940470cf86bbc97",
+          "finding-d88e78175b200595",
+          "finding-991a30f91ac44426",
+          "finding-9ec04da14758c908",
+          "finding-d02e3f648fb7691a",
+          "finding-61f54bb2a229b9c4",
+          "finding-1fb5546ad4cdca07",
+          "finding-30d7af736c067ecf",
+          "finding-5759826843b92b57",
+          "finding-2da8bf57c3beedf7",
+          "finding-a2713a54df22bf82",
+          "finding-6746dbbd8d8e1e3b",
+          "finding-d2861bc2a152161b",
+          "finding-c44681bed92945fd",
+          "finding-89c7f141b309a9a2",
+          "finding-79648cd2f4b0451f",
+          "finding-6e29a11e0cc9821d",
+          "finding-553fcfa7d373c22c"
+        ],
+        "ignoredActual": []
+      },
+      "findingCount": 40,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-41-57-482Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-41-57-482Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-41-57-482Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-41-57-482Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-41-57-482Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-41-57-482Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-41-57-482Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/scanner-moa-high__python-flask-vulnerable/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/scanner-moa-high__python-flask-vulnerable/stderr.log"
+      },
+      "stderrTail": "85Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Scanner + MoA inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":40,\"durationMs\":216054,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:45:33.539Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"running\",\"message\":\"Cross-checking dependency inventory and scanner identifiers against KEV/CVE advisory feeds.\",\"findingCount\":40,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:45:33.539Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"completed\",\"message\":\"Matched 44 advisory item(s) against 2 inventoried package(s).\",\"findingCount\":44,\"durationMs\":388,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:45:33.927Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:45:33.928Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":64,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:45:33.992Z\"}\n"
+    },
+    {
+      "runId": "scanner-moa-high__python-flask-clean",
+      "source": "actual",
+      "scenarioId": "scanner-moa-high",
+      "scenarioLabel": "Scanner+MoA high",
+      "assistMode": "scanner-moa-assisted",
+      "modelTier": "high",
+      "provider": "opencode-go",
+      "models": [
+        "deepseek-v4-flash",
+        "mimo-v2.5",
+        "deepseek-v4-pro",
+        "minimax-m3"
+      ],
+      "fixtureId": "python-flask-clean",
+      "fixturePath": "tests/fixtures/repos/python-flask-clean",
+      "expectedFindingCount": 0,
+      "ok": true,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 44878,
+      "stdoutBytes": 14346,
+      "stderrBytes": 12796,
+      "metrics": {
+        "totalExpected": 0,
+        "totalActual": 0,
+        "truePositive": 0,
+        "falsePositive": 0,
+        "falseNegative": 0,
+        "precision": 1,
+        "recall": 1,
+        "f1": 1,
+        "matches": [],
+        "unmatchedExpected": [],
+        "unmatchedActual": [],
+        "ignoredActual": []
+      },
+      "findingCount": 0,
+      "reportArtifacts": {
+        "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-45-46-475Z\\summary.json",
+        "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-45-46-475Z\\findings.json",
+        "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-45-46-475Z\\evidence.json",
+        "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-45-46-475Z\\run.json",
+        "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-45-46-475Z\\agent-summary.json",
+        "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-45-46-475Z\\delta.json",
+        "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\scanner-moa-high__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-45-46-475Z\\report-document.json"
+      },
+      "supportFiles": {
+        "stdout": "docs/research/task5-hermsec-moa/results/latest/runs/scanner-moa-high__python-flask-clean/stdout.json",
+        "stderr": "docs/research/task5-hermsec-moa/results/latest/runs/scanner-moa-high__python-flask-clean/stderr.log"
+      },
+      "stderrTail": "5:46.476Z\"}\nHERMSEC_PROGRESS {\"id\":\"model-summary\",\"stage\":\"model\",\"label\":\"Scanner + MoA inspection\",\"status\":\"completed\",\"message\":\"Agent-only inspection completed using bounded repository evidence.\",\"findingCount\":0,\"durationMs\":32286,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:46:18.762Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"running\",\"message\":\"Cross-checking dependency inventory and scanner identifiers against KEV/CVE advisory feeds.\",\"findingCount\":0,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:46:18.762Z\"}\nHERMSEC_PROGRESS {\"id\":\"vulnerability-intelligence\",\"stage\":\"scanner\",\"scannerId\":\"vulnerability-intelligence\",\"label\":\"Vulnerability intelligence\",\"status\":\"completed\",\"message\":\"Matched 2 advisory item(s) against 1 inventoried package(s).\",\"findingCount\":2,\"durationMs\":87,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:46:18.849Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"running\",\"message\":\"Writing HermSec report artifacts.\",\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:46:18.849Z\"}\nHERMSEC_PROGRESS {\"id\":\"report-ready\",\"stage\":\"report\",\"label\":\"Report ready\",\"status\":\"completed\",\"message\":\"HermSec report artifacts were written.\",\"durationMs\":41,\"assistMode\":\"scanner-moa-assisted\",\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-06-27T20:46:18.890Z\"}\n"
+    }
+  ],
+  "notes": [
+    "Deep assisted rows were rerun with smaller explanation chunks and a longer model watchdog; unsupported model explanations were rejected by evidence validation."
+  ]
+}

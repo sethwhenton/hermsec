@@ -1,0 +1,17 @@
+{
+  "bundleId": "evidence-0ccf0f81d8f71254",
+  "findingEvidence": {
+    "finding-3aef6630933b3c74": [
+      {
+        "location": {
+          "file": "requirements.txt"
+        },
+        "message": "flask@3.0.3 is affected by CVE-2026-27205, GHSA-68rp-wp8r-4726.",
+        "ruleId": "pip-audit:CVE-2026-27205",
+        "scanner": "pip-audit"
+      }
+    ]
+  },
+  "rawArtifacts": [],
+  "redactionApplied": false
+}

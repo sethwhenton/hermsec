@@ -1,0 +1,120 @@
+[
+  {
+    "agent": {
+      "candidateIds": [
+        "candidate-57cd3a3a43f210cb"
+      ],
+      "generatedAt": "2026-06-27T20:27:50.113Z",
+      "judge": {
+        "reason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "reviewedBy": "moa-false-positive-judge",
+        "verdict": "accepted"
+      },
+      "mode": "moa-assisted",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go",
+      "source": "moa-aggregator",
+      "sourceFindingIds": [
+        "candidate-a4fd4ecbcbea05d8"
+      ]
+    },
+    "category": "code",
+    "confidence": "high",
+    "cwe": [
+      "CWE-78"
+    ],
+    "description": "A query parameter is interpolated into a shell command executed via exec, allowing attacker-controlled shell metacharacters to break out and run arbitrary commands.",
+    "evidence": "src/routes/search.js lines 18-20: exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined);",
+    "fingerprint": "fp-0d8cfd75f6b27693",
+    "id": "finding-39f04bd3c517ef56",
+    "location": {
+      "endLine": 20,
+      "file": "src/routes/search.js",
+      "startLine": 18
+    },
+    "remediation": "Do not pass user input to exec. Use execFile or spawn with an arguments array, or remove the shell call. If shell use is required, strictly validate input (e.g., IP/hostname format) and reject anything else.",
+    "ruleId": "command-injection-exec-002",
+    "severity": "critical",
+    "title": "Command Injection via exec template literal in routes/search.js",
+    "tool": "hermsec-moa"
+  },
+  {
+    "agent": {
+      "candidateIds": [
+        "candidate-b65b4ce6c98f5c53"
+      ],
+      "generatedAt": "2026-06-27T20:27:50.111Z",
+      "judge": {
+        "reason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "reviewedBy": "moa-false-positive-judge",
+        "verdict": "accepted"
+      },
+      "mode": "moa-assisted",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go",
+      "source": "moa-aggregator",
+      "sourceFindingIds": [
+        "candidate-11db7b83af4a3eb8"
+      ]
+    },
+    "category": "code",
+    "confidence": "high",
+    "cwe": [
+      "CWE-78"
+    ],
+    "description": "A user-controlled value is concatenated into a string passed to child_process.exec, allowing arbitrary command execution via shell metacharacters.",
+    "evidence": "src/app.js lines 8-10: const tool = req.query.tool; return childProcess.exec(\"tool \" + tool);",
+    "fingerprint": "fp-d37c23377210b02f",
+    "id": "finding-3e46f6e9757c74ac",
+    "location": {
+      "endLine": 10,
+      "file": "src/app.js",
+      "startLine": 8
+    },
+    "remediation": "Replace exec with execFile or spawn that takes an argument array, avoiding shell interpretation. Validate input against an allowlist of permitted tool identifiers.",
+    "ruleId": "command-injection-exec-001",
+    "severity": "critical",
+    "title": "Command Injection via exec with query parameter in app.js",
+    "tool": "hermsec-moa"
+  },
+  {
+    "agent": {
+      "candidateIds": [
+        "candidate-f83f3530538a8d8e"
+      ],
+      "generatedAt": "2026-06-27T20:27:50.110Z",
+      "judge": {
+        "reason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "reviewedBy": "moa-false-positive-judge",
+        "verdict": "accepted"
+      },
+      "mode": "moa-assisted",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go",
+      "source": "moa-aggregator",
+      "sourceFindingIds": [
+        "candidate-cafc12f256ac1294",
+        "candidate-4abf247ab789bfb6"
+      ]
+    },
+    "category": "code",
+    "confidence": "high",
+    "cwe": [
+      "CWE-89"
+    ],
+    "description": "User-controlled input from a query parameter is concatenated directly into a SQL query string, enabling SQL injection.",
+    "evidence": "src/app.js lines 3-5: const term = req.query.q; return db.query(\"SELECT * FROM users WHERE name = '\" + term + \"'\");",
+    "fingerprint": "fp-fa8c18e017f094d2",
+    "id": "finding-8c7d0480c465ee36",
+    "location": {
+      "endLine": 5,
+      "file": "src/app.js",
+      "startLine": 3
+    },
+    "remediation": "Use parameterized queries or prepared statements so user input is bound, not interpolated, into the SQL command.",
+    "ruleId": "sql-injection-concatenation-001",
+    "severity": "critical",
+    "title": "SQL Injection via unsanitized query parameter in app.js",
+    "tool": "hermsec-moa"
+  }
+]

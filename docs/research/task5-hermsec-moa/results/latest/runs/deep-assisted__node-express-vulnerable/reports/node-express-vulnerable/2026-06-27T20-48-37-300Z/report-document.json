@@ -1,0 +1,2141 @@
+{
+  "delta": {
+    "baseScanId": "scan-cd624d375988bf89",
+    "currentScanId": "scan-56c86eec47faa79c",
+    "fixedFindingIds": [
+      "finding-5b5723782c7a2b0e",
+      "finding-62bc974b465e8211",
+      "finding-679f2139ed0715f4",
+      "finding-cd6c8512dbf655c8",
+      "finding-e0b89cf63f40137b",
+      "finding-e4b130132aca1a96"
+    ],
+    "improvedFindingIds": [],
+    "newFindingIds": [
+      "finding-3b3d25cd2cad6275",
+      "finding-44a1a2191ecca7b5",
+      "finding-fc661b2848ecca41"
+    ],
+    "summaryText": "3 new, 6 fixed, 22 unchanged, 0 worsened, 0 improved",
+    "unchangedFindingIds": [
+      "finding-019805294a476f9b",
+      "finding-31325d17858675c7",
+      "finding-34a12328494fee7c",
+      "finding-365058e7fa14adc3",
+      "finding-4eb6c10f5698be89",
+      "finding-5d7c8a7ede9c55b6",
+      "finding-7194eb872634eb85",
+      "finding-72f746cb8be1cd13",
+      "finding-79460a7a95ca1609",
+      "finding-875df24e9347bb86",
+      "finding-8f4d1fc6724ec637",
+      "finding-91e695b1e33f2931",
+      "finding-968c8ccb0d1e10db",
+      "finding-9c6c61503e6a8d67",
+      "finding-b2174492de636519",
+      "finding-b80725495585908e",
+      "finding-c0abf04fd738039a",
+      "finding-d42a93124fa707d4",
+      "finding-da558c475a6f03b0",
+      "finding-f4e47258a7e0e346",
+      "finding-f71ba54cee76cfe0",
+      "finding-f9e3cdf62dee35f2"
+    ],
+    "worsenedFindingIds": []
+  },
+  "evidence": {
+    "bundleId": "evidence-d501c36e59098e1c",
+    "findingEvidence": {
+      "finding-019805294a476f9b": [
+        {
+          "location": {
+            "file": "package-lock.json"
+          },
+          "message": "lodash <4.17.21 https://github.[REDACTED_SECRET]",
+          "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+          "scanner": "pmg"
+        }
+      ],
+      "finding-31325d17858675c7": [
+        {
+          "location": {
+            "file": "src/app.js",
+            "startLine": 5
+          },
+          "message": "src/app.js:5 return db.query(\"SELECT * FROM users WHERE name = '\" + term + \"'\");",
+          "ruleId": "hermsec.code.sql-dynamic-string",
+          "scanner": "hermsec-heuristics"
+        }
+      ],
+      "finding-34a12328494fee7c": [
+        {
+          "location": {
+            "file": "package-lock.json"
+          },
+          "message": "express <4.20.0 https://github.[REDACTED_SECRET]",
+          "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+          "scanner": "pmg"
+        }
+      ],
+      "finding-365058e7fa14adc3": [
+        {
+          "location": {
+            "file": "package-lock.json"
+          },
+          "message": "lodash >=4.0.0 <=4.17.23 https://github.[REDACTED_SECRET]",
+          "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+          "scanner": "pmg"
+        }
+      ],
+      "finding-3b3d25cd2cad6275": [
+        {
+          "location": {
+            "file": "src/routes/search.js",
+            "startLine": 19
+          },
+          "message": "src/routes/search.js:19 Shell execution through child_process",
+          "ruleId": "C.Users.whent.AppData.Local.Temp.hermsec-semgrep-gpijG1.hermsec.javascript.child-process-exec",
+          "scanner": "semgrep"
+        }
+      ],
+      "finding-44a1a2191ecca7b5": [
+        {
+          "location": {
+            "file": "src/routes/search.js",
+            "startLine": 7
+          },
+          "message": "src/routes/search.js:7 export const fakeFixtureToken = \"HERMSEC_FAKE_TEST_TOKEN_[REDACTED]\";",
+          "ruleId": "hermsec.secret.fake-fixture-token",
+          "scanner": "hermsec-heuristics"
+        }
+      ],
+      "finding-4eb6c10f5698be89": [
+        {
+          "location": {
+            "file": "package-lock.json"
+          },
+          "message": "lodash >=4.0.0 <=4.17.22 https://github.[REDACTED_SECRET]",
+          "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+          "scanner": "pmg"
+        }
+      ],
+      "finding-5d7c8a7ede9c55b6": [
+        {
+          "location": {
+            "file": "package-lock.json"
+          },
+          "message": "express <4.19.2 https://github.[REDACTED_SECRET]",
+          "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+          "scanner": "pmg"
+        }
+      ],
+      "finding-7194eb872634eb85": [
+        {
+          "location": {
+            "file": "package-lock.json"
+          },
+          "message": "lodash@4.17.20 is affected by GHSA-29mw-wpgm-hmr9, CVE-2020-28500.",
+          "ruleId": "osv:GHSA-29mw-wpgm-hmr9",
+          "scanner": "osv-scanner"
+        }
+      ],
+      "finding-72f746cb8be1cd13": [
+        {
+          "location": {
+            "file": "package-lock.json"
+          },
+          "message": "lodash@4.17.20 is affected by GHSA-35jh-r3h4-6jhm, CVE-2021-23337.",
+          "ruleId": "osv:GHSA-35jh-r3h4-6jhm",
+          "scanner": "osv-scanner"
+        }
+      ],
+      "finding-79460a7a95ca1609": [
+        {
+          "location": {
+            "file": "package-lock.json"
+          },
+          "message": "express@4.18.2 is affected by GHSA-rv95-896h-c2vc, CVE-2024-29041.",
+          "ruleId": "osv:GHSA-rv95-896h-c2vc",
+          "scanner": "osv-scanner"
+        }
+      ],
+      "finding-875df24e9347bb86": [
+        {
+          "location": {
+            "file": "package-lock.json"
+          },
+          "message": "lodash@4.17.20 is affected by GHSA-f23m-r3pf-42rh, CVE-2026-2950.",
+          "ruleId": "osv:GHSA-f23m-r3pf-42rh",
+          "scanner": "osv-scanner"
+        }
+      ],
+      "finding-8f4d1fc6724ec637": [
+        {
+          "location": {
+            "file": "src/routes/search.js",
+            "startLine": 14
+          },
+          "message": "src/routes/search.js:14 const query = `SELECT * FROM users WHERE display_name = '${term}'`;",
+          "ruleId": "hermsec.code.sql-dynamic-string",
+          "scanner": "hermsec-heuristics"
+        }
+      ],
+      "finding-91e695b1e33f2931": [
+        {
+          "location": {
+            "file": "src/routes/search.js",
+            "startLine": 19
+          },
+          "message": "src/routes/search.js:19 exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined);",
+          "ruleId": "hermsec.code.child-process-exec",
+          "scanner": "hermsec-heuristics"
+        }
+      ],
+      "finding-968c8ccb0d1e10db": [
+        {
+          "location": {
+            "file": "package-lock.json"
+          },
+          "message": "lodash >=4.0.0 <4.17.21 https://github.[REDACTED_SECRET]",
+          "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+          "scanner": "pmg"
+        }
+      ],
+      "finding-9c6c61503e6a8d67": [
+        {
+          "location": {
+            "file": "package-lock.json"
+          },
+          "message": "lodash@4.17.20 is affected by GHSA-r5fr-rjxr-66jc, CVE-2026-4800.",
+          "ruleId": "osv:GHSA-r5fr-rjxr-66jc",
+          "scanner": "osv-scanner"
+        }
+      ],
+      "finding-b2174492de636519": [
+        {
+          "location": {
+            "file": "src/routes/search.js",
+            "startLine": 33
+          },
+          "message": "src/routes/search.js:33 res.send(`<h1>${name}</h1><p>${digest}</p>`);",
+          "ruleId": "hermsec.code.unsanitized-html-response",
+          "scanner": "hermsec-heuristics"
+        }
+      ],
+      "finding-b80725495585908e": [
+        {
+          "location": {
+            "file": "package-lock.json"
+          },
+          "message": "express@4.18.2 is affected by GHSA-qw6h-vgh9-j6wx, CVE-2024-43796.",
+          "ruleId": "osv:GHSA-qw6h-vgh9-j6wx",
+          "scanner": "osv-scanner"
+        }
+      ],
+      "finding-c0abf04fd738039a": [
+        {
+          "location": {
+            "file": "package-lock.json"
+          },
+          "message": "package-lock.json pins lodash@4.17.20.",
+          "ruleId": "hermsec.package.lodash-known-vulnerable",
+          "scanner": "hermsec-heuristics"
+        }
+      ],
+      "finding-d42a93124fa707d4": [
+        {
+          "location": {
+            "file": "src/app.js",
+            "startLine": 10
+          },
+          "message": "src/app.js:10 return childProcess.exec(\"tool \" + tool);",
+          "ruleId": "hermsec.code.child-process-exec",
+          "scanner": "hermsec-heuristics"
+        }
+      ],
+      "finding-da558c475a6f03b0": [
+        {
+          "location": {
+            "file": "package-lock.json"
+          },
+          "message": "lodash <=4.17.23 https://github.[REDACTED_SECRET]",
+          "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+          "scanner": "pmg"
+        }
+      ],
+      "finding-f4e47258a7e0e346": [
+        {
+          "location": {
+            "file": "src/app.js",
+            "startLine": 14
+          },
+          "message": "src/app.js:14 res.send(\"<h1>\" + req.query.name + \"</h1>\");",
+          "ruleId": "hermsec.code.unsanitized-html-response",
+          "scanner": "hermsec-heuristics"
+        }
+      ],
+      "finding-f71ba54cee76cfe0": [
+        {
+          "location": {
+            "file": "package-lock.json"
+          },
+          "message": "lodash@4.17.20 is affected by GHSA-xxjr-mmjv-4gpg, CVE-2025-13465.",
+          "ruleId": "osv:GHSA-xxjr-mmjv-4gpg",
+          "scanner": "osv-scanner"
+        }
+      ],
+      "finding-f9e3cdf62dee35f2": [
+        {
+          "location": {
+            "file": "src/routes/search.js",
+            "startLine": 19
+          },
+          "message": "src/routes/search.js:19 exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined);",
+          "ruleId": "hermsec.code.command-injection-input",
+          "scanner": "hermsec-heuristics"
+        }
+      ],
+      "finding-fc661b2848ecca41": [
+        {
+          "location": {
+            "file": ".env.example",
+            "startLine": 1
+          },
+          "message": ".env.example:1 API_KEY=[REDACTED]",
+          "ruleId": "hermsec.secret.fake-fixture-token",
+          "scanner": "hermsec-heuristics"
+        }
+      ]
+    },
+    "rawArtifacts": [],
+    "redactionApplied": false
+  },
+  "explanations": {
+    "finding-019805294a476f9b": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "pmg reported Command Injection in lodash at package-lock.json. Evidence: lodash <4.17.21 https://github.[REDACTED_SECRET]. Identifiers supplied by scanner evidence: GHSA-35JH-R3H4-6JHM.",
+      "impact": "HIGH dependency finding reported by pmg.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to 4.18.1 after dependency review.",
+      "title": "Command Injection in lodash"
+    },
+    "finding-31325d17858675c7": {
+      "confidenceReason": "Confidence is medium because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "hermsec-heuristics reported SQL query appears to include dynamic string construction at src/app.js:5. Evidence: src/app.js:5 return db.query(\"SELECT * FROM users WHERE name = '\" + term + \"'\");. Identifiers supplied by scanner evidence: CWE-89.",
+      "impact": "HIGH code finding reported by hermsec-heuristics.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Use parameterized queries or a query builder.",
+      "title": "SQL query appears to include dynamic string construction"
+    },
+    "finding-34a12328494fee7c": {
+      "confidenceReason": "High confidence based on known npm vulnerability advisory from PMG.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "express <4.20.0 is affected by GHSA-qw6h-vgh9-j6wx (npm package).",
+      "impact": "Potential cross-site scripting (XSS) attack via express response.redirect().",
+      "safeNextSteps": [
+        "Update package-lock.json to specify express version 4.22.2 or later.",
+        "Test the application for any breaking changes after the upgrade."
+      ],
+      "suggestedFix": "Upgrade express to 4.22.2 after dependency review.",
+      "title": "express vulnerable to XSS via response.redirect()"
+    },
+    "finding-365058e7fa14adc3": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "pmg reported lodash vulnerable to Code Injection via `_.template` imports key names at package-lock.json. Evidence: lodash >=4.0.0 <=4.17.23 https://github.[REDACTED_SECRET]. Identifiers supplied by scanner evidence: GHSA-R5FR-RJXR-66JC.",
+      "impact": "HIGH dependency finding reported by pmg.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to 4.18.1 after dependency review.",
+      "title": "lodash vulnerable to Code Injection via `_.template` imports key names"
+    },
+    "finding-3b3d25cd2cad6275": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "semgrep reported Shell execution through child_process at src/routes/search.js:19. Evidence: src/routes/search.js:19 Shell execution through child_process. Identifiers supplied by scanner evidence: CWE-78.",
+      "impact": "HIGH code finding reported by semgrep.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Review the matched code path and apply the Semgrep rule guidance.",
+      "title": "Shell execution through child_process"
+    },
+    "finding-44a1a2191ecca7b5": {
+      "confidenceReason": "Confidence is confirmed because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "hermsec-heuristics reported Hermsec fake secret fixture token at src/routes/search.js:7. Evidence: src/routes/search.js:7 export const fakeFixtureToken = \"HERMSEC_FAKE_TEST_TOKEN_[REDACTED]\";. Identifiers supplied by scanner evidence: CWE-798.",
+      "impact": "HIGH secret finding reported by hermsec-heuristics.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Move secrets to environment variables or a secret manager and rotate exposed credentials.",
+      "title": "Hermsec fake secret fixture token"
+    },
+    "finding-4eb6c10f5698be89": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "pmg reported Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions at package-lock.json. Evidence: lodash >=4.0.0 <=4.17.22 https://github.[REDACTED_SECRET]. Identifiers supplied by scanner evidence: GHSA-XXJR-MMJV-4GPG.",
+      "impact": "MEDIUM dependency finding reported by pmg.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to 4.18.1 after dependency review.",
+      "title": "Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions"
+    },
+    "finding-5d7c8a7ede9c55b6": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "pmg reported Express.js Open Redirect in malformed URLs at package-lock.json. Evidence: express <4.19.2 https://github.[REDACTED_SECRET]. Identifiers supplied by scanner evidence: GHSA-RV95-896H-C2VC.",
+      "impact": "MEDIUM dependency finding reported by pmg.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade express to 4.22.2 after dependency review.",
+      "title": "Express.js Open Redirect in malformed URLs"
+    },
+    "finding-7194eb872634eb85": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "osv-scanner reported Regular Expression Denial of Service (ReDoS) in lodash at package-lock.json. Evidence: lodash@4.17.20 is affected by GHSA-29mw-wpgm-hmr9, CVE-2020-28500.. Identifiers supplied by scanner evidence: CVE-2020-28500, GHSA-29MW-WPGM-HMR9.",
+      "impact": "MEDIUM dependency finding reported by osv-scanner.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to a fixed version: 4.17.21.",
+      "title": "Regular Expression Denial of Service (ReDoS) in lodash"
+    },
+    "finding-72f746cb8be1cd13": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "osv-scanner reported Command Injection in lodash at package-lock.json. Evidence: lodash@4.17.20 is affected by GHSA-35jh-r3h4-6jhm, CVE-2021-23337.. Identifiers supplied by scanner evidence: CVE-2021-23337, GHSA-35JH-R3H4-6JHM.",
+      "impact": "HIGH dependency finding reported by osv-scanner.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to a fixed version: 4.17.21.",
+      "title": "Command Injection in lodash"
+    },
+    "finding-79460a7a95ca1609": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "osv-scanner reported Express.js Open Redirect in malformed URLs at package-lock.json. Evidence: express@4.18.2 is affected by GHSA-rv95-896h-c2vc, CVE-2024-29041.. Identifiers supplied by scanner evidence: CVE-2024-29041, GHSA-RV95-896H-C2VC.",
+      "impact": "MEDIUM dependency finding reported by osv-scanner.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade express to a fixed version: 4.19.2, 5.0.0-beta.3.",
+      "title": "Express.js Open Redirect in malformed URLs"
+    },
+    "finding-875df24e9347bb86": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "osv-scanner reported lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit` at package-lock.json. Evidence: lodash@4.17.20 is affected by GHSA-f23m-r3pf-42rh, CVE-2026-2950.. Identifiers supplied by scanner evidence: CVE-2026-2950, GHSA-F23M-R3PF-42RH.",
+      "impact": "MEDIUM dependency finding reported by osv-scanner.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to a fixed version: 4.18.0.",
+      "title": "lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit`"
+    },
+    "finding-8f4d1fc6724ec637": {
+      "confidenceReason": "Confidence is medium because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "hermsec-heuristics reported SQL query appears to include dynamic string construction at src/routes/search.js:14. Evidence: src/routes/search.js:14 const query = `SELECT * FROM users WHERE display_name = '${term}'`;. Identifiers supplied by scanner evidence: CWE-89.",
+      "impact": "HIGH code finding reported by hermsec-heuristics.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Use parameterized queries or a query builder.",
+      "title": "SQL query appears to include dynamic string construction"
+    },
+    "finding-91e695b1e33f2931": {
+      "confidenceReason": "Confidence is medium because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "hermsec-heuristics reported Shell execution through child_process at src/routes/search.js:19. Evidence: src/routes/search.js:19 exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined);. Identifiers supplied by scanner evidence: CWE-78.",
+      "impact": "HIGH code finding reported by hermsec-heuristics.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Use spawn or execFile with fixed argv arrays and shell disabled.",
+      "title": "Shell execution through child_process"
+    },
+    "finding-968c8ccb0d1e10db": {
+      "confidenceReason": "Scanner reports high confidence due to known npm vulnerability advisory.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "lodash >=4.0.0 <4.17.21 is affected by GHSA-29MW-WPGM-HMR9 (npm package).",
+      "impact": "Potential denial of service vulnerability in lodash library.",
+      "safeNextSteps": [
+        "Review and update package-lock.json to specify lodash version 4.18.1 or later.",
+        "Test application to ensure compatibility with updated lodash version."
+      ],
+      "suggestedFix": "Upgrade lodash to 4.18.1 after dependency review.",
+      "title": "Regular Expression Denial of Service (ReDoS) in lodash"
+    },
+    "finding-9c6c61503e6a8d67": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "osv-scanner reported lodash vulnerable to Code Injection via `_.template` imports key names at package-lock.json. Evidence: lodash@4.17.20 is affected by GHSA-r5fr-rjxr-66jc, CVE-2026-4800.. Identifiers supplied by scanner evidence: CVE-2026-4800, GHSA-R5FR-RJXR-66JC.",
+      "impact": "HIGH dependency finding reported by osv-scanner.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to a fixed version: 4.18.0.",
+      "title": "lodash vulnerable to Code Injection via `_.template` imports key names"
+    },
+    "finding-b2174492de636519": {
+      "confidenceReason": "Medium confidence due to heuristic pattern detection of unescaped string interpolation in HTML context.",
+      "cveUsage": "not_applicable",
+      "evidenceSummary": "src/routes/search.js:33 uses res.send(`<h1>${name}</h1><p>${digest}</p>`) without sanitization.",
+      "impact": "Potential cross-site scripting (XSS) vulnerability via unescaped user input in HTML response.",
+      "safeNextSteps": [
+        "Review the code at src/routes/search.js line 33 to apply output encoding (e.g., HTML entity escaping).",
+        "Consider using a template engine with auto-escaping or a dedicated sanitization library."
+      ],
+      "suggestedFix": "Escape untrusted output before placing it in HTML responses.",
+      "title": "HTML response may include unsanitized input"
+    },
+    "finding-b80725495585908e": {
+      "confidenceReason": "High confidence due to OSV-Scanner reporting a known CVE with specific affected version.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "express@4.18.2 is affected by CVE-2024-43796 (GHSA-qw6h-vgh9-j6wx).",
+      "impact": "Potential cross-site scripting (XSS) attack via express response.redirect().",
+      "safeNextSteps": [
+        "Upgrade express from 4.18.2 to 4.20.0 or 5.0.0 in package-lock.json.",
+        "Run dependency audit and verify no other vulnerabilities remain."
+      ],
+      "suggestedFix": "Upgrade express to a fixed version: 4.20.0, 5.0.0.",
+      "title": "express vulnerable to XSS via response.redirect()"
+    },
+    "finding-c0abf04fd738039a": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "hermsec-heuristics reported Known vulnerable lodash version at package-lock.json. Evidence: package-lock.json pins lodash@4.17.20.. Identifiers supplied by scanner evidence: GHSA-35jh-r3h4-6jhm, CWE-79.",
+      "impact": "HIGH dependency finding reported by hermsec-heuristics.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to 4.17.21 or newer after dependency review.",
+      "title": "Known vulnerable lodash version"
+    },
+    "finding-d42a93124fa707d4": {
+      "confidenceReason": "Confidence is medium because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "hermsec-heuristics reported Shell execution through child_process at src/app.js:10. Evidence: src/app.js:10 return childProcess.exec(\"tool \" + tool);. Identifiers supplied by scanner evidence: CWE-78.",
+      "impact": "HIGH code finding reported by hermsec-heuristics.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Use spawn or execFile with fixed argv arrays and shell disabled.",
+      "title": "Shell execution through child_process"
+    },
+    "finding-da558c475a6f03b0": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "pmg reported lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit` at package-lock.json. Evidence: lodash <=4.17.23 https://github.[REDACTED_SECRET]. Identifiers supplied by scanner evidence: GHSA-F23M-R3PF-42RH.",
+      "impact": "MEDIUM dependency finding reported by pmg.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to 4.18.1 after dependency review.",
+      "title": "lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit`"
+    },
+    "finding-f4e47258a7e0e346": {
+      "confidenceReason": "Medium confidence due to heuristic pattern detection of unsanitized concatenation in HTML context.",
+      "cveUsage": "not_applicable",
+      "evidenceSummary": "src/app.js:14 uses res.send(\"<h1>\" + req.query.name + \"</h1>\") without sanitization.",
+      "impact": "Potential cross-site scripting (XSS) vulnerability via unescaped user input in HTML response.",
+      "safeNextSteps": [
+        "Review the code at src/app.js line 14 to apply output encoding (e.g., HTML entity escaping).",
+        "Consider using a template engine with auto-escaping or a dedicated sanitization library."
+      ],
+      "suggestedFix": "Escape untrusted output before placing it in HTML responses.",
+      "title": "HTML response may include unsanitized input"
+    },
+    "finding-f71ba54cee76cfe0": {
+      "confidenceReason": "Confidence is high because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "from_evidence",
+      "evidenceSummary": "osv-scanner reported Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions at package-lock.json. Evidence: lodash@4.17.20 is affected by GHSA-xxjr-mmjv-4gpg, CVE-2025-13465.. Identifiers supplied by scanner evidence: CVE-2025-13465, GHSA-XXJR-MMJV-4GPG.",
+      "impact": "MEDIUM dependency finding reported by osv-scanner.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Upgrade lodash to a fixed version: 4.17.23.",
+      "title": "Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions"
+    },
+    "finding-f9e3cdf62dee35f2": {
+      "confidenceReason": "Confidence is medium because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "hermsec-heuristics reported Shell execution may include user-controlled input at src/routes/search.js:19. Evidence: src/routes/search.js:19 exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined);. Identifiers supplied by scanner evidence: CWE-78.",
+      "impact": "CRITICAL code finding reported by hermsec-heuristics.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Use fixed argv arrays and validate user-controlled values before execution.",
+      "title": "Shell execution may include user-controlled input"
+    },
+    "finding-fc661b2848ecca41": {
+      "confidenceReason": "Confidence is confirmed because it comes from normalized scanner evidence; no additional vulnerabilities were inferred.",
+      "cveUsage": "not_present",
+      "evidenceSummary": "hermsec-heuristics reported Hermsec fake secret fixture token at .env.example:1. Evidence: .env.example:1 API_KEY=[REDACTED]. Identifiers supplied by scanner evidence: CWE-798.",
+      "impact": "HIGH secret finding reported by hermsec-heuristics.",
+      "safeNextSteps": [
+        "Review the scanner evidence and affected location.",
+        "Apply the smallest defensive change that addresses the reported issue.",
+        "Run Hermsec again and compare the delta report."
+      ],
+      "suggestedFix": "Move secrets to environment variables or a secret manager and rotate exposed credentials.",
+      "title": "Hermsec fake secret fixture token"
+    }
+  },
+  "findings": [
+    {
+      "category": "code",
+      "confidence": "medium",
+      "cwe": [
+        "CWE-78"
+      ],
+      "description": "Hermsec's offline heuristic scanner found a risky source pattern.",
+      "evidence": "src/routes/search.js:19 exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined);",
+      "fingerprint": "fp-f9e3cdf62dee35f2",
+      "id": "finding-f9e3cdf62dee35f2",
+      "location": {
+        "file": "src/routes/search.js",
+        "startLine": 19
+      },
+      "remediation": "Use fixed argv arrays and validate user-controlled values before execution.",
+      "ruleId": "hermsec.code.command-injection-input",
+      "severity": "critical",
+      "title": "Shell execution may include user-controlled input",
+      "tool": "hermsec-heuristics"
+    },
+    {
+      "category": "secret",
+      "confidence": "confirmed",
+      "cwe": [
+        "CWE-798"
+      ],
+      "description": "A secret-like value is present in source control.",
+      "evidence": "src/routes/search.js:7 export const fakeFixtureToken = \"HERMSEC_FAKE_TEST_TOKEN_[REDACTED]\";",
+      "fingerprint": "fp-44a1a2191ecca7b5",
+      "id": "finding-44a1a2191ecca7b5",
+      "location": {
+        "file": "src/routes/search.js",
+        "startLine": 7
+      },
+      "remediation": "Move secrets to environment variables or a secret manager and rotate exposed credentials.",
+      "ruleId": "hermsec.secret.fake-fixture-token",
+      "severity": "high",
+      "title": "Hermsec fake secret fixture token",
+      "tool": "hermsec-heuristics"
+    },
+    {
+      "category": "secret",
+      "confidence": "confirmed",
+      "cwe": [
+        "CWE-798"
+      ],
+      "description": "A secret-like value is present in source control.",
+      "evidence": ".env.example:1 API_KEY=[REDACTED]",
+      "fingerprint": "fp-fc661b2848ecca41",
+      "id": "finding-fc661b2848ecca41",
+      "location": {
+        "file": ".env.example",
+        "startLine": 1
+      },
+      "remediation": "Move secrets to environment variables or a secret manager and rotate exposed credentials.",
+      "ruleId": "hermsec.secret.fake-fixture-token",
+      "severity": "high",
+      "title": "Hermsec fake secret fixture token",
+      "tool": "hermsec-heuristics"
+    },
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "description": "PMG wrapped npm audit reported a known npm dependency vulnerability without installing packages.",
+      "evidence": "lodash <4.17.21 https://github.[REDACTED_SECRET]",
+      "fingerprint": "fp-019805294a476f9b",
+      "id": "finding-019805294a476f9b",
+      "identifiers": {
+        "cve": [],
+        "ghsa": [
+          "GHSA-35JH-R3H4-6JHM"
+        ],
+        "osv": []
+      },
+      "location": {
+        "file": "package-lock.json"
+      },
+      "package": {
+        "ecosystem": "npm",
+        "name": "lodash"
+      },
+      "remediation": "Upgrade lodash to 4.18.1 after dependency review.",
+      "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+      "severity": "high",
+      "title": "Command Injection in lodash",
+      "tool": "pmg"
+    },
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "description": "OSV-Scanner reported a known vulnerability for a dependency in a recognized manifest or lockfile.",
+      "evidence": "lodash@4.17.20 is affected by GHSA-35jh-r3h4-6jhm, CVE-2021-23337.",
+      "fingerprint": "fp-72f746cb8be1cd13",
+      "id": "finding-72f746cb8be1cd13",
+      "identifiers": {
+        "cve": [
+          "CVE-2021-23337"
+        ],
+        "ghsa": [
+          "GHSA-35JH-R3H4-6JHM"
+        ],
+        "osv": []
+      },
+      "location": {
+        "file": "package-lock.json"
+      },
+      "package": {
+        "ecosystem": "npm",
+        "installedVersion": "4.17.20",
+        "name": "lodash"
+      },
+      "remediation": "Upgrade lodash to a fixed version: 4.17.21.",
+      "ruleId": "osv:GHSA-35jh-r3h4-6jhm",
+      "severity": "high",
+      "title": "Command Injection in lodash",
+      "tool": "osv-scanner"
+    },
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "cwe": [
+        "CWE-79"
+      ],
+      "description": "The lockfile pins lodash below 4.17.21, a version range with known advisories.",
+      "evidence": "package-lock.json pins lodash@4.17.20.",
+      "fingerprint": "fp-c0abf04fd738039a",
+      "id": "finding-c0abf04fd738039a",
+      "identifiers": {
+        "ghsa": [
+          "GHSA-35jh-r3h4-6jhm"
+        ]
+      },
+      "location": {
+        "file": "package-lock.json"
+      },
+      "package": {
+        "ecosystem": "npm",
+        "installedVersion": "4.17.20",
+        "name": "lodash"
+      },
+      "remediation": "Upgrade lodash to 4.17.21 or newer after dependency review.",
+      "ruleId": "hermsec.package.lodash-known-vulnerable",
+      "severity": "high",
+      "title": "Known vulnerable lodash version",
+      "tool": "hermsec-heuristics"
+    },
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "description": "PMG wrapped npm audit reported a known npm dependency vulnerability without installing packages.",
+      "evidence": "lodash >=4.0.0 <=4.17.23 https://github.[REDACTED_SECRET]",
+      "fingerprint": "fp-365058e7fa14adc3",
+      "id": "finding-365058e7fa14adc3",
+      "identifiers": {
+        "cve": [],
+        "ghsa": [
+          "GHSA-R5FR-RJXR-66JC"
+        ],
+        "osv": []
+      },
+      "location": {
+        "file": "package-lock.json"
+      },
+      "package": {
+        "ecosystem": "npm",
+        "name": "lodash"
+      },
+      "remediation": "Upgrade lodash to 4.18.1 after dependency review.",
+      "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+      "severity": "high",
+      "title": "lodash vulnerable to Code Injection via `_.template` imports key names",
+      "tool": "pmg"
+    },
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "description": "OSV-Scanner reported a known vulnerability for a dependency in a recognized manifest or lockfile.",
+      "evidence": "lodash@4.17.20 is affected by GHSA-r5fr-rjxr-66jc, CVE-2026-4800.",
+      "fingerprint": "fp-9c6c61503e6a8d67",
+      "id": "finding-9c6c61503e6a8d67",
+      "identifiers": {
+        "cve": [
+          "CVE-2026-4800"
+        ],
+        "ghsa": [
+          "GHSA-R5FR-RJXR-66JC"
+        ],
+        "osv": []
+      },
+      "location": {
+        "file": "package-lock.json"
+      },
+      "package": {
+        "ecosystem": "npm",
+        "installedVersion": "4.17.20",
+        "name": "lodash"
+      },
+      "remediation": "Upgrade lodash to a fixed version: 4.18.0.",
+      "ruleId": "osv:GHSA-r5fr-rjxr-66jc",
+      "severity": "high",
+      "title": "lodash vulnerable to Code Injection via `_.template` imports key names",
+      "tool": "osv-scanner"
+    },
+    {
+      "category": "code",
+      "confidence": "high",
+      "cwe": [
+        "CWE-78"
+      ],
+      "description": "Semgrep reported a static analysis finding from Hermsec's local ruleset or project scanner configuration.",
+      "evidence": "src/routes/search.js:19 Shell execution through child_process",
+      "fingerprint": "fp-3b3d25cd2cad6275",
+      "id": "finding-3b3d25cd2cad6275",
+      "location": {
+        "file": "src/routes/search.js",
+        "startLine": 19
+      },
+      "remediation": "Review the matched code path and apply the Semgrep rule guidance.",
+      "ruleId": "C.Users.whent.AppData.Local.Temp.hermsec-semgrep-gpijG1.hermsec.javascript.child-process-exec",
+      "severity": "high",
+      "title": "Shell execution through child_process",
+      "tool": "semgrep"
+    },
+    {
+      "category": "code",
+      "confidence": "medium",
+      "cwe": [
+        "CWE-78"
+      ],
+      "description": "Hermsec's offline heuristic scanner found a risky source pattern.",
+      "evidence": "src/routes/search.js:19 exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined);",
+      "fingerprint": "fp-91e695b1e33f2931",
+      "id": "finding-91e695b1e33f2931",
+      "location": {
+        "file": "src/routes/search.js",
+        "startLine": 19
+      },
+      "remediation": "Use spawn or execFile with fixed argv arrays and shell disabled.",
+      "ruleId": "hermsec.code.child-process-exec",
+      "severity": "high",
+      "title": "Shell execution through child_process",
+      "tool": "hermsec-heuristics"
+    },
+    {
+      "category": "code",
+      "confidence": "medium",
+      "cwe": [
+        "CWE-78"
+      ],
+      "description": "Hermsec's offline heuristic scanner found a risky source pattern.",
+      "evidence": "src/app.js:10 return childProcess.exec(\"tool \" + tool);",
+      "fingerprint": "fp-d42a93124fa707d4",
+      "id": "finding-d42a93124fa707d4",
+      "location": {
+        "file": "src/app.js",
+        "startLine": 10
+      },
+      "remediation": "Use spawn or execFile with fixed argv arrays and shell disabled.",
+      "ruleId": "hermsec.code.child-process-exec",
+      "severity": "high",
+      "title": "Shell execution through child_process",
+      "tool": "hermsec-heuristics"
+    },
+    {
+      "category": "code",
+      "confidence": "medium",
+      "cwe": [
+        "CWE-89"
+      ],
+      "description": "Hermsec's offline heuristic scanner found a risky source pattern.",
+      "evidence": "src/app.js:5 return db.query(\"SELECT * FROM users WHERE name = '\" + term + \"'\");",
+      "fingerprint": "fp-31325d17858675c7",
+      "id": "finding-31325d17858675c7",
+      "location": {
+        "file": "src/app.js",
+        "startLine": 5
+      },
+      "remediation": "Use parameterized queries or a query builder.",
+      "ruleId": "hermsec.code.sql-dynamic-string",
+      "severity": "high",
+      "title": "SQL query appears to include dynamic string construction",
+      "tool": "hermsec-heuristics"
+    },
+    {
+      "category": "code",
+      "confidence": "medium",
+      "cwe": [
+        "CWE-89"
+      ],
+      "description": "Hermsec's offline heuristic scanner found a risky source pattern.",
+      "evidence": "src/routes/search.js:14 const query = `SELECT * FROM users WHERE display_name = '${term}'`;",
+      "fingerprint": "fp-8f4d1fc6724ec637",
+      "id": "finding-8f4d1fc6724ec637",
+      "location": {
+        "file": "src/routes/search.js",
+        "startLine": 14
+      },
+      "remediation": "Use parameterized queries or a query builder.",
+      "ruleId": "hermsec.code.sql-dynamic-string",
+      "severity": "high",
+      "title": "SQL query appears to include dynamic string construction",
+      "tool": "hermsec-heuristics"
+    },
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "description": "PMG wrapped npm audit reported a known npm dependency vulnerability without installing packages.",
+      "evidence": "express <4.19.2 https://github.[REDACTED_SECRET]",
+      "fingerprint": "fp-5d7c8a7ede9c55b6",
+      "id": "finding-5d7c8a7ede9c55b6",
+      "identifiers": {
+        "cve": [],
+        "ghsa": [
+          "GHSA-RV95-896H-C2VC"
+        ],
+        "osv": []
+      },
+      "location": {
+        "file": "package-lock.json"
+      },
+      "package": {
+        "ecosystem": "npm",
+        "name": "express"
+      },
+      "remediation": "Upgrade express to 4.22.2 after dependency review.",
+      "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+      "severity": "medium",
+      "title": "Express.js Open Redirect in malformed URLs",
+      "tool": "pmg"
+    },
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "description": "OSV-Scanner reported a known vulnerability for a dependency in a recognized manifest or lockfile.",
+      "evidence": "express@4.18.2 is affected by GHSA-rv95-896h-c2vc, CVE-2024-29041.",
+      "fingerprint": "fp-79460a7a95ca1609",
+      "id": "finding-79460a7a95ca1609",
+      "identifiers": {
+        "cve": [
+          "CVE-2024-29041"
+        ],
+        "ghsa": [
+          "GHSA-RV95-896H-C2VC"
+        ],
+        "osv": []
+      },
+      "location": {
+        "file": "package-lock.json"
+      },
+      "package": {
+        "ecosystem": "npm",
+        "installedVersion": "4.18.2",
+        "name": "express"
+      },
+      "remediation": "Upgrade express to a fixed version: 4.19.2, 5.0.0-beta.3.",
+      "ruleId": "osv:GHSA-rv95-896h-c2vc",
+      "severity": "medium",
+      "title": "Express.js Open Redirect in malformed URLs",
+      "tool": "osv-scanner"
+    },
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "description": "PMG wrapped npm audit reported a known npm dependency vulnerability without installing packages.",
+      "evidence": "lodash >=4.0.0 <=4.17.22 https://github.[REDACTED_SECRET]",
+      "fingerprint": "fp-4eb6c10f5698be89",
+      "id": "finding-4eb6c10f5698be89",
+      "identifiers": {
+        "cve": [],
+        "ghsa": [
+          "GHSA-XXJR-MMJV-4GPG"
+        ],
+        "osv": []
+      },
+      "location": {
+        "file": "package-lock.json"
+      },
+      "package": {
+        "ecosystem": "npm",
+        "name": "lodash"
+      },
+      "remediation": "Upgrade lodash to 4.18.1 after dependency review.",
+      "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+      "severity": "medium",
+      "title": "Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions",
+      "tool": "pmg"
+    },
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "description": "OSV-Scanner reported a known vulnerability for a dependency in a recognized manifest or lockfile.",
+      "evidence": "lodash@4.17.20 is affected by GHSA-xxjr-mmjv-4gpg, CVE-2025-13465.",
+      "fingerprint": "fp-f71ba54cee76cfe0",
+      "id": "finding-f71ba54cee76cfe0",
+      "identifiers": {
+        "cve": [
+          "CVE-2025-13465"
+        ],
+        "ghsa": [
+          "GHSA-XXJR-MMJV-4GPG"
+        ],
+        "osv": []
+      },
+      "location": {
+        "file": "package-lock.json"
+      },
+      "package": {
+        "ecosystem": "npm",
+        "installedVersion": "4.17.20",
+        "name": "lodash"
+      },
+      "remediation": "Upgrade lodash to a fixed version: 4.17.23.",
+      "ruleId": "osv:GHSA-xxjr-mmjv-4gpg",
+      "severity": "medium",
+      "title": "Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions",
+      "tool": "osv-scanner"
+    },
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "description": "OSV-Scanner reported a known vulnerability for a dependency in a recognized manifest or lockfile.",
+      "evidence": "lodash@4.17.20 is affected by GHSA-f23m-r3pf-42rh, CVE-2026-2950.",
+      "fingerprint": "fp-875df24e9347bb86",
+      "id": "finding-875df24e9347bb86",
+      "identifiers": {
+        "cve": [
+          "CVE-2026-2950"
+        ],
+        "ghsa": [
+          "GHSA-F23M-R3PF-42RH"
+        ],
+        "osv": []
+      },
+      "location": {
+        "file": "package-lock.json"
+      },
+      "package": {
+        "ecosystem": "npm",
+        "installedVersion": "4.17.20",
+        "name": "lodash"
+      },
+      "remediation": "Upgrade lodash to a fixed version: 4.18.0.",
+      "ruleId": "osv:GHSA-f23m-r3pf-42rh",
+      "severity": "medium",
+      "title": "lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit`",
+      "tool": "osv-scanner"
+    },
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "description": "PMG wrapped npm audit reported a known npm dependency vulnerability without installing packages.",
+      "evidence": "lodash <=4.17.23 https://github.[REDACTED_SECRET]",
+      "fingerprint": "fp-da558c475a6f03b0",
+      "id": "finding-da558c475a6f03b0",
+      "identifiers": {
+        "cve": [],
+        "ghsa": [
+          "GHSA-F23M-R3PF-42RH"
+        ],
+        "osv": []
+      },
+      "location": {
+        "file": "package-lock.json"
+      },
+      "package": {
+        "ecosystem": "npm",
+        "name": "lodash"
+      },
+      "remediation": "Upgrade lodash to 4.18.1 after dependency review.",
+      "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+      "severity": "medium",
+      "title": "lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit`",
+      "tool": "pmg"
+    },
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "description": "OSV-Scanner reported a known vulnerability for a dependency in a recognized manifest or lockfile.",
+      "evidence": "lodash@4.17.20 is affected by GHSA-29mw-wpgm-hmr9, CVE-2020-28500.",
+      "fingerprint": "fp-7194eb872634eb85",
+      "id": "finding-7194eb872634eb85",
+      "identifiers": {
+        "cve": [
+          "CVE-2020-28500"
+        ],
+        "ghsa": [
+          "GHSA-29MW-WPGM-HMR9"
+        ],
+        "osv": []
+      },
+      "location": {
+        "file": "package-lock.json"
+      },
+      "package": {
+        "ecosystem": "npm",
+        "installedVersion": "4.17.20",
+        "name": "lodash"
+      },
+      "remediation": "Upgrade lodash to a fixed version: 4.17.21.",
+      "ruleId": "osv:GHSA-29mw-wpgm-hmr9",
+      "severity": "medium",
+      "title": "Regular Expression Denial of Service (ReDoS) in lodash",
+      "tool": "osv-scanner"
+    },
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "description": "PMG wrapped npm audit reported a known npm dependency vulnerability without installing packages.",
+      "evidence": "lodash >=4.0.0 <4.17.21 https://github.[REDACTED_SECRET]",
+      "fingerprint": "fp-968c8ccb0d1e10db",
+      "id": "finding-968c8ccb0d1e10db",
+      "identifiers": {
+        "cve": [],
+        "ghsa": [
+          "GHSA-29MW-WPGM-HMR9"
+        ],
+        "osv": []
+      },
+      "location": {
+        "file": "package-lock.json"
+      },
+      "package": {
+        "ecosystem": "npm",
+        "name": "lodash"
+      },
+      "remediation": "Upgrade lodash to 4.18.1 after dependency review.",
+      "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+      "severity": "medium",
+      "title": "Regular Expression Denial of Service (ReDoS) in lodash",
+      "tool": "pmg"
+    },
+    {
+      "category": "code",
+      "confidence": "medium",
+      "cwe": [
+        "CWE-79"
+      ],
+      "description": "Hermsec's offline heuristic scanner found a risky source pattern.",
+      "evidence": "src/routes/search.js:33 res.send(`<h1>${name}</h1><p>${digest}</p>`);",
+      "fingerprint": "fp-b2174492de636519",
+      "id": "finding-b2174492de636519",
+      "location": {
+        "file": "src/routes/search.js",
+        "startLine": 33
+      },
+      "remediation": "Escape untrusted output before placing it in HTML responses.",
+      "ruleId": "hermsec.code.unsanitized-html-response",
+      "severity": "medium",
+      "title": "HTML response may include unsanitized input",
+      "tool": "hermsec-heuristics"
+    },
+    {
+      "category": "code",
+      "confidence": "medium",
+      "cwe": [
+        "CWE-79"
+      ],
+      "description": "Hermsec's offline heuristic scanner found a risky source pattern.",
+      "evidence": "src/app.js:14 res.send(\"<h1>\" + req.query.name + \"</h1>\");",
+      "fingerprint": "fp-f4e47258a7e0e346",
+      "id": "finding-f4e47258a7e0e346",
+      "location": {
+        "file": "src/app.js",
+        "startLine": 14
+      },
+      "remediation": "Escape untrusted output before placing it in HTML responses.",
+      "ruleId": "hermsec.code.unsanitized-html-response",
+      "severity": "medium",
+      "title": "HTML response may include unsanitized input",
+      "tool": "hermsec-heuristics"
+    },
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "description": "PMG wrapped npm audit reported a known npm dependency vulnerability without installing packages.",
+      "evidence": "express <4.20.0 https://github.[REDACTED_SECRET]",
+      "fingerprint": "fp-34a12328494fee7c",
+      "id": "finding-34a12328494fee7c",
+      "identifiers": {
+        "cve": [],
+        "ghsa": [
+          "GHSA-QW6H-VGH9-J6WX"
+        ],
+        "osv": []
+      },
+      "location": {
+        "file": "package-lock.json"
+      },
+      "package": {
+        "ecosystem": "npm",
+        "name": "express"
+      },
+      "remediation": "Upgrade express to 4.22.2 after dependency review.",
+      "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+      "severity": "low",
+      "title": "express vulnerable to XSS via response.redirect()",
+      "tool": "pmg"
+    },
+    {
+      "category": "dependency",
+      "confidence": "high",
+      "description": "OSV-Scanner reported a known vulnerability for a dependency in a recognized manifest or lockfile.",
+      "evidence": "express@4.18.2 is affected by GHSA-qw6h-vgh9-j6wx, CVE-2024-43796.",
+      "fingerprint": "fp-b80725495585908e",
+      "id": "finding-b80725495585908e",
+      "identifiers": {
+        "cve": [
+          "CVE-2024-43796"
+        ],
+        "ghsa": [
+          "GHSA-QW6H-VGH9-J6WX"
+        ],
+        "osv": []
+      },
+      "location": {
+        "file": "package-lock.json"
+      },
+      "package": {
+        "ecosystem": "npm",
+        "installedVersion": "4.18.2",
+        "name": "express"
+      },
+      "remediation": "Upgrade express to a fixed version: 4.20.0, 5.0.0.",
+      "ruleId": "osv:GHSA-qw6h-vgh9-j6wx",
+      "severity": "low",
+      "title": "express vulnerable to XSS via response.redirect()",
+      "tool": "osv-scanner"
+    }
+  ],
+  "generatedAt": "2026-06-27T20:48:37.300Z",
+  "intelligence": [
+    {
+      "cve": "CVE-2026-4800",
+      "ecosystem": "npm",
+      "findingIds": [
+        "finding-019805294a476f9b",
+        "finding-365058e7fa14adc3",
+        "finding-4eb6c10f5698be89",
+        "finding-7194eb872634eb85",
+        "finding-72f746cb8be1cd13",
+        "finding-875df24e9347bb86",
+        "finding-968c8ccb0d1e10db",
+        "finding-9c6c61503e6a8d67",
+        "finding-c0abf04fd738039a",
+        "finding-da558c475a6f03b0",
+        "finding-f71ba54cee76cfe0"
+      ],
+      "fixVersion": "4.18.0",
+      "id": "github-advisory:GHSA-r5fr-rjxr-66jc",
+      "identifiers": {
+        "cve": [
+          "CVE-2026-4800"
+        ],
+        "cwe": [
+          "CWE-94"
+        ],
+        "ghsa": [
+          "GHSA-r5fr-rjxr-66jc"
+        ],
+        "osv": []
+      },
+      "knownExploited": false,
+      "matchedPackages": [
+        "npm:lodash",
+        "npm:lodash@4.17.20"
+      ],
+      "modifiedAt": "2026-06-17T10:57:15.217",
+      "packageLabel": "npm:lodash",
+      "packageName": "lodash",
+      "priority": "urgent",
+      "publishedAt": "2026-04-01T23:51:12Z",
+      "reasons": [
+        "Direct npm dependency lodash matches >= 4.0.0, <= 4.17.23",
+        "Direct npm dependency lodash matches >=4.0.0 <4.18.0",
+        "Direct npm dependency lodash@4.17.20 matches >=4.0.0 <4.18.0",
+        "A previous finding referenced the same advisory identifier",
+        "Finding finding-72f746cb8be1cd13 package npm:lodash@4.17.20 matches >=4.0.0 <4.18.0",
+        "Finding finding-019805294a476f9b package npm:lodash matches >= 4.0.0, <= 4.17.23",
+        "Finding finding-c0abf04fd738039a package npm:lodash@4.17.20 matches >=4.0.0 <4.18.0",
+        "Finding finding-9c6c61503e6a8d67 references CVE-2026-4800, ghsa-r5fr-rjxr-66jc",
+        "Finding finding-9c6c61503e6a8d67 package npm:lodash@4.17.20 matches >=4.0.0 <4.18.0",
+        "Finding finding-365058e7fa14adc3 references ghsa-r5fr-rjxr-66jc",
+        "Finding finding-365058e7fa14adc3 package npm:lodash matches >= 4.0.0, <= 4.17.23",
+        "Finding finding-f71ba54cee76cfe0 package npm:lodash@4.17.20 matches >=4.0.0 <4.18.0",
+        "Finding finding-4eb6c10f5698be89 package npm:lodash matches >= 4.0.0, <= 4.17.23",
+        "Finding finding-875df24e9347bb86 package npm:lodash@4.17.20 matches >=4.0.0 <4.18.0",
+        "Finding finding-da558c475a6f03b0 package npm:lodash matches >= 4.0.0, <= 4.17.23",
+        "Finding finding-7194eb872634eb85 package npm:lodash@4.17.20 matches >=4.0.0 <4.18.0",
+        "Finding finding-968c8ccb0d1e10db package npm:lodash matches >= 4.0.0, <= 4.17.23"
+      ],
+      "severity": "critical",
+      "source": "GitHub Advisory, NVD, OSV",
+      "title": "lodash vulnerable to Code Injection via `_.template` imports key names",
+      "url": "https://github.[REDACTED_SECRET]",
+      "whyItMatters": "### Impact\n\nThe fix for [CVE-2021-23337](https://github.[REDACTED_SECRET]) added validation for the `variable` option in `_.template` but did not apply the same validation to `options.imports` key names. Both paths flow into the same `Function()` constructor sink.\n\nWhen an application passes untrusted input as `options.imports` key names, an attacker can inject default-parameter expressions that execute arbitrary code at template compilation time.\n\nAdditionally, `_.template` use"
+    },
+    {
+      "cve": "CVE-2021-23337",
+      "ecosystem": "npm",
+      "findingIds": [
+        "finding-019805294a476f9b",
+        "finding-365058e7fa14adc3",
+        "finding-4eb6c10f5698be89",
+        "finding-7194eb872634eb85",
+        "finding-72f746cb8be1cd13",
+        "finding-875df24e9347bb86",
+        "finding-968c8ccb0d1e10db",
+        "finding-9c6c61503e6a8d67",
+        "finding-c0abf04fd738039a",
+        "finding-da558c475a6f03b0",
+        "finding-f71ba54cee76cfe0"
+      ],
+      "fixVersion": "4.17.21",
+      "id": "nvd:CVE-2021-23337",
+      "identifiers": {
+        "cve": [
+          "CVE-2021-23337"
+        ],
+        "cwe": [
+          "CWE-77",
+          "CWE-94"
+        ],
+        "ghsa": [
+          "GHSA-35jh-r3h4-6jhm"
+        ],
+        "osv": []
+      },
+      "knownExploited": false,
+      "matchedPackages": [
+        "npm:lodash",
+        "npm:lodash@4.17.20"
+      ],
+      "modifiedAt": "2026-06-17T03:38:34.773",
+      "packageLabel": "npm:lodash",
+      "packageName": "lodash",
+      "priority": "urgent",
+      "publishedAt": "2021-02-15T13:15:12.560",
+      "reasons": [
+        "Direct npm dependency lodash matches < 4.17.21",
+        "Direct npm dependency lodash matches >=0 <4.17.21",
+        "Direct npm dependency lodash@4.17.20 matches >=0 <4.17.21",
+        "A previous finding referenced the same advisory identifier",
+        "Finding finding-72f746cb8be1cd13 references CVE-2021-23337, ghsa-35jh-r3h4-6jhm",
+        "Finding finding-72f746cb8be1cd13 package npm:lodash@4.17.20 matches >=0 <4.17.21",
+        "Finding finding-019805294a476f9b references ghsa-35jh-r3h4-6jhm",
+        "Finding finding-019805294a476f9b package npm:lodash matches < 4.17.21",
+        "Finding finding-c0abf04fd738039a references ghsa-35jh-r3h4-6jhm",
+        "Finding finding-c0abf04fd738039a package npm:lodash@4.17.20 matches >=0 <4.17.21",
+        "Finding finding-9c6c61503e6a8d67 package npm:lodash@4.17.20 matches >=0 <4.17.21",
+        "Finding finding-365058e7fa14adc3 package npm:lodash matches < 4.17.21",
+        "Finding finding-f71ba54cee76cfe0 package npm:lodash@4.17.20 matches >=0 <4.17.21",
+        "Finding finding-4eb6c10f5698be89 package npm:lodash matches < 4.17.21",
+        "Finding finding-875df24e9347bb86 package npm:lodash@4.17.20 matches >=0 <4.17.21",
+        "Finding finding-da558c475a6f03b0 package npm:lodash matches < 4.17.21",
+        "Finding finding-7194eb872634eb85 package npm:lodash@4.17.20 matches >=0 <4.17.21",
+        "Finding finding-968c8ccb0d1e10db package npm:lodash matches < 4.17.21"
+      ],
+      "severity": "high",
+      "source": "GitHub Advisory, NVD, OSV",
+      "title": "Command Injection in lodash",
+      "url": "https://nvd.nist.gov/vuln/detail/CVE-2021-23337",
+      "whyItMatters": "Lodash versions prior to 4.17.21 are vulnerable to Command Injection via the template function."
+    },
+    {
+      "cve": "CVE-2024-43796",
+      "ecosystem": "npm",
+      "findingIds": [
+        "finding-34a12328494fee7c",
+        "finding-5d7c8a7ede9c55b6",
+        "finding-79460a7a95ca1609",
+        "finding-b80725495585908e"
+      ],
+      "fixVersion": "4.20.0",
+      "id": "github-advisory:GHSA-qw6h-vgh9-j6wx",
+      "identifiers": {
+        "cve": [
+          "CVE-2024-43796"
+        ],
+        "cwe": [
+          "CWE-79"
+        ],
+        "ghsa": [
+          "GHSA-qw6h-vgh9-j6wx"
+        ],
+        "osv": []
+      },
+      "knownExploited": false,
+      "matchedPackages": [
+        "npm:express",
+        "npm:express@4.18.2"
+      ],
+      "modifiedAt": "2026-06-17T07:51:43.847",
+      "packageLabel": "npm:express",
+      "packageName": "express",
+      "priority": "urgent",
+      "publishedAt": "2024-09-10T19:41:04Z",
+      "reasons": [
+        "Direct npm dependency express matches < 4.20.0",
+        "Direct npm dependency express matches >= 5.0.0-alpha.1, < 5.0.0",
+        "Direct npm dependency express matches >=0 <4.20.0",
+        "Direct npm dependency express@4.18.2 matches >=0 <4.20.0",
+        "Direct npm dependency express matches >=5.0.0-alpha.1 <5.0.0",
+        "A previous finding referenced the same advisory identifier",
+        "Finding finding-c0abf04fd738039a shares CWE-79",
+        "Finding finding-79460a7a95ca1609 package npm:express@4.18.2 matches >=0 <4.20.0",
+        "Finding finding-5d7c8a7ede9c55b6 package npm:express matches < 4.20.0",
+        "Finding finding-f4e47258a7e0e346 shares CWE-79",
+        "Finding finding-b2174492de636519 shares CWE-79",
+        "Finding finding-b80725495585908e references CVE-2024-43796, ghsa-qw6h-vgh9-j6wx",
+        "Finding finding-b80725495585908e package npm:express@4.18.2 matches >=0 <4.20.0",
+        "Finding finding-34a12328494fee7c references ghsa-qw6h-vgh9-j6wx",
+        "Finding finding-34a12328494fee7c package npm:express matches < 4.20.0"
+      ],
+      "severity": "medium",
+      "source": "GitHub Advisory, NVD, OSV",
+      "title": "express vulnerable to XSS via response.redirect()",
+      "url": "https://github.[REDACTED_SECRET]",
+      "whyItMatters": "### Impact\n\nIn express <4.20.0, passing untrusted user input - even after sanitizing it - to `response.redirect()` may execute untrusted code\n\n### Patches\n\nthis issue is patched in express 4.20.0\n\n### Workarounds\n\nusers are encouraged to upgrade to the patched version of express, but otherwise can workaround this issue by making sure any untrusted inputs are safe, ideally by validating them against an explicit allowlist\n\n### Details\n\nsuccessful exploitation of this vector requires the following:"
+    },
+    {
+      "cve": "CVE-2024-29041",
+      "ecosystem": "npm",
+      "findingIds": [
+        "finding-34a12328494fee7c",
+        "finding-5d7c8a7ede9c55b6",
+        "finding-79460a7a95ca1609",
+        "finding-b80725495585908e"
+      ],
+      "fixVersion": "4.19.2",
+      "id": "github-advisory:GHSA-rv95-896h-c2vc",
+      "identifiers": {
+        "cve": [
+          "CVE-2024-29041"
+        ],
+        "cwe": [
+          "CWE-1286",
+          "CWE-601"
+        ],
+        "ghsa": [
+          "GHSA-rv95-896h-c2vc"
+        ],
+        "osv": []
+      },
+      "knownExploited": false,
+      "matchedPackages": [
+        "npm:express",
+        "npm:express@4.18.2"
+      ],
+      "modifiedAt": "2026-06-17T07:22:18.493",
+      "packageLabel": "npm:express",
+      "packageName": "express",
+      "priority": "urgent",
+      "publishedAt": "2024-03-25T19:40:26Z",
+      "reasons": [
+        "Direct npm dependency express matches < 4.19.2",
+        "Direct npm dependency express matches >= 5.0.0-alpha.1, < 5.0.0-beta.3",
+        "Direct npm dependency express matches >=0 <4.19.2",
+        "Direct npm dependency express@4.18.2 matches >=0 <4.19.2",
+        "Direct npm dependency express matches >=5.0.0-alpha.1 <5.0.0-beta.3",
+        "A previous finding referenced the same advisory identifier",
+        "Finding finding-79460a7a95ca1609 references CVE-2024-29041, ghsa-rv95-896h-c2vc",
+        "Finding finding-79460a7a95ca1609 package npm:express@4.18.2 matches >=0 <4.19.2",
+        "Finding finding-5d7c8a7ede9c55b6 references ghsa-rv95-896h-c2vc",
+        "Finding finding-5d7c8a7ede9c55b6 package npm:express matches < 4.19.2",
+        "Finding finding-b80725495585908e package npm:express@4.18.2 matches >=0 <4.19.2",
+        "Finding finding-34a12328494fee7c package npm:express matches < 4.19.2"
+      ],
+      "severity": "medium",
+      "source": "GitHub Advisory, NVD, OSV",
+      "title": "Express.js Open Redirect in malformed URLs",
+      "url": "https://github.[REDACTED_SECRET]",
+      "whyItMatters": "### Impact\n\nVersions of Express.js prior to 4.19.2 and pre-release alpha and beta versions before 5.0.0-beta.3 are affected by an open redirect vulnerability using malformed URLs.\n\nWhen a user of Express performs a redirect using a user-provided URL Express performs an encode [using `encodeurl`](https://github.com/pillarjs/encodeurl) on the contents before passing it to the `location` header. This can cause malformed URLs to be evaluated in unexpected ways by common redirect allow list implement"
+    },
+    {
+      "cve": "CVE-2025-13465",
+      "ecosystem": "npm",
+      "findingIds": [
+        "finding-019805294a476f9b",
+        "finding-365058e7fa14adc3",
+        "finding-4eb6c10f5698be89",
+        "finding-7194eb872634eb85",
+        "finding-72f746cb8be1cd13",
+        "finding-875df24e9347bb86",
+        "finding-968c8ccb0d1e10db",
+        "finding-9c6c61503e6a8d67",
+        "finding-c0abf04fd738039a",
+        "finding-da558c475a6f03b0",
+        "finding-f71ba54cee76cfe0"
+      ],
+      "fixVersion": "4.17.23",
+      "id": "github-advisory:GHSA-xxjr-mmjv-4gpg",
+      "identifiers": {
+        "cve": [
+          "CVE-2025-13465"
+        ],
+        "cwe": [
+          "CWE-1321"
+        ],
+        "ghsa": [
+          "GHSA-xxjr-mmjv-4gpg"
+        ],
+        "osv": []
+      },
+      "knownExploited": false,
+      "matchedPackages": [
+        "npm:lodash",
+        "npm:lodash@4.17.20"
+      ],
+      "modifiedAt": "2026-06-17T08:34:11.687",
+      "packageLabel": "npm:lodash",
+      "packageName": "lodash",
+      "priority": "urgent",
+      "publishedAt": "2026-01-21T23:01:22Z",
+      "reasons": [
+        "Direct npm dependency lodash matches >= 4.0.0, <= 4.17.22",
+        "Direct npm dependency lodash matches >=4.0.0 <4.17.23",
+        "Direct npm dependency lodash@4.17.20 matches >=4.0.0 <4.17.23",
+        "A previous finding referenced the same advisory identifier",
+        "Finding finding-72f746cb8be1cd13 package npm:lodash@4.17.20 matches >=4.0.0 <4.17.23",
+        "Finding finding-019805294a476f9b package npm:lodash matches >= 4.0.0, <= 4.17.22",
+        "Finding finding-c0abf04fd738039a package npm:lodash@4.17.20 matches >=4.0.0 <4.17.23",
+        "Finding finding-9c6c61503e6a8d67 package npm:lodash@4.17.20 matches >=4.0.0 <4.17.23",
+        "Finding finding-365058e7fa14adc3 package npm:lodash matches >= 4.0.0, <= 4.17.22",
+        "Finding finding-f71ba54cee76cfe0 references CVE-2025-13465, ghsa-xxjr-mmjv-4gpg",
+        "Finding finding-f71ba54cee76cfe0 package npm:lodash@4.17.20 matches >=4.0.0 <4.17.23",
+        "Finding finding-4eb6c10f5698be89 references ghsa-xxjr-mmjv-4gpg",
+        "Finding finding-4eb6c10f5698be89 package npm:lodash matches >= 4.0.0, <= 4.17.22",
+        "Finding finding-875df24e9347bb86 package npm:lodash@4.17.20 matches >=4.0.0 <4.17.23",
+        "Finding finding-da558c475a6f03b0 package npm:lodash matches >= 4.0.0, <= 4.17.22",
+        "Finding finding-7194eb872634eb85 package npm:lodash@4.17.20 matches >=4.0.0 <4.17.23",
+        "Finding finding-968c8ccb0d1e10db package npm:lodash matches >= 4.0.0, <= 4.17.22"
+      ],
+      "severity": "medium",
+      "source": "GitHub Advisory, NVD, OSV",
+      "title": "Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions",
+      "url": "https://github.[REDACTED_SECRET]",
+      "whyItMatters": "### Impact\n\nLodash versions 4.0.0 through 4.17.22 are vulnerable to prototype pollution in the `_.unset` and `_.omit` functions. An attacker can pass crafted paths which cause Lodash to delete methods from global prototypes. \n\nThe issue permits deletion of properties but does not allow overwriting their original behavior.  \n\n### Patches\n\nThis issue is patched on 4.17.23."
+    },
+    {
+      "cve": "CVE-2026-2950",
+      "ecosystem": "npm",
+      "findingIds": [
+        "finding-019805294a476f9b",
+        "finding-365058e7fa14adc3",
+        "finding-4eb6c10f5698be89",
+        "finding-7194eb872634eb85",
+        "finding-72f746cb8be1cd13",
+        "finding-875df24e9347bb86",
+        "finding-968c8ccb0d1e10db",
+        "finding-9c6c61503e6a8d67",
+        "finding-c0abf04fd738039a",
+        "finding-da558c475a6f03b0",
+        "finding-f71ba54cee76cfe0"
+      ],
+      "fixVersion": "4.18.0",
+      "id": "github-advisory:GHSA-f23m-r3pf-42rh",
+      "identifiers": {
+        "cve": [
+          "CVE-2026-2950"
+        ],
+        "cwe": [
+          "CWE-1321"
+        ],
+        "ghsa": [
+          "GHSA-f23m-r3pf-42rh"
+        ],
+        "osv": []
+      },
+      "knownExploited": false,
+      "matchedPackages": [
+        "npm:lodash",
+        "npm:lodash@4.17.20"
+      ],
+      "modifiedAt": "2026-06-17T10:32:05.873",
+      "packageLabel": "npm:lodash",
+      "packageName": "lodash",
+      "priority": "urgent",
+      "publishedAt": "2026-04-01T23:50:27Z",
+      "reasons": [
+        "Direct npm dependency lodash matches <= 4.17.23",
+        "Direct npm dependency lodash matches >=0 <4.18.0",
+        "Direct npm dependency lodash@4.17.20 matches >=0 <4.18.0",
+        "A previous finding referenced the same advisory identifier",
+        "Finding finding-72f746cb8be1cd13 package npm:lodash@4.17.20 matches >=0 <4.18.0",
+        "Finding finding-019805294a476f9b package npm:lodash matches <= 4.17.23",
+        "Finding finding-c0abf04fd738039a package npm:lodash@4.17.20 matches >=0 <4.18.0",
+        "Finding finding-9c6c61503e6a8d67 package npm:lodash@4.17.20 matches >=0 <4.18.0",
+        "Finding finding-365058e7fa14adc3 package npm:lodash matches <= 4.17.23",
+        "Finding finding-f71ba54cee76cfe0 package npm:lodash@4.17.20 matches >=0 <4.18.0",
+        "Finding finding-4eb6c10f5698be89 package npm:lodash matches <= 4.17.23",
+        "Finding finding-875df24e9347bb86 references CVE-2026-2950, ghsa-f23m-r3pf-42rh",
+        "Finding finding-875df24e9347bb86 package npm:lodash@4.17.20 matches >=0 <4.18.0",
+        "Finding finding-da558c475a6f03b0 references ghsa-f23m-r3pf-42rh",
+        "Finding finding-da558c475a6f03b0 package npm:lodash matches <= 4.17.23",
+        "Finding finding-7194eb872634eb85 package npm:lodash@4.17.20 matches >=0 <4.18.0",
+        "Finding finding-968c8ccb0d1e10db package npm:lodash matches <= 4.17.23"
+      ],
+      "severity": "medium",
+      "source": "GitHub Advisory, NVD, OSV",
+      "title": "lodash vulnerable to Prototype Pollution via array path bypass in `_.unset` and `_.omit`",
+      "url": "https://github.[REDACTED_SECRET]",
+      "whyItMatters": "### Impact\n\nLodash versions 4.17.23 and earlier are vulnerable to prototype pollution in the `_.unset` and `_.omit` functions. The fix for [CVE-2025-13465](https://github.[REDACTED_SECRET]) only guards against string key members, so an attacker can bypass the check by passing array-wrapped path segments. This allows deletion of properties from built-in prototypes such as `Object.prototype`, `Number.prototype`, and `String.prototype`.\n\nThe issue permits del"
+    },
+    {
+      "cve": "CVE-2020-28500",
+      "ecosystem": "npm",
+      "findingIds": [
+        "finding-019805294a476f9b",
+        "finding-365058e7fa14adc3",
+        "finding-4eb6c10f5698be89",
+        "finding-7194eb872634eb85",
+        "finding-72f746cb8be1cd13",
+        "finding-875df24e9347bb86",
+        "finding-968c8ccb0d1e10db",
+        "finding-9c6c61503e6a8d67",
+        "finding-c0abf04fd738039a",
+        "finding-da558c475a6f03b0",
+        "finding-f71ba54cee76cfe0"
+      ],
+      "fixVersion": "4.17.21",
+      "id": "github-advisory:GHSA-29mw-wpgm-hmr9",
+      "identifiers": {
+        "cve": [
+          "CVE-2020-28500"
+        ],
+        "cwe": [
+          "CWE-1333",
+          "CWE-400"
+        ],
+        "ghsa": [
+          "GHSA-29mw-wpgm-hmr9"
+        ],
+        "osv": []
+      },
+      "knownExploited": false,
+      "matchedPackages": [
+        "npm:lodash",
+        "npm:lodash@4.17.20"
+      ],
+      "modifiedAt": "2026-06-17T03:10:32.757",
+      "packageLabel": "npm:lodash",
+      "packageName": "lodash",
+      "priority": "urgent",
+      "publishedAt": "2022-01-06T20:30:46Z",
+      "reasons": [
+        "Direct npm dependency lodash matches >= 4.0.0, < 4.17.21",
+        "Direct npm dependency lodash matches >=4.0.0 <4.17.21",
+        "Direct npm dependency lodash@4.17.20 matches >=4.0.0 <4.17.21",
+        "A previous finding referenced the same advisory identifier",
+        "Finding finding-72f746cb8be1cd13 package npm:lodash@4.17.20 matches >=4.0.0 <4.17.21",
+        "Finding finding-019805294a476f9b package npm:lodash matches >= 4.0.0, < 4.17.21",
+        "Finding finding-c0abf04fd738039a package npm:lodash@4.17.20 matches >=4.0.0 <4.17.21",
+        "Finding finding-9c6c61503e6a8d67 package npm:lodash@4.17.20 matches >=4.0.0 <4.17.21",
+        "Finding finding-365058e7fa14adc3 package npm:lodash matches >= 4.0.0, < 4.17.21",
+        "Finding finding-f71ba54cee76cfe0 package npm:lodash@4.17.20 matches >=4.0.0 <4.17.21",
+        "Finding finding-4eb6c10f5698be89 package npm:lodash matches >= 4.0.0, < 4.17.21",
+        "Finding finding-875df24e9347bb86 package npm:lodash@4.17.20 matches >=4.0.0 <4.17.21",
+        "Finding finding-da558c475a6f03b0 package npm:lodash matches >= 4.0.0, < 4.17.21",
+        "Finding finding-7194eb872634eb85 references CVE-2020-28500, ghsa-29mw-wpgm-hmr9",
+        "Finding finding-7194eb872634eb85 package npm:lodash@4.17.20 matches >=4.0.0 <4.17.21",
+        "Finding finding-968c8ccb0d1e10db references ghsa-29mw-wpgm-hmr9",
+        "Finding finding-968c8ccb0d1e10db package npm:lodash matches >= 4.0.0, < 4.17.21"
+      ],
+      "severity": "medium",
+      "source": "GitHub Advisory, NVD, OSV",
+      "title": "Regular Expression Denial of Service (ReDoS) in lodash",
+      "url": "https://github.[REDACTED_SECRET]",
+      "whyItMatters": "All versions of package lodash prior to 4.17.21 are vulnerable to Regular Expression Denial of Service (ReDoS) via the `toNumber`, `trim` and `trimEnd` functions. \n\nSteps to reproduce (provided by reporter Liyuan Chen):\n```js\nvar lo = require('lodash');\n\nfunction build_blank(n) {\n    var ret = \"1\"\n    for (var i = 0; i < n; i++) {\n        ret += \" \"\n    }\n    return ret + \"1\";\n}\nvar s = build_blank(50000) var time0 = Date.now();\nlo.trim(s) \nvar time_cost0 = Date.now() - time0;\nconsole.log(\"time_"
+    },
+    {
+      "cve": "CVE-2024-51999",
+      "ecosystem": "npm",
+      "findingIds": [
+        "finding-34a12328494fee7c",
+        "finding-5d7c8a7ede9c55b6"
+      ],
+      "fixVersion": "4.22.0",
+      "id": "github-advisory:GHSA-pj86-cfqh-vqx6",
+      "identifiers": {
+        "cve": [
+          "CVE-2024-51999"
+        ],
+        "cwe": [
+          "CWE-915"
+        ],
+        "ghsa": [
+          "GHSA-pj86-cfqh-vqx6"
+        ],
+        "osv": []
+      },
+      "knownExploited": false,
+      "matchedPackages": [
+        "npm:express"
+      ],
+      "modifiedAt": "2025-12-02T15:11:22Z",
+      "packageLabel": "npm:express",
+      "packageName": "express",
+      "priority": "urgent",
+      "publishedAt": "2025-12-01T18:59:17Z",
+      "reasons": [
+        "Direct npm dependency express matches < 4.22.0",
+        "Direct npm dependency express matches >= 5.0.0, < 5.2.0",
+        "Finding finding-5d7c8a7ede9c55b6 package npm:express matches < 4.22.0",
+        "Finding finding-34a12328494fee7c package npm:express matches < 4.22.0"
+      ],
+      "severity": "low",
+      "source": "GitHub Advisory",
+      "title": "Withdrawn Advisory: express improperly controls modification of query properties",
+      "url": "https://github.[REDACTED_SECRET]",
+      "whyItMatters": "## Withdrawn Advisory\nThis advisory has been withdrawn because it describes a correctness bug, not a vulnerability with real security impact. This link is maintained to preserve external references.\n\n## Original Description\n### Impact\n\nwhen using the extended query parser in express (`'query parser': 'extended'`), the `request.query` object inherits all object prototype properties, but these properties can be overwritten by query string parameter keys that match the property names\n\n> [!IMPORTANT"
+    },
+    {
+      "cve": "CVE-2021-41720",
+      "ecosystem": "npm",
+      "findingIds": [
+        "finding-019805294a476f9b",
+        "finding-365058e7fa14adc3",
+        "finding-4eb6c10f5698be89",
+        "finding-968c8ccb0d1e10db",
+        "finding-da558c475a6f03b0"
+      ],
+      "id": "github-advisory:GHSA-8p5q-j9m2-g8wr",
+      "identifiers": {
+        "cve": [
+          "CVE-2021-41720"
+        ],
+        "cwe": [
+          "CWE-77"
+        ],
+        "ghsa": [
+          "GHSA-8p5q-j9m2-g8wr"
+        ],
+        "osv": []
+      },
+      "knownExploited": false,
+      "matchedPackages": [
+        "npm:lodash"
+      ],
+      "modifiedAt": "2023-02-01T05:06:10Z",
+      "packageLabel": "npm:lodash",
+      "packageName": "lodash",
+      "priority": "urgent",
+      "publishedAt": "2021-12-03T20:37:32Z",
+      "reasons": [
+        "Direct npm dependency lodash matches <= 4.17.21",
+        "Finding finding-019805294a476f9b package npm:lodash matches <= 4.17.21",
+        "Finding finding-365058e7fa14adc3 package npm:lodash matches <= 4.17.21",
+        "Finding finding-4eb6c10f5698be89 package npm:lodash matches <= 4.17.21",
+        "Finding finding-da558c475a6f03b0 package npm:lodash matches <= 4.17.21",
+        "Finding finding-968c8ccb0d1e10db package npm:lodash matches <= 4.17.21"
+      ],
+      "severity": "low",
+      "source": "GitHub Advisory",
+      "title": "Withdrawn: Arbitrary code execution in lodash",
+      "url": "https://github.[REDACTED_SECRET]",
+      "whyItMatters": "# Withdrawn\n\nGitHub has chosen to publish this CVE as a withdrawn advisory due to it not being a security issue. See [this issue](https://github.com/lodash/lodash/issues/5261) for more details.\n\n# CVE description\n\n\"** DISPUTED ** A command injection vulnerability in Lodash 4.17.21 allows attackers to achieve arbitrary code execution via the template function. This is a different parameter, method, and version than CVE-2021-23337. NOTE: the vendor's position is that it's the developer's responsib"
+    }
+  ],
+  "limitations": [
+    "Hermsec reports only scanner and advisory evidence supplied to this run.",
+    "Model or fallback explanations cannot add CVEs, file paths, package names, versions, or line numbers."
+  ],
+  "run": {
+    "durationMs": 14871,
+    "fallback": {
+      "actualReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-48-37-300Z",
+      "configuredReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__node-express-vulnerable\\reports",
+      "used": false
+    },
+    "finishedAt": "2026-06-27T20:48:37.300Z",
+    "git": {
+      "branch": "main",
+      "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+      "dirty": true
+    },
+    "id": "scan-56c86eec47faa79c",
+    "mode": "auto",
+    "startedAt": "2026-06-27T20:48:22.429Z"
+  },
+  "scanId": "scan-56c86eec47faa79c",
+  "schemaVersion": "1.0",
+  "summary": {
+    "confirmedCves": 9,
+    "critical": 1,
+    "generatedWithModel": false,
+    "high": 12,
+    "info": 0,
+    "knownExploited": 0,
+    "low": 2,
+    "medium": 10,
+    "scannerFailures": 0,
+    "secrets": 2,
+    "total": 25
+  },
+  "target": {
+    "displayName": "node-express-vulnerable",
+    "kind": "local-path",
+    "value": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\node-express-vulnerable"
+  },
+  "tools": [
+    {
+      "id": "bandit",
+      "label": "Bandit",
+      "message": "Bandit was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "id": "bandit-run",
+      "label": "Bandit scan",
+      "message": "Bandit had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "brakeman",
+      "label": "Brakeman",
+      "message": "Brakeman was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "brakeman-run",
+      "label": "Brakeman scan",
+      "message": "Brakeman had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "cargo",
+      "label": "cargo-audit",
+      "message": "cargo-audit was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "cargo-run",
+      "label": "cargo-audit scan",
+      "message": "cargo-audit had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "checkov",
+      "label": "Checkov",
+      "message": "Checkov was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "checkov-run",
+      "label": "Checkov scan",
+      "message": "Checkov was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage.",
+      "status": "skipped"
+    },
+    {
+      "id": "composer",
+      "label": "Composer audit",
+      "message": "Composer audit was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "composer-run",
+      "label": "Composer audit scan",
+      "message": "Composer audit had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "cppcheck",
+      "label": "Cppcheck",
+      "message": "Cppcheck was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "cppcheck-run",
+      "label": "Cppcheck scan",
+      "message": "Cppcheck had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "dependency-check",
+      "label": "OWASP Dependency-Check",
+      "message": "OWASP Dependency-Check was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "dependency-check-run",
+      "label": "OWASP Dependency-Check scan",
+      "message": "OWASP Dependency-Check was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage.",
+      "status": "skipped"
+    },
+    {
+      "id": "dotnet",
+      "label": ".NET vulnerable packages",
+      "message": ".NET vulnerable packages was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "id": "dotnet-run",
+      "label": ".NET vulnerable packages scan",
+      "message": ".NET vulnerable packages had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "flawfinder",
+      "label": "Flawfinder",
+      "message": "Flawfinder was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "flawfinder-run",
+      "label": "Flawfinder scan",
+      "message": "Flawfinder had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "git",
+      "label": "Git",
+      "message": "Git was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "id": "gitleaks",
+      "label": "Gitleaks",
+      "message": "Gitleaks was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "durationMs": 939,
+      "id": "gitleaks-run",
+      "label": "Gitleaks scan",
+      "message": "Gitleaks completed with 0 findings.",
+      "status": "completed"
+    },
+    {
+      "id": "gosec",
+      "label": "gosec",
+      "message": "gosec was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "gosec-run",
+      "label": "gosec scan",
+      "message": "gosec had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "govulncheck",
+      "label": "govulncheck",
+      "message": "govulncheck was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "govulncheck-run",
+      "label": "govulncheck scan",
+      "message": "govulncheck had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "durationMs": 4,
+      "id": "hermsec-config",
+      "label": "Hermsec config heuristics",
+      "message": "Hermsec config heuristics completed with 0 findings.",
+      "status": "completed"
+    },
+    {
+      "id": "hermsec-java",
+      "label": "Hermsec Java servlet heuristics",
+      "message": "Hermsec Java servlet heuristics had no matching inputs.",
+      "status": "skipped"
+    },
+    {
+      "durationMs": 4,
+      "id": "hermsec-js-ts",
+      "label": "Hermsec JS/TS heuristics",
+      "message": "Hermsec JS/TS heuristics completed with 7 findings.",
+      "status": "completed"
+    },
+    {
+      "durationMs": 3,
+      "id": "hermsec-packages",
+      "label": "Hermsec package manifest heuristics",
+      "message": "Hermsec package manifest heuristics completed with 1 finding.",
+      "status": "completed"
+    },
+    {
+      "id": "hermsec-python",
+      "label": "Hermsec Python heuristics",
+      "message": "Hermsec Python heuristics had no matching inputs.",
+      "status": "skipped"
+    },
+    {
+      "durationMs": 11,
+      "id": "hermsec-secrets",
+      "label": "Hermsec secret heuristics",
+      "message": "Hermsec secret heuristics completed with 2 findings.",
+      "status": "completed"
+    },
+    {
+      "id": "osv-scanner",
+      "label": "OSV-Scanner",
+      "message": "OSV-Scanner was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "durationMs": 983,
+      "id": "osv-scanner-run",
+      "label": "OSV-Scanner scan",
+      "message": "OSV-Scanner completed with 7 findings.",
+      "status": "completed"
+    },
+    {
+      "id": "pip-audit",
+      "label": "pip-audit",
+      "message": "pip-audit was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "id": "pip-audit-run",
+      "label": "pip-audit scan",
+      "message": "pip-audit had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "pmg",
+      "label": "SafeDep PMG npm audit",
+      "message": "SafeDep PMG npm audit was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "durationMs": 4306,
+      "id": "pmg-run",
+      "label": "SafeDep PMG npm audit scan",
+      "message": "SafeDep PMG npm audit completed with 7 findings.",
+      "status": "completed"
+    },
+    {
+      "id": "psalm",
+      "label": "Psalm taint analysis",
+      "message": "Psalm taint analysis was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "psalm-run",
+      "label": "Psalm taint analysis scan",
+      "message": "Psalm taint analysis had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "repository-discovery",
+      "label": "Repository discovery",
+      "message": "Discovered 10 files (javascript:3, json:4, yaml:1, text:2), package managers: npm, lockfiles: 1, ignored folders: none.",
+      "status": "completed"
+    },
+    {
+      "id": "retire",
+      "label": "Retire.js",
+      "message": "Retire.js was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "retire-run",
+      "label": "Retire.js scan",
+      "message": "Retire.js was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage.",
+      "status": "skipped"
+    },
+    {
+      "id": "semgrep",
+      "label": "Semgrep",
+      "message": "Semgrep was detected on PATH and is available for the online scan pipeline.",
+      "status": "ready"
+    },
+    {
+      "durationMs": 7156,
+      "id": "semgrep-run",
+      "label": "Semgrep scan",
+      "message": "Semgrep completed with 1 finding.",
+      "status": "completed"
+    },
+    {
+      "id": "spotbugs",
+      "label": "FindSecBugs / SpotBugs",
+      "message": "FindSecBugs / SpotBugs was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "spotbugs-run",
+      "label": "FindSecBugs / SpotBugs scan",
+      "message": "FindSecBugs / SpotBugs had no matching external scanner inputs.",
+      "status": "skipped"
+    },
+    {
+      "id": "trivy",
+      "label": "Trivy",
+      "message": "Trivy was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    },
+    {
+      "id": "trivy-run",
+      "label": "Trivy scan",
+      "message": "Trivy was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage.",
+      "status": "skipped"
+    },
+    {
+      "id": "trufflehog",
+      "label": "TruffleHog",
+      "message": "TruffleHog was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages.",
+      "status": "skipped"
+    }
+  ],
+  "workspaceId": "ws-cd7a61cac17ceb13",
+  "workspaceName": "node-express-vulnerable"
+}

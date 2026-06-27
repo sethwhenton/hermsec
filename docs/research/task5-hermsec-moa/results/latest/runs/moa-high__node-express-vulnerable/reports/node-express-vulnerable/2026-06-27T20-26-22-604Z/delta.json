@@ -1,0 +1,20 @@
+{
+  "baseScanId": "scan-2adef1adc25b136e",
+  "currentScanId": "scan-b3bff3e51fa22792",
+  "fixedFindingIds": [
+    "finding-20c4034da1e1dd7f",
+    "finding-8782c799b91eaafc",
+    "finding-a6a062da440676bf",
+    "finding-b6f553d7fae5a7fb",
+    "finding-f157dbe9f0e4e02f"
+  ],
+  "improvedFindingIds": [],
+  "newFindingIds": [
+    "finding-39f04bd3c517ef56",
+    "finding-3e46f6e9757c74ac",
+    "finding-8c7d0480c465ee36"
+  ],
+  "summaryText": "3 new, 5 fixed, 0 unchanged, 0 worsened, 0 improved",
+  "unchangedFindingIds": [],
+  "worsenedFindingIds": []
+}

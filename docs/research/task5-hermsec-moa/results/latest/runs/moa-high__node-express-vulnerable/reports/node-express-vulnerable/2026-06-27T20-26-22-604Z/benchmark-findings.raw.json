@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "1.0",
+  "scanId": "scan-b3bff3e51fa22792",
+  "target": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\node-express-vulnerable",
+  "generatedAt": "2026-06-27T20:26:22.604Z",
+  "findings": [
+    {
+      "id": "finding-8c7d0480c465ee36",
+      "title": "SQL Injection via unsanitized query parameter in app.js",
+      "category": "code",
+      "severity": "critical",
+      "confidence": "high",
+      "description": "User-controlled input from a query parameter is concatenated directly into a SQL query string, enabling SQL injection.",
+      "evidence": "src/app.js lines 3-5: const term = req.query.q; return db.query(\"SELECT * FROM users WHERE name = '\" + term + \"'\");",
+      "remediation": "Use parameterized queries or prepared statements so user input is bound, not interpolated, into the SQL command.",
+      "tool": "hermsec-moa",
+      "ruleId": "sql-injection-concatenation-001",
+      "cwe": [
+        "CWE-89"
+      ],
+      "location": {
+        "file": "src/app.js",
+        "startLine": 3,
+        "endLine": 5
+      },
+      "agent": {
+        "mode": "moa-assisted",
+        "source": "moa-aggregator",
+        "provider": "opencode-go",
+        "model": "MiniMax-M3",
+        "generatedAt": "2026-06-27T20:27:50.110Z",
+        "candidateIds": [
+          "candidate-f83f3530538a8d8e"
+        ],
+        "sourceFindingIds": [
+          "candidate-cafc12f256ac1294",
+          "candidate-4abf247ab789bfb6"
+        ],
+        "judge": {
+          "verdict": "accepted",
+          "reviewedBy": "moa-false-positive-judge",
+          "reason": "Aggregated from MoA candidates that passed false-positive judging."
+        }
+      },
+      "fingerprint": "fp-fa8c18e017f094d2"
+    },
+    {
+      "id": "finding-3e46f6e9757c74ac",
+      "title": "Command Injection via exec with query parameter in app.js",
+      "category": "code",
+      "severity": "critical",
+      "confidence": "high",
+      "description": "A user-controlled value is concatenated into a string passed to child_process.exec, allowing arbitrary command execution via shell metacharacters.",
+      "evidence": "src/app.js lines 8-10: const tool = req.query.tool; return childProcess.exec(\"tool \" + tool);",
+      "remediation": "Replace exec with execFile or spawn that takes an argument array, avoiding shell interpretation. Validate input against an allowlist of permitted tool identifiers.",
+      "tool": "hermsec-moa",
+      "ruleId": "command-injection-exec-001",
+      "cwe": [
+        "CWE-78"
+      ],
+      "location": {
+        "file": "src/app.js",
+        "startLine": 8,
+        "endLine": 10
+      },
+      "agent": {
+        "mode": "moa-assisted",
+        "source": "moa-aggregator",
+        "provider": "opencode-go",
+        "model": "MiniMax-M3",
+        "generatedAt": "2026-06-27T20:27:50.111Z",
+        "candidateIds": [
+          "candidate-b65b4ce6c98f5c53"
+        ],
+        "sourceFindingIds": [
+          "candidate-11db7b83af4a3eb8"
+        ],
+        "judge": {
+          "verdict": "accepted",
+          "reviewedBy": "moa-false-positive-judge",
+          "reason": "Aggregated from MoA candidates that passed false-positive judging."
+        }
+      },
+      "fingerprint": "fp-d37c23377210b02f"
+    },
+    {
+      "id": "finding-39f04bd3c517ef56",
+      "title": "Command Injection via exec template literal in routes/search.js",
+      "category": "code",
+      "severity": "critical",
+      "confidence": "high",
+      "description": "A query parameter is interpolated into a shell command executed via exec, allowing attacker-controlled shell metacharacters to break out and run arbitrary commands.",
+      "evidence": "src/routes/search.js lines 18-20: exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined);",
+      "remediation": "Do not pass user input to exec. Use execFile or spawn with an arguments array, or remove the shell call. If shell use is required, strictly validate input (e.g., IP/hostname format) and reject anything else.",
+      "tool": "hermsec-moa",
+      "ruleId": "command-injection-exec-002",
+      "cwe": [
+        "CWE-78"
+      ],
+      "location": {
+        "file": "src/routes/search.js",
+        "startLine": 18,
+        "endLine": 20
+      },
+      "agent": {
+        "mode": "moa-assisted",
+        "source": "moa-aggregator",
+        "provider": "opencode-go",
+        "model": "MiniMax-M3",
+        "generatedAt": "2026-06-27T20:27:50.113Z",
+        "candidateIds": [
+          "candidate-57cd3a3a43f210cb"
+        ],
+        "sourceFindingIds": [
+          "candidate-a4fd4ecbcbea05d8"
+        ],
+        "judge": {
+          "verdict": "accepted",
+          "reviewedBy": "moa-false-positive-judge",
+          "reason": "Aggregated from MoA candidates that passed false-positive judging."
+        }
+      },
+      "fingerprint": "fp-0d8cfd75f6b27693"
+    }
+  ]
+}

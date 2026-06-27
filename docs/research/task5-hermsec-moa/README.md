@@ -1,15 +1,14 @@
 # HermSec Task 5 Research Bundle
 
-This folder contains the paper source, compiled PDF, figures, and sanitized finding summaries for the Security Insider Lab II Task 5 write-up.
+This folder contains the paper source, figures, and refreshed results for the Security Insider Lab II Task 5 write-up.
 
 ## Contents
 
-- `overleaf-paper/` - ACM/Overleaf-ready paper source and compiled PDF.
+- `overleaf-paper/` - ACM/Overleaf-ready paper source.
 - `overleaf-paper/hermsec_moa_paper.tex` - main paper file.
 - `overleaf-paper/hermsec_moa_refs.bib` - bibliography.
-- `overleaf-paper/hermsec_moa_paper.pdf` - compiled paper.
-- `overleaf-paper/figures/` - app screenshots and result charts used by the paper.
-- `findings/` - sanitized benchmark/model summaries used for the paper tables.
+- `overleaf-paper/figures/` - app screenshots used by the refreshed paper.
+- `results/latest/results.json` - source of truth for the refreshed actual-run metrics.
 
 ## Paper Direction
 
@@ -20,16 +19,12 @@ The paper presents HermSec as a user-friendly desktop repository security scanne
 - MoA inspection,
 - Scanner + MoA hybrid review.
 
-The final small-fixture comparison used OpenCode Go with `deepseek-v4-flash`. `mimo-v2.5` and `minimax-m3` were configured or considered for future MoA routing, but they were not used in the final metric table.
+The product overview should stay prominent: chat-driven project selection, adaptive scanner setup, scanner settings, agent/provider settings, Doctor checks, automations, live progress, and HTML/PDF/JSON reports.
 
-## Findings
+The refreshed run is now available in `results/latest/results.json` with `executionMode: "actual"`. It completed 24 of 24 mode-and-fixture runs across four controlled fixtures with 12 expected findings. The paper tables are filled from that artifact, and the old scanner-only claims and earlier result charts are not carried forward.
 
-The `findings/` files are sanitized copies of local run outputs. Local absolute paths are replaced with placeholders such as `<hermsec-repo>` so the results can be committed safely.
+The final model mix uses OpenCode Go only: `deepseek-v4-flash` for Deep assisted and Single Agent, `deepseek-v4-flash` plus `mimo-v2.5` for specialist work, `deepseek-v4-pro` for false-positive judging, and `minimax-m3` for aggregation.
 
-Important files:
+## Results
 
-- `parallel-mode-summary.json` - Deep assisted, Single Agent, and MoA aggregate results.
-- `parallel-aggregate-report.md` - readable summary of the parallel subagent run.
-- `scanner-moa-scored-summary.json` - Scanner + MoA scored result.
-- `scanner-moa-run-summary.json` - Scanner + MoA run metadata.
-- `groundtruth-normalized.json` - normalized answer key used for scoring.
+Use `results/latest/results.json` and `results/latest/metrics.csv` for the current comparison. Earlier sanitized run summaries were removed so the folder does not mix old development numbers with the refreshed actual-run metrics.

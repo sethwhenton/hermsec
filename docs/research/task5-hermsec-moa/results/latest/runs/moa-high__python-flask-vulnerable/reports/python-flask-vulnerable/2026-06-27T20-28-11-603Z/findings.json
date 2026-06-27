@@ -1,0 +1,119 @@
+[
+  {
+    "agent": {
+      "candidateIds": [
+        "candidate-9657ef5bdf48ba7e"
+      ],
+      "generatedAt": "2026-06-27T20:29:05.424Z",
+      "judge": {
+        "reason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "reviewedBy": "moa-false-positive-judge",
+        "verdict": "accepted"
+      },
+      "mode": "moa-assisted",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go",
+      "source": "moa-aggregator",
+      "sourceFindingIds": [
+        "candidate-2df6688c09d33f36"
+      ]
+    },
+    "category": "code",
+    "confidence": "high",
+    "cwe": [
+      "CWE-78"
+    ],
+    "description": "subprocess.check_output is invoked with shell=True and a command string built from user input, allowing arbitrary command execution on the host.",
+    "evidence": "subprocess.check_output(f\"echo {name}\", shell=True, text=True) (app.py line 22)",
+    "fingerprint": "fp-f74c454137d5a0ce",
+    "id": "finding-8a66bd132f71f635",
+    "location": {
+      "endLine": 22,
+      "file": "app.py",
+      "startLine": 22
+    },
+    "remediation": "Avoid shell=True and pass arguments as a list, e.g. subprocess.check_output([\"echo\", name], text=True). Validate or strictly allow-list input if needed.",
+    "ruleId": "COMMAND-INJECTION-1",
+    "severity": "critical",
+    "title": "Command Injection in run endpoint",
+    "tool": "hermsec-moa"
+  },
+  {
+    "agent": {
+      "candidateIds": [
+        "candidate-0df6ec6a5ff49c82"
+      ],
+      "generatedAt": "2026-06-27T20:29:05.422Z",
+      "judge": {
+        "reason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "reviewedBy": "moa-false-positive-judge",
+        "verdict": "accepted"
+      },
+      "mode": "moa-assisted",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go",
+      "source": "moa-aggregator",
+      "sourceFindingIds": [
+        "candidate-6461afe0ff10d53b"
+      ]
+    },
+    "category": "code",
+    "confidence": "high",
+    "cwe": [
+      "CWE-89"
+    ],
+    "description": "A SQL query is constructed via f-string interpolation of unsanitized user input, enabling SQL injection. An attacker can alter the query structure to read or modify arbitrary data.",
+    "evidence": "query = f\"SELECT * FROM users WHERE display_name = '{term}'\" (app.py line 15)",
+    "fingerprint": "fp-d6ad45099cfacf25",
+    "id": "finding-25db1d868d4fb04a",
+    "location": {
+      "endLine": 15,
+      "file": "app.py",
+      "startLine": 15
+    },
+    "remediation": "Use parameterized queries or an ORM so user input is bound, not concatenated. Example: cursor.execute(\"SELECT * FROM users WHERE display_name = ?\", (term,)).",
+    "ruleId": "SQL-INJECTION-1",
+    "severity": "high",
+    "title": "SQL Injection in search endpoint",
+    "tool": "hermsec-moa"
+  },
+  {
+    "agent": {
+      "candidateIds": [
+        "candidate-e69c280e97988622"
+      ],
+      "generatedAt": "2026-06-27T20:29:05.425Z",
+      "judge": {
+        "reason": "Aggregated from MoA candidates that passed false-positive judging.",
+        "reviewedBy": "moa-false-positive-judge",
+        "verdict": "accepted"
+      },
+      "mode": "moa-assisted",
+      "model": "MiniMax-M3",
+      "provider": "opencode-go",
+      "source": "moa-aggregator",
+      "sourceFindingIds": [
+        "candidate-345f162c238a563a"
+      ]
+    },
+    "category": "config",
+    "confidence": "medium",
+    "cwe": [
+      "CWE-489"
+    ],
+    "description": "Flask debug mode is enabled, which exposes the interactive Werkzeug debugger and detailed tracebacks. If the service is reachable by untrusted users, this can lead to remote code execution via the debugger console and information disclosure.",
+    "evidence": "app.py line 8: app.config[\"DEBUG\"] = True; app.py line 42: app.run(debug=True, host=\"127.0.0.1\")",
+    "fingerprint": "fp-bf3fb68c7db400d0",
+    "id": "finding-199a36715fca7297",
+    "location": {
+      "endLine": 8,
+      "file": "app.py",
+      "startLine": 8
+    },
+    "remediation": "Disable debug mode outside of local development: set app.config['DEBUG'] = False and start the server with app.run(debug=False). Ensure the Werkzeug debugger PIN is not exposed and avoid binding to non-loopback interfaces without authentication.",
+    "ruleId": "debug-mode-enabled",
+    "severity": "medium",
+    "title": "Flask Debug Mode Enabled",
+    "tool": "hermsec-moa"
+  }
+]

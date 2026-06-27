@@ -1,0 +1,244 @@
+{
+  "agentMode": {
+    "acceptedFindingCount": 2,
+    "agents": [
+      {
+        "id": "single-agent-inspector",
+        "label": "Single Agent Inspector",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "security-inspector",
+        "runtimeMs": 14062,
+        "status": "completed"
+      }
+    ],
+    "agentsUsed": [
+      "single-agent-inspector"
+    ],
+    "candidateFindingCount": 2,
+    "findings": {
+      "finding-29d66c8cfa313e07": {
+        "agentIds": [
+          "single-agent"
+        ],
+        "sourceLabel": "single-agent-inspected",
+        "sourceLabels": [
+          "single-agent-inspected"
+        ]
+      },
+      "finding-72a366f9ced461de": {
+        "agentIds": [
+          "single-agent"
+        ],
+        "sourceLabel": "single-agent-inspected",
+        "sourceLabels": [
+          "single-agent-inspected"
+        ]
+      }
+    },
+    "mode": "single-agent",
+    "modeLabel": "Single-agent inspection",
+    "needsHumanReviewCount": 0,
+    "rejectedFindingCount": 0,
+    "scanMode": "single-agent",
+    "totalAgentRuntimeMs": 14062
+  },
+  "delta": {
+    "baseScanId": "scan-f380f6d14e9fe82c",
+    "currentScanId": "scan-c8aa3d82e25c187a",
+    "fixedFindingIds": [
+      "finding-019805294a476f9b",
+      "finding-31325d17858675c7",
+      "finding-34a12328494fee7c",
+      "finding-365058e7fa14adc3",
+      "finding-44a1a2191ecca7b5",
+      "finding-4eb6c10f5698be89",
+      "finding-5d7c8a7ede9c55b6",
+      "finding-7194eb872634eb85",
+      "finding-72f746cb8be1cd13",
+      "finding-79460a7a95ca1609",
+      "finding-875df24e9347bb86",
+      "finding-8f4d1fc6724ec637",
+      "finding-91e695b1e33f2931",
+      "finding-968c8ccb0d1e10db",
+      "finding-9c6c61503e6a8d67",
+      "finding-b2174492de636519",
+      "finding-b80725495585908e",
+      "finding-c0abf04fd738039a",
+      "finding-d42a93124fa707d4",
+      "finding-da558c475a6f03b0",
+      "finding-de9110ab7b0a8c1f",
+      "finding-f4e47258a7e0e346",
+      "finding-f71ba54cee76cfe0",
+      "finding-f9e3cdf62dee35f2",
+      "finding-fc661b2848ecca41"
+    ],
+    "improvedFindingIds": [],
+    "newFindingIds": [
+      "finding-29d66c8cfa313e07",
+      "finding-72a366f9ced461de"
+    ],
+    "summaryText": "2 new, 25 fixed, 0 unchanged, 0 worsened, 0 improved",
+    "unchangedFindingIds": [],
+    "worsenedFindingIds": []
+  },
+  "evidence": {
+    "bundleId": "evidence-a1099620f73b574c",
+    "findingEvidence": {
+      "finding-29d66c8cfa313e07": [
+        {
+          "location": {
+            "endLine": 10,
+            "file": "src/app.js",
+            "startLine": 10
+          },
+          "message": "childProcess.exec(\"tool \" + tool); (line 10, src/app.js)",
+          "ruleId": "command-injection",
+          "scanner": "hermsec-agent"
+        }
+      ],
+      "finding-72a366f9ced461de": [
+        {
+          "location": {
+            "endLine": 19,
+            "file": "src/routes/search.js",
+            "startLine": 19
+          },
+          "message": "exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined); (line 19, src/routes/search.js)",
+          "ruleId": "command-injection",
+          "scanner": "hermsec-agent"
+        }
+      ]
+    },
+    "rawArtifacts": [],
+    "redactionApplied": false
+  },
+  "explanations": {},
+  "findings": [
+    {
+      "agent": {
+        "candidateIds": [
+          "candidate-fd4d55d99b19163e"
+        ],
+        "generatedAt": "2026-06-27T20:22:55.121Z",
+        "mode": "single-agent",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "source": "single-agent"
+      },
+      "category": "code",
+      "confidence": "medium",
+      "cwe": [
+        "CWE-78"
+      ],
+      "description": "User-controlled 'tool' parameter is concatenated into a shell command via childProcess.exec, enabling arbitrary command execution.",
+      "evidence": "childProcess.exec(\"tool \" + tool); (line 10, src/app.js)",
+      "fingerprint": "fp-72159881b66ced07",
+      "id": "finding-29d66c8cfa313e07",
+      "location": {
+        "endLine": 10,
+        "file": "src/app.js",
+        "startLine": 10
+      },
+      "remediation": "Use child_process.execFile or spawn with an arguments array to avoid shell interpretation, or validate and sanitize the input.",
+      "ruleId": "command-injection",
+      "severity": "high",
+      "title": "Command injection in app.js runTool function",
+      "tool": "hermsec-agent"
+    },
+    {
+      "agent": {
+        "candidateIds": [
+          "candidate-8cf5baffc1ace09b"
+        ],
+        "generatedAt": "2026-06-27T20:22:55.123Z",
+        "mode": "single-agent",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "source": "single-agent"
+      },
+      "category": "code",
+      "confidence": "medium",
+      "cwe": [
+        "CWE-78"
+      ],
+      "description": "User-controlled 'host' query parameter is passed to exec without sanitization, leading to command injection.",
+      "evidence": "exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined); (line 19, src/routes/search.js)",
+      "fingerprint": "fp-4c5d848429c22cad",
+      "id": "finding-72a366f9ced461de",
+      "location": {
+        "endLine": 19,
+        "file": "src/routes/search.js",
+        "startLine": 19
+      },
+      "remediation": "Avoid shell execution; use execFile or spawn with arguments, or implement strict input validation.",
+      "ruleId": "command-injection",
+      "severity": "high",
+      "title": "Command injection in search.js ping route",
+      "tool": "hermsec-agent"
+    }
+  ],
+  "generatedAt": "2026-06-27T20:22:41.054Z",
+  "intelligence": [],
+  "limitations": [
+    "Single-agent inspection is agent-only; scanner and advisory enrichment were not run.",
+    "Single-agent code inspection used bounded read-only file, search, and snippet context.",
+    "Hermsec reports only scanner and advisory evidence supplied to this run.",
+    "Model or fallback explanations cannot add CVEs, file paths, package names, versions, or line numbers."
+  ],
+  "run": {
+    "durationMs": 445,
+    "fallback": {
+      "actualReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-22-41-054Z",
+      "configuredReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-vulnerable\\reports",
+      "used": false
+    },
+    "finishedAt": "2026-06-27T20:22:41.054Z",
+    "git": {
+      "branch": "main",
+      "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+      "dirty": true
+    },
+    "id": "scan-c8aa3d82e25c187a",
+    "mode": "auto",
+    "modeLabel": "Single-agent inspection",
+    "startedAt": "2026-06-27T20:22:40.609Z"
+  },
+  "scanId": "scan-c8aa3d82e25c187a",
+  "schemaVersion": "1.0",
+  "summary": {
+    "confirmedCves": 0,
+    "critical": 0,
+    "generatedWithModel": true,
+    "high": 2,
+    "info": 0,
+    "knownExploited": 0,
+    "low": 0,
+    "medium": 0,
+    "scannerFailures": 0,
+    "secrets": 0,
+    "total": 2
+  },
+  "target": {
+    "displayName": "node-express-vulnerable",
+    "kind": "local-path",
+    "value": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\tests\\fixtures\\repos\\node-express-vulnerable"
+  },
+  "tools": [
+    {
+      "id": "repository-discovery",
+      "label": "Repository discovery",
+      "message": "Discovered 10 files (javascript:3, json:4, yaml:1, text:2), package managers: npm, lockfiles: 1, ignored folders: none.",
+      "status": "completed"
+    },
+    {
+      "durationMs": 14062,
+      "id": "single-agent",
+      "label": "Single-agent inspection",
+      "message": "Single-agent inspection completed with 2 validated findings.",
+      "status": "completed"
+    }
+  ],
+  "workspaceId": "ws-cd7a61cac17ceb13",
+  "workspaceName": "node-express-vulnerable"
+}

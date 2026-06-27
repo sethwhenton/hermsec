@@ -1,0 +1,373 @@
+{
+  "ok": true,
+  "message": "Scan completed: 1 finding(s). Report: <hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-53-16-625Z",
+  "data": {
+    "scan": {
+      "schemaVersion": "1.0",
+      "id": "scan-92137526aa713c55",
+      "target": "<hermsec-repo>\\tests\\fixtures\\repos\\python-flask-clean",
+      "mode": "auto",
+      "startedAt": "2026-06-27T20:53:03.365Z",
+      "finishedAt": "2026-06-27T20:53:16.625Z",
+      "durationMs": 13260,
+      "scannerStatuses": [
+        {
+          "id": "repository-discovery",
+          "label": "Repository discovery",
+          "status": "completed",
+          "message": "Discovered 5 files (python:1, json:1, yaml:1, text:2), package managers: pip, lockfiles: 0, ignored folders: none."
+        },
+        {
+          "id": "git",
+          "label": "Git",
+          "status": "ready",
+          "message": "Git was detected on PATH and is available for the online scan pipeline."
+        },
+        {
+          "id": "semgrep",
+          "label": "Semgrep",
+          "status": "ready",
+          "message": "Semgrep was detected on PATH and is available for the online scan pipeline."
+        },
+        {
+          "id": "gitleaks",
+          "label": "Gitleaks",
+          "status": "ready",
+          "message": "Gitleaks was detected on PATH and is available for the online scan pipeline."
+        },
+        {
+          "id": "trufflehog",
+          "label": "TruffleHog",
+          "status": "skipped",
+          "message": "TruffleHog was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "trivy",
+          "label": "Trivy",
+          "status": "skipped",
+          "message": "Trivy was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "checkov",
+          "label": "Checkov",
+          "status": "skipped",
+          "message": "Checkov was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "bandit",
+          "label": "Bandit",
+          "status": "ready",
+          "message": "Bandit was detected on PATH and is available for the online scan pipeline."
+        },
+        {
+          "id": "osv-scanner",
+          "label": "OSV-Scanner",
+          "status": "ready",
+          "message": "OSV-Scanner was detected on PATH and is available for the online scan pipeline."
+        },
+        {
+          "id": "pip-audit",
+          "label": "pip-audit",
+          "status": "ready",
+          "message": "pip-audit was detected on PATH and is available for the online scan pipeline."
+        },
+        {
+          "id": "pmg",
+          "label": "SafeDep PMG npm audit",
+          "status": "ready",
+          "message": "SafeDep PMG npm audit was detected on PATH and is available for the online scan pipeline."
+        },
+        {
+          "id": "retire",
+          "label": "Retire.js",
+          "status": "skipped",
+          "message": "Retire.js was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "spotbugs",
+          "label": "FindSecBugs / SpotBugs",
+          "status": "skipped",
+          "message": "FindSecBugs / SpotBugs was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "dependency-check",
+          "label": "OWASP Dependency-Check",
+          "status": "skipped",
+          "message": "OWASP Dependency-Check was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "psalm",
+          "label": "Psalm taint analysis",
+          "status": "skipped",
+          "message": "Psalm taint analysis was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "composer",
+          "label": "Composer audit",
+          "status": "skipped",
+          "message": "Composer audit was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "gosec",
+          "label": "gosec",
+          "status": "skipped",
+          "message": "gosec was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "govulncheck",
+          "label": "govulncheck",
+          "status": "skipped",
+          "message": "govulncheck was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "cargo",
+          "label": "cargo-audit",
+          "status": "skipped",
+          "message": "cargo-audit was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "brakeman",
+          "label": "Brakeman",
+          "status": "skipped",
+          "message": "Brakeman was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "flawfinder",
+          "label": "Flawfinder",
+          "status": "skipped",
+          "message": "Flawfinder was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "cppcheck",
+          "label": "Cppcheck",
+          "status": "skipped",
+          "message": "Cppcheck was not detected on PATH. This optional tool will be skipped; Hermsec still runs the remaining online pipeline stages."
+        },
+        {
+          "id": "dotnet",
+          "label": ".NET vulnerable packages",
+          "status": "ready",
+          "message": ".NET vulnerable packages was detected on PATH and is available for the online scan pipeline."
+        },
+        {
+          "id": "hermsec-secrets",
+          "label": "Hermsec secret heuristics",
+          "status": "completed",
+          "message": "Hermsec secret heuristics completed with 0 findings.",
+          "durationMs": 6
+        },
+        {
+          "id": "hermsec-js-ts",
+          "label": "Hermsec JS/TS heuristics",
+          "status": "skipped",
+          "message": "Hermsec JS/TS heuristics had no matching inputs."
+        },
+        {
+          "id": "hermsec-python",
+          "label": "Hermsec Python heuristics",
+          "status": "completed",
+          "message": "Hermsec Python heuristics completed with 0 findings.",
+          "durationMs": 1
+        },
+        {
+          "id": "hermsec-java",
+          "label": "Hermsec Java servlet heuristics",
+          "status": "skipped",
+          "message": "Hermsec Java servlet heuristics had no matching inputs."
+        },
+        {
+          "id": "hermsec-packages",
+          "label": "Hermsec package manifest heuristics",
+          "status": "completed",
+          "message": "Hermsec package manifest heuristics completed with 0 findings.",
+          "durationMs": 1
+        },
+        {
+          "id": "hermsec-config",
+          "label": "Hermsec config heuristics",
+          "status": "completed",
+          "message": "Hermsec config heuristics completed with 0 findings.",
+          "durationMs": 1
+        },
+        {
+          "id": "semgrep-run",
+          "label": "Semgrep scan",
+          "status": "completed",
+          "message": "Semgrep completed with 0 findings.",
+          "durationMs": 6994
+        },
+        {
+          "id": "gitleaks-run",
+          "label": "Gitleaks scan",
+          "status": "completed",
+          "message": "Gitleaks completed with 0 findings.",
+          "durationMs": 1027
+        },
+        {
+          "id": "trivy-run",
+          "label": "Trivy scan",
+          "status": "skipped",
+          "message": "Trivy was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage."
+        },
+        {
+          "id": "checkov-run",
+          "label": "Checkov scan",
+          "status": "skipped",
+          "message": "Checkov was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage."
+        },
+        {
+          "id": "bandit-run",
+          "label": "Bandit scan",
+          "status": "completed",
+          "message": "Bandit completed with 0 findings.",
+          "durationMs": 1009
+        },
+        {
+          "id": "osv-scanner-run",
+          "label": "OSV-Scanner scan",
+          "status": "skipped",
+          "message": "OSV-Scanner had no matching external scanner inputs."
+        },
+        {
+          "id": "pip-audit-run",
+          "label": "pip-audit scan",
+          "status": "completed",
+          "message": "pip-audit completed with 1 finding.",
+          "durationMs": 3059
+        },
+        {
+          "id": "pmg-run",
+          "label": "SafeDep PMG npm audit scan",
+          "status": "skipped",
+          "message": "SafeDep PMG npm audit had no matching external scanner inputs."
+        },
+        {
+          "id": "retire-run",
+          "label": "Retire.js scan",
+          "status": "skipped",
+          "message": "Retire.js had no matching external scanner inputs."
+        },
+        {
+          "id": "spotbugs-run",
+          "label": "FindSecBugs / SpotBugs scan",
+          "status": "skipped",
+          "message": "FindSecBugs / SpotBugs had no matching external scanner inputs."
+        },
+        {
+          "id": "dependency-check-run",
+          "label": "OWASP Dependency-Check scan",
+          "status": "skipped",
+          "message": "OWASP Dependency-Check was not found on PATH; skipped external scan and kept deterministic Hermsec fallback coverage."
+        },
+        {
+          "id": "psalm-run",
+          "label": "Psalm taint analysis scan",
+          "status": "skipped",
+          "message": "Psalm taint analysis had no matching external scanner inputs."
+        },
+        {
+          "id": "composer-run",
+          "label": "Composer audit scan",
+          "status": "skipped",
+          "message": "Composer audit had no matching external scanner inputs."
+        },
+        {
+          "id": "gosec-run",
+          "label": "gosec scan",
+          "status": "skipped",
+          "message": "gosec had no matching external scanner inputs."
+        },
+        {
+          "id": "govulncheck-run",
+          "label": "govulncheck scan",
+          "status": "skipped",
+          "message": "govulncheck had no matching external scanner inputs."
+        },
+        {
+          "id": "cargo-run",
+          "label": "cargo-audit scan",
+          "status": "skipped",
+          "message": "cargo-audit had no matching external scanner inputs."
+        },
+        {
+          "id": "brakeman-run",
+          "label": "Brakeman scan",
+          "status": "skipped",
+          "message": "Brakeman had no matching external scanner inputs."
+        },
+        {
+          "id": "flawfinder-run",
+          "label": "Flawfinder scan",
+          "status": "skipped",
+          "message": "Flawfinder had no matching external scanner inputs."
+        },
+        {
+          "id": "cppcheck-run",
+          "label": "Cppcheck scan",
+          "status": "skipped",
+          "message": "Cppcheck had no matching external scanner inputs."
+        },
+        {
+          "id": "dotnet-run",
+          "label": ".NET vulnerable packages scan",
+          "status": "skipped",
+          "message": ".NET vulnerable packages had no matching external scanner inputs."
+        }
+      ],
+      "findings": [
+        {
+          "tool": "pip-audit",
+          "title": "When the `session` object is accessed, Flask should set the `Vary: Cookie` header. This instructs caches not to cache the response, as it...",
+          "category": "dependency",
+          "severity": "medium",
+          "confidence": "high",
+          "description": "pip-audit reported a known vulnerability for a pinned Python dependency.",
+          "evidence": "flask@3.0.3 is affected by CVE-2026-27205, GHSA-68rp-wp8r-4726.",
+          "remediation": "Upgrade flask to one of the fixed versions: 3.1.3.",
+          "ruleId": "pip-audit:CVE-2026-27205",
+          "identifiers": {
+            "cve": [
+              "CVE-2026-27205"
+            ],
+            "ghsa": [
+              "GHSA-68RP-WP8R-4726"
+            ],
+            "osv": []
+          },
+          "package": {
+            "ecosystem": "pypi",
+            "name": "flask",
+            "installedVersion": "3.0.3"
+          },
+          "location": {
+            "file": "requirements.txt"
+          },
+          "id": "finding-3aef6630933b3c74",
+          "fingerprint": "fp-3aef6630933b3c74"
+        }
+      ],
+      "summary": {
+        "total": 1,
+        "critical": 0,
+        "high": 0,
+        "medium": 1,
+        "low": 0,
+        "info": 0
+      },
+      "git": {
+        "branch": "main",
+        "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+        "dirty": true
+      }
+    },
+    "report": {
+      "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-53-16-625Z\\summary.json",
+      "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-53-16-625Z\\findings.json",
+      "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-53-16-625Z\\evidence.json",
+      "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-53-16-625Z\\run.json",
+      "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-53-16-625Z\\agent-summary.json",
+      "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-53-16-625Z\\delta.json",
+      "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\retry-deep-assisted\\runs\\deep-assisted__python-flask-clean\\reports\\python-flask-clean\\2026-06-27T20-53-16-625Z\\report-document.json"
+    }
+  }
+}

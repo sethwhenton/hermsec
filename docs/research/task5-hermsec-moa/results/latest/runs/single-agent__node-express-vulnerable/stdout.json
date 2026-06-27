@@ -1,0 +1,116 @@
+{
+  "ok": true,
+  "message": "Scan completed: 2 finding(s). Report: <hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-22-41-054Z",
+  "data": {
+    "scan": {
+      "schemaVersion": "1.0",
+      "id": "scan-c8aa3d82e25c187a",
+      "target": "<hermsec-repo>\\tests\\fixtures\\repos\\node-express-vulnerable",
+      "mode": "auto",
+      "startedAt": "2026-06-27T20:22:40.609Z",
+      "finishedAt": "2026-06-27T20:22:41.054Z",
+      "durationMs": 445,
+      "scannerStatuses": [
+        {
+          "id": "repository-discovery",
+          "label": "Repository discovery",
+          "status": "completed",
+          "message": "Discovered 10 files (javascript:3, json:4, yaml:1, text:2), package managers: npm, lockfiles: 1, ignored folders: none."
+        },
+        {
+          "id": "single-agent",
+          "label": "Single-agent inspection",
+          "status": "completed",
+          "message": "Single-agent inspection completed with 2 validated findings.",
+          "durationMs": 14062
+        }
+      ],
+      "findings": [
+        {
+          "id": "finding-29d66c8cfa313e07",
+          "title": "Command injection in app.js runTool function",
+          "category": "code",
+          "severity": "high",
+          "confidence": "medium",
+          "description": "User-controlled 'tool' parameter is concatenated into a shell command via childProcess.exec, enabling arbitrary command execution.",
+          "evidence": "childProcess.exec(\"tool \" + tool); (line 10, src/app.js)",
+          "remediation": "Use child_process.execFile or spawn with an arguments array to avoid shell interpretation, or validate and sanitize the input.",
+          "tool": "hermsec-agent",
+          "ruleId": "command-injection",
+          "cwe": [
+            "CWE-78"
+          ],
+          "location": {
+            "file": "src/app.js",
+            "startLine": 10,
+            "endLine": 10
+          },
+          "agent": {
+            "mode": "single-agent",
+            "source": "single-agent",
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "generatedAt": "2026-06-27T20:22:55.121Z",
+            "candidateIds": [
+              "candidate-fd4d55d99b19163e"
+            ]
+          },
+          "fingerprint": "fp-72159881b66ced07"
+        },
+        {
+          "id": "finding-72a366f9ced461de",
+          "title": "Command injection in search.js ping route",
+          "category": "code",
+          "severity": "high",
+          "confidence": "medium",
+          "description": "User-controlled 'host' query parameter is passed to exec without sanitization, leading to command injection.",
+          "evidence": "exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined); (line 19, src/routes/search.js)",
+          "remediation": "Avoid shell execution; use execFile or spawn with arguments, or implement strict input validation.",
+          "tool": "hermsec-agent",
+          "ruleId": "command-injection",
+          "cwe": [
+            "CWE-78"
+          ],
+          "location": {
+            "file": "src/routes/search.js",
+            "startLine": 19,
+            "endLine": 19
+          },
+          "agent": {
+            "mode": "single-agent",
+            "source": "single-agent",
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "generatedAt": "2026-06-27T20:22:55.123Z",
+            "candidateIds": [
+              "candidate-8cf5baffc1ace09b"
+            ]
+          },
+          "fingerprint": "fp-4c5d848429c22cad"
+        }
+      ],
+      "summary": {
+        "total": 2,
+        "critical": 0,
+        "high": 2,
+        "medium": 0,
+        "low": 0,
+        "info": 0
+      },
+      "git": {
+        "branch": "main",
+        "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+        "dirty": true
+      }
+    },
+    "report": {
+      "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-22-41-054Z\\summary.json",
+      "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-22-41-054Z\\findings.json",
+      "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-22-41-054Z\\evidence.json",
+      "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-22-41-054Z\\run.json",
+      "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-22-41-054Z\\agent-summary.json",
+      "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-22-41-054Z\\delta.json",
+      "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-22-41-054Z\\report-document.json"
+    }
+  }
+}

@@ -1151,3 +1151,85 @@ This file is the running engineering ledger for Hermsec. Use it to record meanin
 - Root `npm test` passed with `94/94`.
 - The ACM paper compiled successfully to `hermsec_moa_paper.pdf`.
 - Rendered and visually checked all `7` PDF pages.
+
+## 2026-06-27 - Fresh Research Runner Reset
+
+### Changes
+
+- Reset the Task 5 research runner around the current comparison: Deep assisted, Single Agent, MoA Low, MoA High, Scanner + MoA Low, and Scanner + MoA High.
+- Added a medium benchmark runner at `scripts/research-task5-medium-benchmark.mjs`.
+- Added deterministic outputs under `docs/research/task5-hermsec-moa/results/latest/`: `results.json`, `metrics.csv`, `subset-manifest.json`, chart data, and SVG charts.
+- Updated the model policy so experiment rows use efficient OpenCode Go models only: `deepseek-v4-flash`, `mimo-v2.5`, `deepseek-v4-pro`, and `minimax-m3`.
+- Expanded product MoA/Scanner + MoA runtime support for low/high specialist panels.
+- Added MoA settings rows for database/storage and config/IaC specialists.
+- Removed stale paper claims from earlier scanner-only tests, including the `89 of 184` result and its precision/F1 figures.
+
+### Current State
+
+- OpenCode Go is configured with `20` models in the desktop settings.
+- No OpenCode Go API key is currently saved in `%APPDATA%\\hermsec-v3\\settings.json`.
+- `OPENCODE_GO_API_KEY` is not set in the shell.
+- Because of that, the latest result bundle is a dry-run harness validation bundle, not a publishable model-backed benchmark result.
+
+### Verification
+
+- `npm test` passed with `96/96`.
+- `npm --prefix desktop run typecheck` passed.
+- `npm --prefix desktop run build` passed.
+- `node --test scripts\\research-task5-medium-benchmark.test.mjs` passed.
+- `node scripts\\research-task5-medium-benchmark.mjs --dry-run` regenerated the latest research artifacts.
+- `git diff --check` reported only line-ending normalization warnings.
+
+### Next Step
+
+- Completed in the next iteration: the actual OpenCode Go matrix ran successfully and the paper was updated from the result artifact.
+
+## 2026-06-27 - Actual Medium Research Matrix
+
+### Changes
+
+- Updated the research runner to read `OPENCODE_GO_API_KEY` from `.env.local` when needed.
+- Added `--scenario` and `--fixture` filters for retrying individual benchmark cells.
+- Added batched false-positive judging for MoA and Scanner + MoA so large candidate sets do not fail the entire run.
+- Tuned Deep assisted research runs with smaller model explanation chunks and a longer summary watchdog.
+- Reran the refreshed matrix with actual OpenCode Go calls.
+- Updated the ACM paper, research README, root README, and latest result bundle with the actual run.
+
+### Results
+
+- `24/24` mode-and-fixture cells completed.
+- `Deep assisted`: precision `0.0674`, recall `0.5000`, F1 `0.1188`.
+- `Single Agent`: precision `0.6667`, recall `0.1667`, F1 `0.2667`.
+- `MoA Low`: precision `0.5556`, recall `0.4167`, F1 `0.4762`.
+- `MoA High`: precision `0.5000`, recall `0.2500`, F1 `0.3333`.
+- `Scanner + MoA Low`: precision `0.0811`, recall `0.5000`, F1 `0.1395`.
+- `Scanner + MoA High`: precision `0.1000`, recall `0.5833`, F1 `0.1707`.
+
+### Notes
+
+- MoA Low was the best balanced mode on the controlled fixture set.
+- Scanner + MoA High had the highest recall but still produced too much scanner noise.
+- Deep assisted no longer had provider-failed rows after timeout tuning, but two vulnerable rows used safe fallback explanations because evidence validation rejected unsupported model output.
+
+## 2026-06-27 - Subagent Review Cleanup
+
+### Changes
+
+- Fixed stale conclusion wording in the ACM paper after review.
+- Fixed filtered benchmark retry artifacts so `subset-manifest.json` respects `--scenario` and `--fixture` filters.
+- Added a regression test for filtered research artifacts.
+
+### Verification
+
+- `node --test scripts\\research-task5-medium-benchmark.test.mjs` passed with `3/3`.
+- `npm run build:core` passed.
+
+## 2026-06-27 - Research Artifact Cleanup For Push
+
+### Changes
+
+- Removed old sanitized research summaries under `docs/research/task5-hermsec-moa/findings`.
+- Removed the stale compiled ACM PDF because the TeX source is newer and no local TeX compiler is available in this environment.
+- Removed old/unreferenced paper images: previous mode charts, language baseline chart, old agents screenshot, and Doctor screenshot.
+- Kept the refreshed paper source and the actual-run `results/latest` bundle.
+- Updated README references so the research package points to the current TeX source and latest results only.

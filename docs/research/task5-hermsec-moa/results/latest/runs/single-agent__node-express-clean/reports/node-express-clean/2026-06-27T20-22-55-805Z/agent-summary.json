@@ -1,0 +1,33 @@
+{
+  "agentMode": {
+    "acceptedFindingCount": 0,
+    "agents": [
+      {
+        "id": "single-agent-inspector",
+        "label": "Single Agent Inspector",
+        "model": "deepseek-v4-flash",
+        "provider": "opencode-go",
+        "role": "security-inspector",
+        "runtimeMs": 4663,
+        "status": "completed"
+      }
+    ],
+    "agentsUsed": [
+      "single-agent-inspector"
+    ],
+    "candidateFindingCount": 0,
+    "findings": {},
+    "mode": "single-agent",
+    "modeLabel": "Single-agent inspection",
+    "needsHumanReviewCount": 0,
+    "rejectedFindingCount": 0,
+    "scanMode": "single-agent",
+    "totalAgentRuntimeMs": 4663
+  },
+  "executiveSummary": "Single-agent inspection produced 0 validated agent-only findings.",
+  "explanations": {},
+  "generatedWithModel": true,
+  "model": "deepseek-v4-flash",
+  "priorityActions": [],
+  "provider": "opencode-go"
+}

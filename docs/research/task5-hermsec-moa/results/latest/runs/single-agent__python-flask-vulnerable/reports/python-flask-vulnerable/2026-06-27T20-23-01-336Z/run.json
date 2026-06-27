@@ -1,0 +1,18 @@
+{
+  "durationMs": 391,
+  "fallback": {
+    "actualReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-vulnerable\\reports\\python-flask-vulnerable\\2026-06-27T20-23-01-336Z",
+    "configuredReportDir": "C:\\Users\\whent\\Documents\\Personal Proj\\Hermsec\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\single-agent__python-flask-vulnerable\\reports",
+    "used": false
+  },
+  "finishedAt": "2026-06-27T20:23:01.336Z",
+  "git": {
+    "branch": "main",
+    "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+    "dirty": true
+  },
+  "id": "scan-1736ec771ea4848d",
+  "mode": "auto",
+  "modeLabel": "Single-agent inspection",
+  "startedAt": "2026-06-27T20:23:00.945Z"
+}

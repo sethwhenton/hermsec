@@ -1,0 +1,156 @@
+[
+  {
+    "category": "dependency",
+    "confidence": "high",
+    "description": "PMG wrapped npm audit reported a known npm dependency vulnerability without installing packages.",
+    "evidence": "express <4.19.2 https://github.[REDACTED_SECRET]",
+    "fingerprint": "fp-5d7c8a7ede9c55b6",
+    "id": "finding-5d7c8a7ede9c55b6",
+    "identifiers": {
+      "cve": [],
+      "ghsa": [
+        "GHSA-RV95-896H-C2VC"
+      ],
+      "osv": []
+    },
+    "location": {
+      "file": "package-lock.json"
+    },
+    "package": {
+      "ecosystem": "npm",
+      "name": "express"
+    },
+    "remediation": "Upgrade express to 4.22.2 after dependency review.",
+    "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+    "severity": "medium",
+    "title": "Express.js Open Redirect in malformed URLs",
+    "tool": "pmg"
+  },
+  {
+    "category": "dependency",
+    "confidence": "high",
+    "description": "OSV-Scanner reported a known vulnerability for a dependency in a recognized manifest or lockfile.",
+    "evidence": "express@4.18.2 is affected by GHSA-rv95-896h-c2vc, CVE-2024-29041.",
+    "fingerprint": "fp-79460a7a95ca1609",
+    "id": "finding-79460a7a95ca1609",
+    "identifiers": {
+      "cve": [
+        "CVE-2024-29041"
+      ],
+      "ghsa": [
+        "GHSA-RV95-896H-C2VC"
+      ],
+      "osv": []
+    },
+    "location": {
+      "file": "package-lock.json"
+    },
+    "package": {
+      "ecosystem": "npm",
+      "installedVersion": "4.18.2",
+      "name": "express"
+    },
+    "remediation": "Upgrade express to a fixed version: 4.19.2, 5.0.0-beta.3.",
+    "ruleId": "osv:GHSA-rv95-896h-c2vc",
+    "severity": "medium",
+    "title": "Express.js Open Redirect in malformed URLs",
+    "tool": "osv-scanner"
+  },
+  {
+    "category": "code",
+    "confidence": "medium",
+    "cwe": [
+      "CWE-79"
+    ],
+    "description": "Hermsec's offline heuristic scanner found a risky source pattern.",
+    "evidence": "src/app.js:7 res.send(`<h1>${escapeHtml(String(req.query.name ?? \"\"))}</h1>`);",
+    "fingerprint": "fp-7aeee916077462b4",
+    "id": "finding-7aeee916077462b4",
+    "location": {
+      "file": "src/app.js",
+      "startLine": 7
+    },
+    "remediation": "Escape untrusted output before placing it in HTML responses.",
+    "ruleId": "hermsec.code.unsanitized-html-response",
+    "severity": "medium",
+    "title": "HTML response may include unsanitized input",
+    "tool": "hermsec-heuristics"
+  },
+  {
+    "category": "code",
+    "confidence": "medium",
+    "cwe": [
+      "CWE-79"
+    ],
+    "description": "Hermsec's offline heuristic scanner found a risky source pattern.",
+    "evidence": "src/routes/search.js:34 res.send(`<h1>${name}</h1><p>${digest}</p>`);",
+    "fingerprint": "fp-b1bdc12ef0d825ab",
+    "id": "finding-b1bdc12ef0d825ab",
+    "location": {
+      "file": "src/routes/search.js",
+      "startLine": 34
+    },
+    "remediation": "Escape untrusted output before placing it in HTML responses.",
+    "ruleId": "hermsec.code.unsanitized-html-response",
+    "severity": "medium",
+    "title": "HTML response may include unsanitized input",
+    "tool": "hermsec-heuristics"
+  },
+  {
+    "category": "dependency",
+    "confidence": "high",
+    "description": "PMG wrapped npm audit reported a known npm dependency vulnerability without installing packages.",
+    "evidence": "express <4.20.0 https://github.[REDACTED_SECRET]",
+    "fingerprint": "fp-34a12328494fee7c",
+    "id": "finding-34a12328494fee7c",
+    "identifiers": {
+      "cve": [],
+      "ghsa": [
+        "GHSA-QW6H-VGH9-J6WX"
+      ],
+      "osv": []
+    },
+    "location": {
+      "file": "package-lock.json"
+    },
+    "package": {
+      "ecosystem": "npm",
+      "name": "express"
+    },
+    "remediation": "Upgrade express to 4.22.2 after dependency review.",
+    "ruleId": "npm-audit:https://github.[REDACTED_SECRET]",
+    "severity": "low",
+    "title": "express vulnerable to XSS via response.redirect()",
+    "tool": "pmg"
+  },
+  {
+    "category": "dependency",
+    "confidence": "high",
+    "description": "OSV-Scanner reported a known vulnerability for a dependency in a recognized manifest or lockfile.",
+    "evidence": "express@4.18.2 is affected by GHSA-qw6h-vgh9-j6wx, CVE-2024-43796.",
+    "fingerprint": "fp-b80725495585908e",
+    "id": "finding-b80725495585908e",
+    "identifiers": {
+      "cve": [
+        "CVE-2024-43796"
+      ],
+      "ghsa": [
+        "GHSA-QW6H-VGH9-J6WX"
+      ],
+      "osv": []
+    },
+    "location": {
+      "file": "package-lock.json"
+    },
+    "package": {
+      "ecosystem": "npm",
+      "installedVersion": "4.18.2",
+      "name": "express"
+    },
+    "remediation": "Upgrade express to a fixed version: 4.20.0, 5.0.0.",
+    "ruleId": "osv:GHSA-qw6h-vgh9-j6wx",
+    "severity": "low",
+    "title": "express vulnerable to XSS via response.redirect()",
+    "tool": "osv-scanner"
+  }
+]

@@ -1,0 +1,19 @@
+{
+  "bundleId": "evidence-d573839ddc4211cd",
+  "findingEvidence": {
+    "finding-86a9026676959873": [
+      {
+        "location": {
+          "endLine": 1,
+          "file": "requirements.txt",
+          "startLine": 1
+        },
+        "message": "pip-audit reports flask@3.0.3 is affected by CVE-2026-27205, GHSA-68rp-wp8r-4726.",
+        "ruleId": "pip-audit:CVE-2026-27205",
+        "scanner": "hermsec-scanner-moa"
+      }
+    ]
+  },
+  "rawArtifacts": [],
+  "redactionApplied": false
+}

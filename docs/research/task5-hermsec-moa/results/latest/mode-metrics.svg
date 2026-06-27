@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="640" viewBox="0 0 1120 640" role="img" aria-label="HermSec mode quality metrics">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="64" y="30" font-size="24" font-weight="700" fill="#0f172a">HermSec mode quality metrics</text>
+  <text x="64" y="54" font-size="14" fill="#64748b">Precision, recall, and F1 by scenario</text>
+  <g transform="translate(64,52)"><rect width="14" height="14" rx="3" fill="#3b82f6"/><text x="22" y="12" font-size="13" fill="#0f172a">Precision</text></g>
+<g transform="translate(224,52)"><rect width="14" height="14" rx="3" fill="#22c55e"/><text x="22" y="12" font-size="13" fill="#0f172a">Recall</text></g>
+<g transform="translate(384,52)"><rect width="14" height="14" rx="3" fill="#f59e0b"/><text x="22" y="12" font-size="13" fill="#0f172a">F1</text></g>
+  <line x1="64" y1="490" x2="1078" y2="490" stroke="#e2e8f0" stroke-width="1"/>
+<text x="52" y="494" text-anchor="end" font-size="12" fill="#64748b">0.00</text>
+<line x1="64" y1="389" x2="1078" y2="389" stroke="#e2e8f0" stroke-width="1"/>
+<text x="52" y="393" text-anchor="end" font-size="12" fill="#64748b">0.25</text>
+<line x1="64" y1="288" x2="1078" y2="288" stroke="#e2e8f0" stroke-width="1"/>
+<text x="52" y="292" text-anchor="end" font-size="12" fill="#64748b">0.50</text>
+<line x1="64" y1="187" x2="1078" y2="187" stroke="#e2e8f0" stroke-width="1"/>
+<text x="52" y="191" text-anchor="end" font-size="12" fill="#64748b">0.75</text>
+<line x1="64" y1="86" x2="1078" y2="86" stroke="#e2e8f0" stroke-width="1"/>
+<text x="52" y="90" text-anchor="end" font-size="12" fill="#64748b">1.00</text>
+  <line x1="64" y1="490" x2="1078" y2="490" stroke="#334155" stroke-width="1.5"/>
+  <line x1="64" y1="86" x2="64" y2="490" stroke="#334155" stroke-width="1.5"/>
+  <rect x="78" y="462.8" width="43" height="27.2" rx="4" fill="#3b82f6"/>
+  <text x="99.5" y="456.8" text-anchor="middle" font-size="11" fill="#64748b">0.07</text>
+  <rect x="127" y="288" width="43" height="202" rx="4" fill="#22c55e"/>
+  <text x="148.5" y="282" text-anchor="middle" font-size="11" fill="#64748b">0.50</text>
+  <rect x="176" y="442" width="43" height="48" rx="4" fill="#f59e0b"/>
+  <text x="197.5" y="436" text-anchor="middle" font-size="11" fill="#64748b">0.12</text>
+  <rect x="247" y="220.7" width="43" height="269.3" rx="4" fill="#3b82f6"/>
+  <text x="268.5" y="214.7" text-anchor="middle" font-size="11" fill="#64748b">0.67</text>
+  <rect x="296" y="422.7" width="43" height="67.3" rx="4" fill="#22c55e"/>
+  <text x="317.5" y="416.7" text-anchor="middle" font-size="11" fill="#64748b">0.17</text>
+  <rect x="345" y="382.3" width="43" height="107.7" rx="4" fill="#f59e0b"/>
+  <text x="366.5" y="376.3" text-anchor="middle" font-size="11" fill="#64748b">0.27</text>
+  <rect x="416" y="265.5" width="43" height="224.5" rx="4" fill="#3b82f6"/>
+  <text x="437.5" y="259.5" text-anchor="middle" font-size="11" fill="#64748b">0.56</text>
+  <rect x="465" y="321.7" width="43" height="168.3" rx="4" fill="#22c55e"/>
+  <text x="486.5" y="315.7" text-anchor="middle" font-size="11" fill="#64748b">0.42</text>
+  <rect x="514" y="297.6" width="43" height="192.4" rx="4" fill="#f59e0b"/>
+  <text x="535.5" y="291.6" text-anchor="middle" font-size="11" fill="#64748b">0.48</text>
+  <rect x="585" y="288" width="43" height="202" rx="4" fill="#3b82f6"/>
+  <text x="606.5" y="282" text-anchor="middle" font-size="11" fill="#64748b">0.50</text>
+  <rect x="634" y="389" width="43" height="101" rx="4" fill="#22c55e"/>
+  <text x="655.5" y="383" text-anchor="middle" font-size="11" fill="#64748b">0.25</text>
+  <rect x="683" y="355.3" width="43" height="134.7" rx="4" fill="#f59e0b"/>
+  <text x="704.5" y="349.3" text-anchor="middle" font-size="11" fill="#64748b">0.33</text>
+  <rect x="754" y="457.2" width="43" height="32.8" rx="4" fill="#3b82f6"/>
+  <text x="775.5" y="451.2" text-anchor="middle" font-size="11" fill="#64748b">0.08</text>
+  <rect x="803" y="288" width="43" height="202" rx="4" fill="#22c55e"/>
+  <text x="824.5" y="282" text-anchor="middle" font-size="11" fill="#64748b">0.50</text>
+  <rect x="852" y="433.6" width="43" height="56.4" rx="4" fill="#f59e0b"/>
+  <text x="873.5" y="427.6" text-anchor="middle" font-size="11" fill="#64748b">0.14</text>
+  <rect x="923" y="449.6" width="43" height="40.4" rx="4" fill="#3b82f6"/>
+  <text x="944.5" y="443.6" text-anchor="middle" font-size="11" fill="#64748b">0.10</text>
+  <rect x="972" y="254.3" width="43" height="235.7" rx="4" fill="#22c55e"/>
+  <text x="993.5" y="248.3" text-anchor="middle" font-size="11" fill="#64748b">0.58</text>
+  <rect x="1021" y="421" width="43" height="69" rx="4" fill="#f59e0b"/>
+  <text x="1042.5" y="415" text-anchor="middle" font-size="11" fill="#64748b">0.17</text>
+  <text x="148.5" y="552" text-anchor="middle" font-size="12" fill="#0f172a">Deep assisted</text>
+<text x="317.5" y="552" text-anchor="middle" font-size="12" fill="#0f172a">Single agent</text>
+<text x="486.5" y="552" text-anchor="middle" font-size="12" fill="#0f172a">MoA low</text>
+<text x="655.5" y="552" text-anchor="middle" font-size="12" fill="#0f172a">MoA high</text>
+<text x="824.5" y="552" text-anchor="middle" font-size="12" fill="#0f172a">Scanner+MoA low</text>
+<text x="993.5" y="552" text-anchor="middle" font-size="12" fill="#0f172a">Scanner+MoA high</text>
+</svg>

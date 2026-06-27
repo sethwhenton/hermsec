@@ -13,6 +13,8 @@ export type ProductAgentRoleId =
   | "injection-and-execution"
   | "auth-and-data-flow"
   | "secrets-and-config"
+  | "database-and-storage"
+  | "config-and-iac"
   | "moa-false-positive-judge"
   | "moa-aggregator";
 
@@ -112,6 +114,18 @@ export const PRODUCT_AGENT_SPECIALISTS: readonly SpecialistRole[] = [
     focus: "Find hardcoded secrets, insecure debug settings, weak security headers, and risky deployment configuration.",
     searchQueries: ["api_key", "secret", "token", "password", "DEBUG", "debug=True", "NODE_ENV", "helmet", "csrf"],
   },
+  {
+    id: "database-and-storage",
+    label: "Database and storage specialist",
+    focus: "Find unsafe database access, direct object storage exposure, weak persistence controls, unsafe migrations, and data retention risks.",
+    searchQueries: ["query(", "execute(", "raw(", "whereRaw", "findOne", "ObjectId", "mongoose", "sequelize", "typeorm", "s3", "bucket", "storage"],
+  },
+  {
+    id: "config-and-iac",
+    label: "Config and IaC specialist",
+    focus: "Find risky Docker, Kubernetes, CI, Terraform, cloud, environment, and deployment configuration issues.",
+    searchQueries: ["Dockerfile", "docker-compose", "kubernetes", "terraform", "privileged", "0.0.0.0", "CORS", "workflow", "permissions:", "securityContext"],
+  },
 ] as const;
 
 export async function runProductAgentScan(input: ProductAgentScanInput): Promise<ProductAgentScanResult> {
@@ -191,6 +205,7 @@ async function runMoaAgentScan(
   started: number,
 ): Promise<ProductAgentScanResult> {
   const allCandidates: CandidateFinding[] = [];
+  const specialistRoles = selectedProductAgentSpecialists();
   let model: string | undefined;
   const agentRuns: Array<{
     id: string;
@@ -198,10 +213,11 @@ async function runMoaAgentScan(
     role: "specialist" | "judge" | "aggregator";
     provider: string;
     model?: string;
+    runtimeMs?: number;
     status: "completed";
   }> = [];
 
-  for (const role of PRODUCT_AGENT_SPECIALISTS) {
+  for (const role of specialistRoles) {
     const snapshot = await runtime.buildSnapshot({
       maxFiles: 120,
       maxSearches: role.searchQueries.length,
@@ -210,12 +226,14 @@ async function runMoaAgentScan(
       searchQueries: role.searchQueries,
     });
     const modelSelection = await resolveRoleModel(input, role.id as ProductAgentRoleId);
+    const roleStarted = Date.now();
     const response = await completeWithTimeout(
       modelSelection.provider,
       specialistRequest(role, snapshot, "moa-assisted"),
       modelSelection.providerConfig,
       modelTimeoutMs(modelSelection.providerConfig?.timeoutMs),
     );
+    const roleRuntimeMs = Date.now() - roleStarted;
     model = response.model;
     agentRuns.push({
       id: role.id,
@@ -223,6 +241,7 @@ async function runMoaAgentScan(
       role: "specialist",
       provider: response.provider,
       model: response.model,
+      runtimeMs: roleRuntimeMs,
       status: "completed",
     });
     const candidates = await parseFindingCandidates({
@@ -239,32 +258,34 @@ async function runMoaAgentScan(
   }
 
   const judgeSelection = await resolveRoleModel(input, "moa-false-positive-judge");
-  const judgeResponse = await completeWithTimeout(
-    judgeSelection.provider,
-    judgeRequest(allCandidates, "moa-assisted"),
-    judgeSelection.providerConfig,
-    modelTimeoutMs(judgeSelection.providerConfig?.timeoutMs),
+  const judgeResult = await judgeCandidatesInBatches(
+    "false-positive judge",
+    judgeSelection,
+    allCandidates,
+    "moa-assisted",
   );
-  model = judgeResponse.model;
+  model = judgeResult.model;
   agentRuns.push({
     id: "moa-false-positive-judge",
     label: "False-positive Judge",
     role: "judge",
-    provider: judgeResponse.provider,
-    model: judgeResponse.model,
+    provider: judgeResult.provider,
+    model: judgeResult.model,
+    runtimeMs: judgeResult.runtimeMs,
     status: "completed",
   });
-  const judgments = parseJudgeResults(judgeResponse.content);
-  const judgmentCounts = countJudgments(allCandidates, judgments);
-  const judgedCandidates = applyJudgments(allCandidates, judgments, judgeResponse.model);
+  const judgmentCounts = judgeResult.counts;
+  const judgedCandidates = judgeResult.judgedCandidates;
 
   const aggregatorSelection = await resolveRoleModel(input, "moa-aggregator");
+  const aggregatorStarted = Date.now();
   const aggregatorResponse = await completeWithTimeout(
     aggregatorSelection.provider,
     aggregatorRequest(judgedCandidates, "moa-assisted"),
     aggregatorSelection.providerConfig,
     modelTimeoutMs(aggregatorSelection.providerConfig?.timeoutMs),
   );
+  const aggregatorRuntimeMs = Date.now() - aggregatorStarted;
   model = aggregatorResponse.model;
   agentRuns.push({
     id: "moa-aggregator",
@@ -272,6 +293,7 @@ async function runMoaAgentScan(
     role: "aggregator",
     provider: aggregatorResponse.provider,
     model: aggregatorResponse.model,
+    runtimeMs: aggregatorRuntimeMs,
     status: "completed",
   });
   const aggregated = await parseFindingCandidates({
@@ -298,6 +320,7 @@ async function runMoaAgentScan(
       provider: input.provider.id,
       model,
       agentRuns,
+      specialistRoles,
       findings: finalFindings,
       candidateCount: allCandidates.length,
       acceptedCount: judgmentCounts.accepted,
@@ -307,7 +330,8 @@ async function runMoaAgentScan(
     }),
     started,
     limitations: [
-      `MoA ran ${PRODUCT_AGENT_SPECIALISTS.length} specialist role(s), a false-positive judge, and an aggregator.`,
+      `MoA ran ${specialistRoles.length} specialist role(s), a false-positive judge, and an aggregator.`,
+      ...judgeResult.limitations,
       aggregated.length === 0 && fallbackFindings.length > 0 ? "Aggregator output had no validated findings; judged specialist candidates were retained." : "",
       finalFindings.length === 0 ? "MoA completed but produced no validated product-mode findings." : "",
     ].filter(Boolean),
@@ -321,6 +345,7 @@ async function runScannerMoaAgentScan(
 ): Promise<ProductAgentScanResult> {
   const scannerCandidates = scannerCandidatesFromFindings(input.scannerFindings ?? [], input.repoRoot);
   const allCandidates: CandidateFinding[] = [...scannerCandidates];
+  const specialistRoles = selectedProductAgentSpecialists();
   let model: string | undefined;
   const agentRuns: Array<{
     id: string;
@@ -328,6 +353,7 @@ async function runScannerMoaAgentScan(
     role: "specialist" | "judge" | "aggregator" | "scanner";
     provider: string;
     model?: string;
+    runtimeMs?: number;
     status: "completed" | "failed";
   }> = [];
   const limitations: string[] = [];
@@ -342,7 +368,7 @@ async function runScannerMoaAgentScan(
     });
   }
 
-  for (const role of PRODUCT_AGENT_SPECIALISTS) {
+  for (const role of specialistRoles) {
     const snapshot = await runtime.buildSnapshot({
       maxFiles: 120,
       maxSearches: role.searchQueries.length,
@@ -352,6 +378,7 @@ async function runScannerMoaAgentScan(
     });
     const modelSelection = await resolveRoleModel(input, role.id as ProductAgentRoleId);
     let response: Awaited<ReturnType<ModelProviderAdapter["complete"]>>;
+    const roleStarted = Date.now();
     try {
       response = await completeWithTimeout(
         modelSelection.provider,
@@ -360,6 +387,7 @@ async function runScannerMoaAgentScan(
         modelTimeoutMs(modelSelection.providerConfig?.timeoutMs),
       );
     } catch (error) {
+      const roleRuntimeMs = Date.now() - roleStarted;
       const message = error instanceof Error ? error.message : String(error);
       limitations.push(`${role.label} failed safely: ${message}`);
       agentRuns.push({
@@ -368,10 +396,12 @@ async function runScannerMoaAgentScan(
         role: "specialist",
         provider: modelSelection.provider.id,
         ...(modelSelection.providerConfig?.model ? { model: modelSelection.providerConfig.model } : {}),
+        runtimeMs: roleRuntimeMs,
         status: "failed",
       });
       continue;
     }
+    const roleRuntimeMs = Date.now() - roleStarted;
     model = response.model;
     agentRuns.push({
       id: role.id,
@@ -379,6 +409,7 @@ async function runScannerMoaAgentScan(
       role: "specialist",
       provider: response.provider,
       model: response.model,
+      runtimeMs: roleRuntimeMs,
       status: "completed",
     });
     const candidates = await parseFindingCandidates({
@@ -404,6 +435,7 @@ async function runScannerMoaAgentScan(
         provider: input.provider.id,
         model,
         agentRuns,
+        specialistRoles,
         findings: [],
         scannerCandidateCount: 0,
         agentCandidateCount: 0,
@@ -418,32 +450,34 @@ async function runScannerMoaAgentScan(
   }
 
   const judgeSelection = await resolveRoleModel(input, "moa-false-positive-judge");
-  const judgeResponse = await completeRoleWithTimeout(
+  const judgeResult = await judgeCandidatesInBatches(
     "false-positive judge",
-    judgeSelection.provider,
-    judgeRequest(allCandidates, "scanner-moa-assisted"),
-    judgeSelection.providerConfig,
+    judgeSelection,
+    allCandidates,
+    "scanner-moa-assisted",
   );
-  model = judgeResponse.model;
+  model = judgeResult.model;
   agentRuns.push({
     id: "moa-false-positive-judge",
     label: "False-positive Judge",
     role: "judge",
-    provider: judgeResponse.provider,
-    model: judgeResponse.model,
+    provider: judgeResult.provider,
+    model: judgeResult.model,
+    runtimeMs: judgeResult.runtimeMs,
     status: "completed",
   });
-  const judgments = parseJudgeResults(judgeResponse.content);
-  const judgmentCounts = countJudgments(allCandidates, judgments);
-  const judgedCandidates = applyJudgments(allCandidates, judgments, judgeResponse.model);
+  const judgmentCounts = judgeResult.counts;
+  const judgedCandidates = judgeResult.judgedCandidates;
 
   const aggregatorSelection = await resolveRoleModel(input, "moa-aggregator");
+  const aggregatorStarted = Date.now();
   const aggregatorResponse = await completeRoleWithTimeout(
     "final aggregator",
     aggregatorSelection.provider,
     aggregatorRequest(judgedCandidates, "scanner-moa-assisted"),
     aggregatorSelection.providerConfig,
   );
+  const aggregatorRuntimeMs = Date.now() - aggregatorStarted;
   model = aggregatorResponse.model;
   agentRuns.push({
     id: "moa-aggregator",
@@ -451,6 +485,7 @@ async function runScannerMoaAgentScan(
     role: "aggregator",
     provider: aggregatorResponse.provider,
     model: aggregatorResponse.model,
+    runtimeMs: aggregatorRuntimeMs,
     status: "completed",
   });
   const aggregated = await parseFindingCandidates({
@@ -476,6 +511,7 @@ async function runScannerMoaAgentScan(
       provider: input.provider.id,
       model,
       agentRuns,
+      specialistRoles,
       findings: finalFindings,
       scannerCandidateCount: scannerCandidates.length,
       agentCandidateCount: allCandidates.length - scannerCandidates.length,
@@ -488,10 +524,33 @@ async function runScannerMoaAgentScan(
     limitations: [
       ...limitations,
       `Scanner + MoA judged ${allCandidates.length} combined scanner and agent candidate finding${allCandidates.length === 1 ? "" : "s"}.`,
+      ...judgeResult.limitations,
       aggregated.length === 0 && judgedCandidates.length > 0 ? "Aggregator output had no validated findings; judged candidates were retained." : "",
       finalFindings.length === 0 ? "The false-positive judge and aggregator rejected all candidate findings." : "",
     ].filter(Boolean),
   });
+}
+
+function selectedProductAgentSpecialists(): readonly SpecialistRole[] {
+  const requested = productSpecialistCount();
+  return PRODUCT_AGENT_SPECIALISTS.slice(0, requested);
+}
+
+function productSpecialistCount(): number {
+  const explicit = boundedEnvInt("HERMSEC_PRODUCT_AGENT_SPECIALIST_COUNT", 0, 1, PRODUCT_AGENT_SPECIALISTS.length);
+  if (explicit > 0) {
+    return explicit;
+  }
+  const profile = process.env.HERMSEC_PRODUCT_AGENT_PANEL?.trim().toLowerCase()
+    || process.env.HERMSEC_PRODUCT_AGENT_PROFILE?.trim().toLowerCase()
+    || process.env.HERMSEC_MOA_PANEL_PROFILE?.trim().toLowerCase();
+  if (profile === "high" || profile === "deep" || profile === "large" || profile === "7") {
+    return Math.min(5, PRODUCT_AGENT_SPECIALISTS.length);
+  }
+  if (profile === "low" || profile === "fast" || profile === "small" || profile === "5") {
+    return Math.min(3, PRODUCT_AGENT_SPECIALISTS.length);
+  }
+  return Math.min(3, PRODUCT_AGENT_SPECIALISTS.length);
 }
 
 function scannerCandidatesFromFindings(findings: readonly Finding[], repoRoot: string): CandidateFinding[] {
@@ -776,6 +835,145 @@ async function toFindingCandidate(
   return { candidateId, finding };
 }
 
+async function judgeCandidatesInBatches(
+  roleLabel: string,
+  selection: ProductAgentModelSelection,
+  candidates: readonly CandidateFinding[],
+  mode: ProductAgentScanMode,
+): Promise<{
+  judgments: JudgeResult[];
+  counts: ReturnType<typeof countJudgments>;
+  judgedCandidates: CandidateFinding[];
+  provider: string;
+  model: string;
+  runtimeMs: number;
+  limitations: string[];
+}> {
+  const started = Date.now();
+  const batchSize = judgeBatchSize();
+  const chunks = chunkArray(candidates, batchSize);
+  const judgments: JudgeResult[] = [];
+  const limitations: string[] = [];
+  let provider: string = selection.provider.id;
+  let model = selection.providerConfig?.model ?? selection.provider.id;
+  let splitCount = 0;
+  let fallbackCount = 0;
+
+  for (let index = 0; index < chunks.length; index += 1) {
+    const result = await judgeCandidateBatch({
+      roleLabel,
+      selection,
+      candidates: chunks[index]!,
+      mode,
+      batchLabel: `${index + 1}/${chunks.length}`,
+    });
+    judgments.push(...result.judgments);
+    provider = result.provider;
+    model = result.model;
+    splitCount += result.splitCount;
+    fallbackCount += result.fallbackCount;
+    limitations.push(...result.limitations);
+  }
+
+  if (chunks.length > 1 || splitCount > 0) {
+    limitations.unshift(
+      `False-positive judge reviewed ${candidates.length} candidates in ${chunks.length + splitCount} bounded batch${chunks.length + splitCount === 1 ? "" : "es"}.`,
+    );
+  }
+  if (fallbackCount > 0) {
+    limitations.push(
+      `${fallbackCount} judge candidate${fallbackCount === 1 ? "" : "s"} used needs-review fallback after provider errors.`,
+    );
+  }
+
+  const counts = countJudgments(candidates, judgments);
+  return {
+    judgments,
+    counts,
+    judgedCandidates: applyJudgments(candidates, judgments, model),
+    provider,
+    model,
+    runtimeMs: Date.now() - started,
+    limitations: [...new Set(limitations)],
+  };
+}
+
+async function judgeCandidateBatch(input: {
+  roleLabel: string;
+  selection: ProductAgentModelSelection;
+  candidates: readonly CandidateFinding[];
+  mode: ProductAgentScanMode;
+  batchLabel: string;
+}): Promise<{
+  judgments: JudgeResult[];
+  provider: string;
+  model: string;
+  splitCount: number;
+  fallbackCount: number;
+  limitations: string[];
+}> {
+  try {
+    const response = await completeRoleWithTimeout(
+      `${input.roleLabel} batch ${input.batchLabel}`,
+      input.selection.provider,
+      judgeRequest(input.candidates, input.mode),
+      input.selection.providerConfig,
+    );
+    return {
+      judgments: parseJudgeResults(response.content),
+      provider: response.provider,
+      model: response.model,
+      splitCount: 0,
+      fallbackCount: 0,
+      limitations: [],
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (input.candidates.length > 1) {
+      const midpoint = Math.ceil(input.candidates.length / 2);
+      const left = await judgeCandidateBatch({
+        ...input,
+        candidates: input.candidates.slice(0, midpoint),
+        batchLabel: `${input.batchLabel}a`,
+      });
+      const right = await judgeCandidateBatch({
+        ...input,
+        candidates: input.candidates.slice(midpoint),
+        batchLabel: `${input.batchLabel}b`,
+      });
+      return {
+        judgments: [...left.judgments, ...right.judgments],
+        provider: right.provider,
+        model: right.model,
+        splitCount: left.splitCount + right.splitCount + 1,
+        fallbackCount: left.fallbackCount + right.fallbackCount,
+        limitations: [
+          `False-positive judge split batch ${input.batchLabel} after provider error: ${shortError(message)}.`,
+          ...left.limitations,
+          ...right.limitations,
+        ],
+      };
+    }
+
+    const candidate = input.candidates[0];
+    return {
+      judgments: candidate ? [{
+        candidateId: candidate.candidateId,
+        verdict: "needs-review",
+        confidence: "low",
+        reason: "Judge provider failed for this bounded batch; retained for human review.",
+      }] : [],
+      provider: input.selection.provider.id,
+      model: input.selection.providerConfig?.model ?? input.selection.provider.id,
+      splitCount: 0,
+      fallbackCount: candidate ? 1 : 0,
+      limitations: [
+        `False-positive judge used needs-review fallback for batch ${input.batchLabel}: ${shortError(message)}.`,
+      ],
+    };
+  }
+}
+
 function parseJudgeResults(raw: string): JudgeResult[] {
   const object = parseJsonObject(raw);
   const judgments = Array.isArray(object?.judgments) ? object.judgments : [];
@@ -936,12 +1134,14 @@ function buildSingleAgentModeMetadata(
 function buildMoaModeMetadata(input: {
   provider: string;
   model?: string | undefined;
+  specialistRoles: readonly SpecialistRole[];
   agentRuns: Array<{
     id: string;
     label: string;
     role: "specialist" | "judge" | "aggregator";
     provider: string;
     model?: string;
+    runtimeMs?: number;
     status: "completed";
   }>;
   findings: readonly Finding[];
@@ -956,7 +1156,7 @@ function buildMoaModeMetadata(input: {
     scanMode: "moa-assisted",
     modeLabel: productModeLabel("moa-assisted"),
     agentsUsed: [
-      ...PRODUCT_AGENT_SPECIALISTS.map((role) => role.id),
+      ...input.specialistRoles.map((role) => role.id),
       "moa-false-positive-judge",
       "moa-aggregator",
     ],
@@ -982,12 +1182,14 @@ function buildMoaModeMetadata(input: {
 function buildScannerMoaModeMetadata(input: {
   provider: string;
   model?: string | undefined;
+  specialistRoles: readonly SpecialistRole[];
   agentRuns: Array<{
     id: string;
     label: string;
     role: "specialist" | "judge" | "aggregator" | "scanner";
     provider: string;
     model?: string;
+    runtimeMs?: number;
     status: "completed" | "failed";
   }>;
   findings: readonly Finding[];
@@ -1004,7 +1206,7 @@ function buildScannerMoaModeMetadata(input: {
     modeLabel: productModeLabel("scanner-moa-assisted"),
     agentsUsed: [
       "scanner-stack",
-      ...PRODUCT_AGENT_SPECIALISTS.map((role) => role.id),
+      ...input.specialistRoles.map((role) => role.id),
       "moa-false-positive-judge",
       "moa-aggregator",
     ],
@@ -1145,6 +1347,22 @@ function productCandidateLimit(): number {
 
 function scannerCandidateLimit(): number {
   return boundedEnvInt("HERMSEC_SCANNER_MOA_SCANNER_CANDIDATE_LIMIT", 120, 1, 500);
+}
+
+function judgeBatchSize(): number {
+  return boundedEnvInt("HERMSEC_PRODUCT_AGENT_JUDGE_BATCH_SIZE", 10, 1, 50);
+}
+
+function chunkArray<T>(items: readonly T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks.length > 0 ? chunks : [[]];
+}
+
+function shortError(message: string): string {
+  return message.replace(/\s+/gu, " ").slice(0, 180);
 }
 
 function boundedEnvInt(name: string, fallback: number, min: number, max: number): number {

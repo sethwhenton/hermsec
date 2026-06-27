@@ -1,0 +1,244 @@
+{
+  "ok": true,
+  "message": "Scan completed: 5 finding(s). Report: <hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-23-13-223Z",
+  "data": {
+    "scan": {
+      "schemaVersion": "1.0",
+      "id": "scan-2adef1adc25b136e",
+      "target": "<hermsec-repo>\\tests\\fixtures\\repos\\node-express-vulnerable",
+      "mode": "auto",
+      "startedAt": "2026-06-27T20:23:12.845Z",
+      "finishedAt": "2026-06-27T20:23:13.223Z",
+      "durationMs": 378,
+      "scannerStatuses": [
+        {
+          "id": "repository-discovery",
+          "label": "Repository discovery",
+          "status": "completed",
+          "message": "Discovered 10 files (javascript:3, json:4, yaml:1, text:2), package managers: npm, lockfiles: 1, ignored folders: none."
+        },
+        {
+          "id": "moa-assisted",
+          "label": "MoA-assisted inspection",
+          "status": "completed",
+          "message": "MoA-assisted inspection completed with 5 validated findings.",
+          "durationMs": 87505
+        }
+      ],
+      "findings": [
+        {
+          "id": "finding-20c4034da1e1dd7f",
+          "title": "SQL Injection in search via unsanitized q parameter",
+          "category": "code",
+          "severity": "critical",
+          "confidence": "high",
+          "description": "The search function concatenates user input directly into a SQL query string, allowing arbitrary SQL injection.",
+          "evidence": "db.query(\"SELECT * FROM users WHERE name = '\" + term + \"'\");",
+          "remediation": "Use parameterized queries or prepared statements (e.g., db.query('SELECT * FROM users WHERE name = ?', [term])).",
+          "tool": "hermsec-moa",
+          "ruleId": "sql-injection",
+          "cwe": [
+            "CWE-89"
+          ],
+          "location": {
+            "file": "src/app.js",
+            "startLine": 4,
+            "endLine": 5
+          },
+          "agent": {
+            "mode": "moa-assisted",
+            "source": "moa-specialist",
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "role": "injection-and-execution",
+            "generatedAt": "2026-06-27T20:23:35.293Z",
+            "candidateIds": [
+              "candidate-4e1868d87e825e10"
+            ],
+            "judge": {
+              "verdict": "accepted",
+              "confidence": "high",
+              "reason": "Direct evidence of SQL injection via string concatenation in db.query.",
+              "reviewedBy": "moa-false-positive-judge"
+            }
+          },
+          "fingerprint": "fp-f3cba1dd781290c4"
+        },
+        {
+          "id": "finding-8782c799b91eaafc",
+          "title": "Command Injection in runTool via unsanitized tool parameter",
+          "category": "code",
+          "severity": "critical",
+          "confidence": "high",
+          "description": "The runTool function uses child_process.exec with a concatenated user input from req.query.tool, allowing arbitrary command execution.",
+          "evidence": "return childProcess.exec(\"tool \" + tool);",
+          "remediation": "Use execFile or spawn with argument array, validate the tool parameter against a whitelist.",
+          "tool": "hermsec-moa",
+          "ruleId": "command-injection-exec",
+          "cwe": [
+            "CWE-78"
+          ],
+          "location": {
+            "file": "src/app.js",
+            "startLine": 9,
+            "endLine": 10
+          },
+          "agent": {
+            "mode": "moa-assisted",
+            "source": "moa-specialist",
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "role": "injection-and-execution",
+            "generatedAt": "2026-06-27T20:23:35.290Z",
+            "candidateIds": [
+              "candidate-e971558d19f6efd9"
+            ],
+            "judge": {
+              "verdict": "accepted",
+              "confidence": "high",
+              "reason": "Direct evidence of command injection via string concatenation in childProcess.exec.",
+              "reviewedBy": "moa-false-positive-judge"
+            }
+          },
+          "fingerprint": "fp-be4f50b1e7b82d6a"
+        },
+        {
+          "id": "finding-b6f553d7fae5a7fb",
+          "title": "Command Injection in /tools/ping via unsanitized host parameter",
+          "category": "code",
+          "severity": "critical",
+          "confidence": "high",
+          "description": "The /tools/ping route uses exec with a template literal containing user input from req.query.host, allowing arbitrary command execution.",
+          "evidence": "exec(`echo ${String(req.query.host ?? \"localhost\")}`, () => undefined);",
+          "remediation": "Use execFile or spawn with argument array, validate the host parameter against an allowlist of valid hosts.",
+          "tool": "hermsec-moa",
+          "ruleId": "command-injection-exec",
+          "cwe": [
+            "CWE-78"
+          ],
+          "location": {
+            "file": "src/routes/search.js",
+            "startLine": 18,
+            "endLine": 20
+          },
+          "agent": {
+            "mode": "moa-assisted",
+            "source": "moa-specialist",
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "role": "injection-and-execution",
+            "generatedAt": "2026-06-27T20:23:35.292Z",
+            "candidateIds": [
+              "candidate-11b17fd1a421277a"
+            ],
+            "judge": {
+              "verdict": "accepted",
+              "confidence": "high",
+              "reason": "Direct evidence of command injection via template literal in exec call with unsanitized query parameter.",
+              "reviewedBy": "moa-false-positive-judge"
+            }
+          },
+          "fingerprint": "fp-c2017f284c5e0989"
+        },
+        {
+          "id": "finding-f157dbe9f0e4e02f",
+          "title": "SQL Injection in /search via unsanitized q parameter",
+          "category": "code",
+          "severity": "medium",
+          "confidence": "high",
+          "description": "The /search route constructs a SQL query using a template literal with user input. While not immediately executed, the unsanitized input is a SQL injection vulnerability that could be exploited if the query is later used.",
+          "evidence": "const query = `SELECT * FROM users WHERE display_name = '${term}'`;",
+          "remediation": "Use parameterized queries or prepared statements if the query is to be executed, or treat the input as untrusted and apply proper escaping.",
+          "tool": "hermsec-moa",
+          "ruleId": "sql-injection",
+          "cwe": [
+            "CWE-89"
+          ],
+          "location": {
+            "file": "src/routes/search.js",
+            "startLine": 13,
+            "endLine": 14
+          },
+          "agent": {
+            "mode": "moa-assisted",
+            "source": "moa-specialist",
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "role": "injection-and-execution",
+            "generatedAt": "2026-06-27T20:23:35.294Z",
+            "candidateIds": [
+              "candidate-43fa4aaee6a88585"
+            ],
+            "judge": {
+              "verdict": "accepted",
+              "confidence": "high",
+              "reason": "Direct evidence of SQL injection via template literal in query string construction.",
+              "reviewedBy": "moa-false-positive-judge"
+            }
+          },
+          "fingerprint": "fp-4702ffb3503ab376"
+        },
+        {
+          "id": "finding-a6a062da440676bf",
+          "title": "Debug Token Endpoint Exposed",
+          "category": "config",
+          "severity": "medium",
+          "confidence": "high",
+          "description": "The /debug-token endpoint (defined in src/routes/search.js) computes and returns an MD5 digest of a hardcoded token. Debug endpoints should not be enabled in production as they can leak sensitive information.",
+          "evidence": "router.get(\"/debug-token\", (req, res) => { const name = String(req.query.name ?? \"fixture-user\"); const digest = crypto.createHash(\"md5\").update(fakeFixtureToken).digest(\"hex\"); res.send(`<h1>${name}</h1><p>${digest}</p>`);",
+          "remediation": "Remove or guard the /debug-token endpoint behind authentication, feature flags, or environment checks (e.g., only enable in development).",
+          "tool": "hermsec-moa",
+          "ruleId": "debug-endpoint-exposed",
+          "cwe": [
+            "CWE-200"
+          ],
+          "location": {
+            "file": "src/routes/search.js",
+            "startLine": 30,
+            "endLine": 33
+          },
+          "agent": {
+            "mode": "moa-assisted",
+            "source": "moa-specialist",
+            "provider": "opencode-go",
+            "model": "deepseek-v4-flash",
+            "role": "secrets-and-config",
+            "generatedAt": "2026-06-27T20:24:05.904Z",
+            "candidateIds": [
+              "candidate-1707ac58909177f9"
+            ],
+            "judge": {
+              "verdict": "accepted",
+              "confidence": "high",
+              "reason": "Evidence shows an exposed debug endpoint '/debug-token' that leaks processed token data.",
+              "reviewedBy": "moa-false-positive-judge"
+            }
+          },
+          "fingerprint": "fp-888f342be01d3eb5"
+        }
+      ],
+      "summary": {
+        "total": 5,
+        "critical": 3,
+        "high": 0,
+        "medium": 2,
+        "low": 0,
+        "info": 0
+      },
+      "git": {
+        "branch": "main",
+        "commit": "e885a63f6b1ca60a050977f3bf6dd993e2672676",
+        "dirty": true
+      }
+    },
+    "report": {
+      "summaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-23-13-223Z\\summary.json",
+      "findingsPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-23-13-223Z\\findings.json",
+      "evidencePath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-23-13-223Z\\evidence.json",
+      "runPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-23-13-223Z\\run.json",
+      "agentSummaryPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-23-13-223Z\\agent-summary.json",
+      "deltaPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-23-13-223Z\\delta.json",
+      "documentPath": "<hermsec-repo>\\docs\\research\\task5-hermsec-moa\\results\\latest\\runs\\moa-low__node-express-vulnerable\\reports\\node-express-vulnerable\\2026-06-27T20-23-13-223Z\\report-document.json"
+    }
+  }
+}
