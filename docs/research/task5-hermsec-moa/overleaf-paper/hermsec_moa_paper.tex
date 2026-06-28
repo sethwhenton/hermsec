@@ -9,6 +9,7 @@
 
 \usepackage{booktabs}
 \usepackage{array}
+\usepackage{float}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning}
 
@@ -25,10 +26,17 @@
   \country{Germany}}
 \email{}
 
+\author{Ghazal Pouresfandiyar Borojeni}
+\affiliation{%
+  \institution{University of Passau}
+  \city{Passau}
+  \country{Germany}}
+\email{}
+
 \begin{abstract}
 HermSec is a desktop security scanner for local repositories. It is built to help a developer choose a project, inspect what kind of code it contains, prepare the right scanner tools, run the scan, and generate a readable report. The app includes a chat workflow, live progress cards, scanner settings, model provider settings, doctor checks, automations, and HTML/PDF/JSON reports.
 
-This paper first presents HermSec as a product, then compares four review modes. Deep assisted scan runs static scanners and uses a model to explain scanner evidence. Single agent inspection lets one model inspect bounded code snippets without scanners. MoA inspection uses several specialist agents, a false-positive judge, and an aggregator without scanners. Scanner + MoA inspection runs scanners and MoA together, then uses a judge and final aggregator to validate both sets of findings.
+This paper first presents HermSec as a product, then compares four review modes. Deep assisted scan runs static scanners and uses a model to explain scanner evidence. Single agent inspection lets one model inspect bounded code snippets without scanners. MoA (Mixture of Agents) inspection uses several specialist agents, a false-positive judge, and an aggregator without scanners. Scanner + MoA inspection runs scanners and MoA together, then uses a judge and final aggregator to validate both sets of findings.
 
 The evaluation completed 24 of 24 mode-and-fixture runs using efficient non-US models through OpenCode Go. MoA Low had the best F1 score at 0.4762. Single Agent had the best precision at 0.6667 but low recall. Scanner + MoA High had the best recall at 0.5833 but also many false positives. The result shows that multi-agent review can reduce noise compared with scanner-heavy modes, but the hybrid mode still needs stronger candidate filtering.
 \end{abstract}
@@ -59,7 +67,7 @@ This paper does not claim that agents are always better than scanners. The goal 
 
 Figures~\ref{fig:hermsec-workflow} and~\ref{fig:hermsec-settings} show parts of the HermSec app that were built during the project. The scan workflow asks the user to choose a mode, shows live progress, and then writes a short result summary. The settings screens let the user configure agent modes and model providers.
 
-\begin{figure*}
+\begin{figure*}[!htbp]
   \centering
   \includegraphics[width=.49\textwidth]{figures/hermsec_scan_choice_progress.png}\hfill
   \includegraphics[width=.49\textwidth]{figures/hermsec_scan_completed_summary.png}
@@ -68,7 +76,7 @@ Figures~\ref{fig:hermsec-workflow} and~\ref{fig:hermsec-settings} show parts of 
   \label{fig:hermsec-workflow}
 \end{figure*}
 
-\begin{figure*}
+\begin{figure*}[!htbp]
   \centering
   \includegraphics[width=.49\textwidth]{figures/hermsec_agents_settings_full.png}\hfill
   \includegraphics[width=.49\textwidth]{figures/hermsec_providers_settings.png}
@@ -88,7 +96,7 @@ The scanner manager is part of the product. It shows which scanners are installe
 
 Other product features include Doctor checks, model provider setup, model selection, agent settings, scan automations, live progress cards, and HTML/PDF/JSON reports. The Doctor checks confirm that scanner tools, internet connectivity, and provider setup are ready. The report system keeps the final result readable instead of only printing raw scanner output.
 
-\begin{figure}
+\begin{figure}[H]
   \centering
   \includegraphics[width=\linewidth]{figures/hermsec_scanners_settings.png}
   \caption{HermSec scanner settings. The app shows installed, missing, enabled, and project-relevant scanners.}
@@ -123,9 +131,9 @@ Single agent inspection does not run scanners. One model inspects the repository
 MoA means mixture of agents. In this mode, HermSec runs a panel of specialist agents. The default roles include injection, secrets and supply chain, authentication, crypto and data protection, configuration and IaC, language and framework, API security, and database security. A false-positive judge checks the candidates. The aggregator then writes the final accepted findings.
 
 \subsection{Scanner + MoA Inspection}
-Scanner + MoA inspection is the hybrid mode added after the first tests. In this mode, scanners run and produce candidate findings. MoA agents also inspect the repository with bounded read-only code tools. Then a false-positive judge reviews both scanner findings and agent findings together. Finally, an aggregator writes the accepted and deduplicated findings into the normal HermSec report. The goal is to keep the broad coverage of scanners while using agents to reduce false positives and improve the final explanation.
+Scanner + MoA inspection is the hybrid mode added after the first tests. In this mode, scanners run and produce candidate findings. MoA agents also inspect the repository with bounded read-only code tools. Then a false-positive judge reviews both scanner findings and agent findings together. Finally, an aggregator writes the accepted and deduplicated findings into the normal HermSec report. The goal is to keep the broad coverage of scanners while using agents to reduce false positives and improve the final explanation. Figure~\ref{fig:mode-diagrams} shows the execution flow for each mode.
 
-\begin{figure*}
+\begin{figure*}[!htbp]
   \centering
   \begin{minipage}[t]{.48\textwidth}
     \centering
@@ -209,9 +217,9 @@ Scanner + MoA inspection is the hybrid mode added after the first tests. In this
 \end{figure*}
 
 \subsection{Safety Limits}
-The agent modes are limited on purpose. They cannot run shell commands. They cannot install packages. They cannot execute project scripts. They cannot read outside the selected repository. HermSec also skips noisy folders such as \texttt{.git}, \texttt{node\_modules}, build folders, and vendored code. These limits make the agent modes safer and easier to test.
+The agent modes are limited on purpose. They cannot run shell commands. They cannot install packages. They cannot execute project scripts. They cannot read outside the selected repository. HermSec also skips noisy folders such as \texttt{.git}, \texttt{node\_modules}, build folders, and vendored code. These limits make the agent modes safer and easier to test. The complete harness flow, from repository inspection through mode selection to the final report, is shown in Figure~\ref{fig:harness-flow}.
 
-\begin{figure*}
+\begin{figure*}[!htbp]
   \centering
   \begin{tikzpicture}[
     font=\small,
@@ -286,7 +294,9 @@ Another core idea in HermSec is cost control. Static scanners are the cheapest p
 
 The model routing is intentionally open to efficient non-US providers and models exposed through OpenCode Go or similar provider adapters. \texttt{deepseek-v4-flash} is useful for this design because DeepSeek documents context caching and pricing behavior that can reduce repeated prompt-prefix cost when the same system prompts and report schemas are reused \cite{deepseekcache,deepseekpricing}. Other efficient route models can be recorded in the result artifact's model policy. This matters for HermSec because Single Agent, MoA, and Scanner + MoA repeat similar instructions across fixtures.
 
-\texttt{mimo-v2.5} and \texttt{minimax-m3} are also relevant to the cost-control direction. MiMo V2.5 is described as an agent-capable long-context model with hybrid attention and KV-cache efficiency \cite{xiaomimimo25,xiaomimimo25inference}. MiniMax presents M3 as a coding and agentic model with long-context support \cite{minimaxm3}. The experiment used \texttt{deepseek-v4-flash} for Deep assisted and Single Agent. MoA and Scanner + MoA used \texttt{deepseek-v4-flash} and \texttt{mimo-v2.5} for specialist agents, \texttt{deepseek-v4-pro} for the false-positive judge, and \texttt{minimax-m3} for the aggregator.
+MiMo V2.5 and MiniMax M3 are also relevant to the cost-control direction. MiMo V2.5 is described as an agent-capable long-context model with hybrid attention and KV-cache efficiency \cite{xiaomimimo25,xiaomimimo25inference}. MiniMax presents M3 as a coding and agentic model with long-context support \cite{minimaxm3}.
+
+The experiment used \texttt{deepseek-v4-flash} for Deep assisted and Single Agent. MoA and Scanner + MoA used \texttt{deepseek-v4-flash} and \texttt{mimo-v2.5} for specialist agents, \texttt{deepseek-v4-pro} for the judge, and \texttt{minimax-m3} for the aggregator.
 
 \subsection{Scoring}
 Each finding was compared with the ground truth by file path and CWE. A true positive means HermSec found a planted issue. A false positive means HermSec reported an issue that did not match the answer key. A false negative means HermSec missed a planted issue.

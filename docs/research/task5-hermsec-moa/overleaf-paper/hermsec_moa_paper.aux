@@ -1,0 +1,102 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{chess2004static,livshits2005finding}
+\citation{zitser2004testing}
+\citation{semgrep,gitleaks,trivy,bandit}
+\@writefile{toc}{\contentsline {section}{Abstract}{1}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}HermSec Product Overview}{1}{section.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces HermSec scan workflow. Left: the user chooses a scan mode and sees live progress. Right: the scan finishes and HermSec shows a short summary with report links.}}{2}{figure.caption.4}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:hermsec-workflow}{{1}{2}{HermSec scan workflow. Left: the user chooses a scan mode and sees live progress. Right: the scan finishes and HermSec shows a short summary with report links}{figure.caption.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces HermSec settings screens. Left: Agents settings for Single Agent and MoA inspection. Right: provider setup with OpenCode Go and other supported providers.}}{2}{figure.caption.5}\protected@file@percent }
+\newlabel{fig:hermsec-settings}{{2}{2}{HermSec settings screens. Left: Agents settings for Single Agent and MoA inspection. Right: provider setup with OpenCode Go and other supported providers}{figure.caption.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces HermSec scanner settings. The app shows installed, missing, enabled, and project-relevant scanners.}}{2}{figure.caption.6}\protected@file@percent }
+\newlabel{fig:hermsec-scanners}{{3}{2}{HermSec scanner settings. The app shows installed, missing, enabled, and project-relevant scanners}{figure.caption.6}{}}
+\citation{chess2004static,livshits2005finding}
+\citation{zitser2004testing}
+\citation{owaspbenchmark,nistjuliet}
+\citation{mitrecwe}
+\citation{owasptop10}
+\citation{semgrep,gitleaks,trivy,bandit}
+\citation{pearce2022asleep}
+\citation{yao2023react}
+\citation{du2023debate,wang2024moa}
+\citation{nous2026hermesagent}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Background and Related Work}{3}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Static Security Analysis}{3}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Scanner Harnesses}{3}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}LLM Agents and MoA}{3}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}System Design}{3}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Deep Assisted Scan}{3}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Single Agent Inspection}{3}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}MoA Inspection}{3}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Scanner + MoA Inspection}{3}{subsection.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Safety Limits}{3}{subsection.4.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Methodology}{3}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Research Questions}{3}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Test Dataset}{3}{subsection.5.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Execution diagrams for the four review modes. The diagrams separate scanner-backed review, one-agent direct review, multi-agent review, and the hybrid path that joins scanner and agent candidates before judging and aggregation.}}{4}{figure.caption.7}\protected@file@percent }
+\newlabel{fig:mode-diagrams}{{4}{4}{Execution diagrams for the four review modes. The diagrams separate scanner-backed review, one-agent direct review, multi-agent review, and the hybrid path that joins scanner and agent candidates before judging and aggregation}{figure.caption.7}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces High-level HermSec harness flow. Every scan starts by inspecting the project. Then the selected mode runs and the results are validated, normalized, and written into the normal report template.}}{4}{figure.caption.8}\protected@file@percent }
+\newlabel{fig:harness-flow}{{5}{4}{High-level HermSec harness flow. Every scan starts by inspecting the project. Then the selected mode runs and the results are validated, normalized, and written into the normal report template}{figure.caption.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Harness Steps}{4}{subsection.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Execution Setup}{4}{subsection.5.4}\protected@file@percent }
+\citation{deepseekcache,deepseekpricing}
+\citation{xiaomimimo25,xiaomimimo25inference}
+\citation{minimaxm3}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Model and Cost Choices}{5}{subsection.5.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.6}Scoring}{5}{subsection.5.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.7}Problems Faced During Testing}{5}{subsection.5.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Results}{5}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Evaluation Summary}{5}{subsection.6.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Aggregate Mode Comparison}{5}{subsection.6.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Per-Fixture Results}{5}{subsection.6.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Discussion}{5}{section.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Answer to RQ1}{5}{subsection.7.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Answer to RQ2}{5}{subsection.7.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Answer to RQ3}{5}{subsection.7.3}\protected@file@percent }
+\bibstyle{ACM-Reference-Format}
+\bibdata{hermsec_moa_refs}
+\bibcite{trivy}{{1}{2026}{{Aqua Security}}{{}}}
+\bibcite{nistjuliet}{{2}{2012}{{Boland and Black}}{{}}}
+\bibcite{chess2004static}{{3}{2004}{{Chess and McGraw}}{{}}}
+\bibcite{deepseekpricing}{{4}{2026a}{{DeepSeek}}{{}}}
+\bibcite{deepseekcache}{{5}{2026b}{{DeepSeek}}{{}}}
+\bibcite{du2023debate}{{6}{2023}{{Du et~al\mbox  {.}}}{{}}}
+\bibcite{livshits2005finding}{{7}{2005}{{Livshits and Lam}}{{}}}
+\bibcite{minimaxm3}{{8}{2026}{{MiniMax}}{{}}}
+\bibcite{mitrecwe}{{9}{2026}{{MITRE}}{{}}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Aggregate results across the controlled fixture set.}}{6}{table.caption.9}\protected@file@percent }
+\newlabel{tab:mode-summary}{{1}{6}{Aggregate results across the controlled fixture set}{table.caption.9}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Per-fixture results from the evaluation.}}{6}{table.caption.10}\protected@file@percent }
+\newlabel{tab:fixture-results}{{2}{6}{Per-fixture results from the evaluation}{table.caption.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.4}Answer to RQ4}{6}{subsection.7.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {8}Threats to Validity}{6}{section.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9}Future Work}{6}{section.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {10}Conclusion}{6}{section.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{Acknowledgments}{6}{section*.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{References}{6}{section*.14}\protected@file@percent }
+\bibcite{nous2026hermesagent}{{10}{2026}{{Nous Research}}{{}}}
+\bibcite{owasptop10}{{11}{2021}{{OWASP Foundation}}{{}}}
+\bibcite{owaspbenchmark}{{12}{2026}{{OWASP Foundation}}{{}}}
+\bibcite{pearce2022asleep}{{13}{2022}{{Pearce et~al\mbox  {.}}}{{}}}
+\bibcite{bandit}{{14}{2026}{{PyCQA}}{{}}}
+\bibcite{semgrep}{{15}{2026}{{Semgrep, Inc.}}{{}}}
+\bibcite{wang2024moa}{{16}{2024}{{Wang et~al\mbox  {.}}}{{}}}
+\bibcite{gitleaks}{{17}{2026}{{Wilson}}{{}}}
+\bibcite{xiaomimimo25}{{18}{2026}{{Xiaomi}}{{}}}
+\bibcite{xiaomimimo25inference}{{19}{2026}{{XiaomiMiMo}}{{}}}
+\bibcite{yao2023react}{{20}{2023}{{Yao et~al\mbox  {.}}}{{}}}
+\bibcite{zitser2004testing}{{21}{2004}{{Zitser et~al\mbox  {.}}}{{}}}
+\newlabel{tocindent-1}{0pt}
+\newlabel{tocindent0}{0pt}
+\newlabel{tocindent1}{4.185pt}
+\newlabel{tocindent2}{10.34999pt}
+\newlabel{tocindent3}{0pt}
+\newlabel{tocindent4}{0pt}
+\newlabel{tocindent5}{0pt}
+\newlabel{TotPages}{{7}{7}{}{page.7}{}}
+\gdef \@abspage@last{7}
