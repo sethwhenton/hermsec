@@ -59,7 +59,7 @@ type ScanProgressCallback = (event: RuntimeScanProgressEvent) => void;
 type RootScanProgressEvent = {
   schemaVersion?: string;
   id?: string;
-  stage?: "repository" | "scanner" | "model" | "report";
+  stage?: "repository" | "scanner" | "model" | "report" | "candidate" | "task" | "revalidation" | "checkpoint";
   scannerId?: string;
   label?: string;
   status?: string;
@@ -371,6 +371,7 @@ export async function scanProject(
     if (!agentOnlyMode) {
       emitToolProgressFromReport(actualReportDir, onProgress);
     }
+    emitAgentProgressFromReport(actualReportDir, onProgress, assistMode);
     const modelStageLabel = progressStageLabel("model-summary", "Model summary", assistMode);
     emitProgress(
       onProgress,
@@ -1165,6 +1166,25 @@ function recordValue(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
+function numberFromUnknown(...values: unknown[]): number | undefined {
+  for (const value of values) {
+    const numeric = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+    if (Number.isFinite(numeric)) {
+      return numeric;
+    }
+  }
+  return undefined;
+}
+
+function stringFromUnknown(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return undefined;
+}
+
 function sorted(values: Set<string>): string[] {
   return Array.from(values).sort((left, right) => left.localeCompare(right));
 }
@@ -1185,6 +1205,161 @@ function dedupePlan(plan: ScannerPlanItem[]): ScannerPlanItem[] {
 function emitCanceledProgress(onProgress?: ScanProgressCallback): void {
   for (const stage of MAIN_PROGRESS_STAGES) {
     emitProgress(onProgress, stage.id, stage.label, "canceled", "Scan was stopped by the user.");
+  }
+}
+
+function emitAgentProgressFromReport(
+  reportDir: string,
+  onProgress: ScanProgressCallback | undefined,
+  assistMode: RuntimeScanAssistMode,
+): void {
+  const documentPath = path.join(reportDir, "report-document.json");
+  if (!existsSync(documentPath)) return;
+
+  try {
+    const document = JSON.parse(readFileSync(documentPath, "utf8")) as {
+      agentMode?: Record<string, unknown>;
+      findings?: unknown[];
+    };
+    const agentMode = recordValue(document.agentMode);
+    if (Object.keys(agentMode).length === 0) {
+      return;
+    }
+
+    const candidateCount = numberFromUnknown(agentMode.candidateFindingCount, agentMode.candidateCount);
+    const acceptedCount = numberFromUnknown(agentMode.acceptedFindingCount, agentMode.acceptedCount);
+    const rejectedCount = numberFromUnknown(agentMode.rejectedFindingCount, agentMode.rejectedCount);
+    const needsReviewCount = numberFromUnknown(agentMode.needsHumanReviewCount, agentMode.needsReviewCount);
+    const finalFindingCount = Array.isArray(document.findings)
+      ? document.findings.length
+      : numberFromUnknown(agentMode.finalFindingCount);
+    const agents = Array.isArray(agentMode.agents) ? agentMode.agents.map(recordValue) : [];
+    const aggregator = recordValue(agentMode.aggregator);
+    const aggregatorModel = stringFromUnknown(agentMode.aggregatorModel, aggregator.model);
+    const totalRuntimeMs = numberFromUnknown(agentMode.totalAgentRuntimeMs, agentMode.totalRuntimeMs, agentMode.runtimeMs);
+
+    if (candidateCount !== undefined) {
+      emitProgress(
+        onProgress,
+        "agent-candidate-discovery",
+        "Candidate discovery",
+        "completed",
+        assistMode === "scanner-moa-assisted"
+          ? `Collected ${candidateCount} scanner and agent candidate finding${candidateCount === 1 ? "" : "s"} for judging.`
+          : `Collected ${candidateCount} agent candidate finding${candidateCount === 1 ? "" : "s"} for judging.`,
+        {
+          parentId: "model-summary",
+          assistMode,
+          assistModeLabel: assistModeLabel(assistMode),
+          details: [
+            {
+              id: "candidate-findings",
+              label: "Candidate findings",
+              status: "completed",
+              value: String(candidateCount),
+            },
+          ],
+        },
+      );
+    }
+
+    if (agents.length > 0) {
+      const specialistCount = agents.filter((agent) => `${agent.role ?? ""}`.toLowerCase().includes("specialist")).length;
+      emitProgress(
+        onProgress,
+        "agent-focused-tasks",
+        "Focused tasks",
+        agents.some((agent) => agent.status === "failed") ? "failed" : "completed",
+        specialistCount > 0
+          ? `${specialistCount} focused specialist task${specialistCount === 1 ? "" : "s"} reported status.`
+          : `${agents.length} agent task${agents.length === 1 ? "" : "s"} reported status.`,
+        {
+          parentId: "model-summary",
+          assistMode,
+          assistModeLabel: assistModeLabel(assistMode),
+          details: [
+            {
+              id: "agent-tasks",
+              label: "Agent tasks",
+              status: "completed",
+              value: String(agents.length),
+            },
+            ...(totalRuntimeMs !== undefined
+              ? [{
+                  id: "agent-runtime",
+                  label: "Runtime",
+                  status: "completed" as const,
+                  value: formatDuration(totalRuntimeMs),
+                }]
+              : []),
+          ],
+        },
+      );
+    }
+
+    if (finalFindingCount !== undefined) {
+      emitProgress(
+        onProgress,
+        "agent-evidence-revalidation",
+        "Evidence revalidation",
+        "completed",
+        `Revalidated ${finalFindingCount} final finding${finalFindingCount === 1 ? "" : "s"} against report evidence.`,
+        {
+          parentId: "model-summary",
+          assistMode,
+          assistModeLabel: assistModeLabel(assistMode),
+          details: [
+            {
+              id: "final-findings",
+              label: "Final findings",
+              status: "completed",
+              value: String(finalFindingCount),
+            },
+          ],
+        },
+      );
+    }
+
+    if (acceptedCount !== undefined || rejectedCount !== undefined || needsReviewCount !== undefined) {
+      emitProgress(
+        onProgress,
+        "moa-false-positive-judge",
+        "False-positive judge",
+        "completed",
+        "Candidate judgments were preserved in the report metadata.",
+        {
+          parentId: "model-summary",
+          assistMode,
+          assistModeLabel: assistModeLabel(assistMode),
+          details: [
+            ...(acceptedCount !== undefined ? [{ id: "accepted", label: "Accepted", status: "completed" as const, value: String(acceptedCount) }] : []),
+            ...(rejectedCount !== undefined ? [{ id: "rejected", label: "Rejected", status: "completed" as const, value: String(rejectedCount) }] : []),
+            ...(needsReviewCount !== undefined ? [{ id: "needs-review", label: "Needs review", status: "completed" as const, value: String(needsReviewCount) }] : []),
+          ],
+        },
+      );
+    }
+
+    if (aggregatorModel || finalFindingCount !== undefined) {
+      emitProgress(
+        onProgress,
+        "moa-aggregator",
+        "Aggregator counts",
+        "completed",
+        aggregatorModel ? `Aggregator completed with ${aggregatorModel}.` : "Aggregator completed.",
+        {
+          parentId: "model-summary",
+          assistMode,
+          assistModeLabel: assistModeLabel(assistMode),
+          details: [
+            ...(candidateCount !== undefined ? [{ id: "candidates", label: "Candidates", status: "completed" as const, value: String(candidateCount) }] : []),
+            ...(finalFindingCount !== undefined ? [{ id: "final-findings", label: "Final findings", status: "completed" as const, value: String(finalFindingCount) }] : []),
+          ],
+        },
+      );
+    }
+  } catch {
+    // Agent progress is display-only and must never fail the scan.
   }
 }
 
@@ -1424,6 +1599,15 @@ function rootProgressToDesktopEvent(
   }
 
   if (event.stage === "model") {
+    const childId = event.id && event.id !== "model-summary" ? event.id : undefined;
+    if (childId) {
+      return {
+        id: childId,
+        label: event.label ?? childId,
+        parentId: "model-summary",
+        ...base,
+      };
+    }
     return {
       id: "model-summary",
       label: progressStageLabel("model-summary", event.label ?? "Model summary", assistMode),
@@ -1431,7 +1615,25 @@ function rootProgressToDesktopEvent(
     };
   }
 
+  if (event.stage === "candidate" || event.stage === "task" || event.stage === "revalidation" || event.stage === "checkpoint") {
+    return {
+      id: event.id ?? `product-agent-${event.stage}`,
+      label: event.label ?? productAgentStageLabel(event.stage),
+      parentId: "model-summary",
+      ...base,
+    };
+  }
+
   if (event.stage === "report") {
+    const childId = event.id && event.id !== "report-ready" ? event.id : undefined;
+    if (childId) {
+      return {
+        id: childId,
+        label: event.label ?? childId,
+        parentId: "report-ready",
+        ...base,
+      };
+    }
     return {
       id: "report-ready",
       label: "Report ready",
@@ -1447,6 +1649,13 @@ function rootProgressToDesktopEvent(
     label: event.label,
     ...base,
   };
+}
+
+function productAgentStageLabel(stage: "candidate" | "task" | "revalidation" | "checkpoint"): string {
+  if (stage === "candidate") return "Candidate discovery";
+  if (stage === "task") return "Focused tasks";
+  if (stage === "revalidation") return "Evidence revalidation";
+  return "Checkpoint";
 }
 
 function normalizeProgressStatus(value: string | undefined): ScanProgressEvent["status"] | undefined {

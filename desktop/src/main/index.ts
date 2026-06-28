@@ -335,10 +335,11 @@ async function runScanModesSmoke(): Promise<void> {
       agentModeLabel: agentMode?.modeLabel,
       agentsUsed: agentMode?.agentsUsed?.length ?? 0,
       onepagerPdfPath: result.onepagerPdfPath,
+      metrics: scoreSmokeReport(projectPath, document),
     });
   }
 
-  const summary = { ok: true, projectPath, reportDir, useModel, runs };
+  const summary = { ok: true, projectPath, reportDir, useModel, metrics: aggregateSmokeMetrics(runs), runs };
   mkdirSync(reportDir, { recursive: true });
   writeFileSync(join(reportDir, "smoke-summary.json"), JSON.stringify(summary, null, 2));
   await writeStdout(`${JSON.stringify(summary, null, 2)}\n`);
@@ -359,6 +360,249 @@ async function waitForRenderer(window: BrowserWindow): Promise<void> {
 
 function readReportDocument(reportDir: string): Record<string, unknown> {
   return JSON.parse(readFileSync(join(reportDir, "report-document.json"), "utf8")) as Record<string, unknown>;
+}
+
+type SmokeEvalFinding = {
+  id?: string;
+  category?: string;
+  severity?: string;
+  cwe?: string[];
+  identifiers?: {
+    cve?: string[];
+    ghsa?: string[];
+    osv?: string[];
+  };
+  location?: {
+    file?: string;
+    startLine?: number;
+  };
+  package?: {
+    ecosystem?: string;
+    name?: string;
+  };
+  fingerprint?: string;
+};
+
+type SmokeEvalMetrics = {
+  groundTruthPath?: string;
+  totalExpected: number;
+  totalActual: number;
+  truePositive: number;
+  falsePositive: number;
+  falseNegative: number;
+  precision: number;
+  recall: number;
+  f1: number;
+};
+
+function scoreSmokeReport(projectPath: string, document: Record<string, unknown>): SmokeEvalMetrics | undefined {
+  const groundTruthPath = join(projectPath, "groundtruth.json");
+  if (!existsSync(groundTruthPath)) {
+    return undefined;
+  }
+
+  const parsed = JSON.parse(readFileSync(groundTruthPath, "utf8")) as unknown;
+  const expected = Array.isArray(parsed)
+    ? parsed.map(toSmokeFinding).filter((finding): finding is SmokeEvalFinding => finding !== undefined)
+    : [];
+  const findings = Array.isArray(document.findings)
+    ? document.findings.map(toSmokeFinding).filter((finding): finding is SmokeEvalFinding => finding !== undefined)
+    : [];
+  const actual = dedupeSmokeFindings(findings);
+  const matches = matchSmokeFindings(expected, actual);
+  const truePositive = matches.length;
+  const falsePositive = Math.max(0, actual.length - truePositive);
+  const falseNegative = Math.max(0, expected.length - truePositive);
+  const precision = safeSmokeRatio(truePositive, truePositive + falsePositive, 1);
+  const recall = safeSmokeRatio(truePositive, truePositive + falseNegative, 1);
+
+  return {
+    groundTruthPath,
+    totalExpected: expected.length,
+    totalActual: actual.length,
+    truePositive,
+    falsePositive,
+    falseNegative,
+    precision,
+    recall,
+    f1: smokeF1(precision, recall),
+  };
+}
+
+function aggregateSmokeMetrics(runs: Array<{ metrics?: SmokeEvalMetrics }>): SmokeEvalMetrics | undefined {
+  const scored = runs.map((run) => run.metrics).filter((metrics): metrics is SmokeEvalMetrics => metrics !== undefined);
+  if (scored.length === 0) {
+    return undefined;
+  }
+  const counts = scored.reduce(
+    (acc, metrics) => ({
+      totalExpected: acc.totalExpected + metrics.totalExpected,
+      totalActual: acc.totalActual + metrics.totalActual,
+      truePositive: acc.truePositive + metrics.truePositive,
+      falsePositive: acc.falsePositive + metrics.falsePositive,
+      falseNegative: acc.falseNegative + metrics.falseNegative,
+    }),
+    { totalExpected: 0, totalActual: 0, truePositive: 0, falsePositive: 0, falseNegative: 0 },
+  );
+  const precision = safeSmokeRatio(counts.truePositive, counts.truePositive + counts.falsePositive, 1);
+  const recall = safeSmokeRatio(counts.truePositive, counts.truePositive + counts.falseNegative, 1);
+  return {
+    ...counts,
+    precision,
+    recall,
+    f1: smokeF1(precision, recall),
+  };
+}
+
+function toSmokeFinding(value: unknown): SmokeEvalFinding | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+  const record = value as Record<string, unknown>;
+  const location = record.location && typeof record.location === "object" && !Array.isArray(record.location)
+    ? record.location as Record<string, unknown>
+    : undefined;
+  const pkg = record.package && typeof record.package === "object" && !Array.isArray(record.package)
+    ? record.package as Record<string, unknown>
+    : undefined;
+  return {
+    id: stringValue(record.id),
+    category: stringValue(record.category),
+    severity: stringValue(record.severity),
+    cwe: stringArray(record.cwe),
+    identifiers: {
+      cve: stringArray((record.identifiers as { cve?: unknown } | undefined)?.cve),
+      ghsa: stringArray((record.identifiers as { ghsa?: unknown } | undefined)?.ghsa),
+      osv: stringArray((record.identifiers as { osv?: unknown } | undefined)?.osv),
+    },
+    ...(location
+      ? {
+          location: {
+            file: stringValue(location.file),
+            startLine: numberValue(location.startLine),
+          },
+        }
+      : {}),
+    ...(pkg
+      ? {
+          package: {
+            ecosystem: stringValue(pkg.ecosystem),
+            name: stringValue(pkg.name),
+          },
+        }
+      : {}),
+    fingerprint: stringValue(record.fingerprint),
+  };
+}
+
+function dedupeSmokeFindings(findings: SmokeEvalFinding[]): SmokeEvalFinding[] {
+  const seen = new Set<string>();
+  const result: SmokeEvalFinding[] = [];
+  for (const finding of findings) {
+    const key = finding.fingerprint || [
+      finding.category,
+      finding.severity,
+      finding.location?.file,
+      finding.location?.startLine,
+      finding.package?.ecosystem,
+      finding.package?.name,
+      finding.cwe?.join(","),
+    ].join("|");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(finding);
+  }
+  return result;
+}
+
+function matchSmokeFindings(expected: SmokeEvalFinding[], actual: SmokeEvalFinding[]): Array<{ expected: number; actual: number }> {
+  const candidates: Array<{ expected: number; actual: number; score: number }> = [];
+  expected.forEach((truth, expectedIndex) => {
+    actual.forEach((finding, actualIndex) => {
+      const score = scoreSmokeMatch(truth, finding);
+      if (score >= 60) {
+        candidates.push({ expected: expectedIndex, actual: actualIndex, score });
+      }
+    });
+  });
+
+  const matches: Array<{ expected: number; actual: number }> = [];
+  const usedExpected = new Set<number>();
+  const usedActual = new Set<number>();
+  for (const candidate of candidates.sort((left, right) => right.score - left.score || left.expected - right.expected || left.actual - right.actual)) {
+    if (usedExpected.has(candidate.expected) || usedActual.has(candidate.actual)) {
+      continue;
+    }
+    usedExpected.add(candidate.expected);
+    usedActual.add(candidate.actual);
+    matches.push({ expected: candidate.expected, actual: candidate.actual });
+  }
+  return matches;
+}
+
+function scoreSmokeMatch(expected: SmokeEvalFinding, actual: SmokeEvalFinding): number {
+  let score = 0;
+  if (expected.category && expected.category === actual.category) score += 20;
+  if (expected.severity && expected.severity === actual.severity) score += 10;
+  if (sameSmokeLocation(expected, actual)) score += 30;
+  if (sameSmokePackage(expected, actual)) score += 30;
+  if (overlapSmokeValues(expected.cwe, actual.cwe)) score += 25;
+  if (
+    overlapSmokeValues(expected.identifiers?.cve, actual.identifiers?.cve) ||
+    overlapSmokeValues(expected.identifiers?.ghsa, actual.identifiers?.ghsa) ||
+    overlapSmokeValues(expected.identifiers?.osv, actual.identifiers?.osv)
+  ) {
+    score += 45;
+  }
+  return score;
+}
+
+function sameSmokeLocation(expected: SmokeEvalFinding, actual: SmokeEvalFinding): boolean {
+  if (!expected.location?.file || !actual.location?.file) return false;
+  if (normalizeSmokePath(expected.location.file) !== normalizeSmokePath(actual.location.file)) return false;
+  if (!expected.location.startLine || !actual.location.startLine) return true;
+  return Math.abs(expected.location.startLine - actual.location.startLine) <= 3;
+}
+
+function sameSmokePackage(expected: SmokeEvalFinding, actual: SmokeEvalFinding): boolean {
+  if (!expected.package?.ecosystem || !expected.package?.name || !actual.package?.ecosystem || !actual.package?.name) {
+    return false;
+  }
+  return (
+    expected.package.ecosystem.toLowerCase() === actual.package.ecosystem.toLowerCase() &&
+    expected.package.name.toLowerCase() === actual.package.name.toLowerCase()
+  );
+}
+
+function overlapSmokeValues(left?: string[], right?: string[]): boolean {
+  if (!left?.length || !right?.length) return false;
+  const normalized = new Set(right.map((item) => item.toUpperCase()));
+  return left.some((item) => normalized.has(item.toUpperCase()));
+}
+
+function normalizeSmokePath(value: string): string {
+  return value.replace(/\\/g, "/").toLowerCase();
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.length > 0) : [];
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function numberValue(value: unknown): number | undefined {
+  const numeric = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(numeric) ? numeric : undefined;
+}
+
+function safeSmokeRatio(numerator: number, denominator: number, emptyValue: number): number {
+  return denominator === 0 ? emptyValue : numerator / denominator;
+}
+
+function smokeF1(precision: number, recall: number): number {
+  return precision + recall === 0 ? 0 : (2 * precision * recall) / (precision + recall);
 }
 
 function writeStdout(message: string): Promise<void> {

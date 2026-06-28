@@ -2,13 +2,13 @@ import type { ScanAssistMode, ScanAssistModeInput, ScanProgressEvent } from "../
 
 export type ScanProgressCallback = (event: ScanProgressEvent) => void;
 
-type ProgressInput = Omit<ScanProgressEvent, "schemaVersion" | "timestamp" | "message"> & {
+export type ScanProgressInput = Omit<ScanProgressEvent, "schemaVersion" | "timestamp" | "message"> & {
   message?: string;
 };
 
 export function emitScanProgress(
   onProgress: ScanProgressCallback | undefined,
-  event: ProgressInput,
+  event: ScanProgressInput,
 ): void {
   if (!onProgress) {
     return;

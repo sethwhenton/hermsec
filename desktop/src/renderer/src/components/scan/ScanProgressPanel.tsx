@@ -20,6 +20,8 @@ const timelineStages = [
   { id: "report-ready", label: "Report ready" },
 ] as const;
 
+const timelineStageIds = new Set<string>(timelineStages.map((stage) => stage.id));
+
 export function ScanProgressDisclosure({
   events,
   running,
@@ -244,16 +246,17 @@ function buildTimelineModel(events: ScanProgressEvent[]) {
 
   for (const event of events) {
     event.chips?.forEach((chip) => chips.add(chip));
-    if (event.parentId) {
-      const current = childrenByParent.get(event.parentId) ?? [];
+    const parentId = event.parentId ?? inferParentStageId(event);
+    if (parentId) {
+      const current = childrenByParent.get(parentId) ?? [];
       current.push(event);
-      childrenByParent.set(event.parentId, current);
+      childrenByParent.set(parentId, current);
     }
   }
 
   const stages = timelineStages.map((stage) => {
     const event = byId.get(stage.id);
-    const childDetails = (childrenByParent.get(stage.id) ?? []).map(eventToDetail);
+    const childDetails = (childrenByParent.get(stage.id) ?? []).flatMap(eventToDetails);
     const details = [...(event?.details ?? []), ...childDetails];
     return {
       id: stage.id,
@@ -295,13 +298,77 @@ function tokenLabelForMode(mode: string): string {
   return "More context, more tokens";
 }
 
-function eventToDetail(event: ScanProgressEvent): ScanProgressDetail {
-  return {
+function inferParentStageId(event: ScanProgressEvent): string | undefined {
+  if (timelineStageIds.has(event.id) || event.id === "scan-assist-mode") {
+    return undefined;
+  }
+
+  const text = `${event.id} ${event.label} ${event.message ?? ""}`.toLowerCase();
+  if (/(candidate|focused|task|evidence|revalid|checkpoint|resume|judge|aggregat|specialist|agent)/.test(text)) {
+    return "model-summary";
+  }
+  if (/(pdf|artifact|dashboard|one-page|onepager|report)/.test(text)) {
+    return "report-ready";
+  }
+  if (/(scanner|semgrep|gitleaks|bandit|osv|pmg|heuristic|intelligence)/.test(text)) {
+    return "running-scans";
+  }
+  return undefined;
+}
+
+function eventToDetails(event: ScanProgressEvent): ScanProgressDetail[] {
+  const summary = compactDetailValue(event.details);
+  const primary: ScanProgressDetail = {
     id: event.id,
     label: event.label,
     status: event.status,
     message: event.message,
   };
+  if (summary) {
+    primary.value = summary;
+  }
+
+  const countDetails = (event.details ?? [])
+    .filter((detail) => isCountDetail(detail))
+    .map((detail) => ({
+      ...detail,
+      id: `${event.id}:${detail.id ?? detail.label}`,
+      label: `${event.label}: ${detail.label}`,
+      status: detail.status ?? event.status,
+    }));
+
+  return [primary, ...countDetails];
+}
+
+function compactDetailValue(details: ScanProgressDetail[] | undefined): string | undefined {
+  if (!details?.length) return undefined;
+
+  const accepted = detailValue(details, /accepted/i);
+  const rejected = detailValue(details, /rejected/i);
+  const review = detailValue(details, /needs.*review|review/i);
+  if (accepted || rejected || review) {
+    return [
+      accepted ? `${accepted} accepted` : "",
+      rejected ? `${rejected} rejected` : "",
+      review ? `${review} review` : "",
+    ].filter(Boolean).join(", ");
+  }
+
+  const candidates = detailValue(details, /candidate/i);
+  if (candidates) return `${candidates} candidates`;
+  const findings = detailValue(details, /finding|final/i);
+  if (findings) return `${findings} findings`;
+  const duration = detailValue(details, /duration|runtime/i);
+  if (duration) return duration;
+  return details.find((detail) => detail.value)?.value;
+}
+
+function detailValue(details: ScanProgressDetail[], pattern: RegExp): string | undefined {
+  return details.find((detail) => pattern.test(detail.label) && detail.value)?.value;
+}
+
+function isCountDetail(detail: ScanProgressDetail): boolean {
+  return Boolean(detail.value && /(candidate|accepted|rejected|review|finding|final)/i.test(detail.label));
 }
 
 function dedupeDetails(details: ScanProgressDetail[]): ScanProgressDetail[] {

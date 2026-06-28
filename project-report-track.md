@@ -1314,3 +1314,37 @@ This file is the running engineering ledger for Hermsec. Use it to record meanin
 - `npm run desktop:smoke:ui` passed.
 - `npm --prefix desktop run smoke:doctor` passed with health score `100`.
 - `npm run desktop:dist:win` passed and produced local Windows installer/portable artifacts for `0.1.6`.
+
+## 2026-06-28 - Candidate-First Agent Scanning
+
+### Changes
+
+- Added deterministic candidate discovery for product agent modes.
+- Converted discovered candidates into focused investigation tasks before calling Single Agent, MoA, or Scanner + MoA.
+- Added local evidence revalidation after model output and final aggregation.
+- Revalidation now rejects unsupported file, line, snippet, package, advisory, CWE, CVE, scanner ID, candidate ID, and source/sink/API claims.
+- Added product-agent checkpoints and progress events for candidate discovery, task inspection, revalidation, and checkpoint status.
+- Increased product-agent model call watchdogs for real providers while preserving hard timeouts.
+- Added `HERMSEC_PRODUCT_AGENT_MODEL_TIMEOUT_MS` for controlled local override.
+- Synchronized provider request timeout with the product-agent watchdog.
+- Passed deterministic candidate `suggestedCwe` metadata into task/source evidence so valid candidate-bound findings are not rejected incorrectly.
+- Hardened MoA and Scanner + MoA aggregation: if the final aggregator fails or returns unusable content, Hermsec keeps judge-accepted locally revalidated findings and records a limitation.
+- Added regression coverage for Scanner + MoA final aggregator failure.
+
+### Real Provider Validation
+
+- Configured OpenCode Go through Windows user environment variables. The key is referenced through `OPENCODE_GO_API_KEY`.
+- Verified the provider model endpoint returns 20 available models.
+- Ran real-provider desktop scan-mode smokes on `tests/fixtures/repos/node-express-vulnerable`.
+- Deep assisted: TP `10`, FP `15`, FN `0`, precision `0.40`, recall `1.00`, F1 `0.5714`.
+- Single Agent: TP `2`, FP `0`, FN `8`, precision `1.00`, recall `0.20`, F1 `0.3333`.
+- MoA Low: TP `2`, FP `0`, FN `8`, precision `1.00`, recall `0.20`, F1 `0.3333`.
+- Scanner + MoA Low: TP `6`, FP `12`, FN `4`, precision `0.3333`, recall `0.60`, F1 `0.4286`.
+
+### Verification
+
+- `npm run typecheck` passed.
+- `npm test` passed with `108/108`.
+- `npm --prefix desktop run typecheck` passed.
+- `npm --prefix desktop run build` passed.
+- `npm --prefix desktop run smoke:ui` passed.

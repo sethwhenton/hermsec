@@ -66,7 +66,13 @@ export type ReportAgentModeMetadata = {
   modeLabel?: string;
   agents?: ReportAgentDescriptor[];
   agentsUsed?: string[];
+  candidateCount?: number;
   candidateFindingCount?: number;
+  focusedTaskCount?: number;
+  revalidatedCount?: number;
+  rejectedByRevalidationCount?: number;
+  checkpointResumed?: boolean;
+  checkpointPath?: string;
   acceptedFindingCount?: number;
   rejectedFindingCount?: number;
   needsHumanReviewCount?: number;

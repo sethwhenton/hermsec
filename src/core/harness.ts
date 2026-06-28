@@ -360,6 +360,8 @@ async function explainScanRun(
       provider: selection.provider,
       ...(providerConfig ? { providerConfig } : {}),
       ...(options.assistMode === "scanner-moa-assisted" ? { scannerFindings: findings } : {}),
+      ...(options.outputDirectory ? { reportOutputDirectory: options.outputDirectory } : {}),
+      ...(options.onProgress ? { onProgress: options.onProgress } : {}),
       modelResolver: createProductModelResolver({
         routes: agentModelRoutes,
         mode: options.assistMode,

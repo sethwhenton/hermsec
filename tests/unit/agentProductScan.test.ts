@@ -68,12 +68,16 @@ test("single-agent mode fails clearly without a model provider", async () => {
 
 test("single-agent mode normalizes validated model findings", async () => {
   const repo = await fixtureRepo();
-  const provider = fakeProvider(() => findingResponse("single-candidate"));
+  const reportOutputDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "hermsec-agent-report-"));
+  const progress: Array<{ stage?: string; id?: string; status?: string }> = [];
+  const provider = fakeProvider((request) => findingResponse(firstPromptCandidateId(request) ?? "missing-candidate"));
   const result = await runProductAgentScan({
     repoRoot: repo,
     mode: "single-agent",
     provider,
     providerConfig: { timeoutMs: 10_000 },
+    reportOutputDirectory,
+    onProgress: (event) => progress.push(event),
   });
 
   assert.equal(result.ok, true);
@@ -83,13 +87,18 @@ test("single-agent mode normalizes validated model findings", async () => {
     assert.equal(result.findings[0]?.location?.file, "src/app.js");
     assert.equal(result.findings[0]?.agent?.source, "single-agent");
     assert.equal(result.findings[0]?.agent?.provider, "openai-compatible");
+    assert.equal(result.agentMode.checkpointResumed, false);
+    assert.match(result.agentMode.checkpointPath ?? "", /\.checkpoints/);
+    assert.ok(progress.some((event) => event.stage === "candidate" && event.status === "completed"));
+    assert.ok(progress.some((event) => event.stage === "task" && event.status === "completed"));
+    assert.ok(progress.some((event) => event.stage === "revalidation" && event.status === "completed"));
     assert.doesNotMatch(provider.requests[0]?.messages.at(-1)?.content ?? "", /scannerFindings|scanner-confirmed|scanner results/i);
   }
 });
 
 test("moa-assisted mode runs specialists, judge, and aggregator", async () => {
   const repo = await fixtureRepo();
-  const provider = fakeMoaProvider(3);
+  const provider = fakeMoaProvider();
 
   const result = await withProductAgentPanelEnv({}, () =>
     runProductAgentScan({
@@ -101,15 +110,15 @@ test("moa-assisted mode runs specialists, judge, and aggregator", async () => {
   );
 
   assert.equal(result.ok, true);
-  assert.equal(provider.requests.length, 5);
+  assert.equal(provider.requests.length, 3);
   if (result.ok) {
     assert.equal(result.findings.length, 1);
     assert.equal(result.findings[0]?.tool, "hermsec-moa");
     assert.equal(result.findings[0]?.agent?.source, "moa-aggregator");
     assert.equal(result.findings[0]?.agent?.judge?.reviewedBy, "moa-false-positive-judge");
-    assert.deepEqual(result.findings[0]?.agent?.sourceFindingIds, ["cand-1", "cand-2", "cand-3"]);
+    assert.ok(result.findings[0]?.agent?.sourceFindingIds?.[0]?.startsWith("candidate-"));
     assert.deepEqual(result.agentMode.agentsUsed, [...lowSpecialistIds, ...judgeAndAggregatorIds]);
-    assert.deepEqual(result.agentMode.agents?.map((agent) => agent.id), [...lowSpecialistIds, ...judgeAndAggregatorIds]);
+    assert.deepEqual(result.agentMode.agents?.map((agent) => agent.id), ["injection-and-execution", ...judgeAndAggregatorIds]);
     for (const request of provider.requests) {
       assert.doesNotMatch(request.messages.at(-1)?.content ?? "", /scannerFindings|scanner-confirmed|scanner results/i);
     }
@@ -118,7 +127,7 @@ test("moa-assisted mode runs specialists, judge, and aggregator", async () => {
 
 test("moa-assisted low-count panel routes only active role model selections", async () => {
   const repo = await fixtureRepo();
-  const provider = fakeMoaProvider(1);
+  const provider = fakeMoaProvider();
   const roleModels = new Map([
     ["injection-and-execution", "model-injection"],
     ["auth-and-data-flow", "model-auth"],
@@ -169,7 +178,7 @@ test("moa-assisted low-count panel routes only active role model selections", as
 
 test("moa-assisted high panel expands specialists and routes each configured model", async () => {
   const repo = await fixtureRepo();
-  const provider = fakeMoaProvider(5);
+  const provider = fakeMoaProvider();
   const roleModels = new Map([
     ["injection-and-execution", "model-injection"],
     ["auth-and-data-flow", "model-auth"],
@@ -198,31 +207,23 @@ test("moa-assisted high panel expands specialists and routes each configured mod
   );
 
   assert.equal(result.ok, true);
-  assert.equal(provider.requests.length, 7);
-  assert.deepEqual(resolvedRoles, [...highSpecialistIds, ...judgeAndAggregatorIds]);
+  assert.equal(provider.requests.length, 3);
+  assert.deepEqual(resolvedRoles, ["injection-and-execution", ...judgeAndAggregatorIds]);
   assert.deepEqual(provider.configs.map((config) => config?.model), [
     "model-injection",
-    "model-auth",
-    "model-secrets",
-    "model-database",
-    "model-iac",
     "model-judge",
     "model-aggregator",
   ]);
   if (result.ok) {
     assert.deepEqual(result.agentMode.agentsUsed, [...highSpecialistIds, ...judgeAndAggregatorIds]);
-    assert.deepEqual(result.agentMode.agents?.map((agent) => agent.id), [...highSpecialistIds, ...judgeAndAggregatorIds]);
+    assert.deepEqual(result.agentMode.agents?.map((agent) => agent.id), ["injection-and-execution", ...judgeAndAggregatorIds]);
     assert.deepEqual(result.agentMode.agents?.map((agent) => agent.model), [
       "model-injection",
-      "model-auth",
-      "model-secrets",
-      "model-database",
-      "model-iac",
       "model-judge",
       "model-aggregator",
     ]);
-    assert.equal(result.agentMode.candidateFindingCount, 5);
-    assert.deepEqual(result.findings[0]?.agent?.sourceFindingIds, ["cand-1", "cand-2", "cand-3", "cand-4", "cand-5"]);
+    assert.equal(result.agentMode.candidateFindingCount, 1);
+    assert.ok(result.findings[0]?.agent?.sourceFindingIds?.[0]?.startsWith("candidate-"));
   }
 });
 
@@ -262,7 +263,7 @@ test("scanner + MoA mode judges scanner and agent candidates together", async ()
   );
 
   assert.equal(result.ok, true);
-  assert.equal(provider.requests.length, 5);
+  assert.equal(provider.requests.length, 3);
   if (result.ok) {
     assert.equal(result.findings.length, 1);
     assert.equal(result.findings[0]?.tool, "hermsec-scanner-moa");
@@ -274,7 +275,7 @@ test("scanner + MoA mode judges scanner and agent candidates together", async ()
     assert.equal(result.agentMode.acceptedFindingCount, 1);
     assert.equal(result.agentMode.rejectedFindingCount, 0);
     assert.deepEqual(result.agentMode.agentsUsed, ["scanner-stack", ...lowSpecialistIds, ...judgeAndAggregatorIds]);
-    assert.deepEqual(result.agentMode.agents?.map((agent) => agent.id), ["scanner-stack", ...lowSpecialistIds, ...judgeAndAggregatorIds]);
+    assert.deepEqual(result.agentMode.agents?.map((agent) => agent.id), ["scanner-stack", "injection-and-execution", ...judgeAndAggregatorIds]);
   }
 });
 
@@ -305,13 +306,45 @@ test("scanner + MoA high panel expands specialist fan-out while preserving scann
   );
 
   assert.equal(result.ok, true);
-  assert.equal(provider.requests.length, 7);
+  assert.equal(provider.requests.length, 3);
   if (result.ok) {
     assert.equal(result.findings.length, 1);
     assert.equal(result.agentMode.candidateFindingCount, 1);
     assert.equal(result.agentMode.acceptedFindingCount, 1);
     assert.deepEqual(result.agentMode.agentsUsed, ["scanner-stack", ...highSpecialistIds, ...judgeAndAggregatorIds]);
-    assert.deepEqual(result.agentMode.agents?.map((agent) => agent.id), ["scanner-stack", ...highSpecialistIds, ...judgeAndAggregatorIds]);
+    assert.deepEqual(result.agentMode.agents?.map((agent) => agent.id), ["scanner-stack", "injection-and-execution", ...judgeAndAggregatorIds]);
+  }
+});
+
+test("scanner + MoA retains judge-accepted findings when final aggregator fails", async () => {
+  const repo = await fixtureRepo();
+  const provider = fakeProvider((request) => {
+    const content = request.messages.at(-1)?.content ?? "";
+    if (content.includes("false-positive judge")) {
+      return acceptedJudgmentResponse(["scanner:scanner-eval"]);
+    }
+    if (content.includes("scanner + MoA final aggregator")) {
+      throw new Error("empty provider content");
+    }
+    return JSON.stringify({ findings: [] });
+  });
+
+  const result = await withProductAgentPanelEnv({}, () =>
+    runProductAgentScan({
+      repoRoot: repo,
+      mode: "scanner-moa-assisted",
+      provider,
+      providerConfig: { timeoutMs: 10_000 },
+      scannerFindings: [scannerEvalFinding()],
+    }),
+  );
+
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.findings.length, 1);
+    assert.equal(result.findings[0]?.agent?.source, "scanner-backed");
+    assert.equal(result.agentMode.acceptedFindingCount, 1);
+    assert.match(result.limitations.join(" "), /aggregator failed safely/i);
   }
 });
 
@@ -373,22 +406,32 @@ function findingResponse(candidateId: string, sourceFindingIds: string[] = []): 
   });
 }
 
-function fakeMoaProvider(candidateCount: number): ReturnType<typeof fakeProvider> {
-  const ids = candidateIds(candidateCount);
+function fakeMoaProvider(): ReturnType<typeof fakeProvider> {
   return fakeProvider((request, count) => {
     const content = request.messages.at(-1)?.content ?? "";
+    const ids = promptCandidateIds(content);
     if (content.includes("false-positive judge")) {
       return acceptedJudgmentResponse(ids);
     }
     if (content.includes("MoA aggregator")) {
       return findingResponse("agg-candidate", ids);
     }
-    return findingResponse(`cand-${count}`);
+    return findingResponse(ids[0] ?? `candidate-missing-${count}`);
   });
 }
 
-function candidateIds(count: number): string[] {
-  return Array.from({ length: count }, (_, index) => `cand-${index + 1}`);
+function firstPromptCandidateId(request: ModelRequest): string | undefined {
+  return promptCandidateIds(request.messages.at(-1)?.content ?? "")[0];
+}
+
+function promptCandidateIds(content: string): string[] {
+  return [
+    ...new Set(
+      [...content.matchAll(/"candidateId"\s*:\s*"([^"]+)"/g)]
+        .map((match) => match[1]!)
+        .filter((value) => value.startsWith("candidate-") || value.startsWith("scanner:")),
+    ),
+  ];
 }
 
 function acceptedJudgmentResponse(ids: readonly string[]): string {

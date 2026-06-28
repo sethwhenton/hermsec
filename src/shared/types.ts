@@ -17,7 +17,11 @@ export type ScanProgressStage =
   | "repository"
   | "scanner"
   | "model"
-  | "report";
+  | "report"
+  | "candidate"
+  | "task"
+  | "revalidation"
+  | "checkpoint";
 
 export type ScanProgressStatus =
   | "waiting"

@@ -758,3 +758,23 @@ This section is append-only. New work should be added as another iteration inste
 | Download path | Confirmed the README installer section points to GitHub Releases for Windows and macOS downloads. |
 | Local package check | `npm run desktop:dist:win` passed and produced `Hermsec Setup 0.1.6.exe` plus `Hermsec 0.1.6.exe` locally. The GitHub release workflow will normalize uploaded Windows asset names. |
 | Verification | `npm run typecheck`, `npm --prefix desktop run typecheck`, `npm test`, `npm --prefix desktop run build`, `npm run desktop:smoke:ui`, and `npm --prefix desktop run smoke:doctor` all passed. |
+
+### Iteration 40 - Candidate-First Agent Scanning
+
+| Item | Notes |
+| --- | --- |
+| Goal | Upgrade Single Agent, MoA, and Scanner + MoA so agents investigate focused candidates, every accepted finding is locally revalidated, and long real-provider calls do not fail under an overly short watchdog. |
+| Candidate-first flow | Added deterministic candidate discovery and focused investigation tasks for injection, execution, secrets, auth/access, database, dependency, API, crypto/data, and config/IaC signals. |
+| Revalidation | Added a fail-closed evidence pass that checks repo-contained file paths, line/snippet existence, known candidate/scanner IDs, source/sink/API text, package/advisory claims, and CWE/CVE/GHSA/OSV claims. Unsupported claims are rejected. |
+| Checkpoints/progress | Added product-agent checkpoint state and progress phases for candidate discovery, task inspection, revalidation, and checkpoint resume. Desktop progress cards now surface those live events. |
+| Real provider setup | Stored OpenCode Go provider defaults in Windows user environment variables and verified provider model discovery returned 20 available models. The API key is referenced through `OPENCODE_GO_API_KEY` and is not written to repo artifacts. |
+| Watchdog fix | Product-agent model calls now use a realistic hard watchdog with `HERMSEC_PRODUCT_AGENT_MODEL_TIMEOUT_MS` override. The provider request timeout is synchronized with the outer watchdog. |
+| Issue found | First real Single Agent run timed out on the product-agent watchdog. This was fixed by increasing the product-agent call budget while keeping a hard timeout. |
+| Issue found | First real MoA run accepted zero findings because suggested CWE metadata from deterministic candidates was not passed into source evidence for revalidation. This was fixed by carrying `suggestedCwe` into tasks, prompts, and source candidates. |
+| Issue found | Scanner + MoA reached the final aggregator, but one real aggregator response returned no message content. The product now retains judge-accepted, locally revalidated findings and records the aggregator failure as a limitation instead of failing the whole scan. |
+| Regression coverage | Added a unit test proving Scanner + MoA keeps judge-accepted findings when the final aggregator fails. |
+| Real-provider smoke | Deep assisted on `node-express-vulnerable`: 10 TP, 15 FP, 0 FN, precision `0.40`, recall `1.00`, F1 `0.5714`. |
+| Real-provider smoke | Single Agent on `node-express-vulnerable`: 2 TP, 0 FP, 8 FN, precision `1.00`, recall `0.20`, F1 `0.3333`. |
+| Real-provider smoke | MoA Low with DeepSeek/MiMo/GLM/DeepSeek Pro/MiniMax mix: 2 TP, 0 FP, 8 FN, precision `1.00`, recall `0.20`, F1 `0.3333`. |
+| Real-provider smoke | Scanner + MoA Low with the same model mix: 6 TP, 12 FP, 4 FN, precision `0.3333`, recall `0.60`, F1 `0.4286`. |
+| Verification | `npm run typecheck` passed. `npm test` passed with `108/108`. `npm --prefix desktop run typecheck` passed. `npm --prefix desktop run build` passed. `npm --prefix desktop run smoke:ui` passed. |

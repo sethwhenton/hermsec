@@ -142,9 +142,9 @@ Doctor is available from chat to check the app environment before scanning. It v
 Hermsec V3 exposes four product scan modes:
 
 - `Deep assisted scan`: inspects the project, selects the right scanner lanes, prepares missing supported tools, runs the scanner stack, then uses the selected model to triage scanner-backed evidence.
-- `Single agent inspection`: uses one configured model to inspect bounded repository evidence directly. This mode is scanner-free and uses safe read-only code tools.
-- `MoA inspection`: uses a mixture-of-agents panel. Specialist agents inspect bounded repository evidence, a false-positive judge reviews candidates, and an aggregator writes the accepted findings.
-- `Scanner + MoA inspection`: runs the scanner stack and MoA independently, then sends both candidate sets through the false-positive judge and aggregator before writing the standard report.
+- `Single agent inspection`: uses one configured model to inspect focused repository candidates directly. This mode is scanner-free and uses safe read-only code tools.
+- `MoA inspection`: uses a mixture-of-agents panel. Specialist agents inspect focused candidates, a false-positive judge reviews candidates, and an aggregator writes the accepted findings.
+- `Scanner + MoA inspection`: runs the scanner stack and MoA independently, then sends both evidence sets through the false-positive judge and aggregator before writing the standard report.
 
 Scanner-only runs remain an internal benchmark control.
 
@@ -155,6 +155,8 @@ Scans stream structured progress from the root engine into the desktop chat card
 Every scanner result crosses a normalization boundary before reporting. Hermsec fills stable fields such as tool, rule id, severity, confidence, category, evidence, remediation, and fingerprint, then normalizes paths relative to the scanned repository. User reports stay redacted, while benchmark-safe raw exports are kept separately so testcase matching is not broken.
 
 Deep assisted mode is evidence-bound. Model output can group, prioritize, explain impact, and suggest remediation, but it is rejected if it invents unsupported file paths, line numbers, packages, CVEs, CWEs, scanner ids, or finding ids.
+
+Agent modes are candidate-first. Hermsec deterministically discovers suspicious code/security candidates, converts them into focused investigation tasks, and then asks the selected model or MoA panel to inspect only that bounded evidence. Every final agent finding is locally revalidated against the repository before it enters a report. If a final aggregator fails, Hermsec keeps judge-accepted, locally revalidated findings and records the aggregator issue as a limitation.
 
 ## Vulnerability Intelligence
 

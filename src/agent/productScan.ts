@@ -1,6 +1,21 @@
-import { createCodeInspectionRuntime, type CodeInspectionRuntime, type CodeInspectionSnapshot } from "./codeInspection.js";
+import {
+  buildInvestigationTasks,
+  candidatePromptContext,
+  discoverInvestigationCandidates,
+  type InvestigationTask,
+} from "./candidateDiscovery.js";
+import { createCodeInspectionRuntime, type CodeInspectionRuntime } from "./codeInspection.js";
+import { revalidateProductFindingEvidence, type EvidenceSourceCandidate } from "./evidenceRevalidation.js";
+import {
+  createProductAgentCheckpointStore,
+  createProductAgentScanCheckpoint,
+  type ProductAgentCheckpointStore,
+  type ProductAgentScanCheckpoint,
+} from "./productScanCheckpoint.js";
+import { emitProductAgentProgress } from "./productScanProgress.js";
 import { redactForModel } from "./redaction.js";
 import { hermsecSystemPrompt } from "./systemPrompt.js";
+import type { ScanProgressCallback } from "../core/progress.js";
 import type { ModelProviderAdapter, ModelRequest, ProviderConfig } from "../model/provider.js";
 import type { ReportAgentModeMetadata, ReportFindingSourceLabel } from "../reports/schema.js";
 import { normalizeFinding } from "../scanners/normalization.js";
@@ -30,6 +45,8 @@ export type ProductAgentScanInput = {
   providerConfig?: ProviderConfig;
   modelResolver?: (roleId: ProductAgentRoleId) => Promise<ProductAgentModelSelection | undefined>;
   scannerFindings?: Finding[];
+  reportOutputDirectory?: string;
+  onProgress?: ScanProgressCallback;
 };
 
 export type ProductAgentScanResult =
@@ -82,7 +99,15 @@ type CandidateFinding = {
   finding: Finding;
 };
 
-type JudgeVerdict = "accepted" | "rejected" | "needs-review";
+type ProductAgentRunState = {
+  onProgress?: ScanProgressCallback;
+  checkpointStore?: ProductAgentCheckpointStore;
+  checkpoint?: ProductAgentScanCheckpoint;
+  checkpointResumed: boolean;
+  checkpointPath?: string;
+};
+
+type JudgeVerdict = "accepted" | "rejected";
 
 type JudgeResult = {
   candidateId: string;
@@ -141,14 +166,15 @@ export async function runProductAgentScan(input: ProductAgentScanInput): Promise
 
   const started = Date.now();
   const runtime = await createCodeInspectionRuntime(input.repoRoot);
+  const runState = await initializeProductAgentRunState(input);
   try {
     if (input.mode === "single-agent") {
-      return await runSingleAgentScan(input, runtime, started);
+      return await runSingleAgentScan(input, runtime, started, runState);
     }
     if (input.mode === "scanner-moa-assisted") {
-      return await runScannerMoaAgentScan(input, runtime, started);
+      return await runScannerMoaAgentScan(input, runtime, started, runState);
     }
-    return await runMoaAgentScan(input, runtime, started);
+    return await runMoaAgentScan(input, runtime, started, runState);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return productModeFailure({
@@ -162,16 +188,196 @@ export async function runProductAgentScan(input: ProductAgentScanInput): Promise
   }
 }
 
+async function initializeProductAgentRunState(input: ProductAgentScanInput): Promise<ProductAgentRunState> {
+  const state: ProductAgentRunState = {
+    ...(input.onProgress ? { onProgress: input.onProgress } : {}),
+    checkpointResumed: false,
+  };
+  if (!input.reportOutputDirectory) {
+    return state;
+  }
+  const checkpointStore = createProductAgentCheckpointStore({
+    reportOutputDirectory: input.reportOutputDirectory,
+    target: input.repoRoot,
+    assistMode: input.mode,
+  });
+  state.checkpointStore = checkpointStore;
+  state.checkpointPath = checkpointStore.location.checkpointPath;
+  try {
+    const read = await checkpointStore.read();
+    state.checkpointResumed = read.resume.available;
+    state.checkpoint = read.checkpoint ?? createProductAgentScanCheckpoint({
+      reportOutputDirectory: input.reportOutputDirectory,
+      target: input.repoRoot,
+      assistMode: input.mode,
+      currentPhase: "checkpoint",
+      metadata: {
+        checkpointResumed: read.resume.available,
+      },
+    });
+    emitProductAgentProgress(input.onProgress, {
+      phase: "checkpoint",
+      assistMode: input.mode,
+      status: read.resume.available ? "completed" : "skipped",
+      id: "product-agent-checkpoint",
+      message: read.resume.available
+        ? "Resuming from a compatible product-agent checkpoint."
+        : "No compatible product-agent checkpoint was found.",
+      checkpointPath: checkpointStore.location.checkpointPath,
+      resume: read.resume,
+    });
+    if (!read.resume.available && state.checkpoint) {
+      await checkpointStore.write(state.checkpoint);
+    }
+  } catch (error) {
+    emitProductAgentProgress(input.onProgress, {
+      phase: "checkpoint",
+      assistMode: input.mode,
+      status: "failed",
+      id: "product-agent-checkpoint",
+      message: `Checkpoint setup failed safely: ${shortError(error instanceof Error ? error.message : String(error))}.`,
+      checkpointPath: checkpointStore.location.checkpointPath,
+    });
+  }
+  return state;
+}
+
+async function saveProductAgentCheckpoint(
+  runState: ProductAgentRunState,
+  input: {
+    phase: NonNullable<ProductAgentScanCheckpoint["currentPhase"]>;
+    tasks?: ProductAgentScanCheckpoint["tasks"];
+    candidates?: ProductAgentScanCheckpoint["candidates"];
+    finalFindingIds?: string[];
+    metadata?: Record<string, unknown>;
+  },
+): Promise<void> {
+  if (!runState.checkpointStore || !runState.checkpoint) {
+    return;
+  }
+  try {
+    runState.checkpoint = {
+      ...runState.checkpoint,
+      currentPhase: input.phase,
+      ...(input.tasks ? { tasks: input.tasks } : {}),
+      ...(input.candidates ? { candidates: input.candidates } : {}),
+      ...(input.finalFindingIds ? { finalFindingIds: input.finalFindingIds } : {}),
+      metadata: {
+        ...(runState.checkpoint.metadata ?? {}),
+        checkpointResumed: runState.checkpointResumed,
+        ...(input.metadata ?? {}),
+      },
+    };
+    await runState.checkpointStore.write(runState.checkpoint);
+  } catch {
+    // Checkpoints are best-effort and must not affect scan correctness.
+  }
+}
+
+function emitCandidateProgress(
+  runState: ProductAgentRunState,
+  mode: ProductAgentScanMode,
+  status: "running" | "completed" | "skipped" | "failed",
+  message: string,
+  candidateCount?: number,
+): void {
+  emitProductAgentProgress(runState.onProgress, {
+    phase: "candidate",
+    assistMode: mode,
+    status,
+    id: "product-agent-candidate-discovery",
+    message,
+    ...(candidateCount !== undefined ? { candidateCount } : {}),
+    ...(runState.checkpointPath ? { checkpointPath: runState.checkpointPath } : {}),
+  });
+}
+
+function emitTaskProgress(
+  runState: ProductAgentRunState,
+  mode: ProductAgentScanMode,
+  status: "running" | "completed" | "skipped" | "failed",
+  message: string,
+  taskCount?: number,
+  roleId?: string,
+): void {
+  emitProductAgentProgress(runState.onProgress, {
+    phase: "task",
+    assistMode: mode,
+    status,
+    id: roleId ? `product-agent-task:${roleId}` : "product-agent-focused-tasks",
+    message,
+    ...(taskCount !== undefined ? { completedCount: taskCount } : {}),
+    ...(roleId ? { roleId } : {}),
+    ...(runState.checkpointPath ? { checkpointPath: runState.checkpointPath } : {}),
+  });
+}
+
+function emitRevalidationProgress(
+  runState: ProductAgentRunState,
+  mode: ProductAgentScanMode,
+  status: "running" | "completed" | "skipped" | "failed",
+  message: string,
+  acceptedCount?: number,
+  rejectedCount?: number,
+): void {
+  emitProductAgentProgress(runState.onProgress, {
+    phase: "revalidation",
+    assistMode: mode,
+    status,
+    id: "product-agent-evidence-revalidation",
+    message,
+    ...(acceptedCount !== undefined ? { acceptedCount } : {}),
+    ...(rejectedCount !== undefined ? { rejectedCount } : {}),
+    ...(runState.checkpointPath ? { checkpointPath: runState.checkpointPath } : {}),
+  });
+}
+
 async function runSingleAgentScan(
   input: ProductAgentScanInput,
   runtime: CodeInspectionRuntime,
   started: number,
+  runState: ProductAgentRunState,
 ): Promise<ProductAgentScanResult> {
-  const snapshot = await runtime.buildSnapshot();
+  emitCandidateProgress(runState, "single-agent", "running", "Collecting deterministic investigation candidates.");
+  const discovered = await discoverInvestigationCandidates(runtime, {
+    maxCandidates: productDiscoveryLimit(),
+  });
+  emitCandidateProgress(runState, "single-agent", "completed", `Collected ${discovered.length} investigation candidate${discovered.length === 1 ? "" : "s"}.`, discovered.length);
+  const tasks = buildInvestigationTasks(discovered, {
+    maxTasks: productFocusedTaskLimit(),
+  });
+  emitTaskProgress(runState, "single-agent", tasks.length > 0 ? "completed" : "skipped", `Prepared ${tasks.length} focused single-agent task${tasks.length === 1 ? "" : "s"}.`, tasks.length);
+  await saveProductAgentCheckpoint(runState, {
+    phase: "task",
+    tasks: checkpointTasksFromInvestigationTasks(tasks, "single-agent-inspector", "completed"),
+    candidates: checkpointCandidatesFromInvestigationTasks(tasks, "single-agent", "pending"),
+    metadata: {
+      candidateCount: discovered.length,
+      focusedTaskCount: tasks.length,
+    },
+  });
+  if (tasks.length === 0) {
+    return productModeSuccess({
+      mode: "single-agent",
+      provider: input.provider.id,
+      findings: [],
+      agentMode: buildSingleAgentModeMetadata(
+        input.provider.id,
+        input.providerConfig?.model ?? input.provider.id,
+        [],
+        Date.now() - started,
+        { candidateCount: discovered.length, focusedTaskCount: 0, rejectedByRevalidationCount: 0 },
+      ),
+      runState,
+      started,
+      limitations: ["Single-agent inspection found no deterministic investigation candidates to send to the model."],
+    });
+  }
+  const sourceCandidates = sourceCandidatesFromTasks(tasks, input.repoRoot, "single-agent");
   const modelSelection = await resolveRoleModel(input, "single-agent-inspector");
   const response = await completeWithTimeout(
     modelSelection.provider,
-    singleAgentRequest(snapshot),
+    singleAgentRequest(runtime, tasks),
     modelSelection.providerConfig,
     modelTimeoutMs(modelSelection.providerConfig?.timeoutMs),
   );
@@ -183,17 +389,40 @@ async function runSingleAgentScan(
     source: "single-agent",
     provider: response.provider,
     model: response.model,
+    sourceCandidates,
   });
+  emitRevalidationProgress(
+    runState,
+    "single-agent",
+    "completed",
+    `Revalidated ${candidates.length} single-agent finding${candidates.length === 1 ? "" : "s"}.`,
+    candidates.length,
+    Math.max(0, responseFindingCount(response.content) - candidates.length),
+  );
   const findings = dedupeCandidateFindings(candidates.map((candidate) => candidate.finding)).slice(0, productFindingLimit());
+  await saveProductAgentCheckpoint(runState, {
+    phase: "revalidation",
+    candidates: checkpointCandidatesFromCandidateFindings(candidates, "accepted"),
+    finalFindingIds: findings.map((finding) => finding.id),
+    metadata: {
+      acceptedFindingCount: findings.length,
+      rejectedByRevalidationCount: Math.max(0, responseFindingCount(response.content) - candidates.length),
+    },
+  });
   return productModeSuccess({
     mode: "single-agent",
     provider: response.provider,
     model: response.model,
     findings,
-    agentMode: buildSingleAgentModeMetadata(response.provider, response.model, findings, Date.now() - started),
+    agentMode: buildSingleAgentModeMetadata(response.provider, response.model, findings, Date.now() - started, {
+      candidateCount: discovered.length,
+      focusedTaskCount: tasks.length,
+      rejectedByRevalidationCount: Math.max(0, responseFindingCount(response.content) - candidates.length),
+    }),
+    runState,
     started,
     limitations: [
-      "Single-agent code inspection used bounded read-only file, search, and snippet context.",
+      `Single-agent code inspection investigated ${tasks.length} focused candidate task${tasks.length === 1 ? "" : "s"}.`,
       findings.length === 0 ? "The model response contained no validated product-mode findings." : "",
     ].filter(Boolean),
   });
@@ -203,9 +432,16 @@ async function runMoaAgentScan(
   input: ProductAgentScanInput,
   runtime: CodeInspectionRuntime,
   started: number,
+  runState: ProductAgentRunState,
 ): Promise<ProductAgentScanResult> {
   const allCandidates: CandidateFinding[] = [];
   const specialistRoles = selectedProductAgentSpecialists();
+  emitCandidateProgress(runState, "moa-assisted", "running", "Collecting deterministic MoA investigation candidates.");
+  const discovered = await discoverInvestigationCandidates(runtime, {
+    roleIds: specialistRoles.map((role) => role.id),
+    maxCandidates: productDiscoveryLimit(),
+  });
+  emitCandidateProgress(runState, "moa-assisted", "completed", `Collected ${discovered.length} MoA investigation candidate${discovered.length === 1 ? "" : "s"}.`, discovered.length);
   let model: string | undefined;
   const agentRuns: Array<{
     id: string;
@@ -216,20 +452,28 @@ async function runMoaAgentScan(
     runtimeMs?: number;
     status: "completed";
   }> = [];
+  let focusedTaskCount = 0;
+  let rejectedByRevalidationCount = 0;
+  const allTasks: InvestigationTask[] = [];
 
   for (const role of specialistRoles) {
-    const snapshot = await runtime.buildSnapshot({
-      maxFiles: 120,
-      maxSearches: role.searchQueries.length,
-      maxSearchResults: 36,
-      maxSnippets: 10,
-      searchQueries: role.searchQueries,
+    const tasks = buildInvestigationTasks(discovered, {
+      roleId: role.id,
+      maxTasks: roleFocusedTaskLimit(),
     });
+    if (tasks.length === 0) {
+      emitTaskProgress(runState, "moa-assisted", "skipped", `${role.label} had no focused candidate tasks.`, 0, role.id);
+      continue;
+    }
+    allTasks.push(...tasks);
+    focusedTaskCount += tasks.length;
+    emitTaskProgress(runState, "moa-assisted", "running", `${role.label} is inspecting ${tasks.length} focused task${tasks.length === 1 ? "" : "s"}.`, tasks.length, role.id);
+    const sourceCandidates = sourceCandidatesFromTasks(tasks, input.repoRoot, "moa-specialist", role.id);
     const modelSelection = await resolveRoleModel(input, role.id as ProductAgentRoleId);
     const roleStarted = Date.now();
     const response = await completeWithTimeout(
       modelSelection.provider,
-      specialistRequest(role, snapshot, "moa-assisted"),
+      specialistRequest(role, runtime, tasks, "moa-assisted"),
       modelSelection.providerConfig,
       modelTimeoutMs(modelSelection.providerConfig?.timeoutMs),
     );
@@ -253,8 +497,55 @@ async function runMoaAgentScan(
       provider: response.provider,
       model: response.model,
       role: role.id,
+      sourceCandidates,
     });
+    rejectedByRevalidationCount += Math.max(0, responseFindingCount(response.content) - candidates.length);
+    emitTaskProgress(runState, "moa-assisted", "completed", `${role.label} returned ${candidates.length} locally revalidated candidate${candidates.length === 1 ? "" : "s"}.`, tasks.length, role.id);
     allCandidates.push(...candidates);
+  }
+  await saveProductAgentCheckpoint(runState, {
+    phase: "task",
+    tasks: checkpointTasksFromInvestigationTasks(allTasks, undefined, "completed"),
+    candidates: [
+      ...checkpointCandidatesFromInvestigationTasks(allTasks, "moa-specialist", "pending"),
+      ...checkpointCandidatesFromCandidateFindings(allCandidates, "accepted"),
+    ],
+    metadata: {
+      candidateCount: discovered.length,
+      focusedTaskCount,
+      specialistCandidateCount: allCandidates.length,
+      rejectedByRevalidationCount,
+    },
+  });
+
+  if (allCandidates.length === 0) {
+    return productModeSuccess({
+      mode: "moa-assisted",
+      provider: input.provider.id,
+      ...(model ? { model } : {}),
+      findings: [],
+      agentMode: buildMoaModeMetadata({
+        provider: input.provider.id,
+        model,
+        agentRuns,
+        specialistRoles,
+        findings: [],
+        candidateCount: discovered.length,
+        acceptedCount: 0,
+        rejectedCount: 0,
+        needsReviewCount: 0,
+        runtimeMs: Date.now() - started,
+        focusedTaskCount,
+        rejectedByRevalidationCount,
+      }),
+      runState,
+      started,
+      limitations: [
+        discovered.length === 0
+          ? "MoA found no deterministic investigation candidates to send to specialist agents."
+          : "MoA specialist responses produced no locally revalidated candidate findings.",
+      ],
+    });
   }
 
   const judgeSelection = await resolveRoleModel(input, "moa-false-positive-judge");
@@ -276,40 +567,79 @@ async function runMoaAgentScan(
   });
   const judgmentCounts = judgeResult.counts;
   const judgedCandidates = judgeResult.judgedCandidates;
+  emitRevalidationProgress(
+    runState,
+    "moa-assisted",
+    "completed",
+    `False-positive judge accepted ${judgmentCounts.accepted} and rejected ${judgmentCounts.rejected} candidate${judgmentCounts.accepted + judgmentCounts.rejected === 1 ? "" : "s"}.`,
+    judgmentCounts.accepted,
+    judgmentCounts.rejected,
+  );
 
   const aggregatorSelection = await resolveRoleModel(input, "moa-aggregator");
-  const aggregatorStarted = Date.now();
-  const aggregatorResponse = await completeWithTimeout(
-    aggregatorSelection.provider,
-    aggregatorRequest(judgedCandidates, "moa-assisted"),
-    aggregatorSelection.providerConfig,
-    modelTimeoutMs(aggregatorSelection.providerConfig?.timeoutMs),
+  const aggregationLimitations: string[] = [];
+  let aggregated: CandidateFinding[] = [];
+  try {
+    const aggregatorStarted = Date.now();
+    const aggregatorResponse = await completeWithTimeout(
+      aggregatorSelection.provider,
+      aggregatorRequest(judgedCandidates, "moa-assisted"),
+      aggregatorSelection.providerConfig,
+      modelTimeoutMs(aggregatorSelection.providerConfig?.timeoutMs),
+    );
+    const aggregatorRuntimeMs = Date.now() - aggregatorStarted;
+    model = aggregatorResponse.model;
+    agentRuns.push({
+      id: "moa-aggregator",
+      label: "MoA Aggregator",
+      role: "aggregator",
+      provider: aggregatorResponse.provider,
+      model: aggregatorResponse.model,
+      runtimeMs: aggregatorRuntimeMs,
+      status: "completed",
+    });
+    aggregated = await parseFindingCandidates({
+      raw: aggregatorResponse.content,
+      runtime,
+      repoRoot: input.repoRoot,
+      mode: "moa-assisted",
+      source: "moa-aggregator",
+      provider: aggregatorResponse.provider,
+      model: aggregatorResponse.model,
+      sourceCandidates: judgedCandidates,
+    });
+    rejectedByRevalidationCount += Math.max(0, responseFindingCount(aggregatorResponse.content) - aggregated.length);
+  } catch (error) {
+    const message = shortError(error instanceof Error ? error.message : String(error));
+    aggregationLimitations.push(`MoA aggregator failed safely; judge-accepted locally revalidated findings were retained. ${message}`);
+  }
+  emitRevalidationProgress(
+    runState,
+    "moa-assisted",
+    "completed",
+    `Final aggregation revalidated ${aggregated.length} finding${aggregated.length === 1 ? "" : "s"}.`,
+    aggregated.length,
+    0,
   );
-  const aggregatorRuntimeMs = Date.now() - aggregatorStarted;
-  model = aggregatorResponse.model;
-  agentRuns.push({
-    id: "moa-aggregator",
-    label: "MoA Aggregator",
-    role: "aggregator",
-    provider: aggregatorResponse.provider,
-    model: aggregatorResponse.model,
-    runtimeMs: aggregatorRuntimeMs,
-    status: "completed",
-  });
-  const aggregated = await parseFindingCandidates({
-    raw: aggregatorResponse.content,
-    runtime,
-    repoRoot: input.repoRoot,
-    mode: "moa-assisted",
-    source: "moa-aggregator",
-    provider: aggregatorResponse.provider,
-    model: aggregatorResponse.model,
-    candidateIds: judgedCandidates.map((candidate) => candidate.candidateId),
-  });
 
   const fallbackFindings = judgedCandidates.map((candidate) => candidate.finding);
   const finalFindings = dedupeCandidateFindings((aggregated.length > 0 ? aggregated.map((candidate) => candidate.finding) : fallbackFindings))
     .slice(0, productFindingLimit());
+  await saveProductAgentCheckpoint(runState, {
+    phase: "revalidation",
+    candidates: [
+      ...checkpointCandidatesFromCandidateFindings(judgedCandidates, "accepted"),
+      ...checkpointCandidatesFromCandidateFindings(aggregated, "accepted"),
+    ],
+    finalFindingIds: finalFindings.map((finding) => finding.id),
+    metadata: {
+      candidateCount: allCandidates.length,
+      acceptedFindingCount: judgmentCounts.accepted,
+      rejectedFindingCount: judgmentCounts.rejected,
+      rejectedByRevalidationCount,
+      finalFindingCount: finalFindings.length,
+    },
+  });
 
   return productModeSuccess({
     mode: "moa-assisted",
@@ -327,12 +657,16 @@ async function runMoaAgentScan(
       rejectedCount: judgmentCounts.rejected,
       needsReviewCount: judgmentCounts.needsReview,
       runtimeMs: Date.now() - started,
+      focusedTaskCount,
+      rejectedByRevalidationCount,
     }),
+    runState,
     started,
     limitations: [
       `MoA ran ${specialistRoles.length} specialist role(s), a false-positive judge, and an aggregator.`,
+      ...aggregationLimitations,
       ...judgeResult.limitations,
-      aggregated.length === 0 && fallbackFindings.length > 0 ? "Aggregator output had no validated findings; judged specialist candidates were retained." : "",
+      aggregated.length === 0 && fallbackFindings.length > 0 ? "Aggregator output had no validated findings; judge-accepted specialist candidates were retained after local validation." : "",
       finalFindings.length === 0 ? "MoA completed but produced no validated product-mode findings." : "",
     ].filter(Boolean),
   });
@@ -342,10 +676,23 @@ async function runScannerMoaAgentScan(
   input: ProductAgentScanInput,
   runtime: CodeInspectionRuntime,
   started: number,
+  runState: ProductAgentRunState,
 ): Promise<ProductAgentScanResult> {
   const scannerCandidates = scannerCandidatesFromFindings(input.scannerFindings ?? [], input.repoRoot);
   const allCandidates: CandidateFinding[] = [...scannerCandidates];
   const specialistRoles = selectedProductAgentSpecialists();
+  emitCandidateProgress(runState, "scanner-moa-assisted", "running", "Collecting independent Scanner + MoA investigation candidates.");
+  const discovered = await discoverInvestigationCandidates(runtime, {
+    roleIds: specialistRoles.map((role) => role.id),
+    maxCandidates: productDiscoveryLimit(),
+  });
+  emitCandidateProgress(
+    runState,
+    "scanner-moa-assisted",
+    "completed",
+    `Collected ${scannerCandidates.length} scanner candidate${scannerCandidates.length === 1 ? "" : "s"} and ${discovered.length} agent investigation candidate${discovered.length === 1 ? "" : "s"}.`,
+    scannerCandidates.length + discovered.length,
+  );
   let model: string | undefined;
   const agentRuns: Array<{
     id: string;
@@ -357,6 +704,9 @@ async function runScannerMoaAgentScan(
     status: "completed" | "failed";
   }> = [];
   const limitations: string[] = [];
+  let focusedTaskCount = 0;
+  let rejectedByRevalidationCount = 0;
+  const allTasks: InvestigationTask[] = [];
 
   if (scannerCandidates.length > 0) {
     agentRuns.push({
@@ -369,20 +719,25 @@ async function runScannerMoaAgentScan(
   }
 
   for (const role of specialistRoles) {
-    const snapshot = await runtime.buildSnapshot({
-      maxFiles: 120,
-      maxSearches: role.searchQueries.length,
-      maxSearchResults: 36,
-      maxSnippets: 10,
-      searchQueries: role.searchQueries,
+    const tasks = buildInvestigationTasks(discovered, {
+      roleId: role.id,
+      maxTasks: roleFocusedTaskLimit(),
     });
+    if (tasks.length === 0) {
+      emitTaskProgress(runState, "scanner-moa-assisted", "skipped", `${role.label} had no focused candidate tasks.`, 0, role.id);
+      continue;
+    }
+    allTasks.push(...tasks);
+    focusedTaskCount += tasks.length;
+    emitTaskProgress(runState, "scanner-moa-assisted", "running", `${role.label} is inspecting ${tasks.length} focused task${tasks.length === 1 ? "" : "s"}.`, tasks.length, role.id);
+    const sourceCandidates = sourceCandidatesFromTasks(tasks, input.repoRoot, "moa-specialist", role.id);
     const modelSelection = await resolveRoleModel(input, role.id as ProductAgentRoleId);
     let response: Awaited<ReturnType<ModelProviderAdapter["complete"]>>;
     const roleStarted = Date.now();
     try {
       response = await completeWithTimeout(
         modelSelection.provider,
-        specialistRequest(role, snapshot, "scanner-moa-assisted"),
+        specialistRequest(role, runtime, tasks, "scanner-moa-assisted"),
         modelSelection.providerConfig,
         modelTimeoutMs(modelSelection.providerConfig?.timeoutMs),
       );
@@ -421,9 +776,28 @@ async function runScannerMoaAgentScan(
       provider: response.provider,
       model: response.model,
       role: role.id,
+      sourceCandidates,
     });
+    rejectedByRevalidationCount += Math.max(0, responseFindingCount(response.content) - candidates.length);
+    emitTaskProgress(runState, "scanner-moa-assisted", "completed", `${role.label} returned ${candidates.length} locally revalidated candidate${candidates.length === 1 ? "" : "s"}.`, tasks.length, role.id);
     allCandidates.push(...candidates);
   }
+  await saveProductAgentCheckpoint(runState, {
+    phase: "task",
+    tasks: checkpointTasksFromInvestigationTasks(allTasks, undefined, "completed"),
+    candidates: [
+      ...checkpointCandidatesFromCandidateFindings(scannerCandidates, "pending"),
+      ...checkpointCandidatesFromInvestigationTasks(allTasks, "moa-specialist", "pending"),
+      ...checkpointCandidatesFromCandidateFindings(allCandidates.filter((candidate) => candidate.finding.agent?.source !== "scanner-backed"), "accepted"),
+    ],
+    metadata: {
+      scannerCandidateCount: scannerCandidates.length,
+      agentDiscoveryCandidateCount: discovered.length,
+      focusedTaskCount,
+      agentCandidateCount: allCandidates.length - scannerCandidates.length,
+      rejectedByRevalidationCount,
+    },
+  });
 
   if (allCandidates.length === 0) {
     return productModeSuccess({
@@ -443,7 +817,10 @@ async function runScannerMoaAgentScan(
         rejectedCount: 0,
         needsReviewCount: 0,
         runtimeMs: Date.now() - started,
+        focusedTaskCount,
+        rejectedByRevalidationCount,
       }),
+      runState,
       started,
       limitations: ["Scanner + MoA completed but produced no candidate findings to judge."],
     });
@@ -468,39 +845,78 @@ async function runScannerMoaAgentScan(
   });
   const judgmentCounts = judgeResult.counts;
   const judgedCandidates = judgeResult.judgedCandidates;
+  emitRevalidationProgress(
+    runState,
+    "scanner-moa-assisted",
+    "completed",
+    `False-positive judge accepted ${judgmentCounts.accepted} and rejected ${judgmentCounts.rejected} combined candidate${judgmentCounts.accepted + judgmentCounts.rejected === 1 ? "" : "s"}.`,
+    judgmentCounts.accepted,
+    judgmentCounts.rejected,
+  );
 
   const aggregatorSelection = await resolveRoleModel(input, "moa-aggregator");
-  const aggregatorStarted = Date.now();
-  const aggregatorResponse = await completeRoleWithTimeout(
-    "final aggregator",
-    aggregatorSelection.provider,
-    aggregatorRequest(judgedCandidates, "scanner-moa-assisted"),
-    aggregatorSelection.providerConfig,
+  let aggregated: CandidateFinding[] = [];
+  try {
+    const aggregatorStarted = Date.now();
+    const aggregatorResponse = await completeRoleWithTimeout(
+      "final aggregator",
+      aggregatorSelection.provider,
+      aggregatorRequest(judgedCandidates, "scanner-moa-assisted"),
+      aggregatorSelection.providerConfig,
+    );
+    const aggregatorRuntimeMs = Date.now() - aggregatorStarted;
+    model = aggregatorResponse.model;
+    agentRuns.push({
+      id: "moa-aggregator",
+      label: "Scanner + MoA Aggregator",
+      role: "aggregator",
+      provider: aggregatorResponse.provider,
+      model: aggregatorResponse.model,
+      runtimeMs: aggregatorRuntimeMs,
+      status: "completed",
+    });
+    aggregated = await parseFindingCandidates({
+      raw: aggregatorResponse.content,
+      runtime,
+      repoRoot: input.repoRoot,
+      mode: "scanner-moa-assisted",
+      source: "moa-aggregator",
+      provider: aggregatorResponse.provider,
+      model: aggregatorResponse.model,
+      sourceCandidates: judgedCandidates,
+    });
+    rejectedByRevalidationCount += Math.max(0, responseFindingCount(aggregatorResponse.content) - aggregated.length);
+  } catch (error) {
+    const message = shortError(error instanceof Error ? error.message : String(error));
+    limitations.push(`Scanner + MoA aggregator failed safely; judge-accepted locally revalidated findings were retained. ${message}`);
+  }
+  emitRevalidationProgress(
+    runState,
+    "scanner-moa-assisted",
+    "completed",
+    `Final Scanner + MoA aggregation revalidated ${aggregated.length} finding${aggregated.length === 1 ? "" : "s"}.`,
+    aggregated.length,
+    0,
   );
-  const aggregatorRuntimeMs = Date.now() - aggregatorStarted;
-  model = aggregatorResponse.model;
-  agentRuns.push({
-    id: "moa-aggregator",
-    label: "Scanner + MoA Aggregator",
-    role: "aggregator",
-    provider: aggregatorResponse.provider,
-    model: aggregatorResponse.model,
-    runtimeMs: aggregatorRuntimeMs,
-    status: "completed",
-  });
-  const aggregated = await parseFindingCandidates({
-    raw: aggregatorResponse.content,
-    runtime,
-    repoRoot: input.repoRoot,
-    mode: "scanner-moa-assisted",
-    source: "moa-aggregator",
-    provider: aggregatorResponse.provider,
-    model: aggregatorResponse.model,
-    candidateIds: judgedCandidates.map((candidate) => candidate.candidateId),
-  });
 
   const finalFindings = finalizeScannerMoaFindings(aggregated, judgedCandidates)
     .slice(0, productFindingLimit());
+  await saveProductAgentCheckpoint(runState, {
+    phase: "revalidation",
+    candidates: [
+      ...checkpointCandidatesFromCandidateFindings(judgedCandidates, "accepted"),
+      ...checkpointCandidatesFromCandidateFindings(aggregated, "accepted"),
+    ],
+    finalFindingIds: finalFindings.map((finding) => finding.id),
+    metadata: {
+      scannerCandidateCount: scannerCandidates.length,
+      agentCandidateCount: allCandidates.length - scannerCandidates.length,
+      acceptedFindingCount: judgmentCounts.accepted,
+      rejectedFindingCount: judgmentCounts.rejected,
+      rejectedByRevalidationCount,
+      finalFindingCount: finalFindings.length,
+    },
+  });
 
   return productModeSuccess({
     mode: "scanner-moa-assisted",
@@ -519,13 +935,16 @@ async function runScannerMoaAgentScan(
       rejectedCount: judgmentCounts.rejected,
       needsReviewCount: judgmentCounts.needsReview,
       runtimeMs: Date.now() - started,
+      focusedTaskCount,
+      rejectedByRevalidationCount,
     }),
+    runState,
     started,
     limitations: [
       ...limitations,
       `Scanner + MoA judged ${allCandidates.length} combined scanner and agent candidate finding${allCandidates.length === 1 ? "" : "s"}.`,
       ...judgeResult.limitations,
-      aggregated.length === 0 && judgedCandidates.length > 0 ? "Aggregator output had no validated findings; judged candidates were retained." : "",
+      aggregated.length === 0 && judgedCandidates.length > 0 ? "Aggregator output had no validated findings; judge-accepted candidates were retained after local validation." : "",
       finalFindings.length === 0 ? "The false-positive judge and aggregator rejected all candidate findings." : "",
     ].filter(Boolean),
   });
@@ -578,6 +997,106 @@ function scannerCandidatesFromFindings(findings: readonly Finding[], repoRoot: s
     });
 }
 
+function sourceCandidatesFromTasks(
+  tasks: readonly InvestigationTask[],
+  repoRoot: string,
+  source: Extract<AgentFindingMetadata["source"], "single-agent" | "moa-specialist">,
+  role?: string,
+): EvidenceSourceCandidate[] {
+  const generatedAt = new Date().toISOString();
+  return tasks.map((task) => ({
+    candidateId: task.candidateId,
+    finding: normalizeFinding({
+      id: task.candidateId,
+      title: task.instruction,
+      category: categoryFromInvestigationTask(task),
+      severity: "medium",
+      confidence: "medium",
+      description: task.instruction,
+      evidence: task.snippet.text,
+      remediation: "Review the candidate evidence and apply the smallest defensive fix if the finding is confirmed.",
+      tool: "hermsec-candidate-discovery",
+      ruleId: `hermsec.discovery.${task.category}`,
+      ...(task.suggestedCwe ? { cwe: [task.suggestedCwe] } : {}),
+      location: { file: task.file, startLine: task.line, endLine: task.line },
+      agent: {
+        mode: source === "single-agent" ? "single-agent" : "moa-assisted",
+        source,
+        provider: "hermsec-local",
+        ...(role ? { role } : {}),
+        generatedAt,
+        candidateIds: [task.candidateId],
+      },
+      fingerprint: stableId(`${task.candidateId}:${task.file}:${task.line}`, "fp"),
+    }, repoRoot),
+  }));
+}
+
+function categoryFromInvestigationTask(task: InvestigationTask): FindingCategory {
+  if (task.category === "secret") return "secret";
+  if (task.category === "dependency") return "dependency";
+  if (task.category === "config-iac") return "config";
+  return "code";
+}
+
+function checkpointTasksFromInvestigationTasks(
+  tasks: readonly InvestigationTask[],
+  fallbackRoleId: string | undefined,
+  status: "waiting" | "running" | "completed" | "skipped" | "failed",
+): ProductAgentScanCheckpoint["tasks"] {
+  const now = new Date().toISOString();
+  return tasks.map((task) => ({
+    id: task.taskId,
+    label: task.instruction,
+    phase: "task",
+    status,
+    updatedAt: now,
+    roleId: fallbackRoleId ?? task.roleId,
+    candidateIds: [task.candidateId],
+    message: `${task.category} candidate at ${task.file}:${task.line}`,
+  }));
+}
+
+function checkpointCandidatesFromInvestigationTasks(
+  tasks: readonly InvestigationTask[],
+  source: "single-agent" | "moa-specialist",
+  status: "pending" | "accepted" | "rejected",
+): ProductAgentScanCheckpoint["candidates"] {
+  const now = new Date().toISOString();
+  return tasks.map((task) => ({
+    id: task.candidateId,
+    source,
+    status,
+    updatedAt: now,
+    title: task.instruction,
+    roleId: task.roleId,
+    message: `${task.file}:${task.line}`,
+  }));
+}
+
+function checkpointCandidatesFromCandidateFindings(
+  candidates: readonly CandidateFinding[],
+  status: "pending" | "accepted" | "rejected",
+): ProductAgentScanCheckpoint["candidates"] {
+  const now = new Date().toISOString();
+  return candidates.map((candidate) => {
+    const message = candidate.finding.location?.file
+      ? `${candidate.finding.location.file}${candidate.finding.location.startLine ? `:${candidate.finding.location.startLine}` : ""}`
+      : undefined;
+    return {
+      id: candidate.candidateId,
+      source: candidate.finding.agent?.source ?? "moa-specialist",
+      status,
+      updatedAt: now,
+      title: candidate.finding.title,
+      ...(candidate.finding.agent?.role ? { roleId: candidate.finding.agent.role } : {}),
+      findingId: candidate.finding.id,
+      fingerprint: candidate.finding.fingerprint,
+      ...(message ? { message } : {}),
+    };
+  });
+}
+
 function finalizeScannerMoaFindings(
   aggregated: readonly CandidateFinding[],
   judgedCandidates: readonly CandidateFinding[],
@@ -609,35 +1128,37 @@ async function resolveRoleModel(
   };
 }
 
-function singleAgentRequest(snapshot: CodeInspectionSnapshot): ModelRequest {
+function singleAgentRequest(runtime: CodeInspectionRuntime, tasks: readonly InvestigationTask[]): ModelRequest {
   return jsonRequest([
     "You are Hermsec single-agent product security inspection.",
     "You receive bounded output from list_files, search_code, and read_file_snippet helpers. You cannot request shell commands, package execution, installs, or network access.",
-    "This is an agent-only scan. Use only the supplied repository evidence.",
+    "This is an agent-only candidate-first scan. Use only the supplied candidate tasks and repository evidence.",
     "Return ONLY one JSON object with a findings array.",
     findingSchemaInstruction(),
-    "Only report concrete defensive findings supported by the supplied file paths and snippets. Prefer no finding over speculation.",
+    "Only report concrete defensive findings supported by the supplied candidate file paths and snippets. Preserve the supplied candidateId for each finding. Use the candidate location file and line exactly. Prefer no finding over speculation.",
     "Context:",
     JSON.stringify(redactForModel({
-      inspection: snapshot,
+      files: runtime.listFiles({ limit: 160 }),
+      candidateTasks: candidatePromptContext(tasks),
     }).value),
   ].join("\n"));
 }
 
-function specialistRequest(role: SpecialistRole, snapshot: CodeInspectionSnapshot, mode: ProductAgentScanMode): ModelRequest {
+function specialistRequest(role: SpecialistRole, runtime: CodeInspectionRuntime, tasks: readonly InvestigationTask[], mode: ProductAgentScanMode): ModelRequest {
   return jsonRequest([
     `You are the Hermsec MoA specialist: ${role.label}.`,
     role.focus,
     "You receive bounded output from list_files, search_code, and read_file_snippet helpers. You cannot request shell commands, package execution, installs, or network access.",
     mode === "scanner-moa-assisted"
-      ? "This is a scanner + MoA hybrid scan. Inspect the supplied repository evidence independently; scanner findings will be judged together with your candidates later."
-      : "This is an agent-only scan. Use only the supplied repository evidence.",
+      ? "This is a scanner + MoA hybrid candidate-first scan. Inspect the supplied candidate tasks independently; scanner findings will be judged together with your candidates later."
+      : "This is an agent-only candidate-first scan. Use only the supplied candidate tasks and repository evidence.",
     "Return ONLY one JSON object with a findings array.",
     findingSchemaInstruction(),
-    "Report only findings supported by supplied snippets and file paths. If unsure, return an empty findings array.",
+    "Report only findings supported by supplied candidate snippets and file paths. Preserve the supplied candidateId for each finding. Use the candidate location file and line exactly. If unsure, return an empty findings array.",
     "Context:",
     JSON.stringify(redactForModel({
-      inspection: snapshot,
+      files: runtime.listFiles({ limit: 160 }),
+      candidateTasks: candidatePromptContext(tasks),
     }).value),
   ].join("\n"));
 }
@@ -646,9 +1167,9 @@ function judgeRequest(candidates: readonly CandidateFinding[], mode: ProductAgen
   return jsonRequest([
     "You are the Hermsec MoA false-positive judge.",
     mode === "scanner-moa-assisted"
-      ? "Review scanner-backed and MoA specialist candidates together. Accept candidates with concrete evidence, mark uncertain but plausible items as needs-review, and reject weak scanner noise or unsupported model claims."
+      ? "Review scanner-backed and MoA specialist candidates together. Accept candidates with concrete evidence and reject weak scanner noise, uncertain items, or unsupported model claims."
       : "Review candidate findings for support in their own evidence only. Reject speculation, unsupported files, impossible line references, or vague best-practice advice.",
-    "Return ONLY JSON: {\"judgments\":[{\"candidateId\":\"...\",\"verdict\":\"accepted|rejected|needs-review\",\"confidence\":\"low|medium|high\",\"reason\":\"short reason\"}]}",
+    "Return ONLY JSON: {\"judgments\":[{\"candidateId\":\"...\",\"verdict\":\"accepted|rejected\",\"confidence\":\"low|medium|high\",\"reason\":\"short reason\"}]}",
     "Candidates:",
     JSON.stringify(redactForModel(candidates.map((candidate) => ({
       candidateId: candidate.candidateId,
@@ -670,7 +1191,7 @@ function judgeRequest(candidates: readonly CandidateFinding[], mode: ProductAgen
 function aggregatorRequest(candidates: readonly CandidateFinding[], mode: ProductAgentScanMode): ModelRequest {
   return jsonRequest([
     mode === "scanner-moa-assisted" ? "You are the Hermsec scanner + MoA final aggregator." : "You are the Hermsec MoA aggregator.",
-    "Deduplicate accepted and needs-review candidates into the smallest useful set of final defensive findings.",
+    "Deduplicate accepted candidates into the smallest useful set of final defensive findings.",
     "Return ONLY one JSON object with a findings array.",
     findingSchemaInstruction(),
     mode === "scanner-moa-assisted"
@@ -710,7 +1231,7 @@ function jsonRequest(content: string): ModelRequest {
 function findingSchemaInstruction(): string {
   return [
     "Finding JSON schema:",
-    "{\"findings\":[{\"title\":\"short title\",\"category\":\"code|dependency|secret|supply-chain|config\",\"severity\":\"critical|high|medium|low|info\",\"confidence\":\"low|medium|high\",\"description\":\"defensive description\",\"evidence\":\"quote or paraphrase from supplied snippet\",\"remediation\":\"safe defensive fix\",\"ruleId\":\"stable rule id\",\"cwe\":[\"CWE-...\"],\"location\":{\"file\":\"repo-relative path\",\"startLine\":1,\"endLine\":1},\"sourceFindingIds\":[\"optional candidate ids\"]}]}",
+    "{\"findings\":[{\"candidateId\":\"required supplied candidate id for non-aggregator findings\",\"title\":\"short title\",\"category\":\"code|dependency|secret|supply-chain|config\",\"severity\":\"critical|high|medium|low|info\",\"confidence\":\"low|medium|high\",\"description\":\"defensive description\",\"evidence\":\"quote or paraphrase from supplied snippet\",\"remediation\":\"safe defensive fix\",\"ruleId\":\"stable rule id\",\"cwe\":[\"CWE-...\"],\"location\":{\"file\":\"repo-relative path\",\"startLine\":1,\"endLine\":1},\"sourceFindingIds\":[\"required accepted candidate ids for aggregator findings\"]}]}",
     "Never use confidence=confirmed for model-only findings.",
   ].join("\n");
 }
@@ -724,7 +1245,7 @@ async function parseFindingCandidates(input: {
   provider: string;
   model?: string;
   role?: string;
-  candidateIds?: string[];
+  sourceCandidates?: readonly EvidenceSourceCandidate[];
 }): Promise<CandidateFinding[]> {
   const object = parseJsonObject(input.raw);
   const rawFindings = Array.isArray(object?.findings) ? object.findings : [];
@@ -751,7 +1272,7 @@ async function toFindingCandidate(
     provider: string;
     model?: string;
     role?: string;
-    candidateIds?: string[];
+    sourceCandidates?: readonly EvidenceSourceCandidate[];
   },
 ): Promise<CandidateFinding | undefined> {
   const title = stringValue(raw.title, 180);
@@ -779,16 +1300,20 @@ async function toFindingCandidate(
   }
 
   const sourceFindingIds = stringArray(raw.sourceFindingIds, 12);
-  const candidateId = stringValue(raw.candidateId, 120) ?? stableId(JSON.stringify({
-    title,
-    location,
-    evidence,
-    role: context.role,
-  }), "candidate");
+  const rawCandidateId = stringValue(raw.candidateId, 120);
+  const candidateId = rawCandidateId
+    ?? (context.source === "moa-aggregator"
+      ? stableId(JSON.stringify({ title, location, evidence, role: context.role }), "candidate")
+      : undefined);
+  if (!candidateId) {
+    return undefined;
+  }
   const sourceFindingMetadata = sourceFindingIds.length > 0
     ? sourceFindingIds
-    : context.candidateIds && context.candidateIds.length > 0
-      ? context.candidateIds
+    : context.source !== "moa-aggregator"
+      ? [candidateId]
+    : context.source === "moa-aggregator" && context.sourceCandidates && context.sourceCandidates.length === 1
+      ? [context.sourceCandidates[0]!.candidateId]
       : [];
   const agent: AgentFindingMetadata = {
     mode: context.mode,
@@ -832,7 +1357,17 @@ async function toFindingCandidate(
     }), "fp"),
   }, context.repoRoot);
 
-  return { candidateId, finding };
+  const revalidation = await revalidateProductFindingEvidence({
+    finding,
+    runtime: context.runtime,
+    ...(context.sourceCandidates ? { sourceCandidates: context.sourceCandidates } : {}),
+    requireKnownSourceIds: context.source === "moa-aggregator",
+  });
+  if (!revalidation.ok) {
+    return undefined;
+  }
+
+  return { candidateId, finding: revalidation.finding };
 }
 
 async function judgeCandidatesInBatches(
@@ -882,7 +1417,7 @@ async function judgeCandidatesInBatches(
   }
   if (fallbackCount > 0) {
     limitations.push(
-      `${fallbackCount} judge candidate${fallbackCount === 1 ? "" : "s"} used needs-review fallback after provider errors.`,
+      `${fallbackCount} judge candidate${fallbackCount === 1 ? "" : "s"} rejected after provider errors.`,
     );
   }
 
@@ -959,16 +1494,16 @@ async function judgeCandidateBatch(input: {
     return {
       judgments: candidate ? [{
         candidateId: candidate.candidateId,
-        verdict: "needs-review",
+        verdict: "rejected",
         confidence: "low",
-        reason: "Judge provider failed for this bounded batch; retained for human review.",
+        reason: "Judge provider failed for this bounded batch; rejected by fail-closed policy.",
       }] : [],
       provider: input.selection.provider.id,
       model: input.selection.providerConfig?.model ?? input.selection.provider.id,
       splitCount: 0,
       fallbackCount: candidate ? 1 : 0,
       limitations: [
-        `False-positive judge used needs-review fallback for batch ${input.batchLabel}: ${shortError(message)}.`,
+        `False-positive judge rejected batch ${input.batchLabel} by fail-closed policy: ${shortError(message)}.`,
       ],
     };
   }
@@ -985,9 +1520,9 @@ function parseJudgeResults(raw: string): JudgeResult[] {
     if (!candidateId) {
       return [];
     }
-    const verdict = item.verdict === "accepted" || item.verdict === "rejected" || item.verdict === "needs-review"
+    const verdict = item.verdict === "accepted" || item.verdict === "rejected"
       ? item.verdict
-      : "needs-review";
+      : "rejected";
     const confidence = item.confidence === "low" || item.confidence === "medium" || item.confidence === "high"
       ? item.confidence
       : undefined;
@@ -1006,9 +1541,9 @@ function applyJudgments(candidates: readonly CandidateFinding[], judgments: read
   return candidates.flatMap((candidate) => {
     const judgment = byId.get(candidate.candidateId) ?? {
       candidateId: candidate.candidateId,
-      verdict: "needs-review" as const,
+      verdict: "rejected" as const,
       confidence: "low" as const,
-      reason: "No explicit judge decision was returned.",
+      reason: "No explicit judge decision was returned; rejected by fail-closed policy.",
     };
     if (judgment.verdict === "rejected") {
       return [];
@@ -1039,9 +1574,15 @@ function productModeSuccess(input: {
   model?: string;
   findings: Finding[];
   agentMode: ReportAgentModeMetadata;
+  runState?: ProductAgentRunState;
   started: number;
   limitations: string[];
 }): ProductAgentScanResult {
+  const agentMode: ReportAgentModeMetadata = {
+    ...input.agentMode,
+    ...(input.runState ? { checkpointResumed: input.runState.checkpointResumed } : {}),
+    ...(input.runState?.checkpointPath ? { checkpointPath: input.runState.checkpointPath } : {}),
+  };
   const status: ScannerStatus = {
     id: input.mode,
     label: productModeLabel(input.mode),
@@ -1058,7 +1599,7 @@ function productModeSuccess(input: {
     limitations: input.limitations,
     executiveSummary: `${productModeLabel(input.mode)} produced ${input.findings.length} validated ${input.mode === "scanner-moa-assisted" ? "scanner and agent" : "agent-only"} finding${input.findings.length === 1 ? "" : "s"}.`,
     priorityActions: input.findings.slice(0, 5).map((finding) => `${finding.id}: ${finding.remediation}`),
-    agentMode: input.agentMode,
+    agentMode,
   };
 }
 
@@ -1105,6 +1646,11 @@ function buildSingleAgentModeMetadata(
   model: string,
   findings: readonly Finding[],
   runtimeMs: number,
+  metrics: {
+    candidateCount?: number;
+    focusedTaskCount?: number;
+    rejectedByRevalidationCount?: number;
+  } = {},
 ): ReportAgentModeMetadata {
   return {
     mode: "single-agent",
@@ -1122,9 +1668,13 @@ function buildSingleAgentModeMetadata(
         status: "completed",
       },
     ],
-    candidateFindingCount: findings.length,
+    candidateCount: metrics.candidateCount ?? findings.length,
+    candidateFindingCount: metrics.candidateCount ?? findings.length,
+    focusedTaskCount: metrics.focusedTaskCount ?? findings.length,
+    revalidatedCount: findings.length,
+    rejectedByRevalidationCount: metrics.rejectedByRevalidationCount ?? 0,
     acceptedFindingCount: findings.length,
-    rejectedFindingCount: 0,
+    rejectedFindingCount: metrics.rejectedByRevalidationCount ?? 0,
     needsHumanReviewCount: 0,
     totalAgentRuntimeMs: runtimeMs,
     findings: findingMetadataMap(findings),
@@ -1150,6 +1700,8 @@ function buildMoaModeMetadata(input: {
   rejectedCount: number;
   needsReviewCount: number;
   runtimeMs: number;
+  focusedTaskCount?: number;
+  rejectedByRevalidationCount?: number;
 }): ReportAgentModeMetadata {
   return {
     mode: "moa-assisted",
@@ -1163,10 +1715,14 @@ function buildMoaModeMetadata(input: {
     agents: [
       ...input.agentRuns,
     ],
+    candidateCount: input.candidateCount,
     candidateFindingCount: input.candidateCount,
+    focusedTaskCount: input.focusedTaskCount ?? input.candidateCount,
+    revalidatedCount: input.findings.length,
+    rejectedByRevalidationCount: input.rejectedByRevalidationCount ?? 0,
     acceptedFindingCount: input.acceptedCount,
-    rejectedFindingCount: input.rejectedCount,
-    needsHumanReviewCount: input.needsReviewCount,
+    rejectedFindingCount: input.rejectedCount + (input.rejectedByRevalidationCount ?? 0),
+    needsHumanReviewCount: 0,
     ...(input.model ? { aggregatorModel: input.model } : {}),
     aggregator: {
       agentId: "moa-aggregator",
@@ -1199,6 +1755,8 @@ function buildScannerMoaModeMetadata(input: {
   rejectedCount: number;
   needsReviewCount: number;
   runtimeMs: number;
+  focusedTaskCount?: number;
+  rejectedByRevalidationCount?: number;
 }): ReportAgentModeMetadata {
   return {
     mode: "scanner-moa-assisted",
@@ -1213,10 +1771,14 @@ function buildScannerMoaModeMetadata(input: {
     agents: [
       ...input.agentRuns,
     ],
+    candidateCount: input.scannerCandidateCount + input.agentCandidateCount,
     candidateFindingCount: input.scannerCandidateCount + input.agentCandidateCount,
+    focusedTaskCount: input.focusedTaskCount ?? input.agentCandidateCount,
+    revalidatedCount: input.findings.length,
+    rejectedByRevalidationCount: input.rejectedByRevalidationCount ?? 0,
     acceptedFindingCount: input.acceptedCount,
-    rejectedFindingCount: input.rejectedCount,
-    needsHumanReviewCount: input.needsReviewCount,
+    rejectedFindingCount: input.rejectedCount + (input.rejectedByRevalidationCount ?? 0),
+    needsHumanReviewCount: 0,
     ...(input.model ? { aggregatorModel: input.model } : {}),
     aggregator: {
       agentId: "moa-aggregator",
@@ -1259,14 +1821,12 @@ function countJudgments(candidates: readonly CandidateFinding[], judgments: read
   const byId = new Map(judgments.map((judgment) => [judgment.candidateId, judgment]));
   let accepted = 0;
   let rejected = 0;
-  let needsReview = 0;
   for (const candidate of candidates) {
-    const verdict = byId.get(candidate.candidateId)?.verdict ?? "needs-review";
+    const verdict = byId.get(candidate.candidateId)?.verdict ?? "rejected";
     if (verdict === "accepted") accepted += 1;
-    else if (verdict === "rejected") rejected += 1;
-    else needsReview += 1;
+    else rejected += 1;
   }
-  return { accepted, rejected, needsReview };
+  return { accepted, rejected, needsReview: 0 };
 }
 
 function dedupeCandidateFindings(findings: readonly Finding[]): Finding[] {
@@ -1299,9 +1859,10 @@ async function completeWithTimeout(
   timeoutMs: number,
 ): ReturnType<ModelProviderAdapter["complete"]> {
   let timer: NodeJS.Timeout | undefined;
+  const providerConfig = config ? { ...config, timeoutMs } : { timeoutMs };
   try {
     return await Promise.race([
-      provider.complete(request, config),
+      provider.complete(request, providerConfig),
       new Promise<Awaited<ReturnType<ModelProviderAdapter["complete"]>>>((_, reject) => {
         timer = setTimeout(() => reject(new Error("product-agent-model-watchdog")), timeoutMs);
         timer.unref();
@@ -1334,11 +1895,27 @@ async function completeRoleWithTimeout(
 }
 
 function modelTimeoutMs(configuredTimeoutMs: number | undefined): number {
-  return Math.min(configuredTimeoutMs ?? 45_000, 90_000);
+  const explicit = boundedEnvInt("HERMSEC_PRODUCT_AGENT_MODEL_TIMEOUT_MS", 0, 30_000, 300_000);
+  if (explicit > 0) {
+    return explicit;
+  }
+  return Math.min(240_000, Math.max(configuredTimeoutMs ?? 0, 180_000));
 }
 
 function productFindingLimit(): number {
   return boundedEnvInt("HERMSEC_PRODUCT_AGENT_FINDING_LIMIT", 40, 1, 200);
+}
+
+function productDiscoveryLimit(): number {
+  return boundedEnvInt("HERMSEC_PRODUCT_AGENT_DISCOVERY_LIMIT", 48, 1, 200);
+}
+
+function productFocusedTaskLimit(): number {
+  return boundedEnvInt("HERMSEC_PRODUCT_AGENT_FOCUSED_TASK_LIMIT", 24, 1, 120);
+}
+
+function roleFocusedTaskLimit(): number {
+  return boundedEnvInt("HERMSEC_PRODUCT_AGENT_ROLE_TASK_LIMIT", 8, 1, 60);
 }
 
 function productCandidateLimit(): number {
@@ -1363,6 +1940,12 @@ function chunkArray<T>(items: readonly T[], size: number): T[][] {
 
 function shortError(message: string): string {
   return message.replace(/\s+/gu, " ").slice(0, 180);
+}
+
+function responseFindingCount(raw: string): number {
+  const object = parseJsonObject(raw);
+  const findings = Array.isArray(object?.findings) ? object.findings : [];
+  return findings.length;
 }
 
 function boundedEnvInt(name: string, fallback: number, min: number, max: number): number {
