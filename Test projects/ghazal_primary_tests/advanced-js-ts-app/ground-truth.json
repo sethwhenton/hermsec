@@ -1,0 +1,140 @@
+{
+  "project": "ghazal-advanced-js-ts-app",
+  "language": "javascript-typescript",
+  "framework": "express",
+  "totalVulnerabilities": 12,
+  "vulnerabilities": [
+    {
+      "id": "GHZ-JSTS-001",
+      "file": "src/server.js",
+      "line": 12,
+      "cwe": "CWE-79",
+      "severity": "medium",
+      "category": "xss",
+      "title": "innerHTML assignment",
+      "description": "User input placed in innerHTML via template literal",
+      "hermsecRule": "hermsec.js.inner-html"
+    },
+    {
+      "id": "GHZ-JSTS-002",
+      "file": "src/server.js",
+      "line": 19,
+      "cwe": "CWE-95",
+      "severity": "critical",
+      "category": "code-injection",
+      "title": "Function constructor",
+      "description": "new Function() used with user-controlled expression",
+      "hermsecRule": "hermsec.js.function-constructor"
+    },
+    {
+      "id": "GHZ-JSTS-003",
+      "file": "src/server.js",
+      "line": 26,
+      "cwe": "CWE-78",
+      "severity": "critical",
+      "category": "command-injection",
+      "title": "child_process spawn with shell:true",
+      "description": "spawn() with shell:true option enables shell injection",
+      "hermsecRule": "hermsec.js.shell-true"
+    },
+    {
+      "id": "GHZ-JSTS-004",
+      "file": "src/server.js",
+      "line": 34,
+      "cwe": "CWE-79",
+      "severity": "medium",
+      "category": "xss",
+      "title": "Unsanitized HTML response",
+      "description": "User input rendered in HTML response without encoding",
+      "hermsecRule": "hermsec.js.unsanitized-html-response"
+    },
+    {
+      "id": "GHZ-JSTS-005",
+      "file": "src/server.js",
+      "line": 42,
+      "cwe": "CWE-78",
+      "severity": "critical",
+      "category": "command-injection",
+      "title": "Command injection via req.query",
+      "description": "User query parameter passed to execSync",
+      "hermsecRule": "hermsec.js.command-injection-input"
+    },
+    {
+      "id": "GHZ-JSTS-006",
+      "file": "src/server.js",
+      "line": 49,
+      "cwe": "CWE-78",
+      "severity": "critical",
+      "category": "command-injection",
+      "title": "Command injection via req.body",
+      "description": "User body parameter passed to execSync",
+      "hermsecRule": "hermsec.js.command-injection-input"
+    },
+    {
+      "id": "GHZ-JSTS-007",
+      "file": "src/server.js",
+      "line": 55,
+      "cwe": "CWE-95",
+      "severity": "critical",
+      "category": "code-injection",
+      "title": "Unsafe eval",
+      "description": "User input passed to eval()",
+      "hermsecRule": "hermsec.js.eval"
+    },
+    {
+      "id": "GHZ-JSTS-008",
+      "file": "src/server.js",
+      "line": 61,
+      "cwe": "CWE-89",
+      "severity": "critical",
+      "category": "sql-injection",
+      "title": "SQL injection",
+      "description": "User input interpolated into SQL query",
+      "hermsecRule": "hermsec.js.sql-dynamic-string"
+    },
+    {
+      "id": "GHZ-JSTS-009",
+      "file": "src/server.js",
+      "line": 67,
+      "cwe": "CWE-22",
+      "severity": "high",
+      "category": "path-traversal",
+      "title": "Path traversal",
+      "description": "User input used in file path",
+      "hermsecRule": "none"
+    },
+    {
+      "id": "GHZ-JSTS-010",
+      "file": "src/server.js",
+      "line": 73,
+      "cwe": "CWE-798",
+      "severity": "high",
+      "category": "hardcoded-secret",
+      "title": "Hardcoded JWT secret",
+      "description": "JWT signing secret hardcoded in source",
+      "hermsecRule": "hermsec.secret.generic"
+    },
+    {
+      "id": "GHZ-JSTS-011",
+      "file": "src/server.js",
+      "line": 77,
+      "cwe": "CWE-942",
+      "severity": "medium",
+      "category": "cors-misconfiguration",
+      "title": "CORS wildcard",
+      "description": "Access-Control-Allow-Origin set to *",
+      "hermsecRule": "hermsec.js.cors-wildcard"
+    },
+    {
+      "id": "GHZ-JSTS-012",
+      "file": "src/server.js",
+      "line": 82,
+      "cwe": "CWE-295",
+      "severity": "high",
+      "category": "tls-disabled",
+      "title": "TLS verification disabled",
+      "description": "NODE_TLS_REJECT_UNAUTHORIZED set to 0",
+      "hermsecRule": "hermsec.js.tls-disabled"
+    }
+  ]
+}

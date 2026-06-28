@@ -1,0 +1,207 @@
+{
+  "benchmark": {
+    "date": "2026-06-22",
+    "tool": "Hermsec V3",
+    "mode": "scanner-only",
+    "scanners": ["hermsec-heuristics", "semgrep", "gitleaks", "bandit", "pip-audit"]
+  },
+  "summary": {
+    "totalProjects": 13,
+    "totalCleanProjects": 7,
+    "totalVulnerabilitiesPlanted": 184,
+    "totalTruePositives": 89,
+    "totalFalseNegatives": 95,
+    "totalFalsePositives": 15,
+    "detectionRate": 0.484,
+    "precision": 0.856,
+    "f1Score": 0.618
+  },
+  "projects": [
+    {
+      "name": "nodejs-express-app",
+      "language": "javascript",
+      "framework": "express",
+      "planted": 20,
+      "detected": 17,
+      "falsePositives": 6,
+      "detectionRate": 0.85,
+      "precision": 0.739
+    },
+    {
+      "name": "python-flaREPLACE_WITH_API_KEY",
+      "language": "python",
+      "framework": "flask",
+      "planted": 21,
+      "detected": 18,
+      "falsePositives": 15,
+      "detectionRate": 0.857,
+      "precision": 0.545
+    },
+    {
+      "name": "java-servlet-app",
+      "language": "java",
+      "framework": "servlet",
+      "planted": 20,
+      "detected": 15,
+      "falsePositives": 4,
+      "detectionRate": 0.75,
+      "precision": 0.789
+    },
+    {
+      "name": "go-web-app",
+      "language": "go",
+      "framework": "net/http",
+      "planted": 12,
+      "detected": 3,
+      "falsePositives": 0,
+      "detectionRate": 0.25,
+      "precision": 1.0
+    },
+    {
+      "name": "php-web-app",
+      "language": "php",
+      "framework": "plain-php",
+      "planted": 12,
+      "detected": 1,
+      "falsePositives": 0,
+      "detectionRate": 0.083,
+      "precision": 1.0
+    },
+    {
+      "name": "ruby-rails-app",
+      "language": "ruby",
+      "framework": "webrick",
+      "planted": 12,
+      "detected": 3,
+      "falsePositives": 0,
+      "detectionRate": 0.25,
+      "precision": 1.0
+    },
+    {
+      "name": "c-cpp-app",
+      "language": "c",
+      "framework": "standard-library",
+      "planted": 12,
+      "detected": 4,
+      "falsePositives": 0,
+      "detectionRate": 0.333,
+      "precision": 1.0
+    },
+    {
+      "name": "csharp-dotnet-app",
+      "language": "csharp",
+      "framework": "dotnet-console",
+      "planted": 12,
+      "detected": 3,
+      "falsePositives": 0,
+      "detectionRate": 0.25,
+      "precision": 1.0
+    },
+    {
+      "name": "rust-web-app",
+      "language": "rust",
+      "framework": "standard-library",
+      "planted": 12,
+      "detected": 2,
+      "falsePositives": 0,
+      "detectionRate": 0.167,
+      "precision": 1.0
+    },
+    {
+      "name": "advanced-js-ts-app",
+      "language": "javascript-typescript",
+      "framework": "express",
+      "planted": 12,
+      "detected": 7,
+      "falsePositives": 0,
+      "detectionRate": 0.583,
+      "precision": 1.0
+    },
+    {
+      "name": "supply-chain-project",
+      "language": "javascript",
+      "framework": "npm",
+      "planted": 12,
+      "detected": 7,
+      "falsePositives": 0,
+      "detectionRate": 0.583,
+      "precision": 1.0
+    },
+    {
+      "name": "docker-ci-project",
+      "language": "configuration",
+      "framework": "docker-github-actions",
+      "planted": 12,
+      "detected": 3,
+      "falsePositives": 0,
+      "detectionRate": 0.25,
+      "precision": 1.0
+    },
+    {
+      "name": "advanced-java-python",
+      "language": "java-python",
+      "framework": "mixed",
+      "planted": 12,
+      "detected": 7,
+      "falsePositives": 0,
+      "detectionRate": 0.6,
+      "precision": 1.0
+    }
+  ],
+  "byCategory": {
+    "command-injection": { "planted": 20, "detected": 15, "rate": 0.75 },
+    "code-injection": { "planted": 7, "detected": 4, "rate": 0.571 },
+    "deserialization": { "planted": 3, "detected": 1, "rate": 0.333 },
+    "supply-chain": { "planted": 8, "detected": 4, "rate": 0.5 },
+    "configuration": { "planted": 9, "detected": 1, "rate": 0.111 },
+    "hardcoded-secret": { "planted": 20, "detected": 10, "rate": 0.5 },
+    "weak-hash": { "planted": 4, "detected": 1, "rate": 0.25 },
+    "tls-disabled": { "planted": 3, "detected": 2, "rate": 0.667 },
+    "sql-injection": { "planted": 14, "detected": 4, "rate": 0.286 },
+    "path-traversal": { "planted": 12, "detected": 0, "rate": 0.0 },
+    "xss": { "planted": 8, "detected": 0, "rate": 0.0 },
+    "information-exposure": { "planted": 4, "detected": 1, "rate": 0.25 },
+    "buffer-overflow": { "planted": 3, "detected": 2, "rate": 0.667 },
+    "format-string": { "planted": 1, "detected": 0, "rate": 0.0 },
+    "weak-random": { "planted": 4, "detected": 1, "rate": 0.25 },
+    "cors-misconfiguration": { "planted": 2, "detected": 0, "rate": 0.0 }
+  },
+  "byLanguage": {
+    "nodejs": { "planted": 20, "detected": 17, "rate": 0.85, "precision": 0.739 },
+    "python": { "planted": 21, "detected": 18, "rate": 0.857, "precision": 0.545 },
+    "java": { "planted": 20, "detected": 15, "rate": 0.75, "precision": 0.789 },
+    "go": { "planted": 12, "detected": 3, "rate": 0.25, "precision": 1.0 },
+    "php": { "planted": 12, "detected": 1, "rate": 0.083, "precision": 1.0 },
+    "ruby": { "planted": 12, "detected": 3, "rate": 0.25, "precision": 1.0 },
+    "c": { "planted": 12, "detected": 4, "rate": 0.333, "precision": 1.0 },
+    "csharp": { "planted": 12, "detected": 3, "rate": 0.25, "precision": 1.0 },
+    "rust": { "planted": 12, "detected": 2, "rate": 0.167, "precision": 1.0 },
+    "javascript-typescript": { "planted": 12, "detected": 7, "rate": 0.583, "precision": 1.0 },
+    "supply-chain": { "planted": 12, "detected": 7, "rate": 0.583, "precision": 1.0 },
+    "configuration": { "planted": 12, "detected": 3, "rate": 0.25, "precision": 1.0 },
+    "java-python-mixed": { "planted": 12, "detected": 7, "rate": 0.6, "precision": 1.0 }
+  },
+  "scannerEffectiveness": {
+    "hermsec-heuristics": { "findings": 35, "truePositives": 25, "falsePositives": 0, "precision": 0.714 },
+    "semgrep": { "findings": 22, "truePositives": 14, "falsePositives": 0, "precision": 0.636 },
+    "gitleaks": { "findings": 9, "truePositives": 6, "falsePositives": 0, "precision": 0.667 },
+    "bandit": { "findings": 12, "truePositives": 6, "falsePositives": 0, "precision": 0.5 }
+  },
+  "hermsecRuleCoverage": {
+    "js-ts": { "total": 10, "tested": 8, "detected": 5 },
+    "python": { "total": 7, "tested": 5, "detected": 4 },
+    "java": { "total": 11, "tested": 6, "detected": 3 },
+    "secrets": { "total": 6, "tested": 3, "detected": 3 },
+    "packages": { "total": 11, "tested": 6, "detected": 2 },
+    "config": { "total": 9, "tested": 3, "detected": 1 }
+  },
+  "cleanProjectFalsePositives": {
+    "nodejs-express-clean": 1,
+    "python-flaREPLACE_WITH_API_KEY": 6,
+    "java-servlet-clean": 8,
+    "go-clean": 0,
+    "php-clean": 0,
+    "ruby-clean": 0,
+    "c-cpp-clean": 0
+  }
+}

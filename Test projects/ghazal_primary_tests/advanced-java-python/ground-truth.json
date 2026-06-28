@@ -1,0 +1,140 @@
+{
+  "project": "ghazal-advanced-java-python",
+  "language": "java-python",
+  "framework": "mixed",
+  "totalVulnerabilities": 12,
+  "vulnerabilities": [
+    {
+      "id": "GHZ-ADV-001",
+      "file": "src/main/java/com/ghazal/VulnerableApp.java",
+      "line": 18,
+      "cwe": "CWE-327",
+      "severity": "high",
+      "category": "weak-crypto",
+      "title": "Weak crypto - DES algorithm",
+      "description": "DES encryption algorithm is cryptographically broken",
+      "hermsecRule": "hermsec.java.crypto"
+    },
+    {
+      "id": "GHZ-ADV-002",
+      "file": "src/main/java/com/ghazal/VulnerableApp.java",
+      "line": 24,
+      "cwe": "CWE-330",
+      "severity": "medium",
+      "category": "weak-random",
+      "title": "Weak random for security token",
+      "description": "java.util.Random used for security-sensitive token generation",
+      "hermsecRule": "hermsec.java.weakrand"
+    },
+    {
+      "id": "GHZ-ADV-003",
+      "file": "src/main/java/com/ghazal/VulnerableApp.java",
+      "line": 30,
+      "cwe": "CWE-22",
+      "severity": "high",
+      "category": "path-traversal",
+      "title": "Path traversal in file read",
+      "description": "User input used in File constructor without validation",
+      "hermsecRule": "hermsec.java.pathtraver"
+    },
+    {
+      "id": "GHZ-ADV-004",
+      "file": "src/main/java/com/ghazal/VulnerableApp.java",
+      "line": 38,
+      "cwe": "CWE-89",
+      "severity": "critical",
+      "category": "sql-injection",
+      "title": "SQL Injection",
+      "description": "User input concatenated into SQL query",
+      "hermsecRule": "hermsec.java.sqli"
+    },
+    {
+      "id": "GHZ-ADV-005",
+      "file": "src/main/java/com/ghazal/VulnerableApp.java",
+      "line": 44,
+      "cwe": "CWE-78",
+      "severity": "critical",
+      "category": "command-injection",
+      "title": "Command Injection via ProcessBuilder",
+      "description": "User input passed to ProcessBuilder",
+      "hermsecRule": "hermsec.java.cmdi"
+    },
+    {
+      "id": "GHZ-ADV-006",
+      "file": "src/main/java/com/ghazal/VulnerableApp.java",
+      "line": 52,
+      "cwe": "CWE-79",
+      "severity": "medium",
+      "category": "xss",
+      "title": "XSS",
+      "description": "User query interpolated into HTML",
+      "hermsecRule": "hermsec.java.xss"
+    },
+    {
+      "id": "GHZ-ADV-007",
+      "file": "src/main/python/app.py",
+      "line": 18,
+      "cwe": "CWE-295",
+      "severity": "high",
+      "category": "tls-disabled",
+      "title": "requests with verify=False",
+      "description": "SSL certificate verification disabled in requests",
+      "hermsecRule": "hermsec.python.verify-false"
+    },
+    {
+      "id": "GHZ-ADV-008",
+      "file": "requirements.txt",
+      "line": 1,
+      "cwe": "CWE-1104",
+      "severity": "medium",
+      "category": "supply-chain",
+      "title": "Unpinned Python dependencies",
+      "description": "All dependencies without version pinning",
+      "hermsecRule": "hermsec.python.unpinned-python"
+    },
+    {
+      "id": "GHZ-ADV-009",
+      "file": "src/main/python/app.py",
+      "line": 24,
+      "cwe": "CWE-89",
+      "severity": "critical",
+      "category": "sql-injection",
+      "title": "SQL Injection (Python)",
+      "description": "User input interpolated into SQL query",
+      "hermsecRule": "hermsec.python.eval-exec"
+    },
+    {
+      "id": "GHZ-ADV-010",
+      "file": "src/main/python/app.py",
+      "line": 30,
+      "cwe": "CWE-78",
+      "severity": "critical",
+      "category": "command-injection",
+      "title": "Command Injection (Python)",
+      "description": "User input passed to subprocess.run with shell=True",
+      "hermsecRule": "hermsec.python.subprocess-shell"
+    },
+    {
+      "id": "GHZ-ADV-011",
+      "file": "src/main/python/app.py",
+      "line": 36,
+      "cwe": "CWE-22",
+      "severity": "high",
+      "category": "path-traversal",
+      "title": "Path Traversal (Python)",
+      "description": "User input used in file path",
+      "hermsecRule": "none"
+    },
+    {
+      "id": "GHZ-ADV-012",
+      "file": "src/main/python/app.py",
+      "line": 42,
+      "cwe": "CWE-95",
+      "severity": "critical",
+      "category": "code-injection",
+      "title": "Unsafe eval (Python)",
+      "description": "User input passed to eval()",
+      "hermsecRule": "hermsec.python.eval-exec"
+    }
+  ]
+}

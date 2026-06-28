@@ -1,0 +1,7 @@
+# VULN: Unpinned dependencies (hermsec.python.unpinned-python)
+flask
+django
+requests
+sqlalchemy
+celery
+redis

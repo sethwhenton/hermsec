@@ -1,0 +1,140 @@
+{
+  "project": "ghazal-supply-chain-project",
+  "language": "javascript",
+  "framework": "npm",
+  "totalVulnerabilities": 12,
+  "vulnerabilities": [
+    {
+      "id": "GHZ-SC-001",
+      "file": "package.json",
+      "line": 5,
+      "cwe": "CWE-95",
+      "severity": "critical",
+      "category": "supply-chain",
+      "title": "Lifecycle scripts - preinstall",
+      "description": "preinstall script runs arbitrary command",
+      "hermsecRule": "hermsec.package.lifecycle-scripts"
+    },
+    {
+      "id": "GHZ-SC-002",
+      "file": "package.json",
+      "line": 6,
+      "cwe": "CWE-798",
+      "severity": "critical",
+      "category": "supply-chain",
+      "title": "Lifecycle scripts - postinstall",
+      "description": "postinstall script exfiltrates GitHub token",
+      "hermsecRule": "hermsec.package.lifecycle-scripts"
+    },
+    {
+      "id": "GHZ-SC-003",
+      "file": "package.json",
+      "line": 12,
+      "cwe": "CWE-829",
+      "severity": "high",
+      "category": "supply-chain",
+      "title": "Git SSH dependency",
+      "description": "Dependency installed via git+ssh://",
+      "hermsecRule": "hermsec.package.git-dependency"
+    },
+    {
+      "id": "GHZ-SC-004",
+      "file": "package.json",
+      "line": 13,
+      "cwe": "CWE-829",
+      "severity": "high",
+      "category": "supply-chain",
+      "title": "GitHub hosted dependency",
+      "description": "Dependency installed from GitHub repository",
+      "hermsecRule": "hermsec.package.github-hosted-dependency"
+    },
+    {
+      "id": "GHZ-SC-005",
+      "file": "package.json",
+      "line": 15,
+      "cwe": "CWE-1104",
+      "severity": "high",
+      "category": "supply-chain",
+      "title": "Unpinned version - latest tag",
+      "description": "Dependency version set to 'latest'",
+      "hermsecRule": "hermsec.package.unpinned-version"
+    },
+    {
+      "id": "GHZ-SC-006",
+      "file": "package.json",
+      "line": 16,
+      "cwe": "CWE-1104",
+      "severity": "medium",
+      "category": "supply-chain",
+      "title": "Wildcard version",
+      "description": "Dependency version set to '*'",
+      "hermsecRule": "hermsec.package.unpinned-version"
+    },
+    {
+      "id": "GHZ-SC-007",
+      "file": "src/index.js",
+      "line": 2,
+      "cwe": "CWE-798",
+      "severity": "high",
+      "category": "hardcoded-secret",
+      "title": "GitHub token exposure",
+      "description": "GitHub personal access token hardcoded",
+      "hermsecRule": "hermsec.secret.github-token"
+    },
+    {
+      "id": "GHZ-SC-008",
+      "file": "src/index.js",
+      "line": 5,
+      "cwe": "CWE-798",
+      "severity": "high",
+      "category": "hardcoded-secret",
+      "title": "Slack token exposure",
+      "description": "Slack bot token hardcoded",
+      "hermsecRule": "hermsec.secret.slack-token"
+    },
+    {
+      "id": "GHZ-SC-009",
+      "file": "src/index.js",
+      "line": 8,
+      "cwe": "CWE-321",
+      "severity": "critical",
+      "category": "hardcoded-secret",
+      "title": "Private key file",
+      "description": "PEM private key file read from disk",
+      "hermsecRule": "hermsec.secret.private-key"
+    },
+    {
+      "id": "GHZ-SC-010",
+      "file": "src/index.js",
+      "line": 12,
+      "cwe": "CWE-78",
+      "severity": "high",
+      "category": "command-injection",
+      "title": "npm install with execSync",
+      "description": "Shell command execution for package installation",
+      "hermsecRule": "none"
+    },
+    {
+      "id": "GHZ-SC-011",
+      "file": "src/index.js",
+      "line": 16,
+      "cwe": "CWE-95",
+      "severity": "critical",
+      "category": "code-injection",
+      "title": "Dynamic require with user input",
+      "description": "require() called with dynamic user-controlled argument",
+      "hermsecRule": "hermsec.js.eval"
+    },
+    {
+      "id": "GHZ-SC-012",
+      "file": "src/index.js",
+      "line": 21,
+      "cwe": "CWE-95",
+      "severity": "critical",
+      "category": "code-injection",
+      "title": "Remote code eval",
+      "description": "eval() used on fetched remote code",
+      "hermsecRule": "hermsec.js.eval"
+    }
+  ]
+}

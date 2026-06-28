@@ -1,0 +1,208 @@
+{
+  "project": "ghazal-nodejs-express-app",
+  "language": "javascript",
+  "framework": "express",
+  "totalVulnerabilities": 20,
+  "vulnerabilities": [
+    {
+      "id": "GHZ-NODE-001",
+      "file": ".env",
+      "line": 1,
+      "cwe": "CWE-798",
+      "severity": "high",
+      "category": "hardcoded-secret",
+      "title": "Hardcoded API key in .env file",
+      "description": "API key committed to version control"
+    },
+    {
+      "id": "GHZ-NODE-002",
+      "file": ".env",
+      "line": 3,
+      "cwe": "CWE-798",
+      "severity": "high",
+      "category": "hardcoded-secret",
+      "title": "Hardcoded database password in .env file",
+      "description": "Database credentials committed to version control"
+    },
+    {
+      "id": "GHZ-NODE-003",
+      "file": "src/server.js",
+      "line": 22,
+      "cwe": "CWE-89",
+      "severity": "critical",
+      "category": "sql-injection",
+      "title": "SQL Injection via string interpolation",
+      "description": "User input directly interpolated into SQL query"
+    },
+    {
+      "id": "GHZ-NODE-004",
+      "file": "src/server.js",
+      "line": 30,
+      "cwe": "CWE-89",
+      "severity": "critical",
+      "category": "sql-injection",
+      "title": "SQL Injection via string concatenation",
+      "description": "User input concatenated into SQL query"
+    },
+    {
+      "id": "GHZ-NODE-005",
+      "file": "src/server.js",
+      "line": 38,
+      "cwe": "CWE-78",
+      "severity": "critical",
+      "category": "command-injection",
+      "title": "Command Injection via exec()",
+      "description": "User-controlled host parameter passed to exec()"
+    },
+    {
+      "id": "GHZ-NODE-006",
+      "file": "src/server.js",
+      "line": 45,
+      "cwe": "CWE-78",
+      "severity": "critical",
+      "category": "command-injection",
+      "title": "Command Injection via exec() with body input",
+      "description": "User-controlled command parameter passed to exec()"
+    },
+    {
+      "id": "GHZ-NODE-007",
+      "file": "src/server.js",
+      "line": 52,
+      "cwe": "CWE-22",
+      "severity": "high",
+      "category": "path-traversal",
+      "title": "Path Traversal in file read",
+      "description": "User input used in path.join without validation"
+    },
+    {
+      "id": "GHZ-NODE-008",
+      "file": "src/server.js",
+      "line": 60,
+      "cwe": "CWE-22",
+      "severity": "high",
+      "category": "path-traversal",
+      "title": "Path Traversal in download endpoint",
+      "description": "User input used in path for file download"
+    },
+    {
+      "id": "GHZ-NODE-009",
+      "file": "src/server.js",
+      "line": 67,
+      "cwe": "CWE-79",
+      "severity": "medium",
+      "category": "xss",
+      "title": "Reflected XSS in search results",
+      "description": "User query reflected in HTML without sanitization"
+    },
+    {
+      "id": "GHZ-NODE-010",
+      "file": "src/server.js",
+      "line": 74,
+      "cwe": "CWE-79",
+      "severity": "medium",
+      "category": "xss",
+      "title": "XSS via user bio in profile",
+      "description": "User-controlled bio rendered in HTML without encoding"
+    },
+    {
+      "id": "GHZ-NODE-011",
+      "file": "src/server.js",
+      "line": 80,
+      "cwe": "CWE-95",
+      "severity": "critical",
+      "category": "code-injection",
+      "title": "Unsafe eval() of user expression",
+      "description": "User input passed directly to eval()"
+    },
+    {
+      "id": "GHZ-NODE-012",
+      "file": "src/server.js",
+      "line": 87,
+      "cwe": "CWE-328",
+      "severity": "medium",
+      "category": "weak-hash",
+      "title": "Weak hash algorithm MD5",
+      "description": "MD5 used for password hashing"
+    },
+    {
+      "id": "GHZ-NODE-013",
+      "file": "src/server.js",
+      "line": 93,
+      "cwe": "CWE-942",
+      "severity": "medium",
+      "category": "cors-misconfiguration",
+      "title": "CORS wildcard origin",
+      "description": "Access-Control-Allow-Origin set to *"
+    },
+    {
+      "id": "GHZ-NODE-014",
+      "file": "src/server.js",
+      "line": 100,
+      "cwe": "CWE-295",
+      "severity": "high",
+      "category": "tls-disabled",
+      "title": "TLS verification disabled globally",
+      "description": "NODE_TLS_REJECT_UNAUTHORIZED set to 0"
+    },
+    {
+      "id": "GHZ-NODE-015",
+      "file": "src/server.js",
+      "line": 104,
+      "cwe": "CWE-209",
+      "severity": "medium",
+      "category": "information-exposure",
+      "title": "Verbose error messages exposed",
+      "description": "Full error stack trace returned to client"
+    },
+    {
+      "id": "GHZ-NODE-016",
+      "file": "src/server.js",
+      "line": 111,
+      "cwe": "CWE-798",
+      "severity": "high",
+      "category": "hardcoded-secret",
+      "title": "Hardcoded JWT secret",
+      "description": "JWT signing secret hardcoded in source"
+    },
+    {
+      "id": "GHZ-NODE-017",
+      "file": "src/server.js",
+      "line": 115,
+      "cwe": "CWE-614",
+      "severity": "medium",
+      "category": "insecure-cookie",
+      "title": "Insecure session cookie configuration",
+      "description": "Cookie without Secure and HttpOnly flags"
+    },
+    {
+      "id": "GHZ-NODE-018",
+      "file": "src/server.js",
+      "line": 123,
+      "cwe": "CWE-601",
+      "severity": "high",
+      "category": "open-redirect",
+      "title": "Open redirect with user input",
+      "description": "Redirect URL controlled by user parameter"
+    },
+    {
+      "id": "GHZ-NODE-019",
+      "file": "src/server.js",
+      "line": 129,
+      "cwe": "CWE-798",
+      "severity": "medium",
+      "category": "hardcoded-secret",
+      "title": "Hardcoded Stripe key",
+      "description": "Payment processing key hardcoded in source"
+    },
+    {
+      "id": "GHZ-NODE-020",
+      "file": "src/server.js",
+      "line": 136,
+      "cwe": "CWE-330",
+      "severity": "medium",
+      "category": "weak-random",
+      "title": "Weak random token generation",
+      "description": "Math.random() used for security token"
+    }
+  ]
+}

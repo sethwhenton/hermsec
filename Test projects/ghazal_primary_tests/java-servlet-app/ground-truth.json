@@ -1,0 +1,237 @@
+{
+  "project": "ghazal-java-servlet-app",
+  "language": "java",
+  "framework": "servlet",
+  "totalVulnerabilities": 20,
+  "vulnerabilities": [
+    {
+      "id": "GHZ-JAVA-001",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 17,
+      "cwe": "CWE-798",
+      "severity": "high",
+      "category": "hardcoded-secret",
+      "title": "Hardcoded database credentials",
+      "description": "Database URL, user, and password hardcoded in source"
+    },
+    {
+      "id": "GHZ-JAVA-002",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 20,
+      "cwe": "CWE-798",
+      "severity": "high",
+      "category": "hardcoded-secret",
+      "title": "Hardcoded API key",
+      "description": "API key hardcoded in source"
+    },
+    {
+      "id": "GHZ-JAVA-003",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 23,
+      "cwe": "CWE-328",
+      "severity": "medium",
+      "category": "weak-hash",
+      "title": "Weak hash algorithm MD5",
+      "description": "MD5 used for password hashing"
+    },
+    {
+      "id": "GHZ-JAVA-004",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 32,
+      "cwe": "CWE-327",
+      "severity": "high",
+      "category": "weak-crypto",
+      "title": "Weak cryptographic algorithm DES",
+      "description": "DES encryption algorithm used (deprecated)"
+    },
+    {
+      "id": "GHZ-JAVA-005",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 39,
+      "cwe": "CWE-330",
+      "severity": "medium",
+      "category": "weak-random",
+      "title": "Weak random token generation",
+      "description": "java.util.Random used for security token"
+    },
+    {
+      "id": "GHZ-JAVA-006",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 52,
+      "cwe": "CWE-89",
+      "severity": "critical",
+      "category": "sql-injection",
+      "title": "SQL Injection via string concatenation",
+      "description": "User input concatenated into SQL query"
+    },
+    {
+      "id": "GHZ-JAVA-007",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 62,
+      "cwe": "CWE-209",
+      "severity": "medium",
+      "category": "information-exposure",
+      "title": "Verbose error messages exposed",
+      "description": "Full exception message and toString() returned to client"
+    },
+    {
+      "id": "GHZ-JAVA-008",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 73,
+      "cwe": "CWE-78",
+      "severity": "critical",
+      "category": "command-injection",
+      "title": "Command Injection via Runtime.exec()",
+      "description": "User-controlled host parameter passed to Runtime.exec()"
+    },
+    {
+      "id": "GHZ-JAVA-009",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 87,
+      "cwe": "CWE-79",
+      "severity": "medium",
+      "category": "xss",
+      "title": "XSS in search results",
+      "description": "User query reflected in HTML without sanitization"
+    },
+    {
+      "id": "GHZ-JAVA-010",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 95,
+      "cwe": "CWE-22",
+      "severity": "high",
+      "category": "path-traversal",
+      "title": "Path Traversal in file read",
+      "description": "User input used in file path without validation"
+    },
+    {
+      "id": "GHZ-JAVA-011",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 107,
+      "cwe": "CWE-90",
+      "severity": "high",
+      "category": "ldap-injection",
+      "title": "LDAP Injection",
+      "description": "User input interpolated into LDAP search filter"
+    },
+    {
+      "id": "GHZ-JAVA-012",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 119,
+      "cwe": "CWE-643",
+      "severity": "high",
+      "category": "xpath-injection",
+      "title": "XPath Injection",
+      "description": "User input interpolated into XPath expression"
+    },
+    {
+      "id": "GHZ-JAVA-013",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 131,
+      "cwe": "CWE-614",
+      "severity": "medium",
+      "category": "insecure-cookie",
+      "title": "Insecure cookie configuration",
+      "description": "Cookie without Secure and HttpOnly flags"
+    },
+    {
+      "id": "GHZ-JAVA-014",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 144,
+      "cwe": "CWE-501",
+      "severity": "medium",
+      "category": "trust-boundary",
+      "title": "Trust boundary violation",
+      "description": "User-controlled data stored in session and trusted"
+    },
+    {
+      "id": "GHZ-JAVA-015",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 155,
+      "cwe": "CWE-78",
+      "severity": "critical",
+      "category": "command-injection",
+      "title": "Command Injection via user-controlled array",
+      "description": "User-controlled parameter values passed to Runtime.exec()"
+    },
+    {
+      "id": "GHZ-JAVA-016",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 167,
+      "cwe": "CWE-502",
+      "severity": "critical",
+      "category": "deserialization",
+      "title": "Deserialization of untrusted data",
+      "description": "ObjectInputStream reads untrusted data from request"
+    },
+    {
+      "id": "GHZ-JAVA-017",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 175,
+      "cwe": "CWE-798",
+      "severity": "high",
+      "category": "hardcoded-secret",
+      "title": "Hardcoded JWT secret",
+      "description": "JWT signing secret hardcoded in source"
+    },
+    {
+      "id": "GHZ-JAVA-018",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 179,
+      "cwe": "CWE-918",
+      "severity": "high",
+      "category": "ssrf",
+      "title": "Server-Side Request Forgery (SSRF)",
+      "description": "User-controlled URL fetched by server"
+    },
+    {
+      "id": "GHZ-JAVA-019",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 190,
+      "cwe": "CWE-611",
+      "severity": "high",
+      "category": "xxe",
+      "title": "XML External Entity (XXE) injection",
+      "description": "XML parser does not disable external entities"
+    },
+    {
+      "id": "GHZ-JAVA-020",
+      "file": "src/main/java/com/ghazal/GhazalServlet.java",
+      "line": 198,
+      "cwe": "CWE-601",
+      "severity": "high",
+      "category": "open-redirect",
+      "title": "Open redirect with user input",
+      "description": "Redirect URL controlled by user parameter"
+    }
+  ],
+  "dependencyVulnerabilities": [
+    {
+      "id": "GHZ-JAVA-DEP-001",
+      "file": "pom.xml",
+      "cwe": "CWE-502",
+      "severity": "critical",
+      "category": "vulnerable-dependency",
+      "title": "Log4j 2.14.1 - Log4Shell (CVE-2021-44228)",
+      "description": "Critical RCE vulnerability in Apache Log4j"
+    },
+    {
+      "id": "GHZ-JAVA-DEP-002",
+      "file": "pom.xml",
+      "cwe": "CWE-502",
+      "severity": "high",
+      "category": "vulnerable-dependency",
+      "title": "jackson-databind 2.13.0 - Known deserialization CVEs",
+      "description": "Multiple deserialization vulnerabilities"
+    },
+    {
+      "id": "GHZ-JAVA-DEP-003",
+      "file": "pom.xml",
+      "cwe": "CWE-502",
+      "severity": "critical",
+      "category": "vulnerable-dependency",
+      "title": "commons-collections 3.2.1 - Deserialization (CVE-2015-6420)",
+      "description": "Known deserialization gadget chain"
+    }
+  ]
+}

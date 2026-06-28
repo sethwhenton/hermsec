@@ -1,0 +1,20 @@
+# VULN 5: github-actions-permissions (hermsec.config.github-actions-permissions)
+# VULN 6: github-actions-untrusted (hermsec.config.github-actions-untrusted)
+
+name: CI
+
+# VULN 5: Missing permissions block (runs with default token permissions)
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # VULN 6: Using untrusted third-party action
+      - uses: third-party/action@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/checkout@v4
+      - run: npm install
+      - run: npm test

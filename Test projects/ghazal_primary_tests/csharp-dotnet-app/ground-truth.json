@@ -1,0 +1,128 @@
+{
+  "project": "ghazal-csharp-dotnet-app",
+  "language": "csharp",
+  "framework": "dotnet-console",
+  "totalVulnerabilities": 12,
+  "vulnerabilities": [
+    {
+      "id": "GHZ-CSHARP-001",
+      "file": "src/Program.cs",
+      "line": 13,
+      "cwe": "CWE-798",
+      "severity": "high",
+      "category": "hardcoded-secret",
+      "title": "Hardcoded database credentials",
+      "description": "Database host, username, and password hardcoded"
+    },
+    {
+      "id": "GHZ-CSHARP-002",
+      "file": "src/Program.cs",
+      "line": 16,
+      "cwe": "CWE-798",
+      "severity": "high",
+      "category": "hardcoded-secret",
+      "title": "Hardcoded API key",
+      "description": "API key hardcoded in constant"
+    },
+    {
+      "id": "GHZ-CSHARP-003",
+      "file": "src/Program.cs",
+      "line": 21,
+      "cwe": "CWE-89",
+      "severity": "critical",
+      "category": "sql-injection",
+      "title": "SQL Injection via concatenation",
+      "description": "User input concatenated into SQL query"
+    },
+    {
+      "id": "GHZ-CSHARP-004",
+      "file": "src/Program.cs",
+      "line": 28,
+      "cwe": "CWE-89",
+      "severity": "critical",
+      "category": "sql-injection",
+      "title": "SQL Injection via interpolation",
+      "description": "User input interpolated into SQL query"
+    },
+    {
+      "id": "GHZ-CSHARP-005",
+      "file": "src/Program.cs",
+      "line": 34,
+      "cwe": "CWE-78",
+      "severity": "critical",
+      "category": "command-injection",
+      "title": "Command Injection via Process.Start",
+      "description": "User input passed to Process.Start arguments"
+    },
+    {
+      "id": "GHZ-CSHARP-006",
+      "file": "src/Program.cs",
+      "line": 48,
+      "cwe": "CWE-78",
+      "severity": "critical",
+      "category": "command-injection",
+      "title": "Command Injection via cmd.exe",
+      "description": "User input passed to cmd.exe /c"
+    },
+    {
+      "id": "GHZ-CSHARP-007",
+      "file": "src/Program.cs",
+      "line": 62,
+      "cwe": "CWE-22",
+      "severity": "high",
+      "category": "path-traversal",
+      "title": "Path Traversal in file read",
+      "description": "User input used in file path"
+    },
+    {
+      "id": "GHZ-CSHARP-008",
+      "file": "src/Program.cs",
+      "line": 69,
+      "cwe": "CWE-22",
+      "severity": "high",
+      "category": "path-traversal",
+      "title": "Path Traversal via File.ReadAllText",
+      "description": "User input used in file path"
+    },
+    {
+      "id": "GHZ-CSHARP-009",
+      "file": "src/Program.cs",
+      "line": 76,
+      "cwe": "CWE-79",
+      "severity": "medium",
+      "category": "xss",
+      "title": "XSS via string interpolation",
+      "description": "User query interpolated into HTML"
+    },
+    {
+      "id": "GHZ-CSHARP-010",
+      "file": "src/Program.cs",
+      "line": 82,
+      "cwe": "CWE-328",
+      "severity": "medium",
+      "category": "weak-hash",
+      "title": "Weak hash MD5",
+      "description": "MD5 used for password hashing"
+    },
+    {
+      "id": "GHZ-CSHARP-011",
+      "file": "src/Program.cs",
+      "line": 96,
+      "cwe": "CWE-798",
+      "severity": "high",
+      "category": "hardcoded-secret",
+      "title": "Hardcoded connection string",
+      "description": "Database credentials in connection string"
+    },
+    {
+      "id": "GHZ-CSHARP-012",
+      "file": "src/Program.cs",
+      "line": 102,
+      "cwe": "CWE-209",
+      "severity": "medium",
+      "category": "information-exposure",
+      "title": "Information exposure in error handler",
+      "description": "Full exception details returned to caller"
+    }
+  ]
+}
