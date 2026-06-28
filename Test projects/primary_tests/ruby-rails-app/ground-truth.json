@@ -1,0 +1,128 @@
+{
+  "project": "vulntest-ruby-rails-app",
+  "language": "ruby",
+  "framework": "webrick",
+  "totalVulnerabilities": 12,
+  "vulnerabilities": [
+    {
+      "id": "GHZ-RUBY-001",
+      "file": "app/server.rb",
+      "line": 9,
+      "cwe": "CWE-798",
+      "severity": "high",
+      "category": "hardcoded-secret",
+      "title": "Hardcoded database credentials",
+      "description": "Database host, username, and password hardcoded"
+    },
+    {
+      "id": "GHZ-RUBY-002",
+      "file": "app/server.rb",
+      "line": 15,
+      "cwe": "CWE-798",
+      "severity": "high",
+      "category": "hardcoded-secret",
+      "title": "Hardcoded API key",
+      "description": "API key hardcoded in constant"
+    },
+    {
+      "id": "GHZ-RUBY-003",
+      "file": "app/server.rb",
+      "line": 20,
+      "cwe": "CWE-89",
+      "severity": "critical",
+      "category": "sql-injection",
+      "title": "SQL Injection via interpolation",
+      "description": "User input interpolated into SQL query"
+    },
+    {
+      "id": "GHZ-RUBY-004",
+      "file": "app/server.rb",
+      "line": 27,
+      "cwe": "CWE-89",
+      "severity": "critical",
+      "category": "sql-injection",
+      "title": "SQL Injection via concatenation",
+      "description": "User input concatenated into SQL query"
+    },
+    {
+      "id": "GHZ-RUBY-005",
+      "file": "app/server.rb",
+      "line": 33,
+      "cwe": "CWE-78",
+      "severity": "critical",
+      "category": "command-injection",
+      "title": "Command Injection via backticks",
+      "description": "User input interpolated into backtick command"
+    },
+    {
+      "id": "GHZ-RUBY-006",
+      "file": "app/server.rb",
+      "line": 39,
+      "cwe": "CWE-78",
+      "severity": "critical",
+      "category": "command-injection",
+      "title": "Command Injection via system",
+      "description": "User input passed to system()"
+    },
+    {
+      "id": "GHZ-RUBY-007",
+      "file": "app/server.rb",
+      "line": 45,
+      "cwe": "CWE-78",
+      "severity": "critical",
+      "category": "command-injection",
+      "title": "Command Injection via exec",
+      "description": "User input passed to exec()"
+    },
+    {
+      "id": "GHZ-RUBY-008",
+      "file": "app/server.rb",
+      "line": 52,
+      "cwe": "CWE-22",
+      "severity": "high",
+      "category": "path-traversal",
+      "title": "Path Traversal in file read",
+      "description": "User input used in file path"
+    },
+    {
+      "id": "GHZ-RUBY-009",
+      "file": "app/server.rb",
+      "line": 58,
+      "cwe": "CWE-22",
+      "severity": "high",
+      "category": "path-traversal",
+      "title": "Path Traversal via require",
+      "description": "User input used in require path"
+    },
+    {
+      "id": "GHZ-RUBY-010",
+      "file": "app/server.rb",
+      "line": 64,
+      "cwe": "CWE-79",
+      "severity": "medium",
+      "category": "xss",
+      "title": "XSS via string interpolation",
+      "description": "User query interpolated into HTML"
+    },
+    {
+      "id": "GHZ-RUBY-011",
+      "file": "app/server.rb",
+      "line": 70,
+      "cwe": "CWE-502",
+      "severity": "critical",
+      "category": "deserialization",
+      "title": "Unsafe YAML deserialization",
+      "description": "User input passed to YAML.load"
+    },
+    {
+      "id": "GHZ-RUBY-012",
+      "file": "app/server.rb",
+      "line": 77,
+      "cwe": "CWE-209",
+      "severity": "medium",
+      "category": "information-exposure",
+      "title": "Information exposure in error handler",
+      "description": "Full error backtrace returned to client"
+    }
+  ]
+}
