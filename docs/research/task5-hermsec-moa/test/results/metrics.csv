@@ -1,0 +1,7 @@
+scenario_id,scenario_label,assist_mode,model_tier,provider,models,runs,ok_runs,expected,actual,true_positive,false_positive,false_negative,precision,recall,f1,duration_ms
+deep-assisted,Deep assisted,deep-assisted,efficient-default,opencode-go,deepseek-v4-flash,20,20,184,204,85,119,99,0.4167,0.462,0.4381,715417
+single-agent,Single Agent,single-agent,efficient-default,opencode-go,deepseek-v4-flash,20,20,184,206,126,80,58,0.6117,0.6848,0.6462,269004
+moa-low,MoA Low,moa-assisted,low,opencode-go,deepseek-v4-flash;mimo-v2.5;deepseek-v4-pro;minimax-m3,20,20,184,151,91,60,93,0.6026,0.4946,0.5433,1177830
+moa-high,MoA High,moa-assisted,high,opencode-go,deepseek-v4-flash;mimo-v2.5;deepseek-v4-pro;minimax-m3,20,20,184,124,84,40,100,0.6774,0.4565,0.5455,1560089
+scanner-moa-low,Scanner + MoA Low,scanner-moa-assisted,low,opencode-go,deepseek-v4-flash;mimo-v2.5;deepseek-v4-pro;minimax-m3,20,17,184,146,88,58,96,0.6027,0.4783,0.5333,4415772
+scanner-moa-high,Scanner + MoA High,scanner-moa-assisted,high,opencode-go,deepseek-v4-flash;mimo-v2.5;deepseek-v4-pro;minimax-m3,20,20,184,227,157,70,27,0.6916,0.8533,0.764,2320843
