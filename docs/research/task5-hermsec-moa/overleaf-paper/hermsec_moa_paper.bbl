@@ -2,7 +2,7 @@
 %%% Do NOT edit. File created by BibTeX with style
 %%% ACM-Reference-Format-Journals [18-Jan-2012].
 
-\begin{thebibliography}{21}
+\begin{thebibliography}{22}
 
 %%% ====================================================================
 %%% NOTE TO THE USER: you can override these defaults by providing
@@ -142,6 +142,17 @@
 \newblock \bibinfo{title}{{Hermes Agent}}.
 \newblock
   \bibinfo{howpublished}{\url{https://github.com/nousresearch/hermes-agent}}.
+\newblock
+\shownote{Accessed: 2026-06-27}.
+\newblock
+
+
+\bibitem[{NVIDIA}(2026)]%
+        {nemotron3ultra}
+\bibfield{author}{\bibinfo{person}{{NVIDIA}}.} \bibinfo{year}{2026}\natexlab{}.
+\newblock \bibinfo{title}{{Nemotron-3 Ultra: A Large Language Model for
+  Multi-Domain Tasks}}.
+\newblock \bibinfo{howpublished}{\url{https://arxiv.org/abs/2606.15007}}.
 \newblock
 \shownote{Accessed: 2026-06-27}.
 \newblock

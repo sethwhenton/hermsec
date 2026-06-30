@@ -20,45 +20,45 @@ Warning--empty address in pearce2022asleep
 Warning--page numbers missing in both pages and numpages fields in pearce2022asleep
 Warning--empty publisher in zitser2004testing
 Warning--empty address in zitser2004testing
-You've used 21 entries,
+You've used 22 entries,
             6273 wiz_defined-function locations,
-            1609 strings with 21093 characters,
-and the built_in function-call counts, 17519 in all, are:
-= -- 1990
-> -- 547
+            1613 strings with 21218 characters,
+and the built_in function-call counts, 18242 in all, are:
+= -- 2074
+> -- 564
 < -- 0
-+ -- 166
-- -- 207
-* -- 1092
-:= -- 1878
-add.period$ -- 117
-call.type$ -- 21
-change.case$ -- 129
-chr.to.int$ -- 20
-cite$ -- 29
-duplicate$ -- 1612
-empty$ -- 1146
-format.name$ -- 239
-if$ -- 3922
++ -- 170
+- -- 214
+* -- 1130
+:= -- 1956
+add.period$ -- 123
+call.type$ -- 22
+change.case$ -- 134
+chr.to.int$ -- 21
+cite$ -- 30
+duplicate$ -- 1682
+empty$ -- 1196
+format.name$ -- 246
+if$ -- 4081
 int.to.chr$ -- 3
 int.to.str$ -- 1
 missing$ -- 19
-newline$ -- 230
-num.names$ -- 146
-pop$ -- 566
+newline$ -- 240
+num.names$ -- 153
+pop$ -- 586
 preamble$ -- 1
-purify$ -- 294
+purify$ -- 307
 quote$ -- 0
-skip$ -- 644
+skip$ -- 673
 stack$ -- 0
-substring$ -- 1207
-swap$ -- 101
+substring$ -- 1262
+swap$ -- 105
 text.length$ -- 0
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 610
+type$ -- 640
 warning$ -- 8
-while$ -- 132
+while$ -- 139
 width$ -- 0
-write$ -- 442
+write$ -- 462
 (There were 8 warnings)
