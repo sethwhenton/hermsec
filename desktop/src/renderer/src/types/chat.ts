@@ -30,6 +30,7 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   createdAt: number;
+  scrollBehavior?: "readable";
   copyAction?: {
     label: string;
     text: string;

@@ -21,11 +21,24 @@ export function MessageList({ onQuestionsSubmit }: MessageListProps) {
   const scanRunning = useReportStore((s) => s.scanRunning);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef(new Map<string, HTMLDivElement>());
   const nearBottomRef = useRef(true);
   const suppressJumpUntilRef = useRef(0);
+  const focusedReadableItemRef = useRef<string | undefined>(undefined);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
 
   useEffect(() => {
+    const readableItemId = latestReadableFocusId(chatItems);
+    if (readableItemId && readableItemId !== focusedReadableItemRef.current) {
+      focusedReadableItemRef.current = readableItemId;
+      nearBottomRef.current = false;
+      setShowJumpToLatest(true);
+      const firstFrame = window.requestAnimationFrame(() => {
+        focusReadableItem(readableItemId, scrollRef.current, itemRefs.current);
+      });
+      return () => window.cancelAnimationFrame(firstFrame);
+    }
+
     if (nearBottomRef.current) {
       suppressJumpUntilRef.current = Date.now() + 350;
       setShowJumpToLatest(false);
@@ -56,6 +69,14 @@ export function MessageList({ onQuestionsSubmit }: MessageListProps) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   };
 
+  const setItemRef = (id: string) => (node: HTMLDivElement | null) => {
+    if (node) {
+      itemRefs.current.set(id, node);
+    } else {
+      itemRefs.current.delete(id);
+    }
+  };
+
   return (
     <div className="relative h-full min-h-0">
       <div
@@ -66,44 +87,51 @@ export function MessageList({ onQuestionsSubmit }: MessageListProps) {
         <div className="mx-auto flex w-full max-w-[760px] flex-col gap-5">
           {chatItems.map((item) => {
             if (item.kind === "message") {
-              return <MessageBubble key={item.id} message={item.message} />;
+              return (
+                <div key={item.id} ref={setItemRef(item.id)} className="w-full">
+                  <MessageBubble message={item.message} />
+                </div>
+              );
             }
             if (item.kind === "doctor") {
               return (
-                <DoctorCard
-                  key={item.id}
-                  result={item.result}
-                  progress={item.progress}
-                  running={item.running}
-                  error={item.error}
-                />
+                <div key={item.id} ref={setItemRef(item.id)} className="w-full">
+                  <DoctorCard
+                    result={item.result}
+                    progress={item.progress}
+                    running={item.running}
+                    error={item.error}
+                  />
+                </div>
               );
             }
             if (item.kind === "scan-progress") {
               return (
-                <ScanProgressDisclosure
-                  key={item.id}
-                  events={item.events}
-                  running={item.running}
-                  visible
-                />
+                <div key={item.id} ref={setItemRef(item.id)} className="w-full">
+                  <ScanProgressDisclosure
+                    events={item.events}
+                    running={item.running}
+                    visible
+                  />
+                </div>
               );
             }
             return (
-              <AgentQuestions
-                key={item.id}
-                questions={item.questions}
-                submitted={item.submitted}
-                answers={item.answers}
-                onSubmit={(answers) => {
-                  updateChatItem(item.id, (current) =>
-                    current.kind === "questions"
-                      ? { ...current, submitted: true, answers }
-                      : current,
-                  );
-                  onQuestionsSubmit?.(answers);
-                }}
-              />
+              <div key={item.id} ref={setItemRef(item.id)} className="w-full">
+                <AgentQuestions
+                  questions={item.questions}
+                  submitted={item.submitted}
+                  answers={item.answers}
+                  onSubmit={(answers) => {
+                    updateChatItem(item.id, (current) =>
+                      current.kind === "questions"
+                        ? { ...current, submitted: true, answers }
+                        : current,
+                    );
+                    onQuestionsSubmit?.(answers);
+                  }}
+                />
+              </div>
             );
           })}
           <ThinkingRow visible={isAgentThinking && !scanRunning} status={agentStatus} />
@@ -127,4 +155,39 @@ export function MessageList({ onQuestionsSubmit }: MessageListProps) {
       ) : null}
     </div>
   );
+}
+
+function latestReadableFocusId(chatItems: ReturnType<typeof useUiStore.getState>["chatItems"]): string | undefined {
+  for (let index = chatItems.length - 1; index >= 0; index -= 1) {
+    const item = chatItems[index];
+    if (item.kind === "message" && item.message.scrollBehavior === "readable") {
+      return item.id;
+    }
+  }
+  return undefined;
+}
+
+function focusReadableItem(
+  itemId: string,
+  scrollEl: HTMLDivElement | null,
+  refs: Map<string, HTMLDivElement>,
+) {
+  const target = refs.get(itemId);
+  if (!scrollEl || !target) return;
+
+  const scrollRect = scrollEl.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  const targetTop = scrollEl.scrollTop + targetRect.top - scrollRect.top;
+  const readingOffset = Math.min(
+    Math.max(scrollEl.clientHeight * 0.3, 120),
+    Math.max(scrollEl.clientHeight * 0.42, 160),
+  );
+  const maxScrollTop = Math.max(0, scrollEl.scrollHeight - scrollEl.clientHeight);
+  const top = Math.max(0, Math.min(maxScrollTop, targetTop - readingOffset));
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  scrollEl.scrollTo({
+    top,
+    behavior: reduceMotion ? "auto" : "smooth",
+  });
 }

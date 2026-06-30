@@ -85,6 +85,9 @@ type AssistantAnswer = string | {
   copyAction?: ChatMessage["copyAction"];
   reportLink?: ChatMessage["reportLink"];
 };
+type PushMessageOptions = {
+  scrollBehavior?: ChatMessage["scrollBehavior"];
+};
 type ParsedAutomation = Pick<AutomationSettings, "frequency" | "intervalDays" | "time" | "scanMode">;
 type HermsecActionRoute = "scan" | "automation" | "capabilities" | "doctor" | "fix-prompt" | "chat";
 interface ActiveHermsecAction {
@@ -133,6 +136,7 @@ export function ChatView() {
     content: string,
     reportLinkOrLinks?: ChatMessage["reportLink"] | ChatMessage["reportLinks"],
     copyAction?: ChatMessage["copyAction"],
+    options?: PushMessageOptions,
   ) => {
     const reportLinks = Array.isArray(reportLinkOrLinks) ? reportLinkOrLinks : undefined;
     const reportLink = !Array.isArray(reportLinkOrLinks) ? reportLinkOrLinks : undefined;
@@ -144,6 +148,7 @@ export function ChatView() {
         role,
         content,
         createdAt: Date.now(),
+        ...(options?.scrollBehavior ? { scrollBehavior: options.scrollBehavior } : {}),
         ...(reportLink ? { reportLink } : {}),
         ...(reportLinks ? { reportLinks } : {}),
         ...(copyAction ? { copyAction } : {}),
@@ -507,7 +512,9 @@ export function ChatView() {
 
       if (route === "capabilities") {
         setAgentStatus("Preparing Hermsec capabilities...");
-        await pushMessage("assistant", buildHermsecAboutAnswer(activeProjectPath()));
+        await pushMessage("assistant", buildHermsecAboutAnswer(activeProjectPath()), undefined, undefined, {
+          scrollBehavior: "readable",
+        });
         await pushCapabilityQuestions();
         if (!isActionCurrent(actionId)) return;
         return;
