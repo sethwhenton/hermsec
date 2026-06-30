@@ -35,7 +35,7 @@ export function Modal({ open, onClose, title, children, className, bodyClassName
               aria-modal="true"
               aria-label={title}
               className={cn(
-                "pointer-events-auto flex max-h-[calc(100vh-4rem)] w-full max-w-md flex-col rounded-lg border border-border bg-surface p-4 shadow-2xl",
+                "pointer-events-auto flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-lg border border-border bg-surface p-4 shadow-2xl",
                 className,
               )}
               initial={{ opacity: 0, scale: 0.97, y: 10 }}
@@ -49,7 +49,7 @@ export function Modal({ open, onClose, title, children, className, bodyClassName
                   <X className="h-4 w-4" />
                 </Button>
               </div>
-              <div className={cn("min-h-0", bodyClassName)}>{children}</div>
+              <div className={cn("min-h-0 overflow-y-auto", bodyClassName)}>{children}</div>
             </motion.div>
           </motion.div>
         </>

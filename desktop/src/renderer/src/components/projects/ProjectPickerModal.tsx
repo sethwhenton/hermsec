@@ -71,7 +71,7 @@ export function ProjectPickerModal({
   return (
     <Modal open={open} onClose={onClose} title="Start from project">
       <div className="space-y-3">
-        <div className="max-h-[340px] overflow-y-auto rounded-xl border border-border bg-background p-1">
+        <div className="max-h-[min(340px,42vh)] overflow-y-auto rounded-xl border border-border bg-background p-1">
           {loading ? (
             <div className="px-3 py-6 text-center text-sm text-muted">Loading projects...</div>
           ) : error ? (
