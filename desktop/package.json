@@ -1,6 +1,6 @@
 {
   "name": "hermsec-v3",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Hermsec desktop security scanning workspace",
   "author": "Hermsec",
   "private": true,
