@@ -1,4 +1,5 @@
 import { CalendarClock, CheckCircle2, Clock, PlayCircle, X } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { normalizeScanAssistMode } from "@/lib/scanModes";
@@ -34,8 +35,7 @@ export function AutomationPopover({ open, onClose }: AutomationPopoverProps) {
   const [scanMode, setScanMode] = useState<HermsecProductScanAssistMode>(
     normalizeScanAssistMode(settings?.automation.scanMode ?? settings?.general.scanMode),
   );
-
-  if (!open) return null;
+  const reduceMotion = useReducedMotion();
 
   const save = async () => {
     await updateSettings({
@@ -86,7 +86,19 @@ export function AutomationPopover({ open, onClose }: AutomationPopoverProps) {
     : "Paused until you enable it";
 
   return (
-    <div className="absolute right-0 top-10 z-50 w-[min(380px,calc(100vw-24px))] overflow-hidden rounded-[24px] border border-border/80 bg-surface-elevated/95 text-foreground shadow-[0_24px_90px_rgba(0,0,0,0.52)] backdrop-blur">
+    <AnimatePresence initial={false}>
+      {open && (
+        <motion.div
+          className="absolute right-0 top-10 z-50 w-[min(380px,calc(100vw-24px))] origin-top-right overflow-hidden rounded-[24px] border border-border/80 bg-surface-elevated/95 text-foreground shadow-[0_24px_90px_rgba(0,0,0,0.52)] backdrop-blur will-change-[opacity,transform]"
+          initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.975, y: -6 }}
+          animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+          exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.985, y: -4 }}
+          transition={
+            reduceMotion
+              ? { duration: 0.01 }
+              : { duration: 0.16, ease: [0.23, 1, 0.32, 1] }
+          }
+        >
       <div className="h-px bg-gradient-to-r from-transparent via-foreground/20 to-transparent" />
       <div className="max-h-[calc(100vh-72px)] overflow-y-auto p-4">
         <div className="mb-4 flex items-start justify-between gap-3">
@@ -222,7 +234,9 @@ export function AutomationPopover({ open, onClose }: AutomationPopoverProps) {
           </Button>
         </div>
       </div>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 

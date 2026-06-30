@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Archive,
   Clock,
@@ -455,19 +455,40 @@ function SidebarButton({
       onClick={onClick}
       title={collapsed ? label : undefined}
       className={cn(
-        "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors",
+        "flex w-full items-center gap-2 overflow-hidden rounded-md px-2 py-1.5 text-xs transition-colors",
+        collapsed ? "justify-center" : "",
         active ? "bg-white/8 text-foreground" : "text-muted hover:bg-white/5 hover:text-foreground",
       )}
     >
-      {icon}
-      {!collapsed && (
-        <>
-          <span className="flex-1 text-left">{label}</span>
-          {badge && (
-            <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-muted">{badge}</span>
-          )}
-        </>
-      )}
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center">{icon}</span>
+      <AnimatePresence initial={false}>
+        {!collapsed && (
+          <motion.span
+            key={`${label}-label`}
+            initial={{ opacity: 0, x: -6 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -4 }}
+            transition={{ duration: 0.14, delay: 0.05, ease: [0.23, 1, 0.32, 1] }}
+            className="min-w-0 flex-1 truncate whitespace-nowrap text-left"
+          >
+            {label}
+          </motion.span>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {!collapsed && badge && (
+          <motion.span
+            key={`${label}-badge`}
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.12, delay: 0.07, ease: [0.23, 1, 0.32, 1] }}
+            className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-muted"
+          >
+            {badge}
+          </motion.span>
+        )}
+      </AnimatePresence>
     </button>
   );
 }

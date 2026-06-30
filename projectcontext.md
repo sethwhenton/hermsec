@@ -8,6 +8,8 @@ Hermsec V3 is the active product. It is a local-first, CVE-aware desktop securit
 - `src/` is the reusable CLI, scanner, scheduler, report, intel, and model-provider engine used by the desktop app.
 - `tests/` covers the root engine and CLI behavior.
 - `.github/workflows/windows-release.yml` and `.github/workflows/macos-release.yml` package the desktop app from `desktop/` and publish release assets when `v*` tags are pushed.
+- `PRODUCT.md` captures the Hermsec product/register brief for UI polish tools and future design handoffs.
+- `.impeccable/live/config.json` points Impeccable live mode at `desktop/src/renderer/index.html` for renderer UI iteration.
 
 New product work should start in `desktop/` unless the request is specifically about the reusable root CLI/scanner engine.
 
