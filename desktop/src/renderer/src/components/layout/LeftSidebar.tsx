@@ -165,13 +165,17 @@ export function LeftSidebar() {
 
   return (
     <motion.aside
-      className="flex h-full shrink-0 flex-col border-r border-border-subtle bg-surface"
+      className="flex h-full shrink-0 flex-col overflow-hidden border-r border-border-subtle bg-surface"
       animate={{ width: sidebarCollapsed ? 52 : 240 }}
-      transition={{ type: "spring", stiffness: 420, damping: 38 }}
+      transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
     >
-      <div className="flex items-center justify-between px-2 py-2">
-        {!sidebarCollapsed && <div aria-hidden="true" />}
-        <Button variant="ghost" size="icon" onClick={toggleSidebar}>
+      <div className="px-2 py-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleSidebar}
+          className={cn(sidebarCollapsed ? "w-full justify-start px-2" : "ml-auto")}
+        >
           {sidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
         </Button>
       </div>
@@ -456,7 +460,6 @@ function SidebarButton({
       title={collapsed ? label : undefined}
       className={cn(
         "flex w-full items-center gap-2 overflow-hidden rounded-md px-2 py-1.5 text-xs transition-colors",
-        collapsed ? "justify-center" : "",
         active ? "bg-white/8 text-foreground" : "text-muted hover:bg-white/5 hover:text-foreground",
       )}
     >

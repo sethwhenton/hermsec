@@ -172,7 +172,7 @@ export function AgentsSettings() {
           title="Single Agent Inspection"
           description="One model inspects bounded repository evidence directly. HermSec scanners do not run in this mode."
         >
-          <div className="grid gap-4">
+          <div className="grid gap-5">
             <Field label="Inspection model" hint="Defaults to the active chat model when no model is selected.">
               <Select
                 value={singleModelValue}
@@ -181,6 +181,7 @@ export function AgentsSettings() {
                   updateSingle({ providerId: selected?.providerId, modelId: selected?.modelId });
                 }}
                 options={modelOptions}
+                className="h-10 w-full rounded-xl bg-background/70"
               />
             </Field>
 
@@ -196,6 +197,7 @@ export function AgentsSettings() {
                     { value: "balanced", label: "Balanced" },
                     { value: "deep", label: "Deep" },
                   ]}
+                  className="h-10 w-full rounded-xl bg-background/70"
                 />
               </Field>
               <Field label="Tool rounds" hint="Caps repeated inspection loops.">
@@ -207,6 +209,7 @@ export function AgentsSettings() {
                   onChange={(event) =>
                     updateSingle({ maxToolRounds: clampInteger(Number(event.target.value), 1, 12) })
                   }
+                  className="h-10 rounded-xl bg-background/70"
                 />
               </Field>
             </div>
@@ -218,10 +221,15 @@ export function AgentsSettings() {
           title="MoA Inspection"
           description="MoA is scanner-free. Scanner + MoA uses this same panel after scanners run independently."
         >
-          <div className="grid gap-4">
+          <div className="grid gap-5">
             <div>
-              <div className="mb-2 text-xs font-medium text-foreground">Preset</div>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="mb-2.5 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-xs font-medium text-foreground">Preset</div>
+                  <div className="mt-0.5 text-[11px] text-muted">Choose the review depth for agent-only inspection.</div>
+                </div>
+              </div>
+              <div className="grid gap-2.5 sm:grid-cols-2">
                 {moaPresets.map((preset) => {
                   const active = agents.moa.presetId === preset.id;
                   return (
@@ -237,17 +245,17 @@ export function AgentsSettings() {
                         })
                       }
                       className={cn(
-                        "min-h-28 rounded-lg border px-3 py-3 text-left transition-colors duration-150 ease-out",
+                        "min-h-28 rounded-2xl border px-3.5 py-3.5 text-left transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-[0.99]",
                         active
-                          ? "border-accent/45 bg-accent-muted text-foreground"
-                          : "border-border bg-background text-muted hover:border-foreground/20 hover:bg-white/[0.04] hover:text-foreground",
+                          ? "border-accent/50 bg-accent-muted text-foreground shadow-[0_14px_34px_rgba(37,99,235,0.08)]"
+                          : "border-border/80 bg-surface-elevated/65 text-muted hover:border-foreground/20 hover:bg-surface-elevated hover:text-foreground",
                       )}
                     >
                       <span className="block text-xs font-semibold">{preset.label}</span>
                       <span className="mt-1 block text-[11px] leading-4 text-muted-foreground">
                         {preset.description}
                       </span>
-                      <span className="mt-3 flex flex-wrap gap-1">
+                      <span className="mt-3 flex flex-wrap gap-1.5">
                         <Badge>{Math.max(1, preset.panelSize - 2)} specialists</Badge>
                         <Badge>judge</Badge>
                         <Badge>aggregator</Badge>
@@ -259,29 +267,30 @@ export function AgentsSettings() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-border-subtle bg-background p-3">
-              <div className="mb-3">
+            <div className="rounded-2xl border border-border/80 bg-surface-elevated/60 p-3.5 shadow-[0_18px_60px_rgba(0,0,0,0.16)]">
+              <div className="mb-3.5 flex flex-col gap-1">
                 <div className="text-xs font-semibold text-foreground">Panel models</div>
-                <div className="mt-1 text-[11px] leading-4 text-muted">
+                <div className="max-w-2xl text-[11px] leading-4 text-muted">
                   Assign a model to each MoA task. These selections apply to MoA and Scanner + MoA.
                 </div>
               </div>
-              <div className="grid gap-2">
+              <div className="grid gap-2.5">
                 {moaRoleModels.map((role) => {
                   const selection = agents.moa.roleModels?.[role.id];
                   return (
                     <div
                       key={role.id}
-                      className="grid gap-2 rounded-md border border-border-subtle bg-surface/60 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_minmax(220px,300px)] sm:items-center"
+                      className="grid gap-3 rounded-xl border border-border/70 bg-background/55 px-3.5 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(240px,320px)] sm:items-center"
                     >
                       <div className="min-w-0">
                         <div className="text-xs font-medium text-foreground">{role.label}</div>
-                        <div className="mt-0.5 text-[11px] leading-4 text-muted">{role.description}</div>
+                        <div className="mt-1 text-[11px] leading-4 text-muted">{role.description}</div>
                       </div>
                       <Select
                         value={composeModelValue(selection?.providerId, selection?.modelId)}
                         onChange={(value) => updateMoaRoleModel(role.id, splitModelValue(value))}
                         options={modelOptions}
+                        className="h-10 w-full rounded-xl bg-surface-elevated/95"
                       />
                     </div>
                   );
@@ -307,9 +316,9 @@ function SettingsCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-border bg-surface p-4">
-      <div className="mb-4 flex items-start gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-surface-elevated text-accent">
+    <section className="overflow-hidden rounded-2xl border border-border/80 bg-surface p-4 shadow-[0_20px_80px_rgba(0,0,0,0.12)]">
+      <div className="mb-5 flex items-start gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-surface-elevated text-accent shadow-[0_10px_28px_rgba(0,0,0,0.22)]">
           {icon}
         </span>
         <div className="min-w-0">
@@ -332,10 +341,10 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block space-y-1.5">
-      <span className="text-xs font-medium text-foreground">{label}</span>
+    <label className="block">
+      <span className="mb-2 block text-xs font-medium text-foreground">{label}</span>
       {children}
-      {hint ? <span className="block text-[11px] leading-4 text-muted">{hint}</span> : null}
+      {hint ? <span className="mt-2 block text-[11px] leading-4 text-muted">{hint}</span> : null}
     </label>
   );
 }
