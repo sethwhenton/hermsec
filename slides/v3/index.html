@@ -5,9 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>HermSec V3 Slides</title>
   <style>
-    @import url("https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@80..125,400..900&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap");
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
 
-    /* === VIEWPORT BASE: FIXED 16:9 STAGE === */
     :root {
       --stage-w: 1920;
       --stage-h: 1080;
@@ -27,259 +26,137 @@
       --shadow: 0 34px 120px rgba(0, 0, 0, 0.54);
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
-    html,
-    body {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      overflow: hidden;
+    html, body {
+      width: 100%; height: 100%; margin: 0; overflow: hidden;
       background:
         radial-gradient(circle at 18% 12%, rgba(69, 215, 255, 0.12), transparent 28%),
         radial-gradient(circle at 86% 82%, rgba(61, 128, 255, 0.16), transparent 30%),
         linear-gradient(135deg, #05070a 0%, #070a0f 58%, #0a0d12 100%);
       color: var(--text);
-      font-family: "Archivo", sans-serif;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    button {
-      font: inherit;
-    }
+    button { font: inherit; }
 
     .viewport {
-      position: fixed;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      overflow: hidden;
+      position: fixed; inset: 0; display: grid; place-items: center; overflow: hidden;
       background:
-        linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+        linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
       background-size: 80px 80px;
     }
 
     .stage {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: calc(var(--stage-w) * 1px);
-      height: calc(var(--stage-h) * 1px);
-      overflow: hidden;
-      transform-origin: center center;
-      background: #06080c;
-      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 30px 90px rgba(0, 0, 0, 0.55);
+      position: absolute; left: 50%; top: 50%;
+      width: calc(var(--stage-w) * 1px); height: calc(var(--stage-h) * 1px);
+      overflow: hidden; transform-origin: center center; background: #06080c;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 30px 90px rgba(0,0,0,0.55);
     }
 
     .slide {
-      position: absolute;
-      inset: 0;
-      width: 1920px;
-      height: 1080px;
-      padding: 86px 94px;
-      overflow: hidden;
-      visibility: hidden;
-      opacity: 0;
-      pointer-events: none;
+      position: absolute; inset: 0; width: 1920px; height: 1080px;
+      padding: 86px 94px; overflow: hidden;
+      visibility: hidden; opacity: 0; pointer-events: none;
       transform: translateY(18px) scale(0.992);
       transition: opacity 440ms ease, transform 520ms ease, visibility 0s linear 520ms;
       background:
-        radial-gradient(circle at 12% 20%, rgba(61, 128, 255, 0.14), transparent 22%),
-        radial-gradient(circle at 92% 18%, rgba(69, 215, 255, 0.08), transparent 24%),
+        radial-gradient(circle at 12% 20%, rgba(61,128,255,0.14), transparent 22%),
+        radial-gradient(circle at 92% 18%, rgba(69,215,255,0.08), transparent 24%),
         linear-gradient(135deg, #06080c 0%, #080b11 56%, #05070a 100%);
     }
 
     .slide.active {
-      visibility: visible;
-      opacity: 1;
-      pointer-events: auto;
-      transform: translateY(0) scale(1);
-      transition-delay: 0s;
+      visibility: visible; opacity: 1; pointer-events: auto;
+      transform: translateY(0) scale(1); transition-delay: 0s;
     }
 
     .slide::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
+      content: ""; position: absolute; inset: 0; pointer-events: none;
       background:
-        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-        linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px);
+        linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px),
+        linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px);
       background-size: 96px 96px;
-      mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.7), transparent 76%);
+      mask-image: linear-gradient(90deg, rgba(0,0,0,0.7), transparent 76%);
       opacity: 0.38;
     }
 
-    .slide > * {
-      position: relative;
-      z-index: 1;
-    }
+    .slide > * { position: relative; z-index: 1; }
 
     .slide-number {
-      position: absolute;
-      right: 86px;
-      bottom: 60px;
-      z-index: 5;
+      position: absolute; right: 86px; bottom: 60px; z-index: 5;
       font-family: "IBM Plex Mono", monospace;
-      color: rgba(215, 225, 242, 0.75);
-      font-size: 28px;
-      letter-spacing: 0.04em;
+      color: rgba(215,225,242,0.75); font-size: 28px; letter-spacing: 0.04em;
     }
 
     .brand {
-      display: inline-flex;
-      align-items: center;
-      gap: 18px;
-      color: #dce8ff;
-      font-weight: 800;
-      font-size: 25px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-    }
-
-    .brand img {
-      width: 34px;
-      height: 34px;
-      object-fit: contain;
+      display: inline-flex; align-items: center; gap: 18px;
+      color: #dce8ff; font-weight: 800; font-size: 25px;
+      letter-spacing: 0.12em; text-transform: uppercase;
     }
 
     .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 16px;
-      margin-bottom: 34px;
-      color: #acb8cd;
-      font-family: "IBM Plex Mono", monospace;
-      font-size: 23px;
-      font-weight: 600;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
+      display: inline-flex; align-items: center; gap: 16px;
+      margin-bottom: 34px; color: #acb8cd;
+      font-family: "IBM Plex Mono", monospace; font-size: 23px;
+      font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
     }
 
     .eyebrow::before {
-      content: "";
-      width: 78px;
-      height: 2px;
+      content: ""; width: 78px; height: 2px;
       background: linear-gradient(90deg, var(--cyan), transparent);
     }
 
-    h1,
-    h2,
-    h3,
-    p {
-      margin: 0;
-    }
+    h1, h2, h3, p { margin: 0; }
 
     h1 {
-      max-width: 1430px;
-      font-size: 118px;
-      line-height: 0.92;
-      letter-spacing: 0;
-      font-weight: 900;
-      font-stretch: 116%;
+      max-width: 1430px; font-size: 118px; line-height: 0.92;
+      letter-spacing: 0; font-weight: 900; font-stretch: 116%;
     }
 
     h2 {
-      max-width: 1240px;
-      font-size: 92px;
-      line-height: 0.98;
-      letter-spacing: 0;
-      font-weight: 900;
-      font-stretch: 112%;
+      max-width: 1240px; font-size: 92px; line-height: 0.98;
+      letter-spacing: 0; font-weight: 900; font-stretch: 112%;
     }
 
-    h3 {
-      font-size: 35px;
-      line-height: 1.04;
-      font-weight: 850;
-    }
+    h3 { font-size: 35px; line-height: 1.04; font-weight: 850; }
 
     .lead {
-      max-width: 930px;
-      margin-top: 34px;
-      color: #cbd5e6;
-      font-size: 36px;
-      line-height: 1.28;
-      font-weight: 500;
+      max-width: 930px; margin-top: 34px; color: #cbd5e6;
+      font-size: 36px; line-height: 1.28; font-weight: 500;
     }
 
-    .muted {
-      color: var(--muted);
-    }
-
-    .mono {
-      font-family: "IBM Plex Mono", monospace;
-    }
-
-    .serif {
-      font-family: "Instrument Serif", serif;
-      font-weight: 400;
-      font-style: italic;
-    }
+    .muted { color: var(--muted); }
+    .mono { font-family: "IBM Plex Mono", monospace; }
 
     .pill {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 44px;
-      padding: 0 20px;
-      border: 1px solid rgba(208, 222, 244, 0.15);
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.04);
-      color: #ccd7e8;
-      font-family: "IBM Plex Mono", monospace;
-      font-size: 18px;
-      font-weight: 600;
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 44px; padding: 0 20px;
+      border: 1px solid rgba(208,222,244,0.15); border-radius: 999px;
+      background: rgba(255,255,255,0.04); color: #ccd7e8;
+      font-family: "IBM Plex Mono", monospace; font-size: 18px; font-weight: 600;
     }
 
-    .image-shell {
-      border: 1px solid rgba(220, 232, 255, 0.19);
-      border-radius: 32px;
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.025)),
-        rgba(10, 13, 19, 0.82);
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
-
-    .image-shell img {
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .under-list {
-      display: grid;
-      gap: 38px;
-    }
+    .under-list { display: grid; gap: 38px; }
 
     .under-item {
       padding-bottom: 24px;
-      border-bottom: 2px solid rgba(85, 170, 255, 0.42);
+      border-bottom: 2px solid rgba(85,170,255,0.42);
     }
 
     .under-item strong {
-      display: block;
-      margin-bottom: 12px;
-      font-size: 35px;
-      line-height: 1.05;
-      font-weight: 850;
+      display: block; margin-bottom: 12px;
+      font-size: 35px; line-height: 1.05; font-weight: 850;
     }
 
     .under-item span {
-      display: block;
-      color: #acb7ca;
-      font-size: 27px;
-      line-height: 1.33;
-      font-weight: 500;
+      display: block; color: #acb7ca;
+      font-size: 27px; line-height: 1.33; font-weight: 500;
     }
 
     .reveal {
-      opacity: 0;
-      transform: translateY(24px);
+      opacity: 0; transform: translateY(24px);
     }
 
     .active .reveal {
@@ -293,888 +170,619 @@
     .active .reveal:nth-child(6) { animation-delay: 360ms; }
 
     @keyframes rise {
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      to { opacity: 1; transform: translateY(0); }
     }
 
-    /* === SLIDE 1: HERO === */
+    /* === HERO === */
     .hero {
-      padding-top: 58px;
-      text-align: center;
+      padding-top: 58px; text-align: center;
       background:
-        radial-gradient(circle at 50% 12%, rgba(69, 215, 255, 0.16), transparent 27%),
+        radial-gradient(circle at 50% 12%, rgba(69,215,255,0.16), transparent 27%),
         linear-gradient(180deg, #06080c 0%, #080c12 48%, #0b111a 100%);
     }
 
-    .hero .brand {
-      justify-content: center;
-      margin-bottom: 34px;
-    }
+    .hero .brand { justify-content: center; margin-bottom: 34px; }
 
     .hero h1 {
-      max-width: 1560px;
-      margin: 0 auto;
-      font-size: 105px;
-      line-height: 0.94;
+      max-width: 1560px; margin: 0 auto;
+      font-size: 105px; line-height: 0.94;
     }
 
     .hero .subline {
-      max-width: 1000px;
-      margin: 28px auto 0;
-      color: #d0d9eb;
-      font-size: 31px;
-      line-height: 1.34;
+      max-width: 1000px; margin: 28px auto 0;
+      color: #d0d9eb; font-size: 31px; line-height: 1.34;
     }
 
-    .hero-shot {
-      position: absolute;
-      left: 250px;
-      right: 250px;
-      bottom: -2px;
-      height: 570px;
-      border-radius: 34px 34px 0 0;
-      overflow: hidden;
-      border: 2px solid rgba(226, 238, 255, 0.28);
-      box-shadow: 0 -10px 80px rgba(69, 215, 255, 0.1), 0 34px 110px rgba(0, 0, 0, 0.72);
-      background: #07090d;
+    .hero .stats-row {
+      display: flex; justify-content: center; gap: 60px;
+      margin-top: 50px;
     }
 
-    .hero-shot img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      object-position: center top;
-      opacity: 0.95;
+    .hero .stat { text-align: center; }
+
+    .hero .stat b {
+      display: block; font-size: 64px; color: var(--cyan);
     }
 
-    .hero-shot::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(180deg, transparent 48%, rgba(6, 8, 12, 0.22));
-      pointer-events: none;
+    .hero .stat span {
+      display: block; margin-top: 8px; color: #aeb9ca;
+      font-family: "IBM Plex Mono", monospace; font-size: 18px;
+      text-transform: uppercase; letter-spacing: 0.08em;
     }
 
-    /* === SLIDE 2: WHY === */
-    .why {
-      display: grid;
-      grid-template-columns: 0.94fr 1.06fr;
-      gap: 88px;
-      align-items: center;
-    }
+    /* === TWO-COL LAYOUTS === */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 72px; align-items: center; }
+    .two-col-start { display: grid; grid-template-columns: 1fr 1fr; gap: 72px; align-items: start; }
 
-    .why .quote {
-      margin-top: 54px;
-      padding-left: 30px;
+    .quote {
+      margin-top: 54px; padding-left: 30px;
       border-left: 3px solid var(--cyan);
-      color: #dfe8f6;
-      font-family: "Instrument Serif", serif;
-      font-size: 54px;
-      line-height: 1.08;
+      color: #dfe8f6; font-size: 48px; line-height: 1.1; font-weight: 500; font-style: italic;
     }
 
-    .why .under-list {
-      margin-top: 38px;
-    }
-
-    /* === SLIDE 3: FEATURES === */
-    .features {
-      padding-right: 0;
-      display: grid;
-      grid-template-columns: 640px 1fr;
-      gap: 70px;
-      align-items: start;
-    }
-
-    .features h2 {
-      font-size: 82px;
-      line-height: 0.94;
-      max-width: 570px;
-    }
-
-    .features .lead {
-      max-width: 560px;
-      margin-top: 24px;
-      font-size: 28px;
-      line-height: 1.22;
-    }
-
-    .features .under-list {
-      margin-top: 30px;
-      gap: 18px;
-    }
-
-    .features .under-item {
-      padding-bottom: 13px;
-    }
-
-    .features .under-item strong {
-      margin-bottom: 7px;
-      font-size: 25px;
-    }
-
-    .features .under-item span {
-      font-size: 19px;
-      line-height: 1.22;
-    }
-
-    .features-shot {
-      position: absolute;
-      right: -160px;
-      top: 245px;
-      width: 1120px;
-      height: 625px;
-      transform: rotate(-1deg);
-    }
-
-    .features-shot img {
-      object-position: left top;
-    }
-
-    .features-shot.scan-modes-shot img {
-      object-fit: cover;
-      object-position: 52% 58%;
-      transform: scale(1.16);
-      transform-origin: 52% 58%;
-    }
-
-    .features-shot .caption {
-      position: absolute;
-      left: 36px;
-      bottom: 20px;
-      display: flex;
-      gap: 24px;
-      color: #bfcaDD;
-      font-size: 21px;
-    }
-
-    /* === SLIDE 4: PIPELINE === */
-    .pipeline h2 {
-      max-width: 1180px;
-      font-size: 76px;
-      line-height: 0.96;
-    }
-
-    .pipeline .lead {
-      max-width: 1040px;
-      margin-top: 22px;
-      font-size: 29px;
-      line-height: 1.22;
-    }
-
-    .pipeline .grid {
-      display: grid;
-      grid-template-columns: 1.08fr 0.92fr;
-      gap: 72px;
-      align-items: center;
-      margin-top: 28px;
-    }
-
-    .pipeline .map {
-      display: grid;
-      gap: 14px;
-    }
-
+    /* === PIPELINE === */
     .map-row {
-      display: grid;
-      grid-template-columns: 210px 1fr;
-      align-items: center;
-      gap: 18px;
-      min-height: 64px;
-      padding: 14px 20px;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: rgba(255, 255, 255, 0.035);
+      display: grid; grid-template-columns: 180px 1fr;
+      align-items: center; gap: 18px; min-height: 64px;
+      padding: 14px 20px; border: 1px solid var(--line);
+      border-radius: 18px; background: rgba(255,255,255,0.035);
     }
 
-    .map-row strong {
-      font-size: 21px;
-      color: #eef3ff;
-    }
+    .map-row strong { font-size: 21px; color: #eef3ff; }
+    .map-row span { color: #aeb9ca; font-size: 19px; line-height: 1.22; }
 
-    .map-row span {
-      color: #aeb9ca;
-      font-size: 19px;
-      line-height: 1.22;
-    }
+    /* === MODES === */
+    .mode-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 78px; align-items: start; margin-top: 28px; }
+    .mode-rail { display: grid; gap: 18px; }
+    .mode { padding: 0 0 15px; border-bottom: 2px solid rgba(69,215,255,0.35); }
+    .mode strong { display: block; font-size: 28px; margin-bottom: 7px; }
+    .mode span { display: block; max-width: 690px; color: #acb8ca; font-size: 20px; line-height: 1.24; }
 
-    .pipeline-shot {
-      height: 560px;
-    }
+    .flow-board { display: grid; gap: 12px; padding: 26px; border: 1px solid var(--line); border-radius: 28px; background: rgba(255,255,255,0.035); }
+    .flow-line { display: grid; grid-template-columns: 160px 1fr; gap: 16px; align-items: center; padding: 13px 0; border-bottom: 1px solid rgba(215,226,244,0.12); }
+    .flow-line:last-child { border-bottom: 0; }
+    .flow-line b { color: #eaf1ff; font-size: 20px; }
+    .flow-line span { color: #aeb9ca; font-family: "IBM Plex Mono", monospace; font-size: 16px; line-height: 1.24; }
 
-    /* === SLIDE 5: MODES === */
-    .modes {
-      background:
-        radial-gradient(circle at 80% 20%, rgba(61, 128, 255, 0.18), transparent 27%),
-        linear-gradient(135deg, #06080c, #0a0d13 70%);
-    }
+    /* === METHOD === */
+    .method-card { padding: 38px; border: 1px solid var(--line); border-radius: 28px; background: rgba(255,255,255,0.035); }
+    .method-card h3 { margin-bottom: 18px; }
 
-    .mode-layout {
-      display: grid;
-      grid-template-columns: 0.9fr 1.1fr;
-      gap: 78px;
-      align-items: start;
-      margin-top: 28px;
-    }
+    .metric-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 26px; }
+    .metric-pair div { padding: 26px; border-radius: 22px; background: rgba(69,215,255,0.08); border: 1px solid rgba(69,215,255,0.18); }
+    .metric-pair b { display: block; font-size: 54px; line-height: 1; }
+    .metric-pair span { display: block; margin-top: 8px; color: #aeb9ca; font-family: "IBM Plex Mono", monospace; font-size: 17px; text-transform: uppercase; letter-spacing: 0.08em; }
 
-    .mode-rail {
-      display: grid;
-      gap: 18px;
-    }
+    .model-list { margin-top: 34px; display: grid; gap: 18px; }
+    .model-list div { display: flex; justify-content: space-between; gap: 24px; padding-bottom: 16px; border-bottom: 1px solid rgba(215,226,244,0.14); color: #d8e2f1; font-size: 24px; }
+    .model-list code { color: var(--amber); font-family: "IBM Plex Mono", monospace; font-size: 20px; }
 
-    .mode {
-      padding: 0 0 15px;
-      border-bottom: 2px solid rgba(69, 215, 255, 0.35);
-    }
+    /* === RESULTS === */
+    .results .content { display: grid; grid-template-columns: 1fr 1fr; gap: 66px; align-items: end; margin-top: 42px; }
+    .bars { display: grid; gap: 22px; }
+    .bar-row { display: grid; grid-template-columns: 260px 1fr 110px; align-items: center; gap: 24px; }
+    .bar-row .label { color: #d9e3f3; font-size: 24px; font-weight: 750; }
+    .track { height: 48px; border-radius: 999px; background: rgba(255,255,255,0.06); border: 1px solid rgba(210,224,246,0.14); overflow: hidden; }
+    .fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--blue), var(--cyan)); box-shadow: 0 0 34px rgba(69,215,255,0.27); }
+    .bar-row.best .fill { background: linear-gradient(90deg, var(--amber), var(--green)); box-shadow: 0 0 34px rgba(75,229,139,0.24); }
+    .bar-row .value { font-family: "IBM Plex Mono", monospace; color: #eef5ff; font-size: 24px; }
 
-    .mode strong {
-      display: block;
-      font-size: 28px;
-      margin-bottom: 7px;
-    }
+    .winner { padding: 44px; border: 1px solid rgba(247,201,102,0.32); border-radius: 30px; background: radial-gradient(circle at 92% 10%, rgba(247,201,102,0.16), transparent 34%), rgba(255,255,255,0.045); }
+    .winner .big { font-size: 112px; line-height: 0.88; font-weight: 900; color: #fff8dd; }
+    .winner p { margin-top: 28px; color: #c9d3e5; font-size: 30px; line-height: 1.3; }
+    .winner .mini-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 34px; }
+    .winner .mini-stats div { padding: 20px; border-radius: 18px; background: rgba(0,0,0,0.24); border: 1px solid rgba(255,255,255,0.1); }
+    .winner .mini-stats b { display: block; font-size: 34px; }
+    .winner .mini-stats span { display: block; margin-top: 5px; color: #9eabba; font-family: "IBM Plex Mono", monospace; font-size: 15px; text-transform: uppercase; }
 
-    .mode span {
-      display: block;
-      max-width: 690px;
-      color: #acb8ca;
-      font-size: 20px;
-      line-height: 1.24;
-    }
+    /* === COMPARISON / TAKEAWAYS === */
+    .comparison-card { padding: 30px; border: 1px solid var(--line); border-radius: 24px; background: rgba(255,255,255,0.035); }
+    .comparison-card h3 { margin-bottom: 20px; font-size: 28px; }
+    .comparison-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid rgba(215,226,244,0.12); }
+    .comparison-row:last-child { border-bottom: 0; }
+    .comparison-row .mode-name { color: #d8e2f1; font-size: 20px; }
+    .comparison-row .mode-val { font-family: "IBM Plex Mono", monospace; font-size: 22px; font-weight: 700; }
+    .comparison-row .mode-val.best { color: var(--green); }
 
-    .flow-board {
-      display: grid;
-      gap: 12px;
-      padding: 26px;
-      border: 1px solid var(--line);
-      border-radius: 28px;
-      background: rgba(255, 255, 255, 0.035);
-    }
+    /* === FUTURE / THREATS === */
+    .threat-card { padding: 30px; border: 1px solid rgba(255,107,125,0.3); border-radius: 24px; background: rgba(255,107,125,0.06); }
+    .threat-card h3 { margin-bottom: 16px; font-size: 26px; color: var(--danger); }
+    .threat-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,107,125,0.15); }
+    .threat-item:last-child { border-bottom: 0; }
+    .threat-item span { color: #d8e2f1; font-size: 19px; line-height: 1.4; }
 
-    .flow-line {
-      display: grid;
-      grid-template-columns: 160px 1fr;
-      gap: 16px;
-      align-items: center;
-      padding: 13px 0;
-      border-bottom: 1px solid rgba(215, 226, 244, 0.12);
-    }
+    /* === QUESTIONS === */
+    .questions { padding-top: 58px; text-align: center; background: radial-gradient(circle at 50% 8%, rgba(69,215,255,0.17), transparent 26%), linear-gradient(180deg, #05070a 0%, #070a0f 100%); }
+    .questions .brand { justify-content: center; margin-bottom: 22px; }
+    .questions h2 { margin: 0 auto; max-width: 1200px; font-size: 158px; line-height: 0.88; }
+    .questions .contact { margin-top: 60px; color: #aeb9ca; font-size: 28px; line-height: 1.6; }
 
-    .flow-line:last-child {
-      border-bottom: 0;
-    }
-
-    .flow-line b {
-      color: #eaf1ff;
-      font-size: 20px;
-    }
-
-    .flow-line span {
-      color: #aeb9ca;
-      font-family: "IBM Plex Mono", monospace;
-      font-size: 16px;
-      line-height: 1.24;
-    }
-
-    .modes h2 {
-      max-width: 1180px;
-      font-size: 82px;
-    }
-
-    .modes .lead {
-      margin-top: 24px;
-      font-size: 30px;
-      line-height: 1.22;
-    }
-
-    /* === SLIDE 6: METHODOLOGY === */
-    .method {
-      display: grid;
-      grid-template-columns: 1fr 640px;
-      gap: 76px;
-      align-items: center;
-    }
-
-    .method-card {
-      padding: 38px;
-      border: 1px solid var(--line);
-      border-radius: 28px;
-      background: rgba(255, 255, 255, 0.035);
-    }
-
-    .method-card h3 {
-      margin-bottom: 18px;
-    }
-
-    .metric-pair {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 18px;
-      margin-top: 26px;
-    }
-
-    .metric-pair div {
-      padding: 26px;
-      border-radius: 22px;
-      background: rgba(69, 215, 255, 0.08);
-      border: 1px solid rgba(69, 215, 255, 0.18);
-    }
-
-    .metric-pair b {
-      display: block;
-      font-size: 54px;
-      line-height: 1;
-    }
-
-    .metric-pair span {
-      display: block;
-      margin-top: 8px;
-      color: #aeb9ca;
-      font-family: "IBM Plex Mono", monospace;
-      font-size: 17px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .model-list {
-      margin-top: 34px;
-      display: grid;
-      gap: 18px;
-    }
-
-    .model-list div {
-      display: flex;
-      justify-content: space-between;
-      gap: 24px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid rgba(215, 226, 244, 0.14);
-      color: #d8e2f1;
-      font-size: 24px;
-    }
-
-    .model-list code {
-      color: var(--amber);
-      font-family: "IBM Plex Mono", monospace;
-      font-size: 20px;
-    }
-
-    /* === SLIDE 7: RESULTS === */
-    .results .content {
-      display: grid;
-      grid-template-columns: 1.04fr 0.96fr;
-      gap: 66px;
-      align-items: end;
-      margin-top: 42px;
-    }
-
-    .bars {
-      display: grid;
-      gap: 22px;
-    }
-
-    .bar-row {
-      display: grid;
-      grid-template-columns: 260px 1fr 110px;
-      align-items: center;
-      gap: 24px;
-    }
-
-    .bar-row .label {
-      color: #d9e3f3;
-      font-size: 24px;
-      font-weight: 750;
-    }
-
-    .track {
-      height: 48px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(210, 224, 246, 0.14);
-      overflow: hidden;
-    }
-
-    .fill {
-      height: 100%;
-      border-radius: inherit;
-      background: linear-gradient(90deg, var(--blue), var(--cyan));
-      box-shadow: 0 0 34px rgba(69, 215, 255, 0.27);
-    }
-
-    .bar-row.best .fill {
-      background: linear-gradient(90deg, var(--amber), var(--green));
-      box-shadow: 0 0 34px rgba(75, 229, 139, 0.24);
-    }
-
-    .bar-row .value {
-      font-family: "IBM Plex Mono", monospace;
-      color: #eef5ff;
-      font-size: 24px;
-    }
-
-    .winner {
-      padding: 44px;
-      border: 1px solid rgba(247, 201, 102, 0.32);
-      border-radius: 30px;
-      background:
-        radial-gradient(circle at 92% 10%, rgba(247, 201, 102, 0.16), transparent 34%),
-        rgba(255, 255, 255, 0.045);
-    }
-
-    .winner .big {
-      font-size: 112px;
-      line-height: 0.88;
-      font-weight: 900;
-      color: #fff8dd;
-    }
-
-    .winner p {
-      margin-top: 28px;
-      color: #c9d3e5;
-      font-size: 30px;
-      line-height: 1.3;
-    }
-
-    .winner .mini-stats {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 14px;
-      margin-top: 34px;
-    }
-
-    .mini-stats div {
-      padding: 20px;
-      border-radius: 18px;
-      background: rgba(0, 0, 0, 0.24);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .mini-stats b {
-      display: block;
-      font-size: 34px;
-    }
-
-    .mini-stats span {
-      display: block;
-      margin-top: 5px;
-      color: #9eabba;
-      font-family: "IBM Plex Mono", monospace;
-      font-size: 15px;
-      text-transform: uppercase;
-    }
-
-    /* === SLIDE 8: TAKEAWAYS === */
-    .takeaways {
-      display: grid;
-      grid-template-columns: 1fr 700px;
-      gap: 74px;
-      align-items: center;
-    }
-
-    .takeaways h2 {
-      font-size: 78px;
-      line-height: 0.98;
-    }
-
-    .takeaways .image-shell {
-      height: 585px;
-      transform: rotate(1deg);
-    }
-
-    .takeaways .under-list {
-      margin-top: 34px;
-      gap: 24px;
-    }
-
-    .takeaways .under-item {
-      padding-bottom: 18px;
-    }
-
-    .takeaways .under-item strong {
-      font-size: 28px;
-    }
-
-    .takeaways .under-item span {
-      font-size: 22px;
-      line-height: 1.24;
-    }
-
-    /* === SLIDE 9: FUTURE === */
-    .future {
-      display: grid;
-      grid-template-columns: 0.95fr 1.05fr;
-      gap: 72px;
-      align-items: center;
-    }
-
-    .future .under-list {
-      margin-top: 30px;
-      gap: 20px;
-    }
-
-    .future .lead {
-      margin-top: 22px;
-      font-size: 28px;
-      line-height: 1.2;
-    }
-
-    .future .under-item {
-      padding-bottom: 14px;
-    }
-
-    .future .under-item strong {
-      font-size: 27px;
-      margin-bottom: 7px;
-    }
-
-    .future .under-item span {
-      font-size: 21px;
-      line-height: 1.23;
-    }
-
-    .future .image-shell {
-      height: 600px;
-      transform: rotate(-1.2deg);
-    }
-
-    .future .doctor-shot img {
-      object-fit: cover;
-      object-position: 58% 48%;
-      transform: scale(1.18);
-      transform-origin: 58% 48%;
-    }
-
-    /* === SLIDE 10: QUESTIONS === */
-    .questions {
-      padding-top: 58px;
-      text-align: center;
-      background:
-        radial-gradient(circle at 50% 8%, rgba(69, 215, 255, 0.17), transparent 26%),
-        linear-gradient(180deg, #05070a 0%, #070a0f 100%);
-    }
-
-    .questions .brand {
-      justify-content: center;
-      margin-bottom: 22px;
-    }
-
-    .questions h2 {
-      margin: 0 auto;
-      max-width: 1200px;
-      font-size: 158px;
-      line-height: 0.88;
-    }
-
-    .questions-shot {
-      position: absolute;
-      left: 135px;
-      right: 135px;
-      bottom: -142px;
-      height: 660px;
-      border-radius: 34px 34px 0 0;
-    }
-
-    .questions-shot img {
-      object-position: center top;
-    }
+    /* === BACKUP SLIDE TABLE === */
+    .full-table { width: 100%; border-collapse: collapse; font-size: 20px; margin-top: 36px; }
+    .full-table th, .full-table td { padding: 11px 10px; border-bottom: 1px solid rgba(215,226,244,0.12); }
+    .full-table th { text-align: center; padding: 14px 10px; color: var(--cyan); font-family: "IBM Plex Mono", monospace; font-size: 15px; }
+    .full-table th:first-child, .full-table td:first-child { text-align: left; }
+    .full-table td { text-align: center; color: #d8e2f1; }
+    .full-table tr.highlight { background: rgba(75,229,139,0.08); }
+    .full-table td.best, .full-table td.best-green { color: var(--green); font-weight: 700; }
 
     /* === DECK UI === */
-    .hud {
-      position: fixed;
-      left: 20px;
-      bottom: 18px;
-      z-index: 30;
-      display: flex;
-      gap: 8px;
-      opacity: 0.55;
-      transition: opacity 180ms ease;
-    }
+    .hud { position: fixed; left: 20px; bottom: 18px; z-index: 30; display: flex; gap: 8px; opacity: 0.55; transition: opacity 180ms ease; }
+    .hud:hover { opacity: 1; }
+    .dot { width: 9px; height: 9px; border-radius: 999px; border: 0; padding: 0; background: rgba(255,255,255,0.3); cursor: pointer; }
+    .dot.active { width: 30px; background: var(--cyan); }
 
-    .hud:hover {
-      opacity: 1;
-    }
-
-    .dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 999px;
-      border: 0;
-      padding: 0;
-      background: rgba(255, 255, 255, 0.3);
-      cursor: pointer;
-    }
-
-    .dot.active {
-      width: 30px;
-      background: var(--cyan);
-    }
-
-    .edit-note {
-      position: fixed;
-      right: 20px;
-      bottom: 16px;
-      z-index: 30;
-      color: rgba(220, 230, 245, 0.56);
-      font-family: "IBM Plex Mono", monospace;
-      font-size: 12px;
-      opacity: 0;
-      transition: opacity 180ms ease;
-    }
-
-    body.editing .edit-note {
-      opacity: 1;
-    }
-
-    body.editing [data-edit] {
-      outline: 1px dashed rgba(69, 215, 255, 0.65);
-      outline-offset: 6px;
-      cursor: text;
-    }
+    .edit-note { position: fixed; right: 20px; bottom: 16px; z-index: 30; color: rgba(220,230,245,0.56); font-family: "IBM Plex Mono", monospace; font-size: 12px; opacity: 0; transition: opacity 180ms ease; }
+    body.editing .edit-note { opacity: 1; }
+    body.editing [data-edit] { outline: 1px dashed rgba(69,215,255,0.65); outline-offset: 6px; cursor: text; }
 
     @media (prefers-reduced-motion: reduce) {
-      .slide,
-      .active .reveal {
-        animation: none;
-        transition: none;
-        opacity: 1;
-        transform: none;
-      }
+      .slide, .active .reveal { animation: none; transition: none; opacity: 1; transform: none; }
     }
   </style>
 </head>
 <body>
   <div class="viewport">
     <main class="stage" id="stage">
-      <!-- === SLIDE 1: TITLE === -->
+
+      <!-- SLIDE 1: TITLE -->
       <section class="slide hero active" data-title="Title">
-        <div class="brand reveal"><img src="assets/hermsec-logo.png" alt="" /> HermSec</div>
+        <div class="brand reveal">HermSec</div>
         <h1 class="reveal" data-edit>Security review for local code projects.</h1>
         <p class="subline reveal" data-edit>A desktop assistant that scans repositories, explains evidence, and creates clean reports for developers.</p>
-        <figure class="hero-shot reveal">
-          <img src="assets/hermsec-home-clean.png" alt="HermSec home screen" />
-        </figure>
-        <div class="slide-number">1 / 10</div>
+        <div class="stats-row reveal">
+          <div class="stat"><b>Scanner</b><span>+ AI agent hybrid</span></div>
+          <div class="stat"><b>MoA</b><span>multi-agent review</span></div>
+          <div class="stat"><b>Multi</b><span>language support</span></div>
+        </div>
+        <div class="slide-number">1 / 11</div>
       </section>
 
-      <!-- === SLIDE 2: WHY === -->
-      <section class="slide why" data-title="Why">
+      <!-- SLIDE 2: THE PROBLEM -->
+      <section class="slide two-col" data-title="The Problem">
         <div>
-          <div class="eyebrow reveal">01 Why we built it</div>
+          <div class="eyebrow reveal">01 The problem</div>
           <h2 class="reveal" data-edit>Security tools should be easier to run.</h2>
           <p class="lead reveal" data-edit>Many developers do not scan often because setup is slow, reports are noisy, and each language needs different tools.</p>
           <p class="quote reveal" data-edit>HermSec turns that work into one simple desktop flow.</p>
         </div>
-        <div class="under-list">
-          <div class="under-item reveal">
-            <strong data-edit>One workflow</strong>
-            <span data-edit>Pick a project, choose the scan mode, and let HermSec handle the scanning steps.</span>
-          </div>
-          <div class="under-item reveal">
-            <strong data-edit>Clear evidence</strong>
-            <span data-edit>Findings keep file paths, lines, scanner rules, severity, confidence, and remediation guidance.</span>
-          </div>
-          <div class="under-item reveal">
-            <strong data-edit>Useful reports</strong>
-            <span data-edit>The final output is readable in chat, dashboard pages, JSON, Markdown, HTML, and PDF.</span>
-          </div>
-        </div>
-        <div class="slide-number">2 / 10</div>
-      </section>
-
-      <!-- === SLIDE 3: PRODUCT FEATURES === -->
-      <section class="slide features" data-title="Features">
         <div>
-          <div class="eyebrow reveal">02 Product features</div>
-          <h2 class="reveal" data-edit>HermSec Features</h2>
-          <p class="lead reveal" data-edit>The harness inspects the repository, selects the right tools, validates evidence, and writes clean reports.</p>
           <div class="under-list">
             <div class="under-item reveal">
-              <strong data-edit>Project inspection</strong>
-              <span data-edit>Detects languages, manifests, lockfiles, and config files before the scan begins.</span>
+              <strong data-edit>Inspect and choose</strong>
+              <span data-edit>Detects languages, frameworks, and manifests. Selects adaptive scanners like Semgrep, Gitleaks, OSV, Trivy, and Bandit only when useful.</span>
             </div>
             <div class="under-item reveal">
-              <strong data-edit>Adaptive scanners</strong>
-              <span data-edit>Uses scanner tools that fit the project instead of running every tool every time.</span>
+              <strong data-edit>Scan and normalize</strong>
+              <span data-edit>Runs managed scanners safely, then turns every result into one HermSec finding format with evidence and fingerprints.</span>
             </div>
             <div class="under-item reveal">
-              <strong data-edit>Live progress</strong>
-              <span data-edit>The chat card shows scan stages, scanner status, findings, failures, and final reports.</span>
-            </div>
-            <div class="under-item reveal">
-              <strong data-edit>Automation and reports</strong>
-              <span data-edit>Scheduled scans and completed reports link directly to the PDF and report folder.</span>
+              <strong data-edit>Report and explain</strong>
+              <span data-edit>Writes JSON, HTML, Markdown, dashboard, and PDF output with clear evidence and remediation guidance.</span>
             </div>
           </div>
         </div>
-        <figure class="image-shell features-shot scan-modes-shot reveal">
-          <img src="assets/hermsec-scan-modes.png" alt="HermSec scan mode selector" />
-          <figcaption class="caption"><span>Scan mode selector</span><span>Deep -> Single -> MoA -> Hybrid</span></figcaption>
-        </figure>
-        <div class="slide-number">3 / 10</div>
+        <div class="slide-number">2 / 11</div>
       </section>
 
-      <!-- === SLIDE 4: SCAN PIPELINE === -->
-      <section class="slide pipeline" data-title="Pipeline">
-        <div class="eyebrow reveal">03 How the harness moves</div>
-        <h2 class="reveal" data-edit>Deep assisted scan is scanner-backed review plus model explanation.</h2>
-        <p class="lead reveal" data-edit>HermSec checks what the project is, prepares the right tools, runs scanners, normalizes evidence, and then asks the model to explain the confirmed findings.</p>
-        <div class="grid">
-          <div class="map reveal">
-            <div class="map-row"><strong>Inspect</strong><span>Find languages, frameworks, manifests, lockfiles, and config files.</span></div>
-            <div class="map-row"><strong>Choose tools</strong><span>Pick Semgrep, Gitleaks, OSV, Trivy, Bandit, Checkov, and others only when useful.</span></div>
-            <div class="map-row"><strong>Run scans</strong><span>Execute managed scanners safely, with timeouts and progress events.</span></div>
-            <div class="map-row"><strong>Normalize</strong><span>Turn every result into one HermSec finding format with evidence and fingerprints.</span></div>
-            <div class="map-row"><strong>Report</strong><span>Write JSON, HTML, Markdown, dashboard artifacts, and PDF output.</span></div>
-          </div>
-          <figure class="image-shell pipeline-shot reveal">
-            <img src="assets/hermsec-running-detail.png" alt="Running scan in HermSec" />
-          </figure>
+      <!-- SLIDE 3: PIPELINE -->
+      <section class="slide two-col" data-title="Pipeline">
+        <div>
+          <div class="eyebrow reveal">02 How the harness works</div>
+          <h2 class="reveal" data-edit style="font-size: 76px; line-height: 0.96;">Deep assisted scan is scanner-backed review plus model explanation.</h2>
+          <p class="lead reveal" data-edit style="margin-top: 22px; font-size: 29px; line-height: 1.22;">HermSec checks what the project is, prepares the right tools, runs scanners, normalizes evidence, and asks the model to explain confirmed findings.</p>
         </div>
-        <div class="slide-number">4 / 10</div>
+        <div>
+          <div style="display: grid; gap: 14px;">
+            <div class="map-row reveal"><strong>Inspect</strong><span>Find languages, frameworks, manifests, lockfiles, and config files.</span></div>
+            <div class="map-row reveal"><strong>Choose tools</strong><span>Pick Semgrep, Gitleaks, OSV, Trivy, Bandit, and others only when useful.</span></div>
+            <div class="map-row reveal"><strong>Run scans</strong><span>Execute managed scanners safely, with timeouts and progress events.</span></div>
+            <div class="map-row reveal"><strong>Normalize</strong><span>Turn every result into one HermSec finding format with evidence and fingerprints.</span></div>
+            <div class="map-row reveal"><strong>Report</strong><span>Write JSON, HTML, Markdown, dashboard artifacts, and PDF output.</span></div>
+          </div>
+        </div>
+        <div class="slide-number">3 / 11</div>
       </section>
 
-      <!-- === SLIDE 5: REVIEW MODES === -->
-      <section class="slide modes" data-title="Modes">
-        <div class="eyebrow reveal">04 Review modes</div>
-        <h2 class="reveal" data-edit>We compared four ways to review code.</h2>
-        <p class="lead reveal" data-edit>Each mode uses the same report format, but the evidence is collected and judged differently.</p>
-        <div class="mode-layout">
+      <!-- SLIDE 4: THE 4 REVIEW MODES -->
+      <section class="slide" data-title="Modes" style="display: grid; flex-direction: column; gap: 28px;">
+        <div>
+          <div class="eyebrow reveal">03 Review modes</div>
+          <h2 class="reveal" data-edit>We compared four ways to review code.</h2>
+          <p class="lead reveal" data-edit style="margin-top: 24px; font-size: 30px; line-height: 1.22;">Each mode uses the same report format, but the evidence is collected and judged differently.</p>
+        </div>
+        <div class="mode-layout reveal">
           <div class="mode-rail">
-            <div class="mode reveal"><strong>Deep assisted</strong><span>Scanners run first. The model summarizes and explains scanner-backed evidence.</span></div>
-            <div class="mode reveal"><strong>Single Agent</strong><span>One model inspects focused code candidates with bounded read and search tools.</span></div>
-            <div class="mode reveal"><strong>MoA</strong><span>Specialist agents inspect candidates. A judge and aggregator merge accepted evidence.</span></div>
-            <div class="mode reveal"><strong>Scanner + MoA</strong><span>Scanners and agents run independently. A judge validates and merges both evidence sources.</span></div>
+            <div class="mode"><strong>Deep assisted</strong><span>Scanners run first. The model summarizes and explains scanner-backed evidence.</span></div>
+            <div class="mode"><strong>Single Agent</strong><span>One model inspects focused code candidates with bounded read and search tools.</span></div>
+            <div class="mode"><strong>MoA</strong><span>Specialist agents inspect candidates. A judge and aggregator merge accepted evidence.</span></div>
+            <div class="mode"><strong>Scanner + MoA</strong><span>Scanners and agents run independently. A judge validates and merges both evidence sources.</span></div>
           </div>
-          <div class="flow-board reveal">
+          <div class="flow-board">
             <div class="flow-line"><b>Scanner-backed</b><span>inspect -> choose scanners -> run scanners -> model explanation -> report</span></div>
             <div class="flow-line"><b>Agent-only</b><span>candidate discovery -> focused task bundle -> one agent -> local evidence check</span></div>
             <div class="flow-line"><b>Multi-agent</b><span>candidate discovery -> specialist agents -> false-positive judge -> aggregator</span></div>
             <div class="flow-line"><b>Hybrid</b><span>scanner findings + independent MoA candidates -> judge -> final revalidation</span></div>
           </div>
         </div>
-        <div class="slide-number">5 / 10</div>
+        <div class="slide-number">4 / 11</div>
       </section>
 
-      <!-- === SLIDE 6: METHOD === -->
-      <section class="slide method" data-title="Method">
+      <!-- SLIDE 5: METHODOLOGY -->
+      <section class="slide two-col" data-title="Method">
         <div>
-          <div class="eyebrow reveal">05 Test setup</div>
+          <div class="eyebrow reveal">04 Test setup</div>
           <h2 class="reveal" data-edit>Our dataset used labelled vulnerable projects.</h2>
           <p class="lead reveal" data-edit>We measured true positives, false positives, false negatives, precision, recall, F1 score, and runtime across the current HermSec modes.</p>
           <div class="metric-pair reveal">
-            <div><b>20</b><span>projects</span></div>
-            <div><b>184</b><span>labelled findings</span></div>
+            <div><b>13</b><span>projects</span></div>
+            <div><b>117</b><span>planted vulnerabilities</span></div>
+          </div>
+          <div class="metric-pair reveal" style="margin-top: 18px;">
+            <div><b>8</b><span>languages</span></div>
+            <div><b>6</b><span>review modes</span></div>
           </div>
         </div>
         <div class="method-card reveal">
           <h3 data-edit>Efficient model pool</h3>
-          <p class="muted" style="font-size: 27px; line-height: 1.34;" data-edit>We used lower-cost non-US model routes through OpenCode Go because the goal was useful security review without expensive flagship models.</p>
+          <p class="muted" style="font-size: 22px; line-height: 1.34;" data-edit>We used lower-cost non-US model routes through OpenRouter because the goal was useful security review without expensive flagship models.</p>
           <div class="model-list">
             <div><span>Default triage</span><code>deepseek-v4-flash</code></div>
             <div><span>MoA references</span><code>mimo-v2.5</code></div>
             <div><span>Stronger review</span><code>deepseek-v4-pro</code></div>
             <div><span>Aggregator</span><code>minimax-m3</code></div>
           </div>
+          <div class="model-list" style="margin-top: 30px;">
+            <div><span>MoA Low</span><code>3 agents, 60 limit</code></div>
+            <div><span>MoA Mid</span><code>3 agents, 80 limit</code></div>
+            <div><span>MoA High</span><code>5 agents, 120 limit</code></div>
+          </div>
         </div>
-        <div class="slide-number">6 / 10</div>
+        <div class="slide-number">5 / 11</div>
       </section>
 
-      <!-- === SLIDE 7: RESULTS === -->
+      <!-- SLIDE 6: PRIMARY RESULTS -->
       <section class="slide results" data-title="Results">
-        <div class="eyebrow reveal">06 Results</div>
+        <div class="eyebrow reveal">05 Primary results</div>
         <h2 class="reveal" data-edit>Scanner + MoA High performed best.</h2>
-        <p class="lead reveal" data-edit>F1 score was the main balance between precision and recall. The hybrid mode had the strongest final balance.</p>
+        <p class="lead reveal" data-edit>F1 score was the main balance between precision and recall. Combining scanner coverage with MoA filtering achieves the highest F1 score.</p>
         <div class="content">
           <div class="bars reveal">
             <div class="bar-row">
+              <div class="label">Scanner only</div>
+              <div class="track"><div class="fill" style="width: 94.9%;"></div></div>
+              <div class="value">0.7064</div>
+            </div>
+            <div class="bar-row">
               <div class="label">Deep assisted</div>
-              <div class="track"><div class="fill" style="width: 57.3%;"></div></div>
-              <div class="value">0.4381</div>
+              <div class="track"><div class="fill" style="width: 73.9%;"></div></div>
+              <div class="value">0.5497</div>
             </div>
             <div class="bar-row">
               <div class="label">Single Agent</div>
-              <div class="track"><div class="fill" style="width: 84.6%;"></div></div>
-              <div class="value">0.6462</div>
+              <div class="track"><div class="fill" style="width: 49.8%;"></div></div>
+              <div class="value">0.3708</div>
             </div>
             <div class="bar-row">
               <div class="label">MoA Low</div>
-              <div class="track"><div class="fill" style="width: 71.1%;"></div></div>
-              <div class="value">0.5433</div>
+              <div class="track"><div class="fill" style="width: 88.2%;"></div></div>
+              <div class="value">0.6560</div>
             </div>
             <div class="bar-row">
               <div class="label">MoA High</div>
-              <div class="track"><div class="fill" style="width: 71.4%;"></div></div>
-              <div class="value">0.5455</div>
-            </div>
-            <div class="bar-row">
-              <div class="label">Scanner + MoA Low</div>
-              <div class="track"><div class="fill" style="width: 69.8%;"></div></div>
-              <div class="value">0.5333</div>
+              <div class="track"><div class="fill" style="width: 87.7%;"></div></div>
+              <div class="value">0.6524</div>
             </div>
             <div class="bar-row best">
               <div class="label">Scanner + MoA High</div>
               <div class="track"><div class="fill" style="width: 100%;"></div></div>
-              <div class="value">0.7640</div>
+              <div class="value">0.7440</div>
             </div>
           </div>
           <div class="winner reveal">
-            <div class="big">0.7640</div>
-            <p data-edit>The best run found more real issues while still using a judge and final validation to reduce noise.</p>
+            <div class="big">0.7440</div>
+            <p data-edit>The best mode combined scanner coverage with MoA filtering to achieve the highest F1 score.</p>
             <div class="mini-stats">
-              <div><b>0.6916</b><span>precision</span></div>
-              <div><b>0.8533</b><span>recall</span></div>
-              <div><b>157</b><span>true positives</span></div>
+              <div><b>0.8556</b><span>precision</span></div>
+              <div><b>0.6581</b><span>recall</span></div>
+              <div><b>77</b><span>true positives</span></div>
             </div>
           </div>
         </div>
-        <div class="slide-number">7 / 10</div>
+        <div class="slide-number">6 / 11</div>
       </section>
 
-      <!-- === SLIDE 8: TAKEAWAYS === -->
-      <section class="slide takeaways" data-title="Takeaways">
-        <div>
-          <div class="eyebrow reveal">07 What we learned</div>
-          <h2 class="reveal" data-edit>The best result came from combining tools and agents.</h2>
-          <div class="under-list">
-            <div class="under-item reveal"><strong data-edit>Scanners gave grounded evidence</strong><span data-edit>They were useful for secrets, dependency risks, known patterns, and repeatable results.</span></div>
-            <div class="under-item reveal"><strong data-edit>Agents helped with context</strong><span data-edit>Focused investigation tasks helped the model inspect code paths instead of guessing from a broad prompt.</span></div>
-            <div class="under-item reveal"><strong data-edit>Judging mattered</strong><span data-edit>The final judge and revalidation pass helped merge duplicates and reject unsupported claims.</span></div>
+      <!-- SLIDE 7: CONTROLLED FIXTURE RESULTS -->
+      <section class="slide results" data-title="Fixture Results">
+        <div class="eyebrow reveal">06 Controlled fixture evaluation</div>
+        <h2 class="reveal" data-edit>Second evaluation on 4 fixtures with 12 expected findings.</h2>
+        <p class="lead reveal" data-edit>This smaller controlled set tested how modes behave on clean and vulnerable Node.js and Python projects.</p>
+        <div class="content">
+          <div class="bars reveal">
+            <div class="bar-row">
+              <div class="label">Deep assisted</div>
+              <div class="track"><div class="fill" style="width: 15.9%;"></div></div>
+              <div class="value">0.1188</div>
+            </div>
+            <div class="bar-row">
+              <div class="label">Single Agent</div>
+              <div class="track"><div class="fill" style="width: 35.7%;"></div></div>
+              <div class="value">0.2667</div>
+            </div>
+            <div class="bar-row best">
+              <div class="label">MoA Low</div>
+              <div class="track"><div class="fill" style="width: 100%;"></div></div>
+              <div class="value">0.4762</div>
+            </div>
+            <div class="bar-row">
+              <div class="label">MoA High</div>
+              <div class="track"><div class="fill" style="width: 70%;"></div></div>
+              <div class="value">0.3333</div>
+            </div>
+            <div class="bar-row">
+              <div class="label">Scanner + MoA Low</div>
+              <div class="track"><div class="fill" style="width: 29.3%;"></div></div>
+              <div class="value">0.1395</div>
+            </div>
+            <div class="bar-row">
+              <div class="label">Scanner + MoA High</div>
+              <div class="track"><div class="fill" style="width: 35.9%;"></div></div>
+              <div class="value">0.1707</div>
+            </div>
+          </div>
+          <div class="winner reveal">
+            <div class="big">0.4762</div>
+            <p data-edit>MoA Low had the best F1 score on the controlled fixture set, showing balanced performance.</p>
+            <div class="mini-stats">
+              <div><b>0.5556</b><span>precision</span></div>
+              <div><b>0.4167</b><span>recall</span></div>
+              <div><b>5</b><span>true positives</span></div>
+            </div>
           </div>
         </div>
-        <figure class="image-shell reveal">
-          <img src="assets/hermsec-scanner-moa-live.png" alt="HermSec Scanner plus MoA scan" />
-        </figure>
-        <div class="slide-number">8 / 10</div>
+        <div class="slide-number">7 / 11</div>
       </section>
 
-      <!-- === SLIDE 9: FUTURE === -->
-      <section class="slide future" data-title="Future">
+      <!-- SLIDE 8: SCANNERS vs AGENTS -->
+      <section class="slide two-col" data-title="Scanners vs Agents">
         <div>
-          <div class="eyebrow reveal">08 Future plans</div>
-          <h2 class="reveal" data-edit>Future plans</h2>
-          <p class="lead reveal" data-edit>Next we make HermSec smaller, faster, and more automatic.</p>
-          <div class="under-list">
-            <div class="under-item reveal"><strong data-edit>One-button scan</strong><span data-edit>Reduce the app to a cleaner flow where a user can scan with almost no setup.</span></div>
-            <div class="under-item reveal"><strong data-edit>Change-aware scans</strong><span data-edit>Skip work when the project has not changed since the last scan.</span></div>
-            <div class="under-item reveal"><strong data-edit>Email reports</strong><span data-edit>Send scan summaries to a mailbox after automated scans finish.</span></div>
-            <div class="under-item reveal"><strong data-edit>Better cost tracking</strong><span data-edit>Measure model token cost per mode and route work to efficient models by default.</span></div>
+          <div class="eyebrow reveal">07 Scanners vs agents</div>
+          <h2 class="reveal" data-edit style="font-size: 72px; line-height: 0.96;">How scanners and agents complement each other.</h2>
+          <p class="lead reveal" data-edit style="margin-top: 22px; font-size: 28px; line-height: 1.22;">Scanners found 71 TPs. MoA agents found 61 TPs. Together they found 77 TPs.</p>
+          <div class="under-list" style="margin-top: 30px;">
+            <div class="under-item reveal">
+              <strong data-edit>Both found: 55 vulnerabilities</strong>
+              <span data-edit>These are the most obvious issues that both scanners and agents detect easily.</span>
+            </div>
+            <div class="under-item reveal">
+              <strong data-edit>Scanner only: 16 vulnerabilities</strong>
+              <span data-edit>Pattern-based issues like hardcoded secrets and dependency CVEs that agents miss.</span>
+            </div>
+            <div class="under-item reveal">
+              <strong data-edit>Agent only: 6 vulnerabilities</strong>
+              <span data-edit>Contextual issues like business logic flaws that scanners cannot detect.</span>
+            </div>
           </div>
         </div>
-        <figure class="image-shell doctor-shot reveal">
-          <img src="assets/hermsec-doctor.png" alt="HermSec Doctor readiness dashboard" />
-        </figure>
-        <div class="slide-number">9 / 10</div>
+        <div class="reveal">
+          <div class="metric-pair" style="grid-template-columns: 1fr;">
+            <div><b style="color: var(--green);">77</b><span>true positives combined</span></div>
+          </div>
+          <div class="metric-pair" style="margin-top: 18px; grid-template-columns: 1fr 1fr;">
+            <div><b style="color: var(--cyan);">16</b><span>scanner only</span></div>
+            <div><b style="color: var(--amber);">6</b><span>agent only</span></div>
+          </div>
+          <div class="metric-pair" style="margin-top: 18px; grid-template-columns: 1fr;">
+            <div><b>55</b><span>found by both</span></div>
+          </div>
+          <div class="metric-pair" style="margin-top: 18px; grid-template-columns: 1fr;">
+            <div><b style="color: var(--danger);">40</b><span>missed by all modes</span></div>
+          </div>
+        </div>
+        <div class="slide-number">8 / 11</div>
       </section>
 
-      <!-- === SLIDE 10: QUESTIONS === -->
-      <section class="slide questions" data-title="Questions">
-        <div class="brand reveal"><img src="assets/hermsec-logo.png" alt="" /> HermSec</div>
-        <h2 class="reveal" data-edit>Any questions?</h2>
-        <figure class="image-shell questions-shot reveal">
-          <img src="assets/hermsec-providers.png" alt="HermSec provider settings" />
-        </figure>
-        <div class="slide-number">10 / 10</div>
+      <!-- SLIDE 9: LANGUAGE COVERAGE -->
+      <section class="slide two-col" data-title="Language Coverage">
+        <div>
+          <div class="eyebrow reveal">08 Language coverage gaps</div>
+          <h2 class="reveal" data-edit style="font-size: 78px;">F1 score grouped by language family.</h2>
+          <div class="under-list" style="margin-top: 28px;">
+            <div class="under-item reveal">
+              <strong data-edit>JavaScript / TypeScript (avg 0.87)</strong>
+              <span data-edit>Best coverage. Node.js and Express apps have mature scanner rules and heuristic patterns.</span>
+            </div>
+            <div class="under-item reveal">
+              <strong data-edit>Go (0.86)</strong>
+              <span data-edit>Strong results. Go scanner rules are effective for web application patterns.</span>
+            </div>
+            <div class="under-item reveal">
+              <strong data-edit>Java (0.79)</strong>
+              <span data-edit>Good results but servlet-specific patterns like deserialization need better rules.</span>
+            </div>
+            <div class="under-item reveal">
+              <strong data-edit>Python (0.74)</strong>
+              <span data-edit>Moderate. Bandit covers basics but framework-specific issues are missed.</span>
+            </div>
+            <div class="under-item reveal">
+              <strong data-edit>PHP / Ruby / C# (avg 0.73)</strong>
+              <span data-edit>Similar performance. Scanner rules exist but MoA agents add limited value.</span>
+            </div>
+            <div class="under-item reveal">
+              <strong data-edit>Rust (0.60) and C/C++ (0.55)</strong>
+              <span data-edit>Lowest scores. Limited heuristic rules and scanner coverage for memory safety patterns.</span>
+            </div>
+          </div>
+        </div>
+        <div class="reveal">
+          <div class="comparison-card">
+            <h3>F1 by language</h3>
+            <div class="comparison-row">
+              <span class="mode-name">JS / TS</span>
+              <span class="mode-val best">0.87</span>
+            </div>
+            <div class="comparison-row">
+              <span class="mode-name">Go</span>
+              <span class="mode-val best">0.86</span>
+            </div>
+            <div class="comparison-row">
+              <span class="mode-name">Java</span>
+              <span class="mode-val">0.79</span>
+            </div>
+            <div class="comparison-row">
+              <span class="mode-name">Python</span>
+              <span class="mode-val">0.74</span>
+            </div>
+            <div class="comparison-row">
+              <span class="mode-name">PHP</span>
+              <span class="mode-val">0.73</span>
+            </div>
+            <div class="comparison-row">
+              <span class="mode-name">Ruby</span>
+              <span class="mode-val">0.73</span>
+            </div>
+            <div class="comparison-row">
+              <span class="mode-name">C#</span>
+              <span class="mode-val">0.73</span>
+            </div>
+            <div class="comparison-row">
+              <span class="mode-name">Rust</span>
+              <span class="mode-val" style="color: var(--danger);">0.60</span>
+            </div>
+            <div class="comparison-row">
+              <span class="mode-name">C/C++</span>
+              <span class="mode-val" style="color: var(--danger);">0.55</span>
+            </div>
+          </div>
+        </div>
+        <div class="slide-number">9 / 11</div>
       </section>
+
+      <!-- SLIDE 10: FUTURE + Q&A -->
+      <section class="slide two-col" data-title="Future & Questions">
+        <div>
+          <div class="eyebrow reveal">09 Future plans & limitations</div>
+          <h2 class="reveal" data-edit style="font-size: 78px; line-height: 0.98;">What comes next.</h2>
+          <p class="lead reveal" data-edit style="margin-top: 22px; font-size: 28px; line-height: 1.2;">Next we make HermSec smaller, faster, and more automatic.</p>
+          <div class="under-list" style="margin-top: 30px; gap: 20px;">
+            <div class="under-item reveal"><strong data-edit style="font-size: 27px;">Better language coverage</strong><span data-edit style="font-size: 21px; line-height: 1.23;">Improve C/C++ and Rust language coverage in the heuristic scanner and MoA agents.</span></div>
+            <div class="under-item reveal"><strong data-edit style="font-size: 27px;">Public benchmarks</strong><span data-edit style="font-size: 21px; line-height: 1.23;">Test HermSec on OWASP Benchmark, OpenSSF CVE Benchmark, and CASTLE test suites.</span></div>
+            <div class="under-item reveal"><strong data-edit style="font-size: 27px;">Rate limit handling</strong><span data-edit style="font-size: 21px; line-height: 1.23;">Add retry logic and rate limit handling for model providers during sequential scans.</span></div>
+            <div class="under-item reveal"><strong data-edit style="font-size: 27px;">Cost tracking</strong><span data-edit style="font-size: 21px; line-height: 1.23;">Measure model token cost per mode and route work to efficient models by default.</span></div>
+          </div>
+        </div>
+        <div class="reveal">
+          <div class="threat-card" style="margin-bottom: 28px;">
+            <h3>Threats to validity</h3>
+            <div class="threat-item"><span>Synthetic vulnerabilities may not reflect real-world code complexity</span></div>
+            <div class="threat-item"><span>CWE-based scoring may miss useful findings not in the ground truth</span></div>
+            <div class="threat-item"><span>Model behavior can change due to provider errors and updates</span></div>
+            <div class="threat-item"><span>Small dataset size limits generalizability of results</span></div>
+          </div>
+          <div style="text-align: center; padding-top: 20px;">
+            <h2 style="font-size: 82px; margin-bottom: 16px;">Any questions?</h2>
+            <p style="color: #aeb9ca; font-size: 26px; line-height: 1.6;">Seth Whenton &middot; Ghazal Pouresfandiyar Borojeni<br>University of Passau &middot; Security Insider Lab II</p>
+          </div>
+        </div>
+        <div class="slide-number">10 / 11</div>
+      </section>
+
+      <!-- SLIDE 11: BACKUP - DETAILED METRICS -->
+      <section class="slide results" data-title="Backup: Metrics">
+        <div class="eyebrow reveal">Appendix Detailed metrics</div>
+        <h2 class="reveal" data-edit style="font-size: 64px;">Full breakdown of precision, recall, and F1 across all modes.</h2>
+        <div class="reveal">
+          <table class="full-table">
+            <thead>
+              <tr style="border-bottom: 2px solid rgba(69,215,255,0.4);">
+                <th style="text-align: left;">MODE</th>
+                <th>TP</th>
+                <th>FP</th>
+                <th>FN</th>
+                <th>PRECISION</th>
+                <th>RECALL</th>
+                <th>F1</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="text-align: left;">Scanner only</td>
+                <td>71</td>
+                <td>13</td>
+                <td>46</td>
+                <td>0.8452</td>
+                <td>0.6068</td>
+                <td>0.7064</td>
+              </tr>
+              <tr>
+                <td style="text-align: left;">Deep assisted</td>
+                <td>47</td>
+                <td>7</td>
+                <td>70</td>
+                <td>0.8704</td>
+                <td>0.4017</td>
+                <td>0.5497</td>
+              </tr>
+              <tr>
+                <td style="text-align: left;">Single agent</td>
+                <td>28</td>
+                <td>6</td>
+                <td>89</td>
+                <td>0.8235</td>
+                <td>0.2393</td>
+                <td>0.3708</td>
+              </tr>
+              <tr>
+                <td style="text-align: left;">MoA Low</td>
+                <td>61</td>
+                <td>8</td>
+                <td>56</td>
+                <td style="color: var(--green); font-weight: 700;">0.8841</td>
+                <td>0.5214</td>
+                <td>0.6560</td>
+              </tr>
+              <tr>
+                <td style="text-align: left;">MoA High</td>
+                <td>61</td>
+                <td>9</td>
+                <td>56</td>
+                <td>0.8714</td>
+                <td>0.5214</td>
+                <td>0.6524</td>
+              </tr>
+              <tr>
+                <td style="text-align: left;">Scanner + MoA Low</td>
+                <td>71</td>
+                <td>13</td>
+                <td>46</td>
+                <td>0.8452</td>
+                <td>0.6068</td>
+                <td>0.7064</td>
+              </tr>
+              <tr>
+                <td style="text-align: left;">Scanner + MoA Mid</td>
+                <td>71</td>
+                <td>12</td>
+                <td>46</td>
+                <td>0.8554</td>
+                <td>0.6068</td>
+                <td>0.7100</td>
+              </tr>
+              <tr class="highlight">
+                <td style="text-align: left; color: var(--green); font-weight: 700;">Scanner + MoA High</td>
+                <td style="color: var(--green); font-weight: 700;">77</td>
+                <td>13</td>
+                <td>40</td>
+                <td>0.8556</td>
+                <td style="color: var(--green); font-weight: 700;">0.6581</td>
+                <td style="color: var(--green); font-weight: 700;">0.7440</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="slide-number">11 / 11</div>
+      </section>
+
     </main>
   </div>
 
@@ -1182,7 +790,6 @@
   <div class="edit-note">Edit mode: click text. Press E to leave.</div>
 
   <script>
-    /* === STAGE SCALING === */
     const stage = document.getElementById("stage");
     const slides = Array.from(document.querySelectorAll(".slide"));
     const hud = document.getElementById("hud");
@@ -1213,15 +820,9 @@
       history.replaceState(null, "", `#${current + 1}`);
     }
 
-    function next() {
-      go(current + 1);
-    }
+    function next() { go(current + 1); }
+    function previous() { go(current - 1); }
 
-    function previous() {
-      go(current - 1);
-    }
-
-    /* === EDIT MODE === */
     function setEditing(enabled) {
       document.body.classList.toggle("editing", enabled);
       document.querySelectorAll("[data-edit]").forEach((node) => {
@@ -1232,29 +833,21 @@
     window.addEventListener("resize", fitStage);
     window.addEventListener("keydown", (event) => {
       if ((event.key === "ArrowRight" || event.key === " " || event.key === "PageDown") && !document.body.classList.contains("editing")) {
-        event.preventDefault();
-        next();
+        event.preventDefault(); next();
       }
       if ((event.key === "ArrowLeft" || event.key === "PageUp") && !document.body.classList.contains("editing")) {
-        event.preventDefault();
-        previous();
+        event.preventDefault(); previous();
       }
       if (event.key.toLowerCase() === "e") {
-        event.preventDefault();
-        setEditing(!document.body.classList.contains("editing"));
+        event.preventDefault(); setEditing(!document.body.classList.contains("editing"));
       }
-      if (event.key === "Escape") {
-        setEditing(false);
-      }
+      if (event.key === "Escape") { setEditing(false); }
     });
 
     stage.addEventListener("click", (event) => {
-      if (document.body.classList.contains("editing")) {
-        return;
-      }
+      if (document.body.classList.contains("editing")) return;
       const direction = event.clientX < window.innerWidth * 0.32 ? -1 : 1;
-      if (direction > 0) next();
-      else previous();
+      if (direction > 0) next(); else previous();
     });
 
     const hashIndex = Number.parseInt(window.location.hash.replace("#", ""), 10);
