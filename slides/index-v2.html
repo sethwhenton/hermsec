@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HermSec — A New Editorial</title>
+<link rel="icon" href="data:," />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..900,0..100,0..1;1,9..144,300..900,0..100,0..1&family=DM+Sans:opsz,wght@9..40,300..700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --paper:#f5f0e8;
+    --paper-2:#efe8dc;
+    --paper-3:#e8e0d1;
+    --ink:#1c1917;
+    --ink-2:#292524;
+    --ink-soft:#44403c;
+    --muted:#78716c;
+    --line:#d6cfc1;
+    --line-2:#c4bca9;
+    --clay:#b45309;
+    --clay-2:#c2410c;
+    --terra:#9a3412;
+    --forest:#14532d;
+    --forest-2:#166534;
+    --gold:#a16207;
+    --rose:#be123c;
+    --cream:#fdfbf7;
+    --shadow:0 1px 0 rgba(28,25,23,.06), 0 30px 60px -20px rgba(28,25,23,.18);
+    --r:3px;
+    --ease:cubic-bezier(.16,1,.3,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--paper);color:var(--ink);
+    font-family:"DM Sans",ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased;
+    font-feature-settings:"ss01","cv11"}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.11 0 0 0 0 0.10 0 0 0 0 0.09 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:radial-gradient(80% 60% at 20% 10%,rgba(180,83,9,.06),transparent 50%),
+               radial-gradient(60% 80% at 90% 90%,rgba(20,83,45,.05),transparent 50%)}
+  a{color:inherit;text-decoration:none}
+  img{display:block;max-width:100%}
+  figure{margin:0}
+
+  .deck{position:relative;width:100vw;height:100vh;overflow:hidden;z-index:1}
+
+  .slide{position:absolute;inset:0;opacity:0;visibility:hidden;
+    transition:opacity .7s var(--ease),visibility .7s}
+  .slide.active{opacity:1;visibility:visible;z-index:2}
+
+  /* shared chrome */
+  .edge-top,.edge-bot{position:absolute;left:0;right:0;display:flex;justify-content:space-between;
+    align-items:center;padding:0 clamp(28px,4vw,56px);font-family:"JetBrains Mono",monospace;
+    font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);z-index:5}
+  .edge-top{top:clamp(18px,2.4vw,32px)}
+  .edge-bot{bottom:clamp(18px,2.4vw,32px)}
+  .edge-top .l,.edge-bot .l{display:flex;align-items:center;gap:14px}
+  .edge-top .r,.edge-bot .r{display:flex;align-items:center;gap:14px}
+  .edge-bot .pg{color:var(--ink);font-weight:600}
+  .edge-bot .pg b{font-family:"Fraunces",serif;font-weight:400;font-size:15px;color:var(--clay)}
+  .rule{height:1px;background:var(--line);flex:1;max-width:60px}
+
+  /* typography */
+  .display{font-family:"Fraunces",serif;font-weight:300;line-height:.92;letter-spacing:-.025em;
+    color:var(--ink);font-variation-settings:"opsz" 144,"SOFT" 0,"WONK" 0}
+  .display em{font-style:italic;font-weight:300;font-variation-settings:"opsz" 144,"SOFT" 50,"WONK" 1;color:var(--clay)}
+  .display tight{font-weight:400}
+  .kicker{font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:500;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--clay)}
+  .kicker .bullet{display:inline-block;width:5px;height:5px;border-radius:99px;background:var(--clay);
+    margin-right:8px;vertical-align:middle;transform:translateY(-1px)}
+  .lead{font-family:"DM Sans",sans-serif;font-size:clamp(17px,1.7vw,22px);line-height:1.5;
+    color:var(--ink-soft);font-weight:400;max-width:60ch}
+  .body{font-family:"DM Sans",sans-serif;font-size:15px;line-height:1.6;color:var(--ink-soft);font-weight:400}
+  .mono{font-family:"JetBrains Mono",monospace;font-variant-numeric:tabular-nums}
+
+  /* ── Slide 1: Cover ─────────────────────────── */
+  .s-cover{display:grid;grid-template-rows:auto 1fr auto;
+    padding:clamp(60px,8vw,110px) clamp(28px,4vw,56px) clamp(40px,5vw,70px)}
+  .s-cover .masthead{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
+  .s-cover .masthead .wordmark{font-family:"Fraunces",serif;font-weight:600;font-size:22px;
+    letter-spacing:-.02em;color:var(--ink);font-variation-settings:"opsz" 14}
+  .s-cover .masthead .wordmark span{color:var(--clay)}
+  .s-cover .masthead .iss{font-family:"JetBrains Mono",monospace;font-size:10px;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+  .s-cover .center{display:grid;align-content:center;gap:clamp(20px,2.5vw,36px)}
+  .s-cover h1{font-size:clamp(64px,9.5vw,148px);max-width:14ch}
+  .s-cover .sub{display:flex;gap:clamp(30px,4vw,60px);align-items:flex-start;flex-wrap:wrap;
+    padding-top:clamp(20px,2.5vw,32px);border-top:1px solid var(--line)}
+  .s-cover .sub .col{flex:1;min-width:240px}
+  .s-cover .sub .col p{font-family:"DM Sans",sans-serif;font-size:15px;line-height:1.55;
+    color:var(--ink-soft);max-width:42ch}
+  .s-cover .sub .col .lbl{font-family:"JetBrains Mono",monospace;font-size:10px;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--clay);margin-bottom:10px;display:block}
+  .s-cover .sub .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .s-cover .sub .tags span{font-family:"JetBrains Mono",monospace;font-size:10px;
+    padding:5px 10px;border:1px solid var(--line-2);border-radius:99px;color:var(--ink-soft);
+    letter-spacing:.06em;background:var(--cream)}
+
+  /* ── Slide 2: The Problem ───────────────────── */
+  .s-problem{display:grid;grid-template-columns:clamp(180px,16vw,260px) 1fr;
+    padding:clamp(60px,8vw,100px) clamp(28px,4vw,56px) clamp(50px,6vw,80px);gap:clamp(30px,4vw,64px)}
+  .s-problem .left{display:flex;flex-direction:column;gap:18px}
+  .s-problem .left .big-num{font-family:"Fraunces",serif;font-weight:200;font-size:clamp(120px,16vw,240px);
+    line-height:.82;color:var(--clay);font-variation-settings:"opsz" 144,"SOFT" 30}
+  .s-problem .left .big-num em{font-style:italic;font-weight:300}
+  .s-problem .left .cap{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted);max-width:18ch;line-height:1.6}
+  .s-problem .right{display:flex;flex-direction:column;justify-content:center;gap:clamp(22px,2.8vw,40px)}
+  .s-problem .right h2{font-size:clamp(42px,5.5vw,82px);max-width:18ch}
+  .s-problem .items{display:grid;gap:0}
+  .s-problem .it{display:grid;grid-template-columns:auto 1fr;gap:clamp(16px,2vw,28px);
+    padding:clamp(16px,2vw,24px) 0;border-top:1px solid var(--line);align-items:start}
+  .s-problem .it:last-child{border-bottom:1px solid var(--line)}
+  .s-problem .it .n{font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:600;
+    color:var(--clay);padding-top:4px;letter-spacing:.08em}
+  .s-problem .it .t strong{font-family:"Fraunces",serif;font-weight:400;font-size:clamp(19px,2vw,26px);
+    display:block;margin-bottom:6px;color:var(--ink);letter-spacing:-.01em}
+  .s-problem .it .t span{font-family:"DM Sans",sans-serif;font-size:14px;line-height:1.55;color:var(--ink-soft)}
+
+  /* ── Slide 3: Product ───────────────────────── */
+  .s-product{display:grid;grid-template-columns:1.1fr .9fr;align-items:stretch;
+    padding:clamp(60px,8vw,100px) clamp(28px,4vw,56px) clamp(50px,6vw,80px);gap:clamp(30px,4vw,56px)}
+  .s-product .copy{display:flex;flex-direction:column;justify-content:center;gap:clamp(20px,2.5vw,32px)}
+  .s-product .copy h2{font-size:clamp(40px,5vw,72px);max-width:14ch}
+  .s-product .features{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+  .s-product .feat{background:var(--paper);padding:clamp(16px,1.8vw,24px);
+    display:flex;flex-direction:column;gap:8px;min-height:130px}
+  .s-product .feat .ic{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--clay);
+    letter-spacing:.1em}
+  .s-product .feat strong{font-family:"Fraunces",serif;font-weight:400;font-size:17px;color:var(--ink);
+    letter-spacing:-.01em}
+  .s-product .feat span{font-family:"DM Sans",sans-serif;font-size:13px;line-height:1.5;color:var(--ink-soft)}
+  .s-product .visual{display:flex;flex-direction:column;gap:16px;justify-content:center}
+  .s-product .visual .shot{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;
+    background:var(--cream);box-shadow:var(--shadow)}
+  .s-product .visual .shot img{width:100%;aspect-ratio:16/10;object-fit:cover}
+  .s-product .visual .cap{display:flex;justify-content:space-between;font-family:"JetBrains Mono",monospace;
+    font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .s-product .visual .cap b{color:var(--clay);font-weight:600}
+
+  /* ── Slide 4: The Modes ─────────────────────── */
+  .s-modes{display:grid;grid-template-rows:auto 1fr;gap:clamp(24px,3vw,40px);
+    padding:clamp(60px,8vw,100px) clamp(28px,4vw,56px) clamp(50px,6vw,80px)}
+  .s-modes .head{display:grid;grid-template-columns:1fr auto;gap:30px;align-items:end}
+  .s-modes .head h2{font-size:clamp(40px,5vw,72px);max-width:16ch}
+  .s-modes .head .meta{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);
+    letter-spacing:.1em;text-align:right;line-height:1.7}
+  .s-modes .head .meta b{color:var(--clay);font-weight:600}
+  .s-modes .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .s-modes .mode{background:var(--paper);padding:clamp(20px,2.4vw,32px);display:flex;flex-direction:column;
+    gap:14px;min-height:300px;position:relative}
+  .s-modes .mode.winner{background:var(--cream)}
+  .s-modes .mode .tag{font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.14em;
+    text-transform:uppercase;padding:4px 8px;border-radius:99px;border:1px solid var(--line-2);
+    color:var(--ink-soft);background:var(--paper);align-self:flex-start}
+  .s-modes .mode.winner .tag{color:var(--cream);background:var(--clay);border-color:var(--clay)}
+  .s-modes .mode h3{font-family:"Fraunces",serif;font-weight:400;font-size:clamp(22px,2.4vw,32px);
+    line-height:1.05;letter-spacing:-.015em;color:var(--ink)}
+  .s-modes .mode h3 em{font-style:italic;color:var(--clay);font-weight:300}
+  .s-modes .mode p{font-family:"DM Sans",sans-serif;font-size:13px;line-height:1.55;color:var(--ink-soft)}
+  .s-modes .mode .pill{margin-top:auto;font-family:"JetBrains Mono",monospace;font-size:10px;
+    color:var(--muted);letter-spacing:.08em;border-top:1px solid var(--line);padding-top:12px}
+  .s-modes .mode.winner .pill{color:var(--clay);border-color:var(--line-2)}
+
+  /* ── Slide 5: Results ───────────────────────── */
+  .s-results{display:grid;grid-template-rows:auto 1fr auto;gap:clamp(20px,2.4vw,34px);
+    padding:clamp(60px,8vw,100px) clamp(28px,4vw,56px) clamp(40px,5vw,64px)}
+  .s-results .head{display:grid;grid-template-columns:1fr auto;gap:30px;align-items:end}
+  .s-results .head h2{font-size:clamp(40px,5vw,68px);max-width:16ch}
+  .s-results .head h2 em{font-style:italic;color:var(--clay);font-weight:300}
+  .s-results .head .sub{font-family:"DM Sans",sans-serif;font-size:14px;color:var(--ink-soft);
+    max-width:32ch;line-height:1.55;text-align:right}
+  .s-results .chart{display:grid;gap:clamp(10px,1.2vw,16px);align-content:center}
+  .s-results .br{display:grid;grid-template-columns:clamp(120px,12vw,180px) 1fr clamp(70px,7vw,100px);
+    align-items:center;gap:clamp(14px,1.8vw,24px)}
+  .s-results .br .lab{font-family:"DM Sans",sans-serif;font-size:14px;font-weight:500;color:var(--ink-2);
+    text-align:right}
+  .s-results .br.best .lab{font-weight:600;color:var(--clay)}
+  .s-results .br.best .lab::after{content:"";display:inline-block;width:6px;height:6px;border-radius:99px;
+    background:var(--clay);margin-left:8px;vertical-align:middle;transform:translateY(-1px)}
+  .s-results .track{position:relative;height:22px;background:var(--paper-3);border-radius:2px;overflow:hidden}
+  .s-results .bar{height:100%;border-radius:inherit;background:var(--ink-soft);
+    transform-origin:left;animation:grow 1.1s var(--ease) both}
+  .s-results .br.best .bar{background:linear-gradient(90deg,var(--clay),var(--terra))}
+  .s-results .br .v{font-family:"Fraunces",serif;font-weight:400;font-size:22px;color:var(--ink);
+    font-variant-numeric:tabular-nums;letter-spacing:-.01em;font-variation-settings:"opsz" 14}
+  .s-results .br.best .v{color:var(--clay);font-weight:500}
+  .s-results .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .s-results .stat{background:var(--paper);padding:clamp(16px,1.8vw,24px);
+    display:flex;flex-direction:column;gap:8px}
+  .s-results .stat .l{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--muted)}
+  .s-results .stat .n{font-family:"Fraunces",serif;font-weight:300;font-size:clamp(36px,4.5vw,58px);
+    line-height:.9;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.02em;
+    font-variation-settings:"opsz" 144}
+  .s-results .stat.win .n{color:var(--clay)}
+  .s-results .stat .n small{font-family:"DM Sans",sans-serif;font-size:11px;font-weight:500;color:var(--muted);
+    margin-left:8px;letter-spacing:0;font-variant-numeric:normal}
+
+  /* ── Slide 6: Future ────────────────────────── */
+  .s-future{display:grid;grid-template-columns:1fr 1fr;align-items:center;
+    padding:clamp(60px,8vw,100px) clamp(28px,4vw,56px) clamp(50px,6vw,80px);gap:clamp(30px,4vw,56px)}
+  .s-future .copy{display:flex;flex-direction:column;gap:clamp(20px,2.5vw,32px)}
+  .s-future .copy h2{font-size:clamp(46px,6vw,88px);max-width:12ch}
+  .s-future .copy h2 em{font-style:italic;color:var(--clay);font-weight:300}
+  .s-future .copy .lead{max-width:40ch}
+  .s-future .list{display:grid;gap:0}
+  .s-future .li{display:grid;grid-template-columns:auto 1fr;gap:clamp(16px,2vw,28px);
+    padding:clamp(18px,2.2vw,26px) 0;border-top:1px solid var(--line);align-items:start}
+  .s-future .li:last-child{border-bottom:1px solid var(--line)}
+  .s-future .li .n{font-family:"Fraunces",serif;font-weight:300;font-size:clamp(26px,3vw,40px);
+    line-height:1;color:var(--clay);font-variation-settings:"opsz" 14}
+  .s-future .li .t strong{font-family:"Fraunces",serif;font-weight:400;font-size:clamp(19px,2vw,26px);
+    display:block;margin-bottom:6px;color:var(--ink);letter-spacing:-.01em}
+  .s-future .li .t span{font-family:"DM Sans",sans-serif;font-size:14px;line-height:1.55;color:var(--ink-soft)}
+  .s-future .visual{position:relative;display:flex;flex-direction:column;gap:18px;align-items:flex-start}
+  .s-future .visual .shot{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;
+    background:var(--cream);box-shadow:var(--shadow);width:100%}
+  .s-future .visual .shot img{width:100%;aspect-ratio:16/10;object-fit:cover}
+  .s-future .visual .card{padding:clamp(18px,2.2vw,28px);border:1px solid var(--line-2);
+    background:var(--cream);border-radius:var(--r);width:100%;display:flex;flex-direction:column;gap:12px}
+  .s-future .visual .card strong{font-family:"Fraunces",serif;font-weight:400;font-size:19px;color:var(--ink)}
+  .s-future .visual .card p{font-family:"DM Sans",sans-serif;font-size:13px;color:var(--ink-soft);line-height:1.5}
+  .s-future .visual .card a{display:inline-flex;align-items:center;gap:10px;margin-top:4px;
+    font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:600;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--cream);background:var(--ink);padding:11px 16px;
+    border-radius:2px;transition:background .2s var(--ease);align-self:flex-start}
+  .s-future .visual .card a:hover{background:var(--clay)}
+  .s-future .visual .card a .ar{font-family:"Fraunces",serif;font-weight:300;font-size:14px}
+
+  /* ── Slide 7: Colophon / Thanks ─────────────── */
+  .s-end{display:grid;place-items:center;text-align:center;padding:clamp(40px,5vw,70px)}
+  .s-end .wrap{display:flex;flex-direction:column;gap:clamp(20px,2.5vw,32px);align-items:center;max-width:900px}
+  .s-end .wordmark{font-family:"Fraunces",serif;font-weight:600;font-size:26px;letter-spacing:-.02em}
+  .s-end .wordmark span{color:var(--clay)}
+  .s-end h2{font-family:"Fraunces",serif;font-weight:200;font-size:clamp(56px,8vw,128px);
+    line-height:.9;letter-spacing:-.03em;font-variation-settings:"opsz" 144,"SOFT" 40}
+  .s-end h2 em{font-style:italic;font-weight:300;color:var(--clay);font-variation-settings:"opsz" 144,"SOFT" 60,"WONK" 1}
+  .s-end .sub{font-family:"DM Sans",sans-serif;font-size:16px;color:var(--ink-soft);max-width:48ch;line-height:1.55}
+  .s-end .meta{display:flex;gap:clamp(16px,2vw,32px);flex-wrap:wrap;justify-content:center;
+    padding-top:clamp(18px,2vw,28px);border-top:1px solid var(--line);width:min(700px,100%)}
+  .s-end .meta .m{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--muted)}
+  .s-end .meta .m b{color:var(--ink);font-weight:600}
+
+  /* nav */
+  .nav{position:fixed;left:50%;bottom:clamp(18px,2.4vw,32px);transform:translateX(-50%);z-index:20;
+    display:none;align-items:center;gap:12px;padding:8px 10px;background:rgba(253,251,247,.85);
+    backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:99px;box-shadow:var(--shadow)}
+  .nav button{width:32px;height:32px;border:0;border-radius:99px;background:var(--paper-2);
+    color:var(--ink);cursor:pointer;font-size:14px;line-height:1;display:grid;place-items:center;
+    font-family:"Fraunces",serif;transition:background .2s var(--ease)}
+  .nav button:hover{background:var(--ink);color:var(--cream)}
+  .nav .dots{display:flex;gap:6px;align-items:center;padding:0 6px}
+  .nav .dot{width:6px;height:6px;border:0;border-radius:99px;background:var(--line-2);cursor:pointer;
+    transition:all .25s var(--ease)}
+  .nav .dot.active{width:22px;background:var(--clay)}
+
+  @keyframes grow{from{transform:scaleX(.04)}to{transform:scaleX(1)}}
+
+  @media (max-width:1100px){
+    .s-cover h1{font-size:clamp(48px,8vw,84px)}
+    .s-problem{grid-template-columns:1fr;gap:24px}
+    .s-problem .left{flex-direction:row;align-items:baseline;gap:20px}
+    .s-problem .left .big-num{font-size:clamp(80px,12vw,140px)}
+    .s-product{grid-template-columns:1fr;gap:24px}
+    .s-modes .grid{grid-template-columns:1fr 1fr}
+    .s-results .br{grid-template-columns:110px 1fr 64px;gap:12px}
+    .s-future{grid-template-columns:1fr;gap:24px}
+  }
+  @media (max-width:680px){
+    html,body{overflow:auto}
+    .deck{height:auto;min-height:100vh}
+    .slide{position:relative;min-height:100vh;display:none}
+    .slide.active{display:grid}
+    .s-cover h1{font-size:clamp(40px,11vw,60px)}
+    .s-modes .grid{grid-template-columns:1fr}
+    .s-results .stats{grid-template-columns:1fr 1fr}
+    .s-results .br{grid-template-columns:1fr;gap:6px}
+    .s-results .br .lab{text-align:left}
+    .s-product .features{grid-template-columns:1fr}
+  }
+  @media print{
+    html,body{overflow:visible;background:var(--paper)}
+    .deck{height:auto}
+    .slide{position:relative;opacity:1;visibility:visible;page-break-after:always;min-height:100vh}
+    .nav{display:none}
+  }
+</style>
+</head>
+<body>
+<main class="deck">
+
+  <!-- 1 · COVER -->
+  <section class="slide s-cover active">
+    <div class="edge-top">
+      <div class="l"><span>Vol. 01</span><span class="rule"></span><span>Mini Project</span></div>
+      <div class="r"><span>Security Insider Lab</span><span class="rule"></span><span>2026</span></div>
+    </div>
+
+    <div class="center">
+      <div class="masthead">
+        <div class="wordmark">Herm<span>Sec</span></div>
+        <div class="iss">A Field Report</div>
+      </div>
+      <h1 class="display">Security review,<br/><em>made local.</em></h1>
+      <p class="lead">A desktop assistant that inspects a repository, runs the right scanners, validates evidence with agents, and writes clean reports — without sending your code anywhere.</p>
+    </div>
+
+    <div class="sub">
+      <div class="col">
+        <span class="lbl">The Tool</span>
+        <p>HermSec is a local-first desktop security scanner. It profiles each project, selects matching scanners, runs them, and normalizes evidence into readable reports.</p>
+        <div class="tags">
+          <span>Local-first</span><span>Scanner-backed</span><span>Agent triage</span><span>PDF · HTML · JSON</span>
+        </div>
+      </div>
+      <div class="col">
+        <span class="lbl">The Study</span>
+        <p>We compare four review modes — Deep assisted, Single Agent, MoA, and Scanner + MoA — across 20 projects with 184 labelled findings, using efficient non-US models.</p>
+      </div>
+    </div>
+
+    <div class="edge-bot">
+      <div class="l"><span>HermSec v0.1.6</span></div>
+      <div class="r"><span class="pg"><b>01</b> / 07</span></div>
+    </div>
+  </section>
+
+  <!-- 2 · PROBLEM -->
+  <section class="slide s-problem">
+    <div class="edge-top">
+      <div class="l"><span>Chapter One</span><span class="rule"></span><span>The Problem</span></div>
+      <div class="r"><span>HermSec</span></div>
+    </div>
+
+    <div class="left">
+      <div class="big-num">01<em>.</em></div>
+      <div class="cap">Why we built it —<br/>the friction developers face</div>
+    </div>
+
+    <div class="right">
+      <div class="kicker"><span class="bullet"></span>The friction</div>
+      <h2 class="display">Security tools should be <em>easier</em> to run.</h2>
+      <p class="lead">Many developers skip security checks because setup is slow, reports are noisy, and each language needs a different toolchain.</p>
+
+      <div class="items">
+        <div class="it"><div class="n">01</div><div class="t">
+          <strong>One simple workflow</strong>
+          <span>Pick a project, choose the scan mode, and let HermSec handle the scanning steps.</span>
+        </div></div>
+        <div class="it"><div class="n">02</div><div class="t">
+          <strong>Clear evidence</strong>
+          <span>Findings keep file paths, lines, rules, severity, confidence, and remediation guidance.</span>
+        </div></div>
+        <div class="it"><div class="n">03</div><div class="t">
+          <strong>Useful reports</strong>
+          <span>The final output is readable in chat, dashboard pages, JSON, Markdown, HTML, and PDF.</span>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="edge-bot">
+      <div class="l"><span>The Problem</span></div>
+      <div class="r"><span class="pg"><b>02</b> / 07</span></div>
+    </div>
+  </section>
+
+  <!-- 3 · PRODUCT -->
+  <section class="slide s-product">
+    <div class="edge-top">
+      <div class="l"><span>Chapter Two</span><span class="rule"></span><span>The Product</span></div>
+      <div class="r"><span>HermSec</span></div>
+    </div>
+
+    <div class="copy">
+      <div class="kicker"><span class="bullet"></span>Core functionality</div>
+      <h2 class="display">A folder becomes a <em>security report.</em></h2>
+      <p class="lead">The harness inspects the repository, selects the right scanners, runs checks, validates evidence, and writes clean reports.</p>
+
+      <div class="features">
+        <div class="feat"><span class="ic">/ 01</span><strong>Project inspection</strong><span>Detects languages, manifests, lockfiles, and config files before the scan begins.</span></div>
+        <div class="feat"><span class="ic">/ 02</span><strong>Adaptive scanners</strong><span>Uses scanner tools that fit the project instead of running every tool every time.</span></div>
+        <div class="feat"><span class="ic">/ 03</span><strong>Live progress</strong><span>The chat card shows scan stages, scanner status, findings, failures, and final reports.</span></div>
+        <div class="feat"><span class="ic">/ 04</span><strong>Doctor checks</strong><span>Confirms scanners, model provider access, and internet sources are ready.</span></div>
+        <div class="feat"><span class="ic">/ 05</span><strong>Provider setup</strong><span>Loads supported model providers and lets users enable the models they need.</span></div>
+        <div class="feat"><span class="ic">/ 06</span><strong>Automation & reports</strong><span>Scheduled scans and completed reports link directly to the PDF and report folder.</span></div>
+      </div>
+    </div>
+
+    <div class="visual">
+      <div class="shot"><img src="assets/hermsec-scan-progress.png" alt="HermSec scan progress card" /></div>
+      <div class="cap"><span>Live scan progress</span><b>Project → tools → report</b></div>
+    </div>
+
+    <div class="edge-bot">
+      <div class="l"><span>The Product</span></div>
+      <div class="r"><span class="pg"><b>03</b> / 07</span></div>
+    </div>
+  </section>
+
+  <!-- 4 · MODES -->
+  <section class="slide s-modes">
+    <div class="edge-top">
+      <div class="l"><span>Chapter Three</span><span class="rule"></span><span>Research Question</span></div>
+      <div class="r"><span>HermSec</span></div>
+    </div>
+
+    <div class="head">
+      <div>
+        <div class="kicker"><span class="bullet"></span>The comparison</div>
+        <h2 class="display">Which review mode gives the <em>best</em> security result?</h2>
+      </div>
+      <div class="meta">20 projects<br/><b>184 labelled findings</b><br/>efficient non-US models</div>
+    </div>
+
+    <div class="grid">
+      <div class="mode">
+        <span class="tag">Scanner-backed</span>
+        <h3>Deep <em>assisted</em></h3>
+        <p>Scanners run first. The model summarizes and explains scanner-backed evidence.</p>
+        <div class="pill">F1 · 0.4381</div>
+      </div>
+      <div class="mode">
+        <span class="tag">Agent-only</span>
+        <h3>Single <em>Agent</em></h3>
+        <p>One model inspects focused code candidates with bounded read and search tools.</p>
+        <div class="pill">F1 · 0.6462</div>
+      </div>
+      <div class="mode">
+        <span class="tag">Agent-only</span>
+        <h3><em>MoA</em> inspection</h3>
+        <p>Specialist agents inspect candidates. A judge and aggregator merge accepted evidence.</p>
+        <div class="pill">F1 · 0.5433 / 0.5455</div>
+      </div>
+      <div class="mode winner">
+        <span class="tag">Hybrid · Best</span>
+        <h3>Scanner <em>+ MoA</em></h3>
+        <p>Scanners and agents run independently. A judge validates and merges both sources.</p>
+        <div class="pill">F1 · 0.7640 ← winner</div>
+      </div>
+    </div>
+
+    <div class="edge-bot">
+      <div class="l"><span>The Modes</span></div>
+      <div class="r"><span class="pg"><b>04</b> / 07</span></div>
+    </div>
+  </section>
+
+  <!-- 5 · RESULTS -->
+  <section class="slide s-results">
+    <div class="edge-top">
+      <div class="l"><span>Chapter Four</span><span class="rule"></span><span>Final Results</span></div>
+      <div class="r"><span>HermSec</span></div>
+    </div>
+
+    <div class="head">
+      <div>
+        <div class="kicker"><span class="bullet"></span>The verdict</div>
+        <h2 class="display">Scanner + MoA High <em>performed best.</em></h2>
+      </div>
+      <div class="sub">The final test used 20 projects with 184 labelled findings. F1 score was the main balance between precision and recall.</div>
+    </div>
+
+    <div class="chart">
+      <div class="br"><div class="lab">Deep assisted</div><div class="track"><div class="bar" style="width:43.81%"></div></div><div class="v">0.4381</div></div>
+      <div class="br"><div class="lab">Single Agent</div><div class="track"><div class="bar" style="width:64.62%"></div></div><div class="v">0.6462</div></div>
+      <div class="br"><div class="lab">MoA Low</div><div class="track"><div class="bar" style="width:54.33%"></div></div><div class="v">0.5433</div></div>
+      <div class="br"><div class="lab">MoA High</div><div class="track"><div class="bar" style="width:54.55%"></div></div><div class="v">0.5455</div></div>
+      <div class="br"><div class="lab">Scanner + MoA Low</div><div class="track"><div class="bar" style="width:53.33%"></div></div><div class="v">0.5333</div></div>
+      <div class="br best"><div class="lab">Scanner + MoA High</div><div class="track"><div class="bar" style="width:76.40%"></div></div><div class="v">0.7640</div></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat win"><div class="l">True positives</div><div class="n">157</div></div>
+      <div class="stat"><div class="l">False positives</div><div class="n">70</div></div>
+      <div class="stat win"><div class="l">Recall</div><div class="n">0.8533</div></div>
+      <div class="stat win"><div class="l">F1 score</div><div class="n">0.7640</div></div>
+    </div>
+
+    <div class="edge-bot">
+      <div class="l"><span>The Results</span></div>
+      <div class="r"><span class="pg"><b>05</b> / 07</span></div>
+    </div>
+  </section>
+
+  <!-- 6 · FUTURE -->
+  <section class="slide s-future">
+    <div class="edge-top">
+      <div class="l"><span>Chapter Five</span><span class="rule"></span><span>What Comes Next</span></div>
+      <div class="r"><span>HermSec</span></div>
+    </div>
+
+    <div class="copy">
+      <div class="kicker"><span class="bullet"></span>The roadmap</div>
+      <h2 class="display">Future <em>plans.</em></h2>
+      <p class="lead">The next work is about making HermSec simpler, faster, and easier to run every day.</p>
+
+      <div class="list">
+        <div class="li"><div class="n">01</div><div class="t">
+          <strong>One-button scan</strong>
+          <span>Reduce the app to a smaller flow where users can scan with almost no setup.</span>
+        </div></div>
+        <div class="li"><div class="n">02</div><div class="t">
+          <strong>Change-aware scans</strong>
+          <span>Skip work when the project has not changed since the last scan.</span>
+        </div></div>
+        <div class="li"><div class="n">03</div><div class="t">
+          <strong>Email reports</strong>
+          <span>Send scan reports to a mailbox when new results are ready.</span>
+        </div></div>
+        <div class="li"><div class="n">04</div><div class="t">
+          <strong>Better cost tracking</strong>
+          <span>Measure model token cost per mode and route work to efficient models by default.</span>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="visual">
+      <div class="shot"><img src="assets/hermsec-scan-summary.png" alt="HermSec completed scan summary" /></div>
+      <div class="card">
+        <strong>HermSec is ready to download.</strong>
+        <p>Installers and release builds are published from the project repository.</p>
+        <a href="https://github.com/sethwhenton/hermsec/releases" target="_blank" rel="noreferrer">
+          <span>Open GitHub releases</span><span class="ar">→</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="edge-bot">
+      <div class="l"><span>The Future</span></div>
+      <div class="r"><span class="pg"><b>06</b> / 07</span></div>
+    </div>
+  </section>
+
+  <!-- 7 · END -->
+  <section class="slide s-end">
+    <div class="edge-top">
+      <div class="l"><span>Colophon</span><span class="rule"></span><span>Thank you</span></div>
+      <div class="r"><span>HermSec</span></div>
+    </div>
+
+    <div class="wrap">
+      <div class="wordmark">Herm<span>Sec</span></div>
+      <h2 class="display">Thank <em>you.</em></h2>
+      <p class="sub">A local-first security scanner that keeps your code on your machine — and puts agents to work where scanners get noisy.</p>
+      <div class="meta">
+        <div class="m"><b>Electron</b> · React · TypeScript</div>
+        <div class="m"><b>Semgrep</b> · Gitleaks · Bandit · Trivy</div>
+        <div class="m"><b>OpenCode Go</b> · DeepSeek · MiMo · MiniMax</div>
+      </div>
+    </div>
+
+    <div class="edge-bot">
+      <div class="l"><span>github.com/sethwhenton/hermsec</span></div>
+      <div class="r"><span class="pg"><b>07</b> / 07</span></div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="nav" aria-label="Slide navigation">
+  <button id="prev" type="button" aria-label="Previous">‹</button>
+  <div class="dots" aria-label="Slide dots"></div>
+  <button id="next" type="button" aria-label="Next">›</button>
+</nav>
+
+<script>
+  const slides = Array.from(document.querySelectorAll(".slide"));
+  const dotsWrap = document.querySelector(".dots");
+  let index = 0;
+  const dots = slides.map((_, i) => {
+    const b = document.createElement("button");
+    b.className = "dot"; b.type = "button";
+    b.setAttribute("aria-label", `Go to slide ${i+1}`);
+    b.addEventListener("click", () => show(i));
+    dotsWrap.appendChild(b);
+    return b;
+  });
+  function show(n){
+    index = Math.max(0, Math.min(slides.length-1, n));
+    slides.forEach((s,i)=>s.classList.toggle("active", i===index));
+    dots.forEach((d,i)=>d.classList.toggle("active", i===index));
+  }
+  document.getElementById("prev").addEventListener("click", ()=>show(index-1));
+  document.getElementById("next").addEventListener("click", ()=>show(index+1));
+  document.querySelector(".deck").addEventListener("click", (e)=>{
+    if(e.target.closest("a,button")) return;
+    const dir = e.clientX < window.innerWidth*0.30 ? -1 : 1;
+    show(index+dir);
+  });
+  window.addEventListener("keydown", (e)=>{
+    if(e.key==="ArrowRight"||e.key==="PageDown"||e.key===" "){e.preventDefault();show(index+1);}
+    if(e.key==="ArrowLeft"||e.key==="PageUp"){e.preventDefault();show(index-1);}
+    if(e.key==="Home"){e.preventDefault();show(0);}
+    if(e.key==="End"){e.preventDefault();show(slides.length-1);}
+  });
+  show(0);
+</script>
+</body>
+</html>

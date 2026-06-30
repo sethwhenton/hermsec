@@ -1,0 +1,1706 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HermSec Presentation</title>
+  <link rel="icon" href="data:," />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #07080b;
+      --panel: #111217;
+      --panel-2: #161820;
+      --text: #f7f8ff;
+      --muted: #9ca3b8;
+      --soft: #cbd2e8;
+      --line: rgba(255,255,255,.12);
+      --blue: #3b82f6;
+      --blue-2: #60a5fa;
+      --green: #29d987;
+      --yellow: #f5c542;
+      --red: #ff6b6b;
+      --shadow: 0 34px 110px rgba(0,0,0,.42);
+      --radius: 18px;
+      --ease: cubic-bezier(.16,1,.3,1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      min-height: 100%;
+      color: var(--text);
+      background: var(--bg);
+      font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(59,130,246,.055), transparent 26%, transparent 78%, rgba(255,255,255,.025)),
+        radial-gradient(circle at 50% 118%, rgba(59,130,246,.105), transparent 38%),
+        #07080b;
+      opacity: .98;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .05;
+      background-image:
+        linear-gradient(rgba(255,255,255,.4) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.4) 1px, transparent 1px);
+      background-size: 80px 80px;
+      mask-image: radial-gradient(circle at center, black, transparent 72%);
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    figure {
+      margin: 0;
+    }
+
+    .deck {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1.02fr) minmax(360px, .98fr);
+      gap: clamp(28px, 4vw, 72px);
+      align-items: center;
+      padding: clamp(36px, 5vw, 76px);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(36px) scale(.985);
+      transition: opacity .5s var(--ease), transform .5s var(--ease), visibility .5s;
+    }
+
+    .slide > * {
+      min-width: 0;
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(0) scale(1);
+      z-index: 2;
+    }
+
+    .slide.full {
+      grid-template-columns: 1fr;
+      align-content: center;
+    }
+
+    .slide.centered {
+      justify-items: center;
+      text-align: center;
+    }
+
+    .intro-slide {
+      grid-template-columns: 1fr;
+      align-content: start;
+      justify-items: center;
+      text-align: center;
+      padding-top: clamp(32px, 4vw, 58px);
+      padding-bottom: 0;
+      overflow: hidden;
+    }
+
+    .intro-copy {
+      position: relative;
+      z-index: 3;
+      max-width: 1120px;
+    }
+
+    .intro-slide h1 {
+      max-width: 1000px;
+      font-size: clamp(58px, 6vw, 82px);
+      line-height: .9;
+    }
+
+    .intro-slide .lead {
+      margin-left: auto;
+      margin-right: auto;
+      max-width: 780px;
+    }
+
+    .intro-slide .chip-row {
+      justify-content: center;
+    }
+
+    .intro-slide .hero-image {
+      position: absolute;
+      left: 50%;
+      bottom: clamp(-92px, -9vh, -62px);
+      width: min(1180px, 88vw);
+      margin-top: 0;
+      transform: translateX(-50%);
+      z-index: 1;
+    }
+
+    .intro-slide .hero-image img {
+      aspect-ratio: 16 / 8.3;
+      object-position: center top;
+    }
+
+    .topline {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--soft);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+
+    .mark {
+      width: auto;
+      height: auto;
+      display: inline;
+      color: var(--muted);
+      background: transparent;
+      border: 0;
+      font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+      font-weight: 800;
+      letter-spacing: .08em;
+    }
+
+    .brand-logo {
+      width: 34px;
+      height: 34px;
+      display: inline-grid;
+      place-items: center;
+      flex: 0 0 auto;
+    }
+
+    .brand-logo img {
+      width: 34px;
+      height: 34px;
+      display: block;
+      object-fit: contain;
+    }
+
+    h1,
+    h2 {
+      font-family: Sora, "Plus Jakarta Sans", sans-serif;
+      letter-spacing: 0;
+      margin: 0;
+      color: #fff;
+    }
+
+    h1 {
+      font-size: clamp(58px, 8vw, 118px);
+      line-height: .88;
+      max-width: 940px;
+    }
+
+    h2 {
+      font-size: clamp(42px, 5.5vw, 78px);
+      line-height: .95;
+      max-width: 930px;
+    }
+
+    .lead {
+      max-width: 760px;
+      margin: 24px 0 0;
+      color: var(--soft);
+      font-size: clamp(18px, 2vw, 25px);
+      line-height: 1.45;
+    }
+
+    .body {
+      max-width: 860px;
+      color: var(--soft);
+      font-size: clamp(17px, 1.65vw, 22px);
+      line-height: 1.55;
+    }
+
+    .body p {
+      margin: 0 0 18px;
+    }
+
+    .image-frame {
+      position: relative;
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 7px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.025)),
+        rgba(255,255,255,.035);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .image-frame::before {
+      content: "";
+      position: absolute;
+      inset: 7px;
+      border: 1px solid rgba(255,255,255,.075);
+      border-radius: calc(var(--radius) - 7px);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .image-frame img {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: cover;
+      border-radius: calc(var(--radius) - 9px);
+    }
+
+    .image-frame.hero-image {
+      transform: rotate(.4deg);
+    }
+
+    .image-frame.hero-image img {
+      aspect-ratio: 16 / 10;
+      object-position: center;
+    }
+
+    .intro-slide .image-frame.hero-image {
+      transform: translateX(-50%);
+    }
+
+    .intro-slide .image-frame.hero-image img {
+      aspect-ratio: 16 / 8.3;
+      object-position: center top;
+    }
+
+    .caption {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 13px 16px;
+      color: var(--muted);
+      border-top: 1px solid rgba(255,255,255,.095);
+      font-size: 13px;
+      background: rgba(0,0,0,.22);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 30px;
+    }
+
+    .feature {
+      min-height: 130px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,.045);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.045);
+    }
+
+    .feature strong {
+      display: block;
+      color: #fff;
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .feature span {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
+    .steps {
+      display: grid;
+      gap: 14px;
+      margin-top: 32px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 16px;
+      align-items: start;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,.04);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    }
+
+    .num {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: rgba(59,130,246,.24);
+      border: 1px solid rgba(96,165,250,.36);
+      font-weight: 800;
+    }
+
+    .step strong {
+      display: block;
+      color: #fff;
+      font-size: 18px;
+      margin-bottom: 5px;
+    }
+
+    .step span {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .stat-panel {
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,.045);
+    }
+
+    .stat-panel .label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .stat-panel .value {
+      margin-top: 8px;
+      color: #fff;
+      font-family: Sora, "Plus Jakarta Sans", sans-serif;
+      font-size: clamp(34px, 5vw, 62px);
+      line-height: 1;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .chip {
+      padding: 9px 12px;
+      color: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255,255,255,.045);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 34px;
+    }
+
+    .flow-card {
+      min-height: 174px;
+      padding: 18px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.045);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    }
+
+    .flow-card:nth-child(4) {
+      border-color: rgba(96,165,250,.42);
+      background: rgba(59,130,246,.13);
+    }
+
+    .flow-card strong {
+      display: block;
+      color: #fff;
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+
+    .flow-card span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .modes-slide {
+      text-align: left;
+      justify-items: center;
+    }
+
+    .modes-slide > div {
+      width: min(1080px, 100%);
+    }
+
+    .modes-slide h2,
+    .modes-slide .lead {
+      text-align: center;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .modes-slide .flow {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0 52px;
+      max-width: 980px;
+      margin: 42px auto 0;
+    }
+
+    .modes-slide .flow-card,
+    .modes-slide .flow-card:nth-child(4) {
+      min-height: 0;
+      padding: 18px 0 20px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .modes-slide .flow-card::after {
+      content: "";
+      display: block;
+      width: 100%;
+      height: 1px;
+      margin-top: 16px;
+      background: linear-gradient(90deg, rgba(96,165,250,.55), rgba(255,255,255,.1), transparent);
+    }
+
+    .modes-slide .flow-card strong {
+      font-size: 20px;
+      margin-bottom: 8px;
+    }
+
+    .modes-slide .flow-card span {
+      font-size: 15px;
+    }
+
+    .chart-card {
+      width: min(1080px, 100%);
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(255,255,255,.045);
+      box-shadow: var(--shadow);
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 190px minmax(0, 1fr) 70px;
+      align-items: center;
+      gap: 16px;
+      margin: 15px 0;
+    }
+
+    .bar-label {
+      color: var(--soft);
+      font-size: 15px;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .track {
+      height: 18px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.08);
+    }
+
+    .bar {
+      width: calc(var(--value) * 100%);
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--blue), var(--green));
+      transform-origin: left center;
+      animation: grow .9s var(--ease) both;
+    }
+
+    .bar-row.best .bar {
+      background: linear-gradient(90deg, #60a5fa, #29d987);
+      box-shadow: 0 0 24px rgba(41,217,135,.18);
+    }
+
+    .bar-value {
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+    }
+
+    .winner {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 24px;
+    }
+
+    .winner .stat-panel {
+      padding: 18px;
+    }
+
+    .winner .value {
+      font-size: 34px;
+    }
+
+    .download-card {
+      width: min(900px, 100%);
+      margin-top: 30px;
+      padding: 26px;
+      border-radius: 20px;
+      border: 1px solid rgba(96,165,250,.32);
+      background:
+        linear-gradient(180deg, rgba(59,130,246,.14), rgba(255,255,255,.04)),
+        rgba(255,255,255,.025);
+      box-shadow: var(--shadow);
+    }
+
+    .download-card a {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 16px;
+      padding: 10px 10px 10px 16px;
+      border-radius: 12px;
+      background: #fff;
+      color: #080a10;
+      font-weight: 800;
+      transition: transform .2s var(--ease), background .2s var(--ease);
+    }
+
+    .download-card a:hover {
+      background: #eef4ff;
+    }
+
+    .download-card a:active {
+      transform: scale(.985);
+    }
+
+    .cta-icon {
+      width: 32px;
+      height: 32px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 9px;
+      background: #0c1220;
+      color: #fff;
+      font-size: 14px;
+    }
+
+    .controls {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      z-index: 10;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      transform: translateX(-50%);
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(14,15,20,.76);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 18px 42px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.045);
+    }
+
+    .control-button {
+      width: 42px;
+      height: 42px;
+      border: 0;
+      border-radius: 50%;
+      color: var(--text);
+      background: rgba(255,255,255,.075);
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+      transition: transform .2s var(--ease), background .2s var(--ease);
+    }
+
+    .control-button:hover {
+      background: rgba(255,255,255,.14);
+    }
+
+    .control-button:active {
+      transform: scale(.96);
+    }
+
+    .dots {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 8px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border: 0;
+      border-radius: 99px;
+      background: rgba(255,255,255,.28);
+      cursor: pointer;
+      transition: width .25s var(--ease), background .25s var(--ease);
+    }
+
+    .dot.active {
+      width: 28px;
+      background: var(--blue-2);
+    }
+
+    .slide-count {
+      position: fixed;
+      right: 28px;
+      bottom: 34px;
+      z-index: 10;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hint {
+      position: fixed;
+      left: 28px;
+      bottom: 34px;
+      z-index: 10;
+      color: rgba(203,210,232,.72);
+      font-size: 13px;
+      display: none;
+    }
+
+    @keyframes grow {
+      from { transform: scaleX(.08); }
+      to { transform: scaleX(1); }
+    }
+
+    .future-slide {
+      grid-template-columns: minmax(0, .98fr) minmax(360px, 1.02fr);
+      gap: clamp(24px, 3vw, 52px);
+    }
+
+    .future-slide h2 {
+      font-size: clamp(40px, 5vw, 72px);
+    }
+
+    .future-slide .lead {
+      margin-top: 18px;
+    }
+
+    .future-slide .steps {
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .future-slide .step {
+      grid-template-columns: 40px 1fr;
+      gap: 13px;
+      padding: 13px 15px;
+      border-radius: 14px;
+    }
+
+    .future-slide .step strong {
+      font-size: 16px;
+      margin-bottom: 3px;
+    }
+
+    .future-slide .step span {
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .future-slide .num {
+      width: 32px;
+      height: 32px;
+    }
+
+    .future-slide .download-card {
+      margin-top: 20px;
+      padding: 22px;
+    }
+
+    .bonus-slide {
+      gap: clamp(22px, 3vw, 50px);
+    }
+
+    .bonus-slide h2 {
+      font-size: clamp(38px, 5vw, 70px);
+    }
+
+    .bonus-slide .lead {
+      font-size: clamp(17px, 1.7vw, 22px);
+    }
+
+    .bonus-slide .stack {
+      gap: 14px;
+    }
+
+    .bonus-slide .grid {
+      gap: 12px;
+      margin-top: 0;
+    }
+
+    .bonus-slide .feature {
+      min-height: 112px;
+      padding: 16px;
+    }
+
+    .bonus-slide .image-frame img {
+      max-height: 430px;
+      object-fit: cover;
+    }
+
+    .why-slide .steps {
+      gap: 0;
+      margin-top: 28px;
+    }
+
+    .why-slide .step {
+      display: block;
+      padding: 18px 0 20px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .why-slide .step::after,
+    .product-slide .feature::after,
+    .future-simple .step::after {
+      content: "";
+      display: block;
+      width: min(360px, 100%);
+      height: 1px;
+      margin-top: 14px;
+      background: linear-gradient(90deg, rgba(96,165,250,.55), rgba(255,255,255,.1), transparent);
+    }
+
+    .product-slide .feature::after {
+      margin-top: 9px;
+    }
+
+    .why-slide .num {
+      display: none;
+    }
+
+    .product-slide {
+      position: relative;
+      grid-template-columns: minmax(0, .62fr) minmax(0, 1.38fr);
+      overflow: hidden;
+      padding-right: 0;
+    }
+
+    .product-slide > div {
+      max-width: 540px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .product-slide h2 {
+      max-width: 620px;
+      font-size: clamp(48px, 4.6vw, 72px);
+      line-height: .92;
+    }
+
+    .product-slide .lead {
+      max-width: 520px;
+      margin-top: 18px;
+      font-size: clamp(17px, 1.8vw, 22px);
+      line-height: 1.36;
+    }
+
+    .product-slide .grid {
+      grid-template-columns: 1fr;
+      gap: 0;
+      margin-top: 20px;
+      max-width: 520px;
+    }
+
+    .product-slide .feature {
+      min-height: 0;
+      padding: 9px 0 10px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .product-slide .feature strong {
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .product-slide .feature span {
+      font-size: 13px;
+      line-height: 1.34;
+    }
+
+    .product-slide .image-frame {
+      position: absolute;
+      top: 50%;
+      right: -13vw;
+      width: min(940px, 72vw);
+      transform: translateY(-50%);
+      z-index: 1;
+    }
+
+    .product-slide .image-frame img {
+      aspect-ratio: 16 / 9;
+      object-position: center;
+    }
+
+    .future-simple {
+      grid-template-columns: minmax(0, .78fr) minmax(420px, 1.04fr);
+      gap: clamp(28px, 4vw, 70px);
+      align-content: center;
+      justify-items: start;
+      text-align: left;
+    }
+
+    .future-content {
+      width: min(760px, 100%);
+    }
+
+    .future-simple h2 {
+      font-size: clamp(56px, 6.2vw, 96px);
+      max-width: 860px;
+    }
+
+    .future-simple .lead {
+      max-width: 680px;
+    }
+
+    .future-simple .steps {
+      max-width: 820px;
+      gap: 0;
+      margin-top: 34px;
+    }
+
+    .future-simple .step {
+      display: block;
+      padding: 17px 0 19px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .future-simple .num {
+      display: none;
+    }
+
+    .future-simple .future-image {
+      width: 100%;
+      align-self: center;
+    }
+
+    .future-simple .future-image img {
+      aspect-ratio: 16 / 10;
+      object-position: center top;
+    }
+
+    .questions-slide {
+      grid-template-columns: 1fr;
+      align-content: start;
+      justify-items: center;
+      text-align: center;
+      padding-top: clamp(44px, 5vw, 72px);
+      padding-bottom: 0;
+      overflow: hidden;
+    }
+
+    .questions-slide h2 {
+      font-size: clamp(58px, 6.2vw, 104px);
+      line-height: .88;
+    }
+
+    .questions-slide .lead {
+      margin-left: auto;
+      margin-right: auto;
+      max-width: 680px;
+    }
+
+    .questions-slide .question-image {
+      width: min(980px, 78vw);
+      margin-top: 58px;
+    }
+
+    .questions-slide .question-image img {
+      aspect-ratio: 16 / 9.4;
+      object-position: center top;
+      max-height: min(50vh, 460px);
+    }
+
+    @media (max-width: 980px) {
+      .slide {
+        grid-template-columns: minmax(0, 1fr) minmax(250px, .84fr);
+        gap: 18px;
+        padding: 34px 22px 84px;
+      }
+
+      .slide.full {
+        grid-template-columns: 1fr;
+      }
+
+      .intro-slide {
+        grid-template-columns: 1fr;
+        align-content: start;
+        padding: 30px 22px 54px;
+      }
+
+      .intro-slide h1 {
+        font-size: clamp(42px, 7.3vw, 60px);
+        line-height: .9;
+      }
+
+      .intro-slide .lead {
+        max-width: 620px;
+      }
+
+      .intro-slide .chip-row {
+        margin-top: 14px;
+      }
+
+      .intro-slide .hero-image {
+        bottom: -42px;
+        width: min(880px, 94vw);
+        margin-top: 0;
+        transform: translateX(-50%);
+      }
+
+      .intro-slide .hero-image img {
+        max-height: none;
+      }
+
+      h1 {
+        font-size: clamp(48px, 8vw, 68px);
+        line-height: .92;
+      }
+
+      h2 {
+        font-size: clamp(34px, 6vw, 52px);
+        line-height: .98;
+      }
+
+      .lead {
+        max-width: 650px;
+        margin-top: 16px;
+        font-size: clamp(15px, 2vw, 18px);
+      }
+
+      .body {
+        font-size: 15px;
+      }
+
+      .topline {
+        margin-bottom: 12px;
+        font-size: 11px;
+      }
+
+      .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .feature {
+        min-height: 92px;
+        padding: 13px;
+        border-radius: 14px;
+      }
+
+      .feature strong,
+      .flow-card strong,
+      .step strong {
+        font-size: 14px;
+      }
+
+      .feature span,
+      .flow-card span,
+      .step span {
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .steps {
+        gap: 10px;
+        margin-top: 20px;
+      }
+
+      .step {
+        grid-template-columns: 34px 1fr;
+        gap: 10px;
+        padding: 12px;
+        border-radius: 14px;
+      }
+
+      .num {
+        width: 30px;
+        height: 30px;
+      }
+
+      .image-frame img {
+        max-height: 440px;
+        object-fit: cover;
+      }
+
+      .image-frame.hero-image {
+        transform: none;
+      }
+
+      .intro-slide .image-frame.hero-image {
+        transform: translateX(-50%);
+      }
+
+      .why-slide .steps {
+        gap: 0;
+        margin-top: 20px;
+      }
+
+      .why-slide .step {
+        display: block;
+        padding: 13px 0 15px;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .why-slide .step::after,
+      .product-slide .feature::after,
+      .future-simple .step::after {
+        margin-top: 10px;
+      }
+
+      .product-slide {
+        grid-template-columns: minmax(0, .7fr) minmax(240px, 1fr);
+        padding-right: 0;
+      }
+
+      .product-slide > div {
+        max-width: 320px;
+      }
+
+      .product-slide h2 {
+        font-size: clamp(42px, 7vw, 60px);
+      }
+
+      .product-slide .lead {
+        font-size: 14px;
+        line-height: 1.38;
+      }
+
+      .product-slide .grid {
+        grid-template-columns: 1fr;
+        gap: 0;
+        margin-top: 16px;
+        max-width: 310px;
+      }
+
+      .product-slide .feature {
+        min-height: 0;
+        padding: 9px 0 10px;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .product-slide .feature strong {
+        font-size: 13px;
+      }
+
+      .product-slide .feature span {
+        font-size: 11px;
+        line-height: 1.32;
+      }
+
+      .product-slide .image-frame {
+        right: -15vw;
+        width: min(560px, 72vw);
+      }
+
+      .future-simple {
+        grid-template-columns: minmax(0, .86fr) minmax(240px, .94fr);
+        gap: 18px;
+        justify-items: stretch;
+      }
+
+      .future-simple h2 {
+        font-size: clamp(44px, 7.8vw, 66px);
+      }
+
+      .future-simple .lead {
+        max-width: 610px;
+      }
+
+      .future-simple .steps {
+        max-width: 680px;
+        margin-top: 18px;
+      }
+
+      .future-simple .step {
+        display: block;
+        padding: 10px 0 11px;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .future-simple .future-image img {
+        max-height: 360px;
+      }
+
+      .questions-slide {
+        grid-template-columns: 1fr;
+        align-content: start;
+        justify-items: center;
+        text-align: center;
+        padding: 38px 22px 0;
+      }
+
+      .questions-slide h2 {
+        font-size: clamp(50px, 8vw, 72px);
+      }
+
+      .questions-slide .question-image {
+        width: min(840px, 94vw);
+        margin-top: 38px;
+      }
+
+      .caption {
+        padding: 10px 12px;
+        font-size: 11px;
+      }
+
+      .flow {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 22px;
+      }
+
+      .modes-slide .flow {
+        gap: 0 28px;
+        margin-top: 24px;
+      }
+
+      .flow-card {
+        min-height: 116px;
+        padding: 13px;
+        border-radius: 14px;
+      }
+
+      .modes-slide .flow-card,
+      .modes-slide .flow-card:nth-child(4) {
+        min-height: 0;
+        padding: 12px 0 14px;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .modes-slide .flow-card strong {
+        font-size: 15px;
+      }
+
+      .modes-slide .flow-card span {
+        font-size: 12px;
+      }
+
+      .chart-card {
+        width: min(720px, 100%);
+        padding: 18px;
+      }
+
+      .bar-row {
+        grid-template-columns: 142px minmax(0, 1fr) 58px;
+        gap: 10px;
+        margin: 9px 0;
+      }
+
+      .bar-label {
+        font-size: 12px;
+      }
+
+      .track {
+        height: 14px;
+      }
+
+      .bar-value {
+        font-size: 12px;
+      }
+
+      .winner {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 16px;
+      }
+
+      .winner .stat-panel {
+        padding: 12px;
+      }
+
+      .winner .value {
+        font-size: 24px;
+      }
+
+      .bonus-slide .image-frame img {
+        max-height: 260px;
+      }
+
+      .bonus-slide .feature {
+        min-height: 84px;
+      }
+
+      .future-slide {
+        grid-template-columns: minmax(0, 1fr) minmax(250px, .88fr);
+      }
+
+      .future-slide h2 {
+        font-size: clamp(30px, 5.2vw, 42px);
+      }
+
+      .future-slide .lead {
+        font-size: 14px;
+        line-height: 1.35;
+      }
+
+      .future-slide .steps {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .future-slide .step {
+        grid-template-columns: 26px 1fr;
+        gap: 7px;
+        padding: 9px 10px;
+      }
+
+      .future-slide .step strong {
+        font-size: 12px;
+      }
+
+      .future-slide .step span {
+        font-size: 10px;
+      }
+
+      .future-slide .image-frame img {
+        max-height: 230px;
+      }
+
+      .future-slide .download-card {
+        margin-top: 12px;
+        padding: 14px;
+      }
+
+      .future-slide .download-card strong {
+        font-size: 14px;
+      }
+
+      .future-slide .download-card .body {
+        font-size: 12px !important;
+        line-height: 1.35;
+      }
+
+      .download-card a {
+        padding: 9px 9px 9px 13px;
+        font-size: 12px;
+      }
+
+      .future-slide .cta-icon {
+        width: 26px;
+        height: 26px;
+      }
+
+      .slide-count {
+        right: 18px;
+        bottom: 24px;
+      }
+
+      .hint {
+        display: none;
+      }
+    }
+
+    @media (max-width: 620px) {
+      body {
+        overflow: auto;
+      }
+
+      .deck {
+        height: auto;
+        min-height: 100vh;
+      }
+
+      .slide,
+      .slide.full {
+        position: relative;
+        min-height: 100vh;
+        grid-template-columns: 1fr;
+        padding: 70px 22px 112px;
+        display: none;
+      }
+
+      .slide.active {
+        display: grid;
+      }
+
+      .intro-slide {
+        padding-top: 54px;
+        text-align: left;
+        justify-items: stretch;
+      }
+
+      .intro-slide h1 {
+        font-size: clamp(42px, 14vw, 64px);
+      }
+
+      .intro-slide .lead {
+        margin-left: 0;
+        margin-right: 0;
+      }
+
+      .intro-slide .chip-row {
+        justify-content: flex-start;
+      }
+
+      .intro-slide .hero-image {
+        position: relative;
+        left: auto;
+        bottom: auto;
+        transform: none;
+        width: 100%;
+        margin-top: 2px;
+      }
+
+      .intro-slide .image-frame.hero-image {
+        transform: none;
+      }
+
+      .product-slide {
+        grid-template-columns: 1fr;
+        padding-right: 22px;
+      }
+
+      .product-slide > div,
+      .product-slide .grid {
+        max-width: none;
+      }
+
+      .product-slide .image-frame {
+        position: relative;
+        top: auto;
+        right: auto;
+        width: 100%;
+        transform: none;
+        margin-top: 18px;
+      }
+
+      .future-simple {
+        grid-template-columns: 1fr;
+        justify-items: stretch;
+      }
+
+      .future-simple .future-image {
+        margin-top: 18px;
+      }
+
+      .questions-slide {
+        text-align: left;
+        justify-items: stretch;
+      }
+
+      .questions-slide .lead {
+        margin-left: 0;
+        margin-right: 0;
+      }
+
+      .questions-slide .question-image {
+        width: 100%;
+      }
+
+      .grid,
+      .flow,
+      .winner {
+        grid-template-columns: 1fr;
+      }
+
+      .bar-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .bar-label {
+        text-align: left;
+      }
+    }
+
+    @media print {
+      html,
+      body {
+        overflow: visible;
+        background: #050608;
+      }
+
+      .deck {
+        height: auto;
+      }
+
+      .slide {
+        position: relative;
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        page-break-after: always;
+        min-height: 100vh;
+      }
+
+      .controls,
+      .slide-count,
+      .hint {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="deck" aria-label="HermSec presentation slides">
+    <section class="slide intro-slide active" data-title="Intro">
+      <div class="intro-copy">
+        <div class="topline"><span class="brand-logo"><img src="assets/hermsec-logo.png" alt="HermSec logo" /></span> HermSec</div>
+        <h1>Security review for local code projects.</h1>
+        <p class="lead">A desktop assistant that scans repositories, explains evidence, and creates clean reports for developers.</p>
+      </div>
+      <figure class="image-frame hero-image">
+        <img src="assets/hermsec-home.png" alt="HermSec home screen" />
+        <figcaption class="caption"><span>HermSec home screen</span><span>Chat driven workflow</span></figcaption>
+      </figure>
+    </section>
+
+    <section class="slide why-slide">
+      <div>
+        <div class="topline"><span class="mark">01</span> Why we built it</div>
+        <h2>Security tools should be easier to run.</h2>
+        <p class="lead">Many developers do not run security checks often because setup is slow, reports are noisy, and each language needs different tools.</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div><strong>One simple workflow</strong><span>Pick a project, choose the scan mode, and let HermSec handle the scanning steps.</span></div>
+        </div>
+        <div class="step">
+          <div><strong>Clear evidence</strong><span>Findings keep file paths, lines, rules, severity, confidence, and remediation guidance.</span></div>
+        </div>
+        <div class="step">
+          <div><strong>Useful reports</strong><span>The final output is readable in chat, dashboard pages, JSON, Markdown, HTML, and PDF.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide product-slide">
+      <div>
+        <div class="topline"><span class="mark">02</span> Core functionality and product features</div>
+        <h2>Hermsec Features</h2>
+        <p class="lead">The harness inspects the repository, selects the right scanners, runs checks, validates evidence, and writes clean reports.</p>
+        <div class="grid">
+          <div class="feature"><strong>Project inspection</strong><span>Detects languages, manifests, lockfiles, and config files before the scan begins.</span></div>
+          <div class="feature"><strong>Adaptive scanners</strong><span>Uses scanner tools that fit the project instead of running every tool every time.</span></div>
+          <div class="feature"><strong>Live progress</strong><span>The chat card shows scan stages, scanner status, findings, failures, and final reports.</span></div>
+          <div class="feature"><strong>Automation reports</strong><span>Scheduled scans and completed reports link directly to the PDF and report folder.</span></div>
+        </div>
+      </div>
+      <figure class="image-frame">
+        <img src="assets/hermsec-scan-progress.png" alt="HermSec scan progress card" />
+        <figcaption class="caption"><span>Live scan progress</span><span>Project &rarr; tools &rarr; report</span></figcaption>
+      </figure>
+    </section>
+
+    <section class="slide full centered modes-slide">
+      <div>
+        <div class="topline"><span class="mark">03</span> Research question</div>
+        <h2>Which review mode gives the best security result?</h2>
+        <p class="lead">We compared scanner-backed review, single-agent inspection, multi-agent inspection, and Scanner + MoA aggregation using efficient non-US models.</p>
+        <div class="flow">
+          <div class="flow-card"><strong>Deep assisted</strong><span>Scanners run first. The model summarizes and explains scanner-backed evidence.</span></div>
+          <div class="flow-card"><strong>Single Agent</strong><span>One model inspects focused code candidates with bounded read and search tools.</span></div>
+          <div class="flow-card"><strong>MoA</strong><span>Specialist agents inspect candidates. A judge and aggregator merge accepted evidence.</span></div>
+          <div class="flow-card"><strong>Scanner + MoA</strong><span>Scanners and agents run independently. A judge validates and merges both sources.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide full centered">
+      <div class="chart-card">
+        <div class="topline"><span class="mark">04</span> Final results</div>
+        <h2>Scanner + MoA High performed best.</h2>
+        <p class="lead">The final test used 20 projects with 184 labelled findings. F1 score was the main balance between precision and recall.</p>
+
+        <div class="bar-row">
+          <div class="bar-label">Deep assisted</div>
+          <div class="track"><div class="bar" style="--value: .4381"></div></div>
+          <div class="bar-value">0.4381</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Single Agent</div>
+          <div class="track"><div class="bar" style="--value: .6462"></div></div>
+          <div class="bar-value">0.6462</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">MoA Low</div>
+          <div class="track"><div class="bar" style="--value: .5433"></div></div>
+          <div class="bar-value">0.5433</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">MoA High</div>
+          <div class="track"><div class="bar" style="--value: .5455"></div></div>
+          <div class="bar-value">0.5455</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Scanner + MoA Low</div>
+          <div class="track"><div class="bar" style="--value: .5333"></div></div>
+          <div class="bar-value">0.5333</div>
+        </div>
+        <div class="bar-row best">
+          <div class="bar-label">Scanner + MoA High</div>
+          <div class="track"><div class="bar" style="--value: .7640"></div></div>
+          <div class="bar-value">0.7640</div>
+        </div>
+
+        <div class="winner">
+          <div class="stat-panel"><div class="label">True positives</div><div class="value">157</div></div>
+          <div class="stat-panel"><div class="label">False positives</div><div class="value">70</div></div>
+          <div class="stat-panel"><div class="label">Recall</div><div class="value">0.8533</div></div>
+          <div class="stat-panel"><div class="label">F1 score</div><div class="value">0.7640</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide future-simple">
+      <div class="future-content">
+        <div class="topline"><span class="mark">05</span> What comes next</div>
+        <h2>Future plans</h2>
+        <p class="lead">The next work is about making HermSec simpler, faster, and easier to run every day.</p>
+        <div class="steps">
+          <div class="step"><div><strong>One-button scan</strong><span>Reduce the app to a smaller flow where users can scan with almost no setup.</span></div></div>
+          <div class="step"><div><strong>Change-aware scans</strong><span>Skip work when the project has not changed since the last scan.</span></div></div>
+          <div class="step"><div><strong>Email reports</strong><span>Send scan reports to a mailbox when new results are ready.</span></div></div>
+          <div class="step"><div><strong>MCP scan bridge</strong><span>Let agents inside editing tools run HermSec CLI scans and open reports directly.</span></div></div>
+          <div class="step"><div><strong>Better cost tracking</strong><span>Measure model token cost per mode and route work to efficient models by default.</span></div></div>
+        </div>
+      </div>
+      <figure class="image-frame future-image">
+        <img src="assets/hermsec-scan-summary.png" alt="HermSec completed scan summary screen" />
+        <figcaption class="caption"><span>Report-ready workflow</span><span>Summary, links, PDF</span></figcaption>
+      </figure>
+    </section>
+
+    <section class="slide questions-slide">
+      <div>
+        <div class="topline"><span class="brand-logo"><img src="assets/hermsec-logo.png" alt="HermSec logo" /></span> HermSec</div>
+        <h2>Any questions?</h2>
+      </div>
+      <figure class="image-frame question-image">
+        <img src="assets/hermsec-providers.png" alt="HermSec providers and available models screen" />
+        <figcaption class="caption"><span>Configured providers</span><span>Models available for agent modes</span></figcaption>
+      </figure>
+    </section>
+  </main>
+
+  <div class="hint">Use arrow keys or buttons to move through slides.</div>
+  <div class="slide-count" aria-live="polite">1 / 7</div>
+  <nav class="controls" aria-label="Slide navigation">
+    <button class="control-button" id="prev" type="button" aria-label="Previous slide">&lsaquo;</button>
+    <div class="dots" aria-label="Slide dots"></div>
+    <button class="control-button" id="next" type="button" aria-label="Next slide">&rsaquo;</button>
+  </nav>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll(".slide"));
+    const dotsWrap = document.querySelector(".dots");
+    const count = document.querySelector(".slide-count");
+    let index = 0;
+
+    const dots = slides.map((_, dotIndex) => {
+      const button = document.createElement("button");
+      button.className = "dot";
+      button.type = "button";
+      button.setAttribute("aria-label", `Go to slide ${dotIndex + 1}`);
+      button.addEventListener("click", () => show(dotIndex));
+      dotsWrap.appendChild(button);
+      return button;
+    });
+
+    function show(nextIndex) {
+      index = Math.max(0, Math.min(slides.length - 1, nextIndex));
+      slides.forEach((slide, slideIndex) => {
+        slide.classList.toggle("active", slideIndex === index);
+      });
+      dots.forEach((dot, dotIndex) => {
+        dot.classList.toggle("active", dotIndex === index);
+      });
+      count.textContent = `${index + 1} / ${slides.length}`;
+    }
+
+    document.getElementById("prev").addEventListener("click", () => show(index - 1));
+    document.getElementById("next").addEventListener("click", () => show(index + 1));
+
+    document.querySelector(".deck").addEventListener("click", (event) => {
+      const target = event.target;
+      if (target.closest("a, button")) return;
+      const direction = event.clientX < window.innerWidth * 0.28 ? -1 : 1;
+      show(index + direction);
+    });
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowRight" || event.key === "PageDown" || event.key === " ") {
+        event.preventDefault();
+        show(index + 1);
+      }
+      if (event.key === "ArrowLeft" || event.key === "PageUp") {
+        event.preventDefault();
+        show(index - 1);
+      }
+      if (event.key === "Home") {
+        event.preventDefault();
+        show(0);
+      }
+      if (event.key === "End") {
+        event.preventDefault();
+        show(slides.length - 1);
+      }
+    });
+
+    show(0);
+  </script>
+</body>
+</html>
