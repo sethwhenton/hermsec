@@ -1,0 +1,128 @@
+{
+  "project": "vulntest-go-web-app",
+  "language": "go",
+  "framework": "net/http",
+  "totalVulnerabilities": 12,
+  "vulnerabilities": [
+    {
+      "id": "GHZ-GO-001",
+      "file": "src/main.go",
+      "line": 18,
+      "cwe": "CWE-798",
+      "severity": "high",
+      "category": "hardcoded-secret",
+      "title": "Hardcoded database credentials",
+      "description": "Database username and password hardcoded in constants"
+    },
+    {
+      "id": "GHZ-GO-002",
+      "file": "src/main.go",
+      "line": 22,
+      "cwe": "CWE-798",
+      "severity": "high",
+      "category": "hardcoded-secret",
+      "title": "Hardcoded API key",
+      "description": "API key hardcoded in constant"
+    },
+    {
+      "id": "GHZ-GO-003",
+      "file": "src/main.go",
+      "line": 31,
+      "cwe": "CWE-798",
+      "severity": "high",
+      "category": "hardcoded-secret",
+      "title": "Hardcoded credentials in DSN",
+      "description": "Database credentials embedded in connection string"
+    },
+    {
+      "id": "GHZ-GO-004",
+      "file": "src/main.go",
+      "line": 39,
+      "cwe": "CWE-89",
+      "severity": "critical",
+      "category": "sql-injection",
+      "title": "SQL Injection via Sprintf",
+      "description": "User input formatted directly into SQL query"
+    },
+    {
+      "id": "GHZ-GO-005",
+      "file": "src/main.go",
+      "line": 49,
+      "cwe": "CWE-78",
+      "severity": "critical",
+      "category": "command-injection",
+      "title": "Command Injection via exec.Command",
+      "description": "User-controlled host parameter passed to exec.Command"
+    },
+    {
+      "id": "GHZ-GO-006",
+      "file": "src/main.go",
+      "line": 58,
+      "cwe": "CWE-78",
+      "severity": "critical",
+      "category": "command-injection",
+      "title": "Command Injection via sh -c",
+      "description": "User input passed to shell execution"
+    },
+    {
+      "id": "GHZ-GO-007",
+      "file": "src/main.go",
+      "line": 67,
+      "cwe": "CWE-22",
+      "severity": "high",
+      "category": "path-traversal",
+      "title": "Path Traversal in file read",
+      "description": "User input used in filepath.Join without validation"
+    },
+    {
+      "id": "GHZ-GO-008",
+      "file": "src/main.go",
+      "line": 75,
+      "cwe": "CWE-22",
+      "severity": "high",
+      "category": "path-traversal",
+      "title": "Path Traversal in download",
+      "description": "User input used in filepath for download"
+    },
+    {
+      "id": "GHZ-GO-009",
+      "file": "src/main.go",
+      "line": 82,
+      "cwe": "CWE-79",
+      "severity": "medium",
+      "category": "xss",
+      "title": "XSS via template injection",
+      "description": "User query concatenated into template string"
+    },
+    {
+      "id": "GHZ-GO-010",
+      "file": "src/main.go",
+      "line": 89,
+      "cwe": "CWE-328",
+      "severity": "medium",
+      "category": "weak-hash",
+      "title": "Weak hash MD5",
+      "description": "MD5 used for password hashing"
+    },
+    {
+      "id": "GHZ-GO-011",
+      "file": "src/main.go",
+      "line": 96,
+      "cwe": "CWE-330",
+      "severity": "medium",
+      "category": "weak-random",
+      "title": "Weak random for token",
+      "description": "crypto/rand used but token generation pattern is weak"
+    },
+    {
+      "id": "GHZ-GO-012",
+      "file": "src/main.go",
+      "line": 103,
+      "cwe": "CWE-209",
+      "severity": "medium",
+      "category": "information-exposure",
+      "title": "Verbose error messages",
+      "description": "Full error details and stack trace returned to client"
+    }
+  ]
+}

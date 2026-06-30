@@ -1,21 +1,19 @@
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
-const actions = [
-  "Scan project",
-  "Explain project",
-  "Doctor",
-  "Reports",
-  "Automations",
-] as const;
+const initialActions = ["Scan project", "Check system health", "About"] as const;
+const reportActions = ["Scan project", "Check system health", "About", "Generate prompt"] as const;
 
 interface QuickActionsProps {
   onAction: (action: string) => void;
+  hasReport?: boolean;
   compact?: boolean;
   className?: string;
 }
 
-export function QuickActions({ onAction, compact, className }: QuickActionsProps) {
+export function QuickActions({ onAction, hasReport = false, compact, className }: QuickActionsProps) {
+  const actions = hasReport ? reportActions : initialActions;
+
   return (
     <div className={cn("flex flex-wrap items-center justify-center gap-1.5", className)}>
       {actions.map((action) => (

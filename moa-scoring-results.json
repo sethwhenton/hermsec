@@ -1,0 +1,434 @@
+{
+  "moa-low": {
+    "projects": {
+      "nodejs-express-app": {
+        "planted": 13,
+        "detected": 12,
+        "tp": 11,
+        "fp": 1,
+        "fn": 2,
+        "precision": 0.9167,
+        "recall": 0.8462,
+        "f1": 0.88
+      },
+      "python-flask-app": {
+        "planted": 14,
+        "detected": 11,
+        "tp": 9,
+        "fp": 2,
+        "fn": 5,
+        "precision": 0.8182,
+        "recall": 0.6429,
+        "f1": 0.72
+      },
+      "java-servlet-app": {
+        "planted": 17,
+        "detected": 11,
+        "tp": 11,
+        "fp": 0,
+        "fn": 6,
+        "precision": 1.0,
+        "recall": 0.6471,
+        "f1": 0.7857
+      },
+      "go-web-app": {
+        "planted": 8,
+        "detected": 5,
+        "tp": 5,
+        "fp": 0,
+        "fn": 3,
+        "precision": 1.0,
+        "recall": 0.625,
+        "f1": 0.7692
+      },
+      "php-web-app": {
+        "planted": 7,
+        "detected": 4,
+        "tp": 4,
+        "fp": 0,
+        "fn": 3,
+        "precision": 1.0,
+        "recall": 0.5714,
+        "f1": 0.7273
+      },
+      "ruby-rails-app": {
+        "planted": 7,
+        "detected": 4,
+        "tp": 4,
+        "fp": 0,
+        "fn": 3,
+        "precision": 1.0,
+        "recall": 0.5714,
+        "f1": 0.7273
+      },
+      "c-cpp-app": {
+        "planted": 8,
+        "detected": 3,
+        "tp": 3,
+        "fp": 0,
+        "fn": 5,
+        "precision": 1.0,
+        "recall": 0.375,
+        "f1": 0.5455
+      },
+      "csharp-dotnet-app": {
+        "planted": 7,
+        "detected": 4,
+        "tp": 4,
+        "fp": 0,
+        "fn": 3,
+        "precision": 1.0,
+        "recall": 0.5714,
+        "f1": 0.7273
+      },
+      "rust-web-app": {
+        "planted": 7,
+        "detected": 3,
+        "tp": 3,
+        "fp": 0,
+        "fn": 4,
+        "precision": 1.0,
+        "recall": 0.4286,
+        "f1": 0.6
+      },
+      "advanced-js-ts-app": {
+        "planted": 8,
+        "detected": 6,
+        "tp": 6,
+        "fp": 0,
+        "fn": 2,
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1": 0.8571
+      },
+      "supply-chain-project": {
+        "planted": 6,
+        "detected": 4,
+        "tp": 3,
+        "fp": 1,
+        "fn": 3,
+        "precision": 0.75,
+        "recall": 0.5,
+        "f1": 0.6
+      },
+      "docker-ci-project": {
+        "planted": 6,
+        "detected": 6,
+        "tp": 2,
+        "fp": 4,
+        "fn": 4,
+        "precision": 0.3333,
+        "recall": 0.3333,
+        "f1": 0.3333
+      },
+      "advanced-java-python": {
+        "planted": 9,
+        "detected": 11,
+        "tp": 6,
+        "fp": 5,
+        "fn": 3,
+        "precision": 0.5455,
+        "recall": 0.6667,
+        "f1": 0.6
+      }
+    },
+    "totals": {
+      "planted": 117,
+      "detected": 84,
+      "tp": 71,
+      "fp": 13,
+      "fn": 46,
+      "precision": 0.8452,
+      "recall": 0.6068,
+      "f1": 0.7064
+    }
+  },
+  "moa-mid": {
+    "projects": {
+      "nodejs-express-app": {
+        "planted": 13,
+        "detected": 12,
+        "tp": 11,
+        "fp": 1,
+        "fn": 2,
+        "precision": 0.9167,
+        "recall": 0.8462,
+        "f1": 0.88
+      },
+      "python-flask-app": {
+        "planted": 14,
+        "detected": 11,
+        "tp": 9,
+        "fp": 2,
+        "fn": 5,
+        "precision": 0.8182,
+        "recall": 0.6429,
+        "f1": 0.72
+      },
+      "java-servlet-app": {
+        "planted": 17,
+        "detected": 11,
+        "tp": 11,
+        "fp": 0,
+        "fn": 6,
+        "precision": 1.0,
+        "recall": 0.6471,
+        "f1": 0.7857
+      },
+      "go-web-app": {
+        "planted": 8,
+        "detected": 5,
+        "tp": 5,
+        "fp": 0,
+        "fn": 3,
+        "precision": 1.0,
+        "recall": 0.625,
+        "f1": 0.7692
+      },
+      "php-web-app": {
+        "planted": 7,
+        "detected": 4,
+        "tp": 4,
+        "fp": 0,
+        "fn": 3,
+        "precision": 1.0,
+        "recall": 0.5714,
+        "f1": 0.7273
+      },
+      "ruby-rails-app": {
+        "planted": 7,
+        "detected": 4,
+        "tp": 4,
+        "fp": 0,
+        "fn": 3,
+        "precision": 1.0,
+        "recall": 0.5714,
+        "f1": 0.7273
+      },
+      "c-cpp-app": {
+        "planted": 8,
+        "detected": 3,
+        "tp": 3,
+        "fp": 0,
+        "fn": 5,
+        "precision": 1.0,
+        "recall": 0.375,
+        "f1": 0.5455
+      },
+      "csharp-dotnet-app": {
+        "planted": 7,
+        "detected": 4,
+        "tp": 4,
+        "fp": 0,
+        "fn": 3,
+        "precision": 1.0,
+        "recall": 0.5714,
+        "f1": 0.7273
+      },
+      "rust-web-app": {
+        "planted": 7,
+        "detected": 3,
+        "tp": 3,
+        "fp": 0,
+        "fn": 4,
+        "precision": 1.0,
+        "recall": 0.4286,
+        "f1": 0.6
+      },
+      "advanced-js-ts-app": {
+        "planted": 8,
+        "detected": 6,
+        "tp": 6,
+        "fp": 0,
+        "fn": 2,
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1": 0.8571
+      },
+      "supply-chain-project": {
+        "planted": 6,
+        "detected": 4,
+        "tp": 3,
+        "fp": 1,
+        "fn": 3,
+        "precision": 0.75,
+        "recall": 0.5,
+        "f1": 0.6
+      },
+      "docker-ci-project": {
+        "planted": 6,
+        "detected": 5,
+        "tp": 2,
+        "fp": 3,
+        "fn": 4,
+        "precision": 0.4,
+        "recall": 0.3333,
+        "f1": 0.3636
+      },
+      "advanced-java-python": {
+        "planted": 9,
+        "detected": 11,
+        "tp": 6,
+        "fp": 5,
+        "fn": 3,
+        "precision": 0.5455,
+        "recall": 0.6667,
+        "f1": 0.6
+      }
+    },
+    "totals": {
+      "planted": 117,
+      "detected": 83,
+      "tp": 71,
+      "fp": 12,
+      "fn": 46,
+      "precision": 0.8554,
+      "recall": 0.6068,
+      "f1": 0.71
+    }
+  },
+  "moa-high": {
+    "projects": {
+      "nodejs-express-app": {
+        "planted": 13,
+        "detected": 12,
+        "tp": 11,
+        "fp": 1,
+        "fn": 2,
+        "precision": 0.9167,
+        "recall": 0.8462,
+        "f1": 0.88
+      },
+      "python-flask-app": {
+        "planted": 14,
+        "detected": 13,
+        "tp": 10,
+        "fp": 3,
+        "fn": 4,
+        "precision": 0.7692,
+        "recall": 0.7143,
+        "f1": 0.7407
+      },
+      "java-servlet-app": {
+        "planted": 17,
+        "detected": 11,
+        "tp": 11,
+        "fp": 0,
+        "fn": 6,
+        "precision": 1.0,
+        "recall": 0.6471,
+        "f1": 0.7857
+      },
+      "go-web-app": {
+        "planted": 8,
+        "detected": 6,
+        "tp": 6,
+        "fp": 0,
+        "fn": 2,
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1": 0.8571
+      },
+      "php-web-app": {
+        "planted": 7,
+        "detected": 4,
+        "tp": 4,
+        "fp": 0,
+        "fn": 3,
+        "precision": 1.0,
+        "recall": 0.5714,
+        "f1": 0.7273
+      },
+      "ruby-rails-app": {
+        "planted": 7,
+        "detected": 4,
+        "tp": 4,
+        "fp": 0,
+        "fn": 3,
+        "precision": 1.0,
+        "recall": 0.5714,
+        "f1": 0.7273
+      },
+      "c-cpp-app": {
+        "planted": 8,
+        "detected": 3,
+        "tp": 3,
+        "fp": 0,
+        "fn": 5,
+        "precision": 1.0,
+        "recall": 0.375,
+        "f1": 0.5455
+      },
+      "csharp-dotnet-app": {
+        "planted": 7,
+        "detected": 4,
+        "tp": 4,
+        "fp": 0,
+        "fn": 3,
+        "precision": 1.0,
+        "recall": 0.5714,
+        "f1": 0.7273
+      },
+      "rust-web-app": {
+        "planted": 7,
+        "detected": 3,
+        "tp": 3,
+        "fp": 0,
+        "fn": 4,
+        "precision": 1.0,
+        "recall": 0.4286,
+        "f1": 0.6
+      },
+      "advanced-js-ts-app": {
+        "planted": 8,
+        "detected": 6,
+        "tp": 6,
+        "fp": 0,
+        "fn": 2,
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1": 0.8571
+      },
+      "supply-chain-project": {
+        "planted": 6,
+        "detected": 4,
+        "tp": 4,
+        "fp": 0,
+        "fn": 2,
+        "precision": 1.0,
+        "recall": 0.6667,
+        "f1": 0.8
+      },
+      "docker-ci-project": {
+        "planted": 6,
+        "detected": 9,
+        "tp": 5,
+        "fp": 4,
+        "fn": 1,
+        "precision": 0.5556,
+        "recall": 0.8333,
+        "f1": 0.6667
+      },
+      "advanced-java-python": {
+        "planted": 9,
+        "detected": 11,
+        "tp": 6,
+        "fp": 5,
+        "fn": 3,
+        "precision": 0.5455,
+        "recall": 0.6667,
+        "f1": 0.6
+      }
+    },
+    "totals": {
+      "planted": 117,
+      "detected": 90,
+      "tp": 77,
+      "fp": 13,
+      "fn": 40,
+      "precision": 0.8556,
+      "recall": 0.6581,
+      "f1": 0.744
+    }
+  }
+}

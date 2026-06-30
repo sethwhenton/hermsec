@@ -8,7 +8,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
-  Search,
   Settings,
   Trash2,
 } from "lucide-react";
@@ -18,7 +17,6 @@ import { getHermsecApi } from "@/lib/ipc";
 import { useSessionStore } from "@/store/sessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useUiStore } from "@/store/uiStore";
-import { HermsecLogo } from "@/components/branding/HermsecLogo";
 import { ProjectPickerModal } from "@/components/projects/ProjectPickerModal";
 import { Button } from "@/components/ui/Button";
 import type { ProjectDirectory } from "@/types/projects";
@@ -172,12 +170,7 @@ export function LeftSidebar() {
       transition={{ type: "spring", stiffness: 420, damping: 38 }}
     >
       <div className="flex items-center justify-between px-2 py-2">
-        {!sidebarCollapsed && (
-          <div className="flex min-w-0 items-center gap-2">
-            <HermsecLogo className="h-6 w-6 text-accent" aria-label="Hermsec" />
-            <span className="truncate text-xs font-semibold text-foreground">Hermsec</span>
-          </div>
-        )}
+        {!sidebarCollapsed && <div aria-hidden="true" />}
         <Button variant="ghost" size="icon" onClick={toggleSidebar}>
           {sidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
         </Button>
@@ -190,12 +183,6 @@ export function LeftSidebar() {
           label="New chat"
           active={view === "chat"}
           onClick={() => setNewChatPickerOpen(true)}
-        />
-        <SidebarButton
-          collapsed={sidebarCollapsed}
-          icon={<Search className="h-4 w-4" />}
-          label="Search"
-          onClick={() => setView("chat")}
         />
         <SidebarButton
           collapsed={sidebarCollapsed}
