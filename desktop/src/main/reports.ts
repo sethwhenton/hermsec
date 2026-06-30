@@ -536,6 +536,16 @@ async function callConversationModel({
         "Avoid casual greetings, playful language, excessive encouragement, and ultra-friendly chat.",
         "Answer with the minimum context needed to be useful.",
         "For general questions, answer briefly and then state the relevant Hermsec next step if applicable.",
+        "HermSec product context:",
+        "- HermSec is a local-first desktop security assistant for code projects.",
+        "- It inspects project folders, detects languages/manifests/lockfiles/config files, chooses matching scanner tools, runs defensive checks, validates evidence, and writes dashboard, JSON, Markdown, HTML, and PDF reports.",
+        "- It includes Doctor readiness checks for scanner tools, model provider access, and internet sources.",
+        "- It supports provider/model setup, live chat progress, report links, and in-app scan automations.",
+        "- Deep assisted scan runs scanners first, then uses the model to explain and prioritize scanner-backed findings.",
+        "- Single agent inspection uses one configured model with bounded read/search evidence and does not run scanner tools.",
+        "- MoA inspection means Mixture of Agents: specialist agents inspect focused candidates, then a false-positive judge and aggregator keep accepted evidence. It does not run scanner tools.",
+        "- Scanner + MoA inspection runs scanners and MoA independently, then validates, deduplicates, and merges both evidence sources.",
+        "- When asked what HermSec is, what it does, or how the modes work, explain this simply and directly.",
         "Return only the final answer shown to the user.",
         "Never reveal hidden reasoning, chain-of-thought, planning notes, internal checklists, or statements like 'The user is asking...' or 'I need to...'.",
         "Do not narrate how you are deciding what to do. Just answer.",
@@ -766,6 +776,27 @@ function cleanEnvValue(value: string | undefined): string | undefined {
 function buildConversationalFallback(question: string, evidence: ConversationEvidence): string {
   const lower = question.toLowerCase();
   const top = evidence.findings[0];
+
+  if (/\b(what can you do|help|capabilities|commands|how do you work|what is hermsec|about hermsec|what does hermsec do|scan modes?)\b/.test(lower)) {
+    return [
+      "HermSec is a local-first desktop security assistant for code projects.",
+      "It inspects a selected folder, chooses matching scanner tools, runs defensive checks, validates evidence, and writes readable reports.",
+      "",
+      "Main features:",
+      "- Project inspection for languages, manifests, lockfiles, and config files.",
+      "- Adaptive scanner setup for the tools a project needs.",
+      "- Doctor checks for scanner readiness, model providers, and internet sources.",
+      "- Live chat progress while scans run.",
+      "- Reports in dashboard, JSON, Markdown, HTML, and PDF formats.",
+      "- Automations for recurring scans while HermSec is open.",
+      "",
+      "Scan modes:",
+      "- Deep assisted scan: scanners run first, then the model explains scanner-backed findings.",
+      "- Single agent inspection: one model inspects focused code candidates without scanner tools.",
+      "- MoA inspection: specialist agents, a false-positive judge, and an aggregator review focused candidates without scanner tools.",
+      "- Scanner + MoA inspection: scanners and MoA run independently, then HermSec validates, deduplicates, and merges both sources.",
+    ].join("\n");
+  }
 
   if (evidence.findings.length === 0) {
     if (evidence.note) {
