@@ -33,6 +33,8 @@ node dist\src\bin\hermsec.js doctor --json
 
 Desktop app:
 
+- Fresh desktop development should use `npm.cmd run setup:desktop` before `npm.cmd run desktop:dev`. The setup script installs missing root/desktop dependencies, runs Electron setup, and prepares `desktop/resources/hermsec-cli` so Doctor can locate the root CLI. If Doctor reports `Could not locate the root Hermsec CLI build`, rerun `setup:desktop` or `desktop/scripts/prepare-cli-bundle.mjs` before debugging scanner readiness.
+
 ```powershell
 cd desktop
 npm.cmd ci

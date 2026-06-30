@@ -65,12 +65,14 @@ npm run typecheck
 npm test
 ```
 
-Install and run the V3 desktop app:
+Prepare and run the V3 desktop app from a fresh clone:
 
 ```powershell
-npm run desktop:install
+npm run setup:desktop
 npm run desktop:dev
 ```
+
+`setup:desktop` installs any missing root or desktop dependencies, runs the Electron setup step, and prepares the bundled Hermsec CLI that Doctor and scans invoke.
 
 Equivalent direct desktop commands:
 
@@ -79,6 +81,8 @@ cd desktop
 npm ci
 npm run dev
 ```
+
+The direct `desktop` dev script also prepares the root CLI bundle before Electron starts, so Doctor can locate `dist/src/bin/hermsec.js` even on a fresh checkout.
 
 Repeatable desktop smoke checks:
 

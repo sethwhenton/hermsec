@@ -7,7 +7,8 @@
   "type": "module",
   "main": "./out/main/index.js",
   "scripts": {
-    "dev": "node scripts/copy-report-templates.mjs && electron-vite dev",
+    "dev": "npm run prepare:cli-bundle && npm run dev:renderer",
+    "dev:renderer": "node scripts/copy-report-templates.mjs && electron-vite dev",
     "dev:clean": "node scripts/dev-clean.mjs",
     "build": "electron-vite build && node scripts/copy-report-templates.mjs",
     "prepare:cli-bundle": "node scripts/prepare-cli-bundle.mjs",

@@ -308,7 +308,6 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMes
       promise,
       new Promise<T>((_, reject) => {
         timer = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
-        timer.unref();
       }),
     ]);
   } finally {

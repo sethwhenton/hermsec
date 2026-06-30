@@ -12,9 +12,12 @@ npm ci
 npm run dev
 ```
 
+`npm run dev` prepares the root Hermsec CLI bundle before starting Electron. If the root scanner dependencies are missing, the bundle step installs them first so Doctor and scans have a CLI engine to call.
+
 From the repository root, the same app can be launched with:
 
 ```powershell
+npm run setup:desktop
 npm run desktop:dev
 ```
 

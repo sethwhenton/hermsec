@@ -5,6 +5,12 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "../..");
 const appRoot = resolve(import.meta.dirname, "..");
 const bundleRoot = resolve(appRoot, "resources/hermsec-cli");
+const rootTsc = resolve(root, "node_modules", ".bin", process.platform === "win32" ? "tsc.cmd" : "tsc");
+
+if (!existsSync(rootTsc)) {
+  console.log("Root Hermsec dependencies are missing; installing them before preparing the desktop CLI bundle...");
+  run(process.platform === "win32" ? "npm.cmd" : "npm", ["ci"], root);
+}
 
 run(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "build:core"], root);
 
@@ -51,6 +57,10 @@ function run(command, args, cwd) {
     cwd,
     stdio: "inherit",
     shell: false,
+    env: {
+      ...process.env,
+      PMG_DISABLE_TELEMETRY: process.env.PMG_DISABLE_TELEMETRY ?? "true",
+    },
   });
   if (result.error) {
     throw result.error;

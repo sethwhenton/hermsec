@@ -28,6 +28,7 @@ desktop/.runtime-tools-cache/
 .hermsec-benchmarks/
 .hermsec-v3/
 desktop/.dev-logs/
+desktop/.hermsec-dev/
 desktop/.hermsec-v3/
 
 # Logs and editor noise
