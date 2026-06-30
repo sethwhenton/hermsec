@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import {
-  Activity,
   AlertTriangle,
   Bug,
   CheckCircle2,
@@ -18,8 +17,6 @@ import {
   XCircle,
   type LucideIcon,
 } from "lucide-react";
-import type { CSSProperties } from "react";
-import { HermsecLogo } from "@/components/branding/HermsecLogo";
 import { cn } from "@/lib/cn";
 import type {
   DoctorCheck,
@@ -65,6 +62,7 @@ const statIcons: Record<DoctorGroupSummary["id"], LucideIcon> = {
 };
 
 type DisplayStatus = DoctorProgressStatus;
+type CardStatus = DoctorRunResult["status"] | "running";
 type DisplayCheck = Omit<DoctorCheck, "status"> & {
   status: DisplayStatus;
 };
@@ -73,26 +71,31 @@ type DisplayConnectivityCheck = Omit<DoctorConnectivityCheck, "status"> & {
 };
 
 export function DoctorCard({ result, progress = [], running = false, error }: DoctorCardProps) {
-  const progressById = latestProgressById(progress);
-  const groups = result?.groups ?? buildLiveGroups(progress);
+  const rawProgressById = latestProgressById(progress);
+  const connectedProvider = hasConnectedProvider(result, rawProgressById);
+  const visibleProgress = progress.filter((event) => !isProviderProgressNoise(event, connectedProvider));
+  const progressById = latestProgressById(visibleProgress);
+  const visibleChecks = result?.checks.filter((check) => !isProviderCheckNoise(check, connectedProvider));
+  const groups = normalizeProviderGroup(result?.groups ?? buildLiveGroups(visibleProgress), connectedProvider);
   const required = groupById(groups, "required");
   const scanners = groupById(groups, "scanners");
   const internet = groupById(groups, "internet");
   const providers = groupById(groups, "providers");
   const live = running && !result;
-  const cardStatus = result?.status ?? (error ? "blocked" : live ? "running" : "attention");
+  const blockers = result ? readinessBlockers(result, connectedProvider) : [];
+  const cardStatus = displayCardStatus(groups, live, error, blockers.length);
   const statusTone = tone(
     cardStatus === "blocked" ? "fail" : cardStatus === "attention" ? "warn" : cardStatus,
   );
-  const healthScore = result?.healthScore ?? liveHealthScore(groups, live);
-  const ringStyle = healthRingStyle(healthScore, statusTone.hex);
+  const healthScore = liveHealthScore(groups, live);
   const generatedTime = result?.generatedAt ? formatTime(result.generatedAt) : "Live now";
-  const attention = result ? mostImportantAttention(result) : mostImportantLiveAttention(progress, error);
-  const blockers = result ? readinessBlockers(result) : [];
+  const attention = result
+    ? mostImportantAttention({ ...result, checks: visibleChecks ?? result.checks })
+    : mostImportantLiveAttention(visibleProgress, error);
   const internetReady = result ? internet?.status === "pass" : hasPassingInternet(progressById);
   const cliRunning = progressById.get("doctor-cli")?.status === "running";
   const visibleConnectivity = result?.connectivity ?? buildLiveConnectivity(progressById);
-  const latestEvents = [...progress].slice(-5).reverse();
+  const latestEvents = [...visibleProgress].slice(-3).reverse();
 
   return (
     <motion.div
@@ -101,112 +104,98 @@ export function DoctorCard({ result, progress = [], running = false, error }: Do
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
-      <div className="relative max-w-[min(700px,96%)] overflow-hidden rounded-[22px] border border-border/80 bg-surface-elevated/80 text-foreground shadow-[0_16px_50px_rgba(0,0,0,0.24)] backdrop-blur">
+      <div className="relative w-full max-w-[min(700px,96%)] overflow-hidden rounded-2xl border border-border/80 bg-surface-elevated/95 text-foreground shadow-[0_16px_48px_rgba(0,0,0,0.28)] backdrop-blur">
         <motion.div
           className={cn("absolute inset-x-0 top-0 h-px", statusTone.sweep, live ? "animate-pulse" : "")}
           initial={{ scaleX: 0, transformOrigin: "left" }}
           animate={{ scaleX: 1 }}
           transition={{ duration: 0.45, ease: "easeOut" }}
         />
-        <div className="absolute inset-x-0 top-0 h-16 bg-[linear-gradient(180deg,rgba(59,130,246,0.08),transparent)]" />
-        <div className="relative p-4 sm:p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-background/70 text-accent shadow-[0_10px_28px_rgba(0,0,0,0.24)]">
-                <HermsecLogo className="h-5 w-5" mode="dark" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <h2 className="text-sm font-semibold tracking-normal text-foreground">
-                    {live ? "Doctor running" : result ? "Doctor complete" : "Doctor stopped"}
-                  </h2>
-                  <span className="text-xs text-muted-foreground">{generatedTime}</span>
-                </div>
-                <p className="mt-0.5 truncate text-xs text-muted">
-                  {live
-                    ? "Streaming scanner, provider, and internet readiness"
-                    : "Scanner tools, local paths, providers, and internet reachability"}
-                </p>
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-background/70 px-2 py-1 text-xs text-muted">
-              <span
-                className={cn(
-                  "h-1.5 w-1.5 rounded-full",
-                  live ? "bg-accent animate-pulse" : internetReady ? "bg-success animate-pulse" : statusTone.dot,
-                )}
-              />
-              <span>{live ? "Live" : internetReady ? "Online" : "Check"}</span>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-4 md:grid-cols-[150px_1fr]">
-            <div className="flex items-center justify-center md:justify-start">
-              <motion.div
-                className="relative flex h-28 w-28 items-center justify-center rounded-full p-2"
-                style={ringStyle}
-                initial={{ opacity: 0, scale: 0.96 }}
-                animate={{ rotate: 0, scale: 1 }}
-                transition={{ duration: 0.22, ease: "easeOut" }}
-              >
-                <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-border bg-background/95 shadow-inner">
-                  <span className={cn("text-sm font-semibold", statusTone.text)}>
-                    {live ? "Checking" : statusLabel(cardStatus === "running" ? "attention" : cardStatus)}
-                  </span>
-                  <span className="mt-1 text-[1.45rem] font-semibold tabular-nums text-foreground">
-                    {healthScore}%
-                  </span>
-                  <span className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-                    readiness
-                  </span>
-                </div>
-              </motion.div>
-            </div>
-
-            <motion.div
-              className="grid grid-cols-2 gap-x-0 gap-y-3 sm:grid-cols-4"
-              initial="hidden"
-              animate="show"
-              variants={{
-                hidden: {},
-                show: { transition: { staggerChildren: 0.07, delayChildren: 0.1 } },
-              }}
-            >
-              {[required, scanners, internet, providers].filter(isGroup).map((group, index) => (
-                <SummaryStat
-                  key={group.id}
-                  group={group}
-                  first={index === 0}
-                  active={live && isGroupActive(progressById, group.id)}
-                />
-              ))}
-            </motion.div>
-          </div>
-
-          {latestEvents.length > 0 ? (
-            <div className="mt-4 overflow-hidden rounded-xl border border-border bg-background/55">
-              <div className="flex items-center justify-between border-b border-border/70 px-3 py-2">
-                <div className="flex items-center gap-2 text-xs font-medium text-muted">
-                  <Activity className="h-3.5 w-3.5 text-accent" />
-                  Live checks
-                </div>
-                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {live ? "Updating" : "Last run"}
+        <div className="relative p-3.5 sm:p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-sm font-semibold tracking-normal text-foreground">
+                  {live ? "Doctor running" : result ? "Doctor complete" : "Doctor check"}
+                </h2>
+                <span className={cn("rounded-md border border-border bg-background/60 px-2 py-0.5 text-[11px]", statusTone.text)}>
+                  {live ? "Checking" : statusLabel(cardStatus)}
                 </span>
+                <span className="text-[11px] text-muted-foreground">{generatedTime}</span>
               </div>
-              <div className="divide-y divide-border/60">
-                {latestEvents.map((event, index) => (
-                  <LiveEventRow key={`${event.id}-${event.at}-${index}`} event={event} />
+              <p className="mt-1 line-clamp-1 text-xs text-muted">
+                Scanner readiness, one connected model provider, and internet reachability.
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <div className="text-2xl font-semibold leading-none tabular-nums text-foreground">{healthScore}%</div>
+              <div className="mt-1 flex items-center justify-end gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full",
+                    live ? "bg-foreground animate-pulse" : internetReady ? "bg-foreground" : statusTone.dot,
+                  )}
+                />
+                readiness
+              </div>
+            </div>
+          </div>
+
+          <motion.div
+            className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-4"
+            initial="hidden"
+            animate="show"
+            variants={{
+              hidden: {},
+              show: { transition: { staggerChildren: 0.07, delayChildren: 0.1 } },
+            }}
+          >
+            {[required, scanners, internet, providers].filter(isGroup).map((group, index) => (
+              <SummaryStat
+                key={group.id}
+                group={group}
+                first={index === 0}
+                active={live && isGroupActive(progressById, group.id)}
+              />
+            ))}
+          </motion.div>
+
+          <div className="mt-3 grid gap-3 lg:grid-cols-[1.15fr_0.85fr]">
+            <section className="overflow-hidden rounded-xl border border-border bg-background/45">
+              <div className="flex items-center justify-between border-b border-border/70 px-3 py-1.5">
+                <span className="text-xs font-medium text-muted">Scanner stack</span>
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">tools</span>
+              </div>
+              <div className="grid sm:grid-cols-2">
+                {scannerRows.map((scanner, index) => (
+                  <ScannerRow
+                    key={scanner.id}
+                    check={findDisplayCheck(visibleChecks, progressById, scanner.id, scanner.label, cliRunning)}
+                    icon={scanner.icon}
+                    index={index}
+                  />
                 ))}
               </div>
-            </div>
-          ) : null}
+            </section>
+
+            <section className="overflow-hidden rounded-xl border border-border bg-background/45">
+              <div className="flex items-center justify-between border-b border-border/70 px-3 py-1.5">
+                <span className="text-xs font-medium text-muted">Internet</span>
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">HTTPS</span>
+              </div>
+              <div className="grid grid-cols-2 gap-px bg-border/50">
+                {visibleConnectivity.map((check) => (
+                  <ConnectivityChip key={check.id} check={check} />
+                ))}
+              </div>
+            </section>
+          </div>
 
           {blockers.length > 0 ? (
-            <div className="mt-4 overflow-hidden rounded-xl border border-border bg-background/55">
-              <div className="flex items-center justify-between border-b border-border/70 px-3 py-2">
+            <div className="mt-3 overflow-hidden rounded-xl border border-border bg-background/45">
+              <div className="flex items-center justify-between border-b border-border/70 px-3 py-1.5">
                 <div className="flex items-center gap-2 text-xs font-medium text-muted">
-                  <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+                  <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground" />
                   Readiness blockers
                 </div>
                 <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -214,33 +203,17 @@ export function DoctorCard({ result, progress = [], running = false, error }: Do
                 </span>
               </div>
               <div className="divide-y divide-border/60">
-                {blockers.slice(0, 6).map((check) => (
+                {blockers.slice(0, 3).map((check) => (
                   <ReadinessBlockerRow key={check.id} check={check} />
                 ))}
               </div>
             </div>
           ) : null}
 
-          <div className="mt-5 border-t border-border/70 pt-4">
-            <div className="mb-2 text-xs font-medium text-muted">Scanner stack</div>
-            <div className="overflow-hidden rounded-xl border border-border bg-background/55">
-              <div className="grid sm:grid-cols-2">
-                {scannerRows.map((scanner, index) => (
-                  <ScannerRow
-                    key={scanner.id}
-                    check={findDisplayCheck(result?.checks, progressById, scanner.id, scanner.label, cliRunning)}
-                    icon={scanner.icon}
-                    index={index}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-
           {attention ? (
             <motion.div
               className={cn(
-                "mt-4 flex items-start gap-3 rounded-xl border px-3 py-2.5 text-xs",
+                "mt-3 flex items-start gap-2 rounded-xl border px-3 py-2 text-xs",
                 attention.status === "fail"
                   ? "border-danger/35 bg-danger/8 text-danger"
                   : "border-amber-400/35 bg-amber-400/8 text-amber-200",
@@ -260,19 +233,21 @@ export function DoctorCard({ result, progress = [], running = false, error }: Do
             </motion.div>
           ) : null}
 
-          <div className="mt-5 border-t border-border/70 pt-4">
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <span className="text-xs font-medium text-muted">Internet connectivity</span>
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                HTTPS checks
-              </span>
+          {latestEvents.length > 0 ? (
+            <div className="mt-3 overflow-hidden rounded-xl border border-border bg-background/35">
+              <div className="flex items-center justify-between border-b border-border/70 px-3 py-1.5">
+                <span className="text-xs font-medium text-muted">Latest checks</span>
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {live ? "updating" : "last run"}
+                </span>
+              </div>
+              <div className="grid divide-y divide-border/60 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                {latestEvents.map((event, index) => (
+                  <LiveEventRow key={`${event.id}-${event.at}-${index}`} event={event} />
+                ))}
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-border bg-background/55 px-3 py-2.5">
-              {visibleConnectivity.map((check) => (
-                <ConnectivityChip key={check.id} check={check} />
-              ))}
-            </div>
-          </div>
+          ) : null}
         </div>
       </div>
     </motion.div>
@@ -293,7 +268,7 @@ function SummaryStat({
   return (
     <motion.div
       className={cn(
-        "min-w-0 px-3 text-center sm:border-l sm:border-border/70",
+        "min-w-0 rounded-lg border border-border/70 bg-background/45 px-2.5 py-2",
         first ? "sm:border-l-0" : "",
       )}
       variants={{
@@ -302,12 +277,14 @@ function SummaryStat({
       }}
       transition={{ duration: 0.18 }}
     >
-      <Icon className={cn("mx-auto h-5 w-5", groupTone.text)} />
-      <div className="mt-2 truncate text-xs text-muted">{group.label}</div>
-      <div className={cn("mt-1 text-base font-semibold tabular-nums", groupTone.text)}>
-        {group.ready} / {group.total}
+      <div className="flex items-center justify-between gap-2">
+        <Icon className={cn("h-3.5 w-3.5 shrink-0", groupTone.text)} />
+        <StatusIcon status={active ? "running" : group.status} className="h-3.5 w-3.5 shrink-0" />
       </div>
-      <StatusIcon status={active ? "running" : group.status} className="mx-auto mt-1 h-3.5 w-3.5" />
+      <div className="mt-1.5 truncate text-[11px] text-muted">{group.label}</div>
+      <div className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">
+        {group.ready}<span className="text-muted-foreground">/{group.total}</span>
+      </div>
     </motion.div>
   );
 }
@@ -325,7 +302,7 @@ function ScannerRow({
   return (
     <motion.div
       className={cn(
-        "grid grid-cols-[22px_1fr_auto_18px] items-center gap-2 border-border/70 px-3 py-2.5 text-sm",
+        "grid grid-cols-[18px_1fr_auto_16px] items-center gap-2 border-border/70 px-3 py-1.5 text-xs",
         index % 2 === 0 ? "sm:border-r" : "",
         index < scannerRows.length - 2 ? "border-b" : index < scannerRows.length - 1 ? "border-b sm:border-b-0" : "",
       )}
@@ -333,17 +310,17 @@ function ScannerRow({
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: 0.18 + index * 0.04, duration: 0.18 }}
     >
-      <Icon className={cn("h-4 w-4", checkTone.text)} />
+      <Icon className={cn("h-3.5 w-3.5", checkTone.text)} />
       <div className="min-w-0 truncate text-foreground">{displayScannerLabel(check)}</div>
       <span
         className={cn(
-          "rounded-md px-2 py-0.5 text-[11px] font-medium leading-5",
+          "rounded-md border border-border/70 bg-white/[0.03] px-1.5 py-0.5 text-[10px] font-medium leading-4",
           checkTone.pill,
         )}
       >
         {shortStatus(check.status)}
       </span>
-      <StatusIcon status={check.status} className="h-4 w-4" />
+      <StatusIcon status={check.status} className="h-3.5 w-3.5" />
     </motion.div>
   );
 }
@@ -352,7 +329,7 @@ function ConnectivityChip({ check }: { check: DisplayConnectivityCheck }) {
   const checkTone = tone(check.status);
   return (
     <div
-      className="flex min-w-[108px] items-center gap-2 border-r border-border/70 pr-3 last:border-r-0"
+      className="flex min-w-0 items-center gap-2 bg-background/45 px-3 py-2"
       title={`${check.label}: ${check.message}`}
     >
       <span
@@ -364,7 +341,7 @@ function ConnectivityChip({ check }: { check: DisplayConnectivityCheck }) {
       />
       <div className="min-w-0">
         <div className="truncate text-xs text-foreground">{check.label}</div>
-        <div className={cn("text-[11px] tabular-nums", checkTone.text)}>
+        <div className={cn("text-[10px] tabular-nums", checkTone.text)}>
           {check.status === "running"
             ? "Checking"
             : typeof check.latencyMs === "number"
@@ -377,17 +354,13 @@ function ConnectivityChip({ check }: { check: DisplayConnectivityCheck }) {
 }
 
 function LiveEventRow({ event }: { event: DoctorProgressEvent }) {
-  const eventTone = tone(event.status);
   return (
-    <div className="grid grid-cols-[18px_1fr_auto] items-center gap-2 px-3 py-2 text-xs">
+    <div className="grid min-w-0 grid-cols-[16px_1fr] items-center gap-2 px-3 py-2 text-xs">
       <StatusIcon status={event.status} className="h-3.5 w-3.5" />
       <div className="min-w-0">
         <div className="truncate text-foreground">{event.label}</div>
         <div className="truncate text-muted">{event.message}</div>
       </div>
-      <span className={cn("rounded-md px-2 py-0.5 text-[10px] font-medium leading-5", eventTone.pill)}>
-        {shortStatus(event.status)}
-      </span>
     </div>
   );
 }
@@ -620,12 +593,11 @@ function mostImportantAttention(result: DoctorRunResult): DoctorCheck | undefine
   };
 }
 
-function readinessBlockers(result: DoctorRunResult): DoctorCheck[] {
+function readinessBlockers(result: DoctorRunResult, connectedProvider: boolean): DoctorCheck[] {
   const byId = new Map<string, DoctorCheck>();
 
   for (const check of result.checks) {
-    const providerEnvSkip = check.id.startsWith("provider-env-") && check.status === "skip";
-    if (providerEnvSkip) continue;
+    if (isProviderCheckNoise(check, connectedProvider)) continue;
     if (check.status === "fail" || check.status === "warn") {
       byId.set(check.id, check);
     }
@@ -657,6 +629,62 @@ function readinessBlockers(result: DoctorRunResult): DoctorCheck[] {
   return Array.from(byId.values()).sort((left, right) => blockerRank(left) - blockerRank(right));
 }
 
+function hasConnectedProvider(
+  result: DoctorRunResult | undefined,
+  progressById: Map<string, DoctorProgressEvent>,
+): boolean {
+  if (result?.groups.some((group) => group.id === "providers" && group.ready > 0)) return true;
+  if (result?.checks.some((check) => check.id.startsWith("provider-") && check.status === "pass")) return true;
+  return Array.from(progressById.values()).some(
+    (event) => event.groupId === "providers" && event.status === "pass",
+  );
+}
+
+function isProviderCheckNoise(check: DoctorCheck, connectedProvider: boolean): boolean {
+  if (!connectedProvider) return check.id.startsWith("provider-env-") && check.status === "skip";
+  if (!check.id.startsWith("provider-")) return false;
+  if (check.status === "pass" || check.requirement === "required") return false;
+  return true;
+}
+
+function isProviderProgressNoise(event: DoctorProgressEvent, connectedProvider: boolean): boolean {
+  if (!connectedProvider) return event.id.startsWith("provider-env-") && event.status === "skip";
+  if (event.groupId !== "providers") return false;
+  return event.status !== "pass" && event.status !== "running";
+}
+
+function normalizeProviderGroup(
+  groups: DoctorGroupSummary[],
+  connectedProvider: boolean,
+): DoctorGroupSummary[] {
+  if (!connectedProvider) return groups;
+  return groups.map((group) =>
+    group.id === "providers"
+      ? {
+          ...group,
+          ready: Math.max(1, group.ready),
+          total: Math.max(1, Math.min(group.total, Math.max(1, group.ready))),
+          status: "pass",
+          message: "At least one model provider is connected.",
+        }
+      : group,
+  );
+}
+
+function displayCardStatus(
+  groups: DoctorGroupSummary[],
+  live: boolean,
+  error: string | undefined,
+  blockerCount: number,
+): CardStatus {
+  if (live) return "running";
+  if (error || groups.some((group) => group.status === "fail")) return "blocked";
+  if (blockerCount > 0 || groups.some((group) => group.status === "warn" || group.status === "skip")) {
+    return "attention";
+  }
+  return "ready";
+}
+
 function blockerRank(check: DoctorCheck): number {
   if (check.status === "fail") return 0;
   if (check.status === "warn") return 1;
@@ -675,7 +703,8 @@ function isGroup(group: DoctorGroupSummary | undefined): group is DoctorGroupSum
   return Boolean(group);
 }
 
-function statusLabel(status: DoctorRunResult["status"]): string {
+function statusLabel(status: CardStatus): string {
+  if (status === "running") return "Running";
   if (status === "ready") return "Ready";
   if (status === "blocked") return "Blocked";
   return "Needs tools";
@@ -695,29 +724,22 @@ function formatTime(value: string): string {
   return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
-function healthRingStyle(score: number, color: string): CSSProperties {
-  const clamped = Math.max(0, Math.min(100, score));
-  return {
-    background: `conic-gradient(${color} ${clamped * 3.6}deg, rgba(255,255,255,0.08) 0deg)`,
-  };
-}
-
 function tone(status: DisplayStatus | "ready" | "attention" | "blocked") {
   if (status === "running") {
     return {
-      text: "text-accent",
-      dot: "bg-accent",
-      pill: "bg-accent/14 text-accent",
-      sweep: "bg-[linear-gradient(90deg,transparent,rgba(59,130,246,0.95),rgba(20,184,166,0.85),transparent)]",
+      text: "text-foreground",
+      dot: "bg-foreground",
+      pill: "text-foreground",
+      sweep: "bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.55),transparent)]",
       hex: "#3b82f6",
     };
   }
   if (status === "pass" || status === "ready") {
     return {
-      text: "text-success",
-      dot: "bg-success",
-      pill: "bg-success/14 text-success",
-      sweep: "bg-[linear-gradient(90deg,transparent,rgba(59,130,246,0.9),rgba(34,197,94,0.95),transparent)]",
+      text: "text-foreground",
+      dot: "bg-foreground",
+      pill: "text-foreground",
+      sweep: "bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.45),transparent)]",
       hex: "#22c55e",
     };
   }
