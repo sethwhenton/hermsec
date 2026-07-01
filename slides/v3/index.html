@@ -415,11 +415,11 @@
           <h2 class="reveal" data-edit>Our dataset used labelled vulnerable projects.</h2>
           <p class="lead reveal" data-edit>We measured true positives, false positives, false negatives, precision, recall, F1 score, and runtime across the current HermSec modes.</p>
           <div class="metric-pair reveal">
-            <div><b>13</b><span>projects</span></div>
-            <div><b>117</b><span>planted vulnerabilities</span></div>
+            <div><b>20</b><span>projects</span></div>
+            <div><b>184</b><span>labelled findings</span></div>
           </div>
           <div class="metric-pair reveal" style="margin-top: 18px;">
-            <div><b>8</b><span>languages</span></div>
+            <div><b>12</b><span>languages</span></div>
             <div><b>6</b><span>review modes</span></div>
           </div>
         </div>
@@ -434,7 +434,6 @@
           </div>
           <div class="model-list" style="margin-top: 30px;">
             <div><span>MoA Low</span><code>3 agents, 60 limit</code></div>
-            <div><span>MoA Mid</span><code>3 agents, 80 limit</code></div>
             <div><span>MoA High</span><code>5 agents, 120 limit</code></div>
           </div>
         </div>
@@ -449,43 +448,43 @@
         <div class="content">
           <div class="bars reveal">
             <div class="bar-row">
-              <div class="label">Scanner only</div>
-              <div class="track"><div class="fill" style="width: 94.9%;"></div></div>
-              <div class="value">0.7064</div>
-            </div>
-            <div class="bar-row">
               <div class="label">Deep assisted</div>
-              <div class="track"><div class="fill" style="width: 73.9%;"></div></div>
-              <div class="value">0.5497</div>
+              <div class="track"><div class="fill" style="width: 57.3%;"></div></div>
+              <div class="value">0.4381</div>
             </div>
             <div class="bar-row">
               <div class="label">Single Agent</div>
-              <div class="track"><div class="fill" style="width: 49.8%;"></div></div>
-              <div class="value">0.3708</div>
+              <div class="track"><div class="fill" style="width: 84.6%;"></div></div>
+              <div class="value">0.6462</div>
             </div>
             <div class="bar-row">
               <div class="label">MoA Low</div>
-              <div class="track"><div class="fill" style="width: 88.2%;"></div></div>
-              <div class="value">0.6560</div>
+              <div class="track"><div class="fill" style="width: 71.1%;"></div></div>
+              <div class="value">0.5433</div>
             </div>
             <div class="bar-row">
               <div class="label">MoA High</div>
-              <div class="track"><div class="fill" style="width: 87.7%;"></div></div>
-              <div class="value">0.6524</div>
+              <div class="track"><div class="fill" style="width: 71.4%;"></div></div>
+              <div class="value">0.5455</div>
+            </div>
+            <div class="bar-row">
+              <div class="label">Scanner + MoA Low</div>
+              <div class="track"><div class="fill" style="width: 69.8%;"></div></div>
+              <div class="value">0.5333</div>
             </div>
             <div class="bar-row best">
               <div class="label">Scanner + MoA High</div>
               <div class="track"><div class="fill" style="width: 100%;"></div></div>
-              <div class="value">0.7440</div>
+              <div class="value">0.7640</div>
             </div>
           </div>
           <div class="winner reveal">
-            <div class="big">0.7440</div>
-            <p data-edit>The best mode combined scanner coverage with MoA filtering to achieve the highest F1 score.</p>
+            <div class="big">0.7640</div>
+            <p data-edit>Scanner + MoA High combined scanner coverage with agent filtering to achieve the highest F1 score.</p>
             <div class="mini-stats">
-              <div><b>0.8556</b><span>precision</span></div>
-              <div><b>0.6581</b><span>recall</span></div>
-              <div><b>77</b><span>true positives</span></div>
+              <div><b>0.6916</b><span>precision</span></div>
+              <div><b>0.8533</b><span>recall</span></div>
+              <div><b>157</b><span>true positives</span></div>
             </div>
           </div>
         </div>
@@ -548,35 +547,36 @@
         <div>
           <div class="eyebrow reveal">07 Scanners vs agents</div>
           <h2 class="reveal" data-edit style="font-size: 72px; line-height: 0.96;">How scanners and agents complement each other.</h2>
-          <p class="lead reveal" data-edit style="margin-top: 22px; font-size: 28px; line-height: 1.22;">Scanners found 71 TPs. MoA agents found 61 TPs. Together they found 77 TPs.</p>
+          <p class="lead reveal" data-edit style="margin-top: 22px; font-size: 28px; line-height: 1.22;">Deep assisted (scanners) found 85 TPs. Scanner + MoA High found 157 TPs. The hybrid gained 72 more true positives.</p>
           <div class="under-list" style="margin-top: 30px;">
             <div class="under-item reveal">
-              <strong data-edit>Both found: 55 vulnerabilities</strong>
-              <span data-edit>These are the most obvious issues that both scanners and agents detect easily.</span>
+              <strong data-edit>Scanners provide coverage</strong>
+              <span data-edit>Semgrep, Gitleaks, Trivy, Bandit detect pattern-based issues like hardcoded secrets and dependency CVEs.</span>
             </div>
             <div class="under-item reveal">
-              <strong data-edit>Scanner only: 16 vulnerabilities</strong>
-              <span data-edit>Pattern-based issues like hardcoded secrets and dependency CVEs that agents miss.</span>
+              <strong data-edit>Agents add reasoning</strong>
+              <span data-edit>MoA agents inspect code context and find issues that pattern-based scanners miss.</span>
             </div>
             <div class="under-item reveal">
-              <strong data-edit>Agent only: 6 vulnerabilities</strong>
-              <span data-edit>Contextual issues like business logic flaws that scanners cannot detect.</span>
+              <strong data-edit>Hybrid combines both</strong>
+              <span data-edit>Scanner + MoA merges scanner findings with agent findings, then judges and deduplicates.</span>
             </div>
           </div>
         </div>
         <div class="reveal">
           <div class="metric-pair" style="grid-template-columns: 1fr;">
-            <div><b style="color: var(--green);">77</b><span>true positives combined</span></div>
+            <div><b style="color: var(--green);">157</b><span>true positives (Scanner + MoA High)</span></div>
           </div>
           <div class="metric-pair" style="margin-top: 18px; grid-template-columns: 1fr 1fr;">
-            <div><b style="color: var(--cyan);">16</b><span>scanner only</span></div>
-            <div><b style="color: var(--amber);">6</b><span>agent only</span></div>
+            <div><b style="color: var(--cyan);">85</b><span>scanner-backed TPs</span></div>
+            <div><b style="color: var(--amber);">72</b><span>additional from agents</span></div>
+          </div>
+          <div class="metric-pair" style="margin-top: 18px; grid-template-columns: 1fr 1fr;">
+            <div><b>0.6916</b><span>precision</span></div>
+            <div><b style="color: var(--green);">0.8533</b><span>recall</span></div>
           </div>
           <div class="metric-pair" style="margin-top: 18px; grid-template-columns: 1fr;">
-            <div><b>55</b><span>found by both</span></div>
-          </div>
-          <div class="metric-pair" style="margin-top: 18px; grid-template-columns: 1fr;">
-            <div><b style="color: var(--danger);">40</b><span>missed by all modes</span></div>
+            <div><b style="color: var(--danger);">70</b><span>false positives (needs better filtering)</span></div>
           </div>
         </div>
         <div class="slide-number">8 / 11</div>
@@ -665,19 +665,20 @@
           <h2 class="reveal" data-edit style="font-size: 78px; line-height: 0.98;">What comes next.</h2>
           <p class="lead reveal" data-edit style="margin-top: 22px; font-size: 28px; line-height: 1.2;">Next we make HermSec smaller, faster, and more automatic.</p>
           <div class="under-list" style="margin-top: 30px; gap: 20px;">
-            <div class="under-item reveal"><strong data-edit style="font-size: 27px;">Better language coverage</strong><span data-edit style="font-size: 21px; line-height: 1.23;">Improve C/C++ and Rust language coverage in the heuristic scanner and MoA agents.</span></div>
-            <div class="under-item reveal"><strong data-edit style="font-size: 27px;">Public benchmarks</strong><span data-edit style="font-size: 21px; line-height: 1.23;">Test HermSec on OWASP Benchmark, OpenSSF CVE Benchmark, and CASTLE test suites.</span></div>
-            <div class="under-item reveal"><strong data-edit style="font-size: 27px;">Rate limit handling</strong><span data-edit style="font-size: 21px; line-height: 1.23;">Add retry logic and rate limit handling for model providers during sequential scans.</span></div>
-            <div class="under-item reveal"><strong data-edit style="font-size: 27px;">Cost tracking</strong><span data-edit style="font-size: 21px; line-height: 1.23;">Measure model token cost per mode and route work to efficient models by default.</span></div>
+            <div class="under-item reveal"><strong data-edit style="font-size: 27px;">One-click scanning</strong><span data-edit style="font-size: 21px; line-height: 1.23;">Make HermSec smaller with one main scan button. Inspect project, choose tools, run mode, write report with less setup.</span></div>
+            <div class="under-item reveal"><strong data-edit style="font-size: 27px;">Email reporting</strong><span data-edit style="font-size: 21px; line-height: 1.23;">Connect to a mailbox and send scan reports after new scans for scheduled security checks.</span></div>
+            <div class="under-item reveal"><strong data-edit style="font-size: 27px;">MCP server integration</strong><span data-edit style="font-size: 21px; line-height: 1.23;">Let agents inside editing tools call the HermSec CLI directly without switching tools.</span></div>
+            <div class="under-item reveal"><strong data-edit style="font-size: 27px;">Change detection</strong><span data-edit style="font-size: 21px; line-height: 1.23;">Compare file hashes, git commits, and lockfiles to avoid re-scanning unchanged projects.</span></div>
+            <div class="under-item reveal"><strong data-edit style="font-size: 27px;">Better hybrid control</strong><span data-edit style="font-size: 21px; line-height: 1.23;">Stronger judge prompts, better evidence checks, caching, and cost tracking for Scanner + MoA.</span></div>
           </div>
         </div>
         <div class="reveal">
           <div class="threat-card" style="margin-bottom: 28px;">
             <h3>Threats to validity</h3>
-            <div class="threat-item"><span>Synthetic vulnerabilities may not reflect real-world code complexity</span></div>
+            <div class="threat-item"><span>Dataset is limited: 20 local projects and 184 labelled findings</span></div>
+            <div class="threat-item"><span>Results may change on larger real repositories</span></div>
             <div class="threat-item"><span>CWE-based scoring may miss useful findings not in the ground truth</span></div>
-            <div class="threat-item"><span>Model behavior can change due to provider errors and updates</span></div>
-            <div class="threat-item"><span>Small dataset size limits generalizability of results</span></div>
+            <div class="threat-item"><span>Exact token cost was not measured, only runtime and finding metrics</span></div>
           </div>
           <div style="text-align: center; padding-top: 20px;">
             <h2 style="font-size: 82px; margin-bottom: 16px;">Any questions?</h2>
@@ -702,80 +703,69 @@
                 <th>PRECISION</th>
                 <th>RECALL</th>
                 <th>F1</th>
+                <th>TIME (s)</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td style="text-align: left;">Scanner only</td>
-                <td>71</td>
-                <td>13</td>
-                <td>46</td>
-                <td>0.8452</td>
-                <td>0.6068</td>
-                <td>0.7064</td>
-              </tr>
-              <tr>
                 <td style="text-align: left;">Deep assisted</td>
-                <td>47</td>
-                <td>7</td>
-                <td>70</td>
-                <td>0.8704</td>
-                <td>0.4017</td>
-                <td>0.5497</td>
+                <td>85</td>
+                <td>119</td>
+                <td>99</td>
+                <td>0.4167</td>
+                <td>0.4620</td>
+                <td>0.4381</td>
+                <td>715</td>
               </tr>
               <tr>
-                <td style="text-align: left;">Single agent</td>
-                <td>28</td>
-                <td>6</td>
-                <td>89</td>
-                <td>0.8235</td>
-                <td>0.2393</td>
-                <td>0.3708</td>
+                <td style="text-align: left;">Single Agent</td>
+                <td>126</td>
+                <td>80</td>
+                <td>58</td>
+                <td>0.6117</td>
+                <td>0.6848</td>
+                <td>0.6462</td>
+                <td>269</td>
               </tr>
               <tr>
                 <td style="text-align: left;">MoA Low</td>
-                <td>61</td>
-                <td>8</td>
-                <td>56</td>
-                <td style="color: var(--green); font-weight: 700;">0.8841</td>
-                <td>0.5214</td>
-                <td>0.6560</td>
+                <td>91</td>
+                <td>60</td>
+                <td>93</td>
+                <td>0.6026</td>
+                <td>0.4946</td>
+                <td>0.5433</td>
+                <td>1178</td>
               </tr>
               <tr>
                 <td style="text-align: left;">MoA High</td>
-                <td>61</td>
-                <td>9</td>
-                <td>56</td>
-                <td>0.8714</td>
-                <td>0.5214</td>
-                <td>0.6524</td>
+                <td>84</td>
+                <td>40</td>
+                <td>100</td>
+                <td>0.6774</td>
+                <td>0.4565</td>
+                <td>0.5455</td>
+                <td>1560</td>
               </tr>
               <tr>
                 <td style="text-align: left;">Scanner + MoA Low</td>
-                <td>71</td>
-                <td>13</td>
-                <td>46</td>
-                <td>0.8452</td>
-                <td>0.6068</td>
-                <td>0.7064</td>
-              </tr>
-              <tr>
-                <td style="text-align: left;">Scanner + MoA Mid</td>
-                <td>71</td>
-                <td>12</td>
-                <td>46</td>
-                <td>0.8554</td>
-                <td>0.6068</td>
-                <td>0.7100</td>
+                <td>88</td>
+                <td>58</td>
+                <td>96</td>
+                <td>0.6027</td>
+                <td>0.4783</td>
+                <td>0.5333</td>
+                <td>4416</td>
               </tr>
               <tr class="highlight">
                 <td style="text-align: left; color: var(--green); font-weight: 700;">Scanner + MoA High</td>
-                <td style="color: var(--green); font-weight: 700;">77</td>
-                <td>13</td>
-                <td>40</td>
-                <td>0.8556</td>
-                <td style="color: var(--green); font-weight: 700;">0.6581</td>
-                <td style="color: var(--green); font-weight: 700;">0.7440</td>
+                <td style="color: var(--green); font-weight: 700;">157</td>
+                <td>70</td>
+                <td>27</td>
+                <td>0.6916</td>
+                <td style="color: var(--green); font-weight: 700;">0.8533</td>
+                <td style="color: var(--green); font-weight: 700;">0.7640</td>
+                <td>2321</td>
               </tr>
             </tbody>
           </table>
