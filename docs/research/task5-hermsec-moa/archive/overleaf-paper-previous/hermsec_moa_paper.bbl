@@ -1,0 +1,291 @@
+%%% -*-BibTeX-*-
+%%% Do NOT edit. File created by BibTeX with style
+%%% ACM-Reference-Format-Journals [18-Jan-2012].
+
+\begin{thebibliography}{22}
+
+%%% ====================================================================
+%%% NOTE TO THE USER: you can override these defaults by providing
+%%% customized versions of any of these macros before the \bibliography
+%%% command.  Each of them MUST provide its own final punctuation,
+%%% except for \shownote{} and \showURL{}.  The latter two
+%%% do not use final punctuation, in order to avoid confusing it with
+%%% the Web address.
+%%%
+%%% To suppress output of a particular field, define its macro to expand
+%%% to an empty string, or better, \unskip, like this:
+%%%
+%%% \newcommand{\showURL}[1]{\unskip}   % LaTeX syntax
+%%%
+%%% \def \showURL #1{\unskip}           % plain TeX syntax
+%%%
+%%% ====================================================================
+
+\ifx \showCODEN    \undefined \def \showCODEN     #1{\unskip}     \fi
+\ifx \showISBNx    \undefined \def \showISBNx     #1{\unskip}     \fi
+\ifx \showISBNxiii \undefined \def \showISBNxiii  #1{\unskip}     \fi
+\ifx \showISSN     \undefined \def \showISSN      #1{\unskip}     \fi
+\ifx \showLCCN     \undefined \def \showLCCN      #1{\unskip}     \fi
+\ifx \shownote     \undefined \def \shownote      #1{#1}          \fi
+\ifx \showarticletitle \undefined \def \showarticletitle #1{#1}   \fi
+\ifx \showURL      \undefined \def \showURL       {\relax}        \fi
+% The following commands are used for tagged output and should be
+% invisible to TeX
+\providecommand\bibfield[2]{#2}
+\providecommand\bibinfo[2]{#2}
+\providecommand\natexlab[1]{#1}
+\providecommand\showeprint[2][]{arXiv:#2}
+
+\bibitem[{Aqua Security}(2026)]%
+        {trivy}
+\bibfield{author}{\bibinfo{person}{{Aqua Security}}.}
+  \bibinfo{year}{2026}\natexlab{}.
+\newblock \bibinfo{title}{{Trivy: Scanner for Vulnerabilities,
+  Misconfigurations, Secrets, and Licenses}}.
+\newblock \bibinfo{howpublished}{\url{https://github.com/aquasecurity/trivy}}.
+\newblock
+\shownote{Accessed: 2026-06-27}.
+\newblock
+
+
+\bibitem[Boland and Black(2012)]%
+        {nistjuliet}
+\bibfield{author}{\bibinfo{person}{Tim Boland} {and} \bibinfo{person}{Paul~E.
+  Black}.} \bibinfo{year}{2012}\natexlab{}.
+\newblock \bibinfo{booktitle}{\emph{Juliet 1.1 C/C++ and Java Test Suite}}.
+\newblock \bibinfo{type}{{T}echnical {R}eport}. \bibinfo{institution}{National
+  Institute of Standards and Technology}.
+\newblock
+
+
+\bibitem[Chess and McGraw(2004)]%
+        {chess2004static}
+\bibfield{author}{\bibinfo{person}{Brian Chess} {and} \bibinfo{person}{Gary
+  McGraw}.} \bibinfo{year}{2004}\natexlab{}.
+\newblock \showarticletitle{Static Analysis for Security}.
+\newblock \bibinfo{journal}{\emph{IEEE Security \& Privacy}}
+  \bibinfo{volume}{2}, \bibinfo{number}{6} (\bibinfo{year}{2004}),
+  \bibinfo{pages}{76--79}.
+\newblock
+
+
+\bibitem[{DeepSeek}(2026a)]%
+        {deepseekpricing}
+\bibfield{author}{\bibinfo{person}{{DeepSeek}}.}
+  \bibinfo{year}{2026}\natexlab{a}.
+\newblock \bibinfo{title}{{API Pricing}}.
+\newblock
+  \bibinfo{howpublished}{\url{https://api-docs.deepseek.com/quick_start/pricing}}.
+\newblock
+\shownote{Accessed: 2026-06-27}.
+\newblock
+
+
+\bibitem[{DeepSeek}(2026b)]%
+        {deepseekcache}
+\bibfield{author}{\bibinfo{person}{{DeepSeek}}.}
+  \bibinfo{year}{2026}\natexlab{b}.
+\newblock \bibinfo{title}{{Context Caching}}.
+\newblock
+  \bibinfo{howpublished}{\url{https://api-docs.deepseek.com/guides/kv_cache}}.
+\newblock
+\shownote{Accessed: 2026-06-27}.
+\newblock
+
+
+\bibitem[Du et~al\mbox{.}(2023)]%
+        {du2023debate}
+\bibfield{author}{\bibinfo{person}{Yilun Du}, \bibinfo{person}{Shuang Li},
+  \bibinfo{person}{Antonio Torralba}, \bibinfo{person}{Joshua~B. Tenenbaum},
+  {and} \bibinfo{person}{Igor Mordatch}.} \bibinfo{year}{2023}\natexlab{}.
+\newblock \bibinfo{title}{{Improving Factuality and Reasoning in Language
+  Models through Multiagent Debate}}.
+\newblock \bibinfo{howpublished}{\url{https://arxiv.org/abs/2305.14325}}.
+\newblock
+
+
+\bibitem[Livshits and Lam(2005)]%
+        {livshits2005finding}
+\bibfield{author}{\bibinfo{person}{V.~Benjamin Livshits} {and}
+  \bibinfo{person}{Monica~S. Lam}.} \bibinfo{year}{2005}\natexlab{}.
+\newblock \showarticletitle{Finding Security Vulnerabilities in Java
+  Applications with Static Analysis}. In \bibinfo{booktitle}{\emph{Proceedings
+  of the 14th USENIX Security Symposium}}.
+\newblock
+
+
+\bibitem[{MiniMax}(2026)]%
+        {minimaxm3}
+\bibfield{author}{\bibinfo{person}{{MiniMax}}.}
+  \bibinfo{year}{2026}\natexlab{}.
+\newblock \bibinfo{title}{{MiniMax-M3}}.
+\newblock \bibinfo{howpublished}{\url{https://www.minimax.io/models/text/m3}}.
+\newblock
+\shownote{Accessed: 2026-06-27}.
+\newblock
+
+
+\bibitem[{MITRE}(2026)]%
+        {mitrecwe}
+\bibfield{author}{\bibinfo{person}{{MITRE}}.} \bibinfo{year}{2026}\natexlab{}.
+\newblock \bibinfo{title}{{Common Weakness Enumeration}}.
+\newblock \bibinfo{howpublished}{\url{https://cwe.mitre.org/}}.
+\newblock
+\shownote{Accessed: 2026-06-27}.
+\newblock
+
+
+\bibitem[{Nous Research}(2026)]%
+        {nous2026hermesagent}
+\bibfield{author}{\bibinfo{person}{{Nous Research}}.}
+  \bibinfo{year}{2026}\natexlab{}.
+\newblock \bibinfo{title}{{Hermes Agent}}.
+\newblock
+  \bibinfo{howpublished}{\url{https://github.com/nousresearch/hermes-agent}}.
+\newblock
+\shownote{Accessed: 2026-06-27}.
+\newblock
+
+
+\bibitem[{NVIDIA}(2026)]%
+        {nemotron3ultra}
+\bibfield{author}{\bibinfo{person}{{NVIDIA}}.} \bibinfo{year}{2026}\natexlab{}.
+\newblock \bibinfo{title}{{Nemotron-3 Ultra: A Large Language Model for
+  Multi-Domain Tasks}}.
+\newblock \bibinfo{howpublished}{\url{https://arxiv.org/abs/2606.15007}}.
+\newblock
+\shownote{Accessed: 2026-06-27}.
+\newblock
+
+
+\bibitem[{OWASP Foundation}(2021)]%
+        {owasptop10}
+\bibfield{author}{\bibinfo{person}{{OWASP Foundation}}.}
+  \bibinfo{year}{2021}\natexlab{}.
+\newblock \bibinfo{title}{{OWASP Top 10: The Ten Most Critical Web Application
+  Security Risks}}.
+\newblock \bibinfo{howpublished}{\url{https://owasp.org/Top10/}}.
+\newblock
+\shownote{Accessed: 2026-06-27}.
+\newblock
+
+
+\bibitem[{OWASP Foundation}(2026)]%
+        {owaspbenchmark}
+\bibfield{author}{\bibinfo{person}{{OWASP Foundation}}.}
+  \bibinfo{year}{2026}\natexlab{}.
+\newblock \bibinfo{title}{{OWASP Benchmark Project}}.
+\newblock
+  \bibinfo{howpublished}{\url{https://owasp.org/www-project-benchmark/}}.
+\newblock
+\shownote{Accessed: 2026-06-27}.
+\newblock
+
+
+\bibitem[Pearce et~al\mbox{.}(2022)]%
+        {pearce2022asleep}
+\bibfield{author}{\bibinfo{person}{Hammond Pearce}, \bibinfo{person}{Baleegh
+  Ahmad}, \bibinfo{person}{Benjamin Tan}, \bibinfo{person}{Brendan
+  Dolan-Gavitt}, {and} \bibinfo{person}{Ramesh Karri}.}
+  \bibinfo{year}{2022}\natexlab{}.
+\newblock \showarticletitle{Asleep at the Keyboard? Assessing the Security of
+  GitHub Copilot's Code Contributions}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the 2022 IEEE Symposium on Security
+  and Privacy}}.
+\newblock
+
+
+\bibitem[{PyCQA}(2026)]%
+        {bandit}
+\bibfield{author}{\bibinfo{person}{{PyCQA}}.} \bibinfo{year}{2026}\natexlab{}.
+\newblock \bibinfo{title}{{Bandit: Security Linter from PyCQA}}.
+\newblock \bibinfo{howpublished}{\url{https://bandit.readthedocs.io/}}.
+\newblock
+\shownote{Accessed: 2026-06-27}.
+\newblock
+
+
+\bibitem[{Semgrep, Inc.}(2026)]%
+        {semgrep}
+\bibfield{author}{\bibinfo{person}{{Semgrep, Inc.}}}
+  \bibinfo{year}{2026}\natexlab{}.
+\newblock \bibinfo{title}{{Semgrep: Lightweight Static Analysis for Many
+  Languages}}.
+\newblock \bibinfo{howpublished}{\url{https://semgrep.dev/}}.
+\newblock
+\shownote{Accessed: 2026-06-27}.
+\newblock
+
+
+\bibitem[Wang et~al\mbox{.}(2024)]%
+        {wang2024moa}
+\bibfield{author}{\bibinfo{person}{Junlin Wang}, \bibinfo{person}{Jue Wang},
+  \bibinfo{person}{Ben Athiwaratkun}, \bibinfo{person}{Ce Zhang}, {and}
+  \bibinfo{person}{James Zou}.} \bibinfo{year}{2024}\natexlab{}.
+\newblock \bibinfo{title}{{Mixture-of-Agents Enhances Large Language Model
+  Capabilities}}.
+\newblock \bibinfo{howpublished}{\url{https://arxiv.org/abs/2406.04692}}.
+\newblock
+
+
+\bibitem[Wilson(2026)]%
+        {gitleaks}
+\bibfield{author}{\bibinfo{person}{Zachary Wilson}.}
+  \bibinfo{year}{2026}\natexlab{}.
+\newblock \bibinfo{title}{{Gitleaks: Detect and Prevent Secrets in Git
+  Repositories}}.
+\newblock \bibinfo{howpublished}{\url{https://github.com/gitleaks/gitleaks}}.
+\newblock
+\shownote{Accessed: 2026-06-27}.
+\newblock
+
+
+\bibitem[{Xiaomi}(2026)]%
+        {xiaomimimo25}
+\bibfield{author}{\bibinfo{person}{{Xiaomi}}.} \bibinfo{year}{2026}\natexlab{}.
+\newblock \bibinfo{title}{{Model Release: MiMo-V2 Series}}.
+\newblock
+  \bibinfo{howpublished}{\url{https://mimo.mi.com/docs/en-US/updates/model}}.
+\newblock
+\shownote{Accessed: 2026-06-27}.
+\newblock
+
+
+\bibitem[{XiaomiMiMo}(2026)]%
+        {xiaomimimo25inference}
+\bibfield{author}{\bibinfo{person}{{XiaomiMiMo}}.}
+  \bibinfo{year}{2026}\natexlab{}.
+\newblock \bibinfo{title}{{Full-Pipeline Inference Optimization for MiMo-V2.5
+  Series}}.
+\newblock
+  \bibinfo{howpublished}{\url{https://mimo.xiaomi.com/blog/mimo-v2-5-inference}}.
+\newblock
+\shownote{Accessed: 2026-06-27}.
+\newblock
+
+
+\bibitem[Yao et~al\mbox{.}(2023)]%
+        {yao2023react}
+\bibfield{author}{\bibinfo{person}{Shunyu Yao}, \bibinfo{person}{Jeffrey Zhao},
+  \bibinfo{person}{Dian Yu}, \bibinfo{person}{Nan Du}, \bibinfo{person}{Izhak
+  Shafran}, \bibinfo{person}{Karthik Narasimhan}, {and} \bibinfo{person}{Yuan
+  Cao}.} \bibinfo{year}{2023}\natexlab{}.
+\newblock \bibinfo{title}{{ReAct: Synergizing Reasoning and Acting in Language
+  Models}}.
+\newblock \bibinfo{howpublished}{\url{https://arxiv.org/abs/2210.03629}}.
+\newblock
+
+
+\bibitem[Zitser et~al\mbox{.}(2004)]%
+        {zitser2004testing}
+\bibfield{author}{\bibinfo{person}{Misha Zitser}, \bibinfo{person}{Richard
+  Lippmann}, {and} \bibinfo{person}{Tim Leek}.}
+  \bibinfo{year}{2004}\natexlab{}.
+\newblock \showarticletitle{Testing Static Analysis Tools Using Exploitable
+  Buffer Overflows from Open Source Code}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the 12th ACM SIGSOFT International
+  Symposium on Foundations of Software Engineering}}. \bibinfo{pages}{97--106}.
+\newblock
+
+
+\end{thebibliography}

@@ -37,3 +37,13 @@ desktop/.hermsec-v3/
 Thumbs.db
 .vscode/
 .idea/
+
+# Presentation scratch/export folder
+teach/
+
+# Local agent/design-tool working files
+.agents/
+.impeccable/
+skills-lock.json
+for agents/
+Test projects/primary_tests/AGENT-STATISTICS.md

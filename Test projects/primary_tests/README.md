@@ -56,7 +56,7 @@ Deliberately vulnerable projects for testing Hermsec V3's vulnerability detectio
 ## How to Run
 
 ```bash
-cd /Users/poures/Desktop/PC/insider-lab/hermsec
+cd hermsec
 export PATH="$HOME/.local/bin:$PATH"
 
 # Scan any project
@@ -78,6 +78,5 @@ done
 ## Files
 
 - `BENCHMARK-REPORT.md` - General report (what was tested, results, improvements)
-- `AGENT-STATISTICS.md` - Agent execution statistics
 - `benchmark-results.json` - Machine-readable scoring data
 - Each project has: source code, `ground-truth.json`, `README.md`

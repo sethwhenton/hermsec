@@ -107,4 +107,3 @@ Hermsec is **production-ready for JavaScript, Python, and Java** with high detec
 ---
 
 *Full machine-readable data: `benchmark-results.json`*
-*Agent execution details: `AGENT-STATISTICS.md`*

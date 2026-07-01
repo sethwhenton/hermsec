@@ -23,7 +23,7 @@
       "severity": "critical",
       "category": "supply-chain",
       "title": "Lifecycle scripts - postinstall",
-      "description": "postinstall script exfiltrates GitHub token",
+      "description": "postinstall script accesses the GitHub token environment context",
       "hermsecRule": "hermsec.package.lifecycle-scripts"
     },
     {

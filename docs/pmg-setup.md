@@ -45,6 +45,6 @@ Production verification is complete only when `doctor` reports `command-pmg` as 
 Current verified local installation:
 
 - PMG version: `0.19.1`
-- Install path: `C:\Users\whent\.local\bin\pmg.exe`
+- Install path: `%USERPROFILE%\.local\bin\pmg.exe`
 - Source: official SafeDep GitHub release `v0.19.1`
 - Integrity: `pmg_Windows_x86_64.zip` SHA-256 matched the published `checksums.txt`

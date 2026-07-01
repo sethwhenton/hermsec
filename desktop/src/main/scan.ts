@@ -142,7 +142,7 @@ export function findHermsecRoot(startDir = process.cwd()): string {
 
 export function defaultProjectDir(): string {
   const root = findHermsecRoot();
-  const labProject = path.join(root, "Test projects", "hermsec-node-express-vuln-lab");
+  const labProject = path.join(root, "Test projects", "primary_tests", "nodejs-express-app");
   return existsSync(labProject) ? labProject : root;
 }
 

