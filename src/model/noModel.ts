@@ -10,8 +10,14 @@ export type NoModelSummary = {
 
 export const noModelProvider: ModelProviderAdapter = {
   id: "none",
+  capabilities: {
+    tools: false,
+    jsonResponse: true,
+    externalAbort: true,
+    streaming: false,
+  },
   async listModels() {
-    return [{ id: "scanner-only", label: "Scanner-only fallback", local: true }];
+    return [{ id: "scanner-only", label: "Scanner-only fallback", local: true, supportsTools: false }];
   },
   async healthCheck(): Promise<ProviderHealth> {
     return {
@@ -23,6 +29,15 @@ export const noModelProvider: ModelProviderAdapter = {
     };
   },
   async complete(request: ModelRequest, _config?: ProviderConfig): Promise<ModelResponse> {
+    if (
+      (request.tools?.length ?? 0) > 0 ||
+      request.messages.some((message) => message.role === "tool" || (message.role === "assistant" && (message.toolCalls?.length ?? 0) > 0))
+    ) {
+      throw new Error("none provider cannot execute agent tools.");
+    }
+    if (request.signal?.aborted) {
+      throw request.signal.reason instanceof Error ? request.signal.reason : new Error("Model request was aborted.");
+    }
     return {
       content: scannerOnlyResponse(request),
       model: "scanner-only",

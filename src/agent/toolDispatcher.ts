@@ -1,16 +1,37 @@
-import { assertToolPermission, type ToolContext } from "./permissions.js";
+import { redactForModel } from "./redaction.js";
+import { assertToolPermission, assertToolWorkspace, type ToolContext } from "./permissions.js";
 import type { ToolRegistry } from "./toolRegistry.js";
+import { isInspectionToolName, type InspectionToolName } from "./toolProtocol.js";
 
-export async function dispatchTool<I = unknown, O = unknown>(
+export type DispatchedToolResult = {
+  name: InspectionToolName;
+  output: unknown;
+  redactionMarkers: string[];
+};
+
+export async function dispatchTool(
   registry: ToolRegistry,
   name: string,
-  input: I,
-  context: ToolContext
-): Promise<O> {
-  const tool = registry.get(name);
+  input: unknown,
+  context: ToolContext,
+): Promise<DispatchedToolResult> {
+  if (!isInspectionToolName(name)) {
+    throw new Error(`Unregistered Hermsec inspection tool: ${name}`);
+  }
+  const tool = registry.tools.get(name);
   if (!tool) {
-    throw new Error(`Unregistered Hermsec tool: ${name}`);
+    throw new Error(`Unregistered Hermsec inspection tool: ${name}`);
   }
   assertToolPermission(tool.permission, context);
-  return tool.run(input, context) as Promise<O>;
+  await assertToolWorkspace(context, registry.workspaceRoot);
+
+  const validatedInput = tool.validateInput(input);
+  const rawOutput = await tool.run(validatedInput, context);
+  const validatedOutput = tool.validateOutput(rawOutput);
+  const redacted = redactForModel(validatedOutput);
+  return {
+    name,
+    output: redacted.value,
+    redactionMarkers: redacted.markers,
+  };
 }

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "pythonVersion": "3.12.11",
+  "uvVersion": "0.10.12",
+  "defaultIndex": "https://pypi.org/simple",
+  "sourceRequirements": "python-scanners.in",
+  "generatedAt": "2026-07-25",
+  "method": "Each target lock was generated with the committed direct pins using uv 0.10.12, Python 3.12 compatibility, the exact target triple, --generate-hashes, --only-binary :all:, --no-sources, and the official PyPI simple index. Runtime staging uses --require-hashes, --no-deps, and --only-binary :all:, so it cannot resolve, build, or add packages dynamically.",
+  "targets": {
+    "win32-x64": {
+      "pythonPlatform": "x86_64-pc-windows-msvc",
+      "lock": "python-locks/win32-x64.txt"
+    },
+    "darwin-x64": {
+      "pythonPlatform": "x86_64-apple-darwin",
+      "lock": "python-locks/darwin-x64.txt"
+    },
+    "darwin-arm64": {
+      "pythonPlatform": "aarch64-apple-darwin",
+      "lock": "python-locks/darwin-arm64.txt"
+    },
+    "linux-x64": {
+      "pythonPlatform": "x86_64-manylinux_2_34",
+      "lock": "python-locks/linux-x64.txt"
+    }
+  }
+}

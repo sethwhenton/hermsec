@@ -1,4 +1,9 @@
-import type { HermsecProductScanAssistMode, HermsecVisibleScanAssistMode } from "@/types/scan";
+import {
+  hermsecCanonicalScanAssistModes,
+  type HermsecLegacyScanAssistMode,
+  type HermsecProductScanAssistMode,
+  type HermsecVisibleScanAssistMode,
+} from "@/types/scan";
 
 export const scanModeOptions: Array<{
   id: HermsecVisibleScanAssistMode;
@@ -6,51 +11,110 @@ export const scanModeOptions: Array<{
   shortLabel: string;
   description: string;
   status: string;
+  requiresModel: boolean;
+  usesScanners: boolean;
 }> = [
   {
-    id: "deep-assisted",
-    label: "Deep assisted scan",
-    shortLabel: "Deep",
-    description: "Runs scanner tools, merges duplicate evidence, then uses the model to explain and prioritize scanner-backed findings.",
-    status: "More context, more tokens",
+    id: "scanner-only",
+    label: "Scanner only",
+    shortLabel: "Scanner",
+    description: "Runs deterministic security scanners and writes raw, reproducible evidence without calling a model.",
+    status: "No model required",
+    requiresModel: false,
+    usesScanners: true,
   },
   {
     id: "single-agent",
-    label: "Single agent inspection",
+    label: "Single agent",
     shortLabel: "Single",
     description: "Uses one configured agent to inspect focused code candidates without running scanner tools.",
     status: "Focused agent review",
+    requiresModel: true,
+    usesScanners: false,
   },
   {
-    id: "moa-assisted",
-    label: "MoA inspection",
-    shortLabel: "MoA",
-    description: "Runs specialist agents, a false-positive judge, and an aggregator over focused code candidates without scanner tools.",
-    status: "Multi-agent review",
+    id: "moa-low",
+    label: "MoA Low",
+    shortLabel: "MoA Low",
+    description: "Uses three specialist agents, a bounded judge, and an aggregator without scanner tools.",
+    status: "Three specialists",
+    requiresModel: true,
+    usesScanners: false,
   },
   {
-    id: "scanner-moa-assisted",
-    label: "Scanner + MoA inspection",
-    shortLabel: "Scan+MoA",
-    description: "Runs scanners and MoA independently, then validates, deduplicates, and merges both evidence sources.",
-    status: "Hybrid review",
+    id: "moa-high",
+    label: "MoA High",
+    shortLabel: "MoA High",
+    description: "Uses five specialist agents, a bounded judge, and an aggregator without scanner tools.",
+    status: "Five specialists",
+    requiresModel: true,
+    usesScanners: false,
+  },
+  {
+    id: "scanner-single",
+    label: "Scanner + Single",
+    shortLabel: "Scan+Single",
+    description: "Runs scanners and one bounded agent independently, then deterministically fuses both evidence sources.",
+    status: "Hybrid evidence",
+    requiresModel: true,
+    usesScanners: true,
+  },
+  {
+    id: "scanner-moa-low",
+    label: "Scanner + MoA Low",
+    shortLabel: "Scan+Low",
+    description: "Runs scanners plus the three-specialist MoA independently, then preserves and fuses the evidence.",
+    status: "Hybrid, three specialists",
+    requiresModel: true,
+    usesScanners: true,
+  },
+  {
+    id: "scanner-moa-high",
+    label: "Scanner + MoA High",
+    shortLabel: "Scan+High",
+    description: "Runs scanners plus the five-specialist MoA independently, then preserves and fuses the evidence.",
+    status: "Hybrid, five specialists",
+    requiresModel: true,
+    usesScanners: true,
   },
 ];
 
-export function normalizeScanAssistMode(value: string | undefined): HermsecProductScanAssistMode {
-  if (value === "single-agent" || value === "single-agent-inspection") return "single-agent";
-  if (value === "moa-assisted" || value === "moa-inspection") return "moa-assisted";
-  if (
-    value === "scanner-moa-assisted" ||
-    value === "scanner-moa" ||
-    value === "scanner-plus-moa" ||
-    value === "scanner+moa" ||
-    value === "hybrid"
-  ) {
-    return "scanner-moa-assisted";
+const canonicalModes = new Set<string>(hermsecCanonicalScanAssistModes);
+
+export function isCanonicalScanAssistMode(value: unknown): value is HermsecProductScanAssistMode {
+  return typeof value === "string" && canonicalModes.has(value);
+}
+
+export function normalizeScanAssistMode(value: unknown): HermsecProductScanAssistMode {
+  return isCanonicalScanAssistMode(value) ? value : "scanner-only";
+}
+
+export function migratePersistedScanAssistMode(value: unknown): HermsecProductScanAssistMode {
+  if (isCanonicalScanAssistMode(value)) return value;
+
+  switch (value as HermsecLegacyScanAssistMode) {
+    case "single-agent-inspection":
+      return "single-agent";
+    case "moa-assisted":
+    case "moa-inspection":
+      return "moa-low";
+    case "scanner-moa-assisted":
+    case "scanner-moa-inspection":
+    case "scanner-moa":
+      return "scanner-moa-low";
+    case "deep-assisted":
+    case "scanner-model-summary":
+    default:
+      return "scanner-only";
   }
-  if (value === "deep-assisted" || value === "scanner-model-summary") return "deep-assisted";
-  return "deep-assisted";
+}
+
+export function scanModeRequiresModel(value: HermsecProductScanAssistMode): boolean {
+  return scanModeOptions.find((option) => option.id === value)?.requiresModel ?? false;
+}
+
+export function scanModeUsesScanners(value: HermsecProductScanAssistMode): boolean {
+  return scanModeOptions.find((option) => option.id === value)?.usesScanners ?? true;
 }
 
 export function scanModeLabel(value: string | undefined): string {

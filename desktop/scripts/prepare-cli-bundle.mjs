@@ -5,14 +5,25 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "../..");
 const appRoot = resolve(import.meta.dirname, "..");
 const bundleRoot = resolve(appRoot, "resources/hermsec-cli");
-const rootTsc = resolve(root, "node_modules", ".bin", process.platform === "win32" ? "tsc.cmd" : "tsc");
+const rootTsc = resolve(root, "node_modules", "typescript", "bin", "tsc");
 
 if (!existsSync(rootTsc)) {
-  console.log("Root Hermsec dependencies are missing; installing them before preparing the desktop CLI bundle...");
-  run(process.platform === "win32" ? "npm.cmd" : "npm", ["ci"], root);
+  throw new Error(
+    [
+      "Root Hermsec dependencies are missing; packaging never installs them automatically.",
+      "Run the reviewed setup explicitly before packaging:",
+      "  PMG_DISABLE_TELEMETRY=true pmg npm ci --ignore-scripts",
+      "Then rerun the desktop packaging command.",
+    ].join("\n"),
+  );
 }
 
-run(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "build:core"], root);
+// Do not route packaging through a root package script. The bundle needs one
+// known local compiler invocation after dependencies have been explicitly
+// installed by the caller; invoking npm here would reopen the package-script
+// surface and make the packaging path harder to audit.
+rmSync(resolve(root, "dist"), { recursive: true, force: true });
+runNode([rootTsc, "-p", resolve(root, "tsconfig.json")], root);
 
 const distSrc = resolve(root, "dist/src");
 if (!existsSync(resolve(distSrc, "bin/hermsec.js"))) {
@@ -48,12 +59,8 @@ if (existsSync(resolve(root, ".npmrc"))) {
 
 console.log(`Hermsec CLI bundle prepared at ${bundleRoot}`);
 
-function run(command, args, cwd) {
-  const commandArgs = process.platform === "win32"
-    ? ["/d", "/s", "/c", command, ...args]
-    : args;
-  const executable = process.platform === "win32" ? process.env.ComSpec ?? "cmd.exe" : command;
-  const result = spawnSync(executable, commandArgs, {
+function runNode(args, cwd) {
+  const result = spawnSync(process.execPath, args, {
     cwd,
     stdio: "inherit",
     shell: false,
@@ -66,6 +73,6 @@ function run(command, args, cwd) {
     throw result.error;
   }
   if (result.status !== 0) {
-    throw new Error(`${command} ${args.join(" ")} failed with exit code ${result.status}`);
+    throw new Error(`${process.execPath} ${args.join(" ")} failed with exit code ${result.status}`);
   }
 }

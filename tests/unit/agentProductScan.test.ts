@@ -20,12 +20,12 @@ const productAgentPanelEnvNames = [
   "HERMSEC_MOA_PANEL_PROFILE",
 ] as const;
 
-test("assist mode normalization accepts scanner-model-summary as deep-assisted alias", () => {
-  assert.equal(assistModeFrom("scanner-model-summary"), "deep-assisted");
-  assert.equal(assistModeFrom(undefined), "deep-assisted");
+test("assist mode normalization maps legacy input to canonical modes", () => {
+  assert.equal(assistModeFrom("scanner-model-summary"), "scanner-only");
+  assert.equal(assistModeFrom(undefined), "scanner-only");
   assert.equal(assistModeFrom("single-agent"), "single-agent");
-  assert.equal(assistModeFrom("moa-assisted"), "moa-assisted");
-  assert.equal(assistModeFrom("scanner-moa-assisted"), "scanner-moa-assisted");
+  assert.equal(assistModeFrom("moa-assisted"), "moa-low");
+  assert.equal(assistModeFrom("scanner-moa-assisted"), "scanner-moa-low");
 });
 
 test("code inspection helpers stay inside the repo and bounded source set", async () => {

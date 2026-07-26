@@ -2,7 +2,8 @@ import path from "node:path";
 import { scannerAvailabilityStatuses } from "./doctor.js";
 import { assertDirectory, readTextFile, walkSourceTree } from "./files.js";
 import { discoverRepositoryMetadata, repositoryDiscoveryMessage } from "./repository.js";
-import { assistModeFrom, emitScanProgress, type ScanProgressCallback } from "./progress.js";
+import { emitScanProgress, type ScanProgressCallback } from "./progress.js";
+import { resolveScanAssistMode } from "./scanAssistModes.js";
 import { runExternalScanners } from "../scanners/external.js";
 import { runOfflineHeuristicScanners } from "../scanners/heuristics.js";
 import { normalizeFindings } from "../scanners/normalization.js";
@@ -15,6 +16,8 @@ export type ScanOptions = {
   mode?: ScanMode;
   assistMode?: ScanAssistModeInput;
   scannerMode?: "full" | "none";
+  runId?: string;
+  signal?: AbortSignal;
   onProgress?: ScanProgressCallback;
 };
 
@@ -24,11 +27,22 @@ export async function runScan(options: ScanOptions): Promise<ScanRun> {
   const target = validateLocalTarget(options.target);
   await assertDirectory(target);
   const mode = options.mode ?? "offline";
-  const assistMode = assistModeFrom(options.assistMode);
+  const assistMode = resolveScanAssistMode(options.assistMode);
   const scannerMode = options.scannerMode ?? "full";
+  const runId =
+    options.runId ?? stableId(`${target}:${startedAt}`, "scan");
+  const onProgress: ScanProgressCallback | undefined = options.onProgress
+    ? (event) => {
+        options.onProgress?.({
+          ...event,
+          runId,
+          assistMode,
+        });
+      }
+    : undefined;
 
   const repositoryStageStarted = Date.now();
-  emitScanProgress(options.onProgress, {
+  emitScanProgress(onProgress, {
     id: "repository-discovery",
     stage: "repository",
     label: "Repository discovery",
@@ -38,7 +52,7 @@ export async function runScan(options: ScanOptions): Promise<ScanRun> {
   });
   const walk = await walkSourceTree(target);
   const repository = await discoverRepositoryMetadata(target, walk.files, walk.ignoredDirectories);
-  emitScanProgress(options.onProgress, {
+  emitScanProgress(onProgress, {
     id: "repository-discovery",
     stage: "repository",
     label: "Repository discovery",
@@ -68,7 +82,9 @@ export async function runScan(options: ScanOptions): Promise<ScanRun> {
     const finished = Date.now();
     const run: ScanRun = {
       schemaVersion: "1.0",
-      id: stableId(`${target}:${startedAt}`, "scan"),
+      id: runId,
+      assistMode,
+      terminalStatus: options.signal?.aborted ? "canceled" : "success",
       target,
       mode,
       startedAt,
@@ -84,7 +100,7 @@ export async function runScan(options: ScanOptions): Promise<ScanRun> {
     return run;
   }
 
-  emitScanProgress(options.onProgress, {
+  emitScanProgress(onProgress, {
     id: "hermsec-heuristics",
     stage: "scanner",
     scannerId: "hermsec-heuristics",
@@ -97,7 +113,7 @@ export async function runScan(options: ScanOptions): Promise<ScanRun> {
   const offlineResults = await runOfflineHeuristicScanners(walk.files, readTextFile);
   const offlineFailed = offlineResults.statuses.some((status) => status.status === "failed");
   const offlineSkipped = offlineResults.statuses.every((status) => status.status === "skipped");
-  emitScanProgress(options.onProgress, {
+  emitScanProgress(onProgress, {
     id: "hermsec-heuristics",
     stage: "scanner",
     scannerId: "hermsec-heuristics",
@@ -123,7 +139,8 @@ export async function runScan(options: ScanOptions): Promise<ScanRun> {
     ? { findings: [] as Finding[], statuses: [] as ScannerStatus[] }
     : await runExternalScanners(walk.files, readTextFile, {
         assistMode,
-        ...(options.onProgress ? { onProgress: options.onProgress } : {}),
+        ...(onProgress ? { onProgress } : {}),
+        ...(options.signal ? { signal: options.signal } : {}),
       });
   scannerStatuses.push(...externalResults.statuses);
 
@@ -132,7 +149,13 @@ export async function runScan(options: ScanOptions): Promise<ScanRun> {
   const uniqueFindings = dedupeFindings(normalizedFindings);
   const run: ScanRun = {
     schemaVersion: "1.0",
-    id: stableId(`${target}:${startedAt}`, "scan"),
+    id: runId,
+    assistMode,
+    terminalStatus: options.signal?.aborted
+      ? "canceled"
+      : scannerStatuses.some((status) => status.status === "failed")
+        ? "partial"
+        : "success",
     target,
     mode,
     startedAt,

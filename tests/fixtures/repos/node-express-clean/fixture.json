@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "2.0",
+  "id": "node-express-clean",
+  "pairId": "medium-node-express-security-pair",
+  "variant": "clean",
+  "language": "javascript",
+  "projectRoot": "project",
+  "evaluatorFiles": [
+    "groundtruth.yml",
+    "hermsec-fixture.json",
+    "truth.json"
+  ],
+  "entrypoints": [
+    "src/server.js"
+  ],
+  "sourceFiles": [
+    "src/app.js",
+    "src/routes/search.js",
+    "src/server.js"
+  ],
+  "supportedVulnerabilityClasses": [
+    "sql-injection",
+    "command-injection",
+    "path-traversal",
+    "reflected-xss",
+    "weak-cryptography",
+    "hardcoded-secret"
+  ],
+  "expectedFindingCount": 0,
+  "pairedFixtureId": "node-express-vulnerable",
+  "safety": {
+    "networkRequired": false,
+    "executionRequired": false,
+    "containsRealSecrets": false,
+    "executionPolicy": "never",
+    "networkPolicy": "deny"
+  }
+}

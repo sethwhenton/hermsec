@@ -1,0 +1,234 @@
+{
+  "schemaVersion": "2.0",
+  "fixtureId": "python-flask-vulnerable",
+  "findings": [
+    {
+      "id": "PYTHON-FLASK-SQLI-001",
+      "category": "code",
+      "vulnerabilityClass": "sql-injection",
+      "title": "Request input is interpolated into a SQL query",
+      "severity": "high",
+      "cwe": [
+        "CWE-89"
+      ],
+      "identifiers": {
+        "cve": [],
+        "ghsa": [],
+        "osv": []
+      },
+      "location": {
+        "path": "app.py",
+        "startLine": 15
+      },
+      "evidence": {
+        "type": "primary-location",
+        "description": "The request value is interpolated into the SQL statement at this line."
+      },
+      "matchPolicy": {
+        "category": "exact",
+        "vulnerabilityClass": "compatible",
+        "location": "required",
+        "line": "required",
+        "evidence": "primary-location"
+      },
+      "ruleIds": [
+        "medium.python.sql-injection"
+      ],
+      "matchHints": {
+        "lineTolerance": 1,
+        "cweTolerance": "exact",
+        "severityTolerance": "category-only"
+      }
+    },
+    {
+      "id": "PYTHON-FLASK-CMDI-001",
+      "category": "code",
+      "vulnerabilityClass": "command-injection",
+      "title": "Request input reaches a shell command",
+      "severity": "high",
+      "cwe": [
+        "CWE-78"
+      ],
+      "identifiers": {
+        "cve": [],
+        "ghsa": [],
+        "osv": []
+      },
+      "location": {
+        "path": "app.py",
+        "startLine": 22
+      },
+      "evidence": {
+        "type": "primary-location",
+        "description": "The request-derived name is interpolated into a shell command."
+      },
+      "matchPolicy": {
+        "category": "exact",
+        "vulnerabilityClass": "compatible",
+        "location": "required",
+        "line": "required",
+        "evidence": "primary-location"
+      },
+      "ruleIds": [
+        "medium.python.command-injection"
+      ],
+      "matchHints": {
+        "lineTolerance": 1,
+        "cweTolerance": "exact",
+        "severityTolerance": "category-only"
+      }
+    },
+    {
+      "id": "PYTHON-FLASK-PATH-001",
+      "category": "code",
+      "vulnerabilityClass": "path-traversal",
+      "title": "Request-controlled path is read without confinement",
+      "severity": "medium",
+      "cwe": [
+        "CWE-22"
+      ],
+      "identifiers": {
+        "cve": [],
+        "ghsa": [],
+        "osv": []
+      },
+      "location": {
+        "path": "app.py",
+        "startLine": 30
+      },
+      "evidence": {
+        "type": "primary-location",
+        "description": "The request-derived path is passed to open without containment validation."
+      },
+      "matchPolicy": {
+        "category": "exact",
+        "vulnerabilityClass": "compatible",
+        "location": "required",
+        "line": "required",
+        "evidence": "primary-location"
+      },
+      "ruleIds": [
+        "medium.python.path-traversal"
+      ],
+      "matchHints": {
+        "lineTolerance": 1,
+        "cweTolerance": "exact",
+        "severityTolerance": "category-only"
+      }
+    },
+    {
+      "id": "PYTHON-FLASK-XSS-001",
+      "category": "code",
+      "vulnerabilityClass": "reflected-xss",
+      "title": "Request input is rendered as HTML without encoding",
+      "severity": "medium",
+      "cwe": [
+        "CWE-79"
+      ],
+      "identifiers": {
+        "cve": [],
+        "ghsa": [],
+        "osv": []
+      },
+      "location": {
+        "path": "app.py",
+        "startLine": 38
+      },
+      "evidence": {
+        "type": "primary-location",
+        "description": "The request-derived name is interpolated into a template string."
+      },
+      "matchPolicy": {
+        "category": "exact",
+        "vulnerabilityClass": "compatible",
+        "location": "required",
+        "line": "required",
+        "evidence": "primary-location"
+      },
+      "ruleIds": [
+        "medium.python.reflected-xss"
+      ],
+      "matchHints": {
+        "lineTolerance": 1,
+        "cweTolerance": "exact",
+        "severityTolerance": "category-only"
+      }
+    },
+    {
+      "id": "PYTHON-FLASK-CRYPTO-001",
+      "category": "code",
+      "vulnerabilityClass": "weak-cryptography",
+      "title": "MD5 is used for a security-relevant digest",
+      "severity": "low",
+      "cwe": [
+        "CWE-328"
+      ],
+      "identifiers": {
+        "cve": [],
+        "ghsa": [],
+        "osv": []
+      },
+      "location": {
+        "path": "app.py",
+        "startLine": 37
+      },
+      "evidence": {
+        "type": "primary-location",
+        "description": "The route constructs a digest with MD5."
+      },
+      "matchPolicy": {
+        "category": "exact",
+        "vulnerabilityClass": "compatible",
+        "location": "required",
+        "line": "required",
+        "evidence": "primary-location"
+      },
+      "ruleIds": [
+        "medium.python.weak-cryptography"
+      ],
+      "matchHints": {
+        "lineTolerance": 1,
+        "cweTolerance": "weakness-family",
+        "severityTolerance": "category-only"
+      }
+    },
+    {
+      "id": "PYTHON-FLASK-SECRET-001",
+      "category": "secret",
+      "vulnerabilityClass": "hardcoded-secret",
+      "title": "A fake fixture token is hardcoded in source",
+      "severity": "high",
+      "cwe": [
+        "CWE-798"
+      ],
+      "identifiers": {
+        "cve": [],
+        "ghsa": [],
+        "osv": []
+      },
+      "location": {
+        "path": "app.py",
+        "startLine": 9
+      },
+      "evidence": {
+        "type": "secret-location",
+        "description": "The value is intentionally fake and exists only for local scanner evaluation."
+      },
+      "matchPolicy": {
+        "category": "exact",
+        "vulnerabilityClass": "compatible",
+        "location": "required",
+        "line": "required",
+        "evidence": "secret-location"
+      },
+      "ruleIds": [
+        "medium.python.hardcoded-secret"
+      ],
+      "matchHints": {
+        "lineTolerance": 1,
+        "cweTolerance": "exact",
+        "severityTolerance": "category-only"
+      }
+    }
+  ]
+}

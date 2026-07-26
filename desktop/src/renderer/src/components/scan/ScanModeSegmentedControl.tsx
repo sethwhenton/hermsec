@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Bot, GitMerge, Network, Radar } from "lucide-react";
+import { Bot, BrainCircuit, Combine, GitMerge, Layers, Network, Radar } from "lucide-react";
 import { useId } from "react";
 import { cn } from "@/lib/cn";
 import { normalizeScanAssistMode, scanModeOptions } from "@/lib/scanModes";
@@ -13,10 +13,13 @@ interface ScanModeSegmentedControlProps {
 }
 
 const modeIcons = {
-  "deep-assisted": Radar,
+  "scanner-only": Radar,
   "single-agent": Bot,
-  "moa-assisted": Network,
-  "scanner-moa-assisted": GitMerge,
+  "moa-low": Network,
+  "moa-high": BrainCircuit,
+  "scanner-single": GitMerge,
+  "scanner-moa-low": Combine,
+  "scanner-moa-high": Layers,
 } satisfies Record<HermsecVisibleScanAssistMode, typeof Radar>;
 
 export function ScanModeSegmentedControl({

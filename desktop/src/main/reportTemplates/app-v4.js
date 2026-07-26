@@ -174,7 +174,7 @@
       scan.gitCommit && scan.gitCommit.length > 7 ? scan.gitCommit.slice(0, 7) : scan.gitCommit;
     const metaSummary = `${esc(scan.gitBranch)} · ${esc(commitShort)} · ${esc(scan.scanId)} · ${esc(scan.duration)}`;
 
-    const assistLabel = R.assist?.label || scan.assistModeLabel || "Deep assisted scan";
+    const assistLabel = R.assist?.label || scan.assistModeLabel || "Scanner only";
     const agentMode = R.agentMode || null;
 
     document.getElementById("report-header").innerHTML = `
@@ -335,7 +335,7 @@
       <div class="assist-mode-card reveal-item">
         <div class="assist-mode-copy">
           <span class="section-eyebrow">Assist mode</span>
-          <h3>${esc(assist.label || R.scan.assistModeLabel || "Deep assisted scan")}</h3>
+          <h3>${esc(assist.label || R.scan.assistModeLabel || "Scanner only")}</h3>
           <p>${esc(assist.summary?.note || "Scanner output remains authoritative; the model can only support scanner-backed evidence.")}</p>
         </div>
         <div class="assist-mode-stats">

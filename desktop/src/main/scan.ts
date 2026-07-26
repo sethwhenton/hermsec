@@ -1,6 +1,7 @@
 import { app, shell } from "electron";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import type {
   OpenReportLocationRequest,
@@ -14,18 +15,26 @@ import type {
 import { generateReportArtifacts } from "./reportArtifacts";
 import { getProjectStateFingerprint, projectStateChanged } from "./projectState";
 import { assistModeLabel, writeScanAssistArtifact, type RuntimeScanAssistMode } from "./scanAssist";
-import { findBundledCliRoot } from "./runtimeBundle";
+import { createCliProcessSpec, failedScanResultFromCli } from "./cliProcess";
+import {
+  createVerifiedBundledRuntimeExecutionLease,
+  findBundledCliRoot,
+} from "./runtimeBundle";
 import type { LocalScanMetadata } from "./scanMetadata";
-import { prepareScannersForProject, scannerEnvForCli, scannerStatuses } from "./scanners";
+import { modelEnvironmentVariableNames, prepareScannersForProject, scannerEnvForCli, scannerStatuses } from "./scanners";
+import { runIdsMatch } from "../shared/scanRunIsolation";
 import type { ScannerStatusItem } from "../renderer/src/types/scanners";
 
 const CLI_RELATIVE_PATH = path.join("dist", "src", "bin", "hermsec.js");
 const DEFAULT_SCAN_TIMEOUT_MS = 300_000;
 const SCAN_TIMEOUT_MS_BY_ASSIST_MODE: Record<RuntimeScanAssistMode, number> = {
-  "deep-assisted": 300_000,
+  "scanner-only": 300_000,
   "single-agent": 420_000,
-  "moa-assisted": 600_000,
-  "scanner-moa-assisted": 900_000,
+  "moa-low": 600_000,
+  "moa-high": 780_000,
+  "scanner-single": 720_000,
+  "scanner-moa-low": 900_000,
+  "scanner-moa-high": 1_080_000,
 };
 const MAX_OUTPUT_CHARS = 30_000_000;
 const HERMSEC_PROGRESS_PREFIX = "HERMSEC_PROGRESS ";
@@ -33,6 +42,8 @@ const HERMSEC_PROGRESS_PREFIX = "HERMSEC_PROGRESS ";
 type CliOutcome = {
   ok?: boolean;
   message?: string;
+  errorCode?: string;
+  remediation?: string;
   data?: {
     scan?: {
       id?: string;
@@ -43,8 +54,41 @@ type CliOutcome = {
     report?: {
       htmlPath?: string;
     };
+    orchestration?: {
+      runId?: string;
+      mode?: RuntimeScanAssistMode;
+      terminalStatus?: ScanProjectResult["terminalStatus"];
+      degradationReasons?: string[];
+    };
   };
 };
+
+type CliScanData = NonNullable<NonNullable<CliOutcome["data"]>["scan"]>;
+type CliOrchestrationData = NonNullable<NonNullable<CliOutcome["data"]>["orchestration"]>;
+
+type ValidatedCliSuccessEnvelope =
+  | {
+      ok: true;
+      scan: CliScanData & {
+        id: string;
+        target: string;
+        summary: NonNullable<CliScanData["summary"]>;
+      };
+      orchestration: CliOrchestrationData & {
+        runId: string;
+        mode: RuntimeScanAssistMode;
+        terminalStatus: Exclude<
+          NonNullable<CliOrchestrationData["terminalStatus"]>,
+          "canceled" | "failed" | "unchanged"
+        >;
+      };
+      htmlPath: string;
+      reportDir: string;
+    }
+  | {
+      ok: false;
+      reason: string;
+    };
 
 type RuntimeScanProgressEvent = Omit<ScanProgressEvent, "assistMode"> & {
   assistMode?: RuntimeScanAssistMode;
@@ -58,8 +102,9 @@ type ScanProgressCallback = (event: RuntimeScanProgressEvent) => void;
 
 type RootScanProgressEvent = {
   schemaVersion?: string;
+  runId?: string;
   id?: string;
-  stage?: "repository" | "scanner" | "model" | "report" | "candidate" | "task" | "revalidation" | "checkpoint";
+  stage?: "repository" | "scanner" | "model" | "report" | "candidate" | "task" | "revalidation" | "checkpoint" | "profile" | "agent" | "tool" | "judge" | "aggregator" | "fusion" | "evaluation";
   scannerId?: string;
   label?: string;
   status?: string;
@@ -67,13 +112,17 @@ type RootScanProgressEvent = {
   details?: Array<{ id?: string; label?: string; status?: string; message?: string; value?: string }>;
   findingCount?: number;
   durationMs?: number;
-  assistMode?: RuntimeScanAssistMode | "scanner-model-summary";
+  assistMode?: RuntimeScanAssistMode;
+  terminalStatus?: ScanProjectResult["terminalStatus"];
+  degradationReasons?: string[];
   timestamp?: string;
 };
 
 type ActiveScanControl = {
+  runId: string;
   child?: ChildProcessWithoutNullStreams;
   canceled: boolean;
+  terminal: boolean;
 };
 
 type ProjectProfile = {
@@ -154,17 +203,34 @@ function defaultReportDir(): string {
   return path.join(app.getPath("documents"), "Hermsec", "reports");
 }
 
-function normalizeAssistMode(mode?: ScanProjectRequest["assistMode"] | string): RuntimeScanAssistMode {
-  if (mode === "single-agent") return "single-agent";
-  if (mode === "moa-assisted") return "moa-assisted";
-  if (
-    mode === "scanner-moa-assisted" ||
-    mode === "scanner-moa" ||
-    mode === "scanner-plus-moa" ||
-    mode === "scanner+moa" ||
-    mode === "hybrid"
-  ) return "scanner-moa-assisted";
-  return "deep-assisted";
+function normalizeAssistMode(mode?: ScanProjectRequest["assistMode"]): RuntimeScanAssistMode {
+  switch (mode) {
+    case "scanner-only":
+    case "single-agent":
+    case "moa-low":
+    case "moa-high":
+    case "scanner-single":
+    case "scanner-moa-low":
+    case "scanner-moa-high":
+      return mode;
+    default:
+      return "scanner-only";
+  }
+}
+
+function modeRequiresModel(mode: RuntimeScanAssistMode): boolean {
+  return mode !== "scanner-only";
+}
+
+function modeUsesScanners(mode: RuntimeScanAssistMode): boolean {
+  return mode === "scanner-only" || mode === "scanner-single" || mode === "scanner-moa-low" || mode === "scanner-moa-high";
+}
+
+function uniqueRunId(requested?: string): string {
+  const candidate = requested?.trim();
+  return candidate && /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(candidate)
+    ? candidate
+    : `desktop-${randomUUID()}`;
 }
 
 function normalizeSummary(summary?: Partial<ScanSummary>): ScanSummary | undefined {
@@ -197,6 +263,156 @@ function parseCliJson(stdout: string): CliOutcome {
   }
 }
 
+// test-contract:start current-cli-success-envelope
+export function validateCurrentCliSuccessEnvelope(input: {
+  outcome: CliOutcome;
+  expectedRunId: string;
+  expectedAssistMode: RuntimeScanAssistMode;
+  expectedTargetPath: string;
+  configuredReportDir: string;
+  scanStartedMs: number;
+}): ValidatedCliSuccessEnvelope {
+  const fail = (reason: string): ValidatedCliSuccessEnvelope => ({ ok: false, reason });
+  const nonEmpty = (value: unknown): value is string => typeof value === "string" && value.trim().length > 0;
+  const comparablePath = (value: string): string => {
+    const resolved = path.resolve(value);
+    return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+  };
+  const readJsonObject = (filePath: string): Record<string, unknown> | undefined => {
+    try {
+      const value = JSON.parse(readFileSync(filePath, "utf8")) as unknown;
+      return value && typeof value === "object" && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  const isFreshFile = (filePath: string): boolean => {
+    try {
+      const stats = statSync(filePath);
+      return stats.isFile() && stats.mtimeMs + 2_000 >= input.scanStartedMs;
+    } catch {
+      return false;
+    }
+  };
+
+  if (input.outcome.ok !== true) {
+    return fail("The CLI did not return an explicit successful outcome.");
+  }
+
+  const scan = input.outcome.data?.scan;
+  if (!scan || !nonEmpty(scan.id) || !nonEmpty(scan.target) || !scan.summary) {
+    return fail("The CLI success payload is missing current scan identity or summary data.");
+  }
+  if (comparablePath(scan.target) !== comparablePath(input.expectedTargetPath)) {
+    return fail("The CLI success payload belongs to a different project target.");
+  }
+  const summaryKeys = ["total", "critical", "high", "medium", "low", "info"] as const;
+  if (summaryKeys.some((key) => typeof scan.summary?.[key] !== "number" || !Number.isFinite(scan.summary[key]))) {
+    return fail("The CLI success payload contains an incomplete scan summary.");
+  }
+
+  const orchestration = input.outcome.data?.orchestration;
+  if (!orchestration || orchestration.runId !== input.expectedRunId) {
+    return fail("The CLI success payload does not match the active scan run.");
+  }
+  if (orchestration.mode !== input.expectedAssistMode) {
+    return fail("The CLI success payload does not match the requested scan mode.");
+  }
+  if (
+    orchestration.terminalStatus !== "success"
+    && orchestration.terminalStatus !== "partial"
+    && orchestration.terminalStatus !== "degraded"
+  ) {
+    return fail("The CLI success payload has no valid successful terminal status.");
+  }
+
+  const reportedHtmlPath = input.outcome.data?.report?.htmlPath;
+  if (!nonEmpty(reportedHtmlPath) || !path.isAbsolute(reportedHtmlPath)) {
+    return fail("The CLI success payload is missing an absolute HTML report path.");
+  }
+
+  let configuredRoot: string;
+  let htmlPath: string;
+  try {
+    configuredRoot = realpathSync(input.configuredReportDir);
+    htmlPath = realpathSync(reportedHtmlPath);
+  } catch {
+    return fail("The CLI HTML report artifact does not exist.");
+  }
+
+  const relativeHtmlPath = path.relative(configuredRoot, htmlPath);
+  if (
+    relativeHtmlPath === ""
+    || relativeHtmlPath.startsWith("..")
+    || path.isAbsolute(relativeHtmlPath)
+    || path.basename(htmlPath).toLowerCase() !== "report.html"
+  ) {
+    return fail("The CLI HTML report artifact is outside the configured report directory.");
+  }
+  if (!isFreshFile(htmlPath)) {
+    return fail("The CLI HTML report artifact was not written by the current scan.");
+  }
+
+  const reportDir = path.dirname(htmlPath);
+  const evidencePath = path.join(reportDir, "detector-evidence.json");
+  const documentPath = path.join(reportDir, "report-document.json");
+  let canonicalEvidencePath: string;
+  let canonicalDocumentPath: string;
+  try {
+    canonicalEvidencePath = realpathSync(evidencePath);
+    canonicalDocumentPath = realpathSync(documentPath);
+  } catch {
+    return fail("The current report is missing invocation metadata.");
+  }
+  if (
+    comparablePath(path.dirname(canonicalEvidencePath)) !== comparablePath(reportDir)
+    || comparablePath(path.dirname(canonicalDocumentPath)) !== comparablePath(reportDir)
+    || !isFreshFile(canonicalEvidencePath)
+    || !isFreshFile(canonicalDocumentPath)
+  ) {
+    return fail("The report metadata does not belong to the current scan artifact.");
+  }
+
+  const evidence = readJsonObject(canonicalEvidencePath);
+  if (evidence?.runId !== input.expectedRunId || evidence.mode !== input.expectedAssistMode) {
+    return fail("The report evidence does not match the active scan run.");
+  }
+
+  const document = readJsonObject(canonicalDocumentPath);
+  const documentRun = document?.run;
+  if (
+    document?.scanId !== scan.id
+    || !documentRun
+    || typeof documentRun !== "object"
+    || Array.isArray(documentRun)
+    || (documentRun as Record<string, unknown>).id !== scan.id
+    || (documentRun as Record<string, unknown>).assistMode !== input.expectedAssistMode
+  ) {
+    return fail("The report document does not match the current scan identity.");
+  }
+
+  return {
+    ok: true,
+    scan: {
+      ...scan,
+      id: scan.id,
+      target: scan.target,
+      summary: scan.summary,
+    },
+    orchestration: {
+      ...orchestration,
+      runId: orchestration.runId,
+      mode: orchestration.mode,
+      terminalStatus: orchestration.terminalStatus,
+    },
+    htmlPath,
+    reportDir,
+  };
+}
+// test-contract:end current-cli-success-envelope
+
 function collectOutput(chunk: unknown, current: string): string {
   const next = `${current}${Buffer.isBuffer(chunk) ? chunk.toString("utf8") : String(chunk)}`;
   if (next.length > MAX_OUTPUT_CHARS) {
@@ -224,8 +440,13 @@ export async function scanProject(
     };
   }
 
-  const control: ActiveScanControl = { canceled: false };
+  const runId = uniqueRunId(request.runId);
+  const control: ActiveScanControl = { runId, canceled: false, terminal: false };
   activeScan = control;
+  const scopedProgress: ScanProgressCallback = (event) => {
+    if (activeScan !== control || control.terminal || (control.canceled && event.status !== "canceled")) return;
+    onProgress?.({ ...event, runId });
+  };
 
   try {
     const root = findHermsecRoot();
@@ -237,12 +458,15 @@ export async function scanProject(
         message: "Choose a project folder before starting a scan.",
         reportDir: path.resolve(request.reportDir || defaultReportDir()),
         error: "target-required",
+        runId,
+        terminalStatus: "failed",
       };
     }
     const targetPath = path.resolve(root, targetInput);
     const reportDir = path.resolve(request.reportDir || defaultReportDir());
     const mode = normalizeScanMode(request.mode);
     const assistMode = normalizeAssistMode(request.assistMode);
+    const useModel = modeRequiresModel(assistMode);
     const agentOnlyMode = isAgentOnlyMode(assistMode);
 
     if (!existsSync(targetPath)) {
@@ -252,6 +476,8 @@ export async function scanProject(
         targetPath,
         reportDir,
         error: "target-not-found",
+        runId,
+        terminalStatus: "failed",
       };
     }
 
@@ -266,15 +492,17 @@ export async function scanProject(
         targetPath,
         reportDir,
         projectState: currentProjectState,
+        runId,
+        terminalStatus: "unchanged",
       };
     }
 
     const scanStartedMs = Date.now();
     const scanStartedAt = new Date(scanStartedMs).toISOString();
-    emitInitialProgress(onProgress, assistMode);
+    emitInitialProgress(scopedProgress, assistMode);
 
     const profile = await timedStage(
-      onProgress,
+      scopedProgress,
       "inspect-project",
       "Inspecting project",
       "Scanning to see which tools this project needs...",
@@ -289,7 +517,7 @@ export async function scanProject(
     let scannerPlan: ScannerPlanItem[] = [];
     if (agentOnlyMode) {
       await timedStage(
-        onProgress,
+        scopedProgress,
         "choose-tools",
         progressStageLabel("choose-tools", "Choosing scanner tools", assistMode),
         "Selecting the agent-only inspection workflow...",
@@ -302,7 +530,7 @@ export async function scanProject(
       );
 
       await timedStage(
-        onProgress,
+        scopedProgress,
         "prepare-tools",
         progressStageLabel("prepare-tools", "Preparing tools", assistMode),
         "Preparing bounded repository context for read-only agent inspection...",
@@ -315,7 +543,7 @@ export async function scanProject(
       );
     } else {
       scannerPlan = await timedStage(
-        onProgress,
+        scopedProgress,
         "choose-tools",
         "Choosing scanner tools",
         "Choosing scanners for the detected project shape...",
@@ -328,7 +556,7 @@ export async function scanProject(
       );
 
       await timedStage(
-        onProgress,
+        scopedProgress,
         "prepare-tools",
         "Preparing tools",
         "Preparing scanner tools for this project...",
@@ -352,29 +580,104 @@ export async function scanProject(
       mode,
       "--assist-mode",
       assistMode,
+      "--run-id",
+      runId,
       "--out",
       reportDir,
       "--json",
       "--html",
     ];
 
-    if (request.useModel === false) {
+    if (!useModel) {
       args.push("--no-model");
     }
 
-    const cli = await runWithStageProgress(root, args, control, onProgress, assistMode, scannerPlan, targetPath);
+    const cli = await runWithStageProgress(
+      root,
+      args,
+      control,
+      scopedProgress,
+      assistMode,
+      scannerPlan,
+      targetPath,
+      useModel,
+    );
     throwIfCanceled(control);
     const parsed = parseCliJson(cli.stdout);
-    const summary = normalizeSummary(parsed.data?.scan?.summary);
-    const htmlPath = parsed.data?.report?.htmlPath;
-    const actualReportDir = htmlPath ? path.dirname(htmlPath) : latestReportDir(reportDir) ?? reportDir;
-    if (!agentOnlyMode) {
-      emitToolProgressFromReport(actualReportDir, onProgress);
+    const cliFailure = failedScanResultFromCli({
+      exitCode: cli.exitCode,
+      outcome: parsed,
+      runId,
+      assistMode,
+      assistModeLabel: assistModeLabel(assistMode),
+      targetPath,
+      reportDir,
+    });
+    if (cliFailure) {
+      emitProgress(
+        scopedProgress,
+        "scan-terminal",
+        "Scan failed",
+        "failed",
+        cliFailure.message,
+        {
+          terminalStatus: "failed",
+          degradationReasons: cliFailure.degradationReasons,
+          assistMode,
+          assistModeLabel: assistModeLabel(assistMode),
+        },
+      );
+      control.terminal = true;
+      return cliFailure;
     }
-    emitAgentProgressFromReport(actualReportDir, onProgress, assistMode);
+    const cliSuccess = validateCurrentCliSuccessEnvelope({
+      outcome: parsed,
+      expectedRunId: runId,
+      expectedAssistMode: assistMode,
+      expectedTargetPath: targetPath,
+      configuredReportDir: reportDir,
+      scanStartedMs,
+    });
+    if (!cliSuccess.ok) {
+      const message = `Hermsec CLI returned an incomplete or stale scan result. ${cliSuccess.reason}`;
+      const invalidSuccessResult: RuntimeScanProjectResult = {
+        ok: false,
+        message,
+        error: "invalid-cli-success",
+        runId,
+        targetPath,
+        reportDir,
+        assistMode,
+        assistModeLabel: assistModeLabel(assistMode),
+        terminalStatus: "failed",
+        degradationReasons: [message],
+      };
+      emitProgress(
+        scopedProgress,
+        "scan-terminal",
+        "Scan failed",
+        "failed",
+        message,
+        {
+          terminalStatus: "failed",
+          degradationReasons: invalidSuccessResult.degradationReasons,
+          assistMode,
+          assistModeLabel: assistModeLabel(assistMode),
+        },
+      );
+      control.terminal = true;
+      return invalidSuccessResult;
+    }
+    const summary = normalizeSummary(cliSuccess.scan.summary);
+    const htmlPath = cliSuccess.htmlPath;
+    const actualReportDir = cliSuccess.reportDir;
+    if (!agentOnlyMode) {
+      emitToolProgressFromReport(actualReportDir, scopedProgress);
+    }
+    emitAgentProgressFromReport(actualReportDir, scopedProgress, assistMode);
     const modelStageLabel = progressStageLabel("model-summary", "Model summary", assistMode);
     emitProgress(
-      onProgress,
+      scopedProgress,
       "model-summary",
       modelStageLabel,
       "running",
@@ -383,7 +686,7 @@ export async function scanProject(
     );
     const assistArtifactPath = agentOnlyMode ? null : writeScanAssistArtifact(actualReportDir, assistMode);
     emitProgress(
-      onProgress,
+      scopedProgress,
       "model-summary",
       modelStageLabel,
       assistArtifactPath ? "completed" : "skipped",
@@ -404,19 +707,24 @@ export async function scanProject(
         ],
       },
     );
-    emitProgress(onProgress, "report-ready", "Report ready", "running", "Writing dashboard and one-page report artifacts.");
+    emitProgress(scopedProgress, "report-ready", "Report ready", "running", "Writing dashboard and one-page report artifacts.");
     const finishedAt = new Date().toISOString();
+    const terminalStatus = cliSuccess.orchestration.terminalStatus;
+    const degradationReasons = cliSuccess.orchestration.degradationReasons ?? [];
     const scanMetadata: LocalScanMetadata = {
-      projectPath: parsed.data?.scan?.target ?? targetPath,
+      projectPath: cliSuccess.scan.target,
       reportDir: actualReportDir,
-      scanId: parsed.data?.scan?.id ?? `scan-${scanStartedMs}`,
+      scanId: cliSuccess.scan.id,
+      runId: cliSuccess.orchestration.runId,
       mode,
       assistMode: assistMode as LocalScanMetadata["assistMode"],
       assistModeLabel: assistModeLabel(assistMode),
+      terminalStatus,
+      ...(degradationReasons.length > 0 ? { degradationReasons } : {}),
       startedAt: scanStartedAt,
       finishedAt,
       reportGeneratedAt: finishedAt,
-      durationMs: Number(parsed.data?.scan?.durationMs ?? Date.now() - scanStartedMs),
+      durationMs: Number(cliSuccess.scan.durationMs ?? Date.now() - scanStartedMs),
       ...(currentProjectState.gitBranch ? { gitBranch: currentProjectState.gitBranch } : {}),
       ...(currentProjectState.gitHead ? { gitCommit: currentProjectState.gitHead } : {}),
       ...(typeof currentProjectState.gitDirty === "boolean" ? { dirtyWorkingTree: currentProjectState.gitDirty } : {}),
@@ -426,7 +734,7 @@ export async function scanProject(
     throwIfCanceled(control);
     const artifacts = await generateReportArtifacts(actualReportDir, currentProjectState, scanMetadata);
     throwIfCanceled(control);
-    emitProgress(onProgress, "report-ready", "Report ready", "completed", "Dashboard artifacts were written.", {
+    emitProgress(scopedProgress, "report-ready", "Report ready", "completed", "Dashboard artifacts were written.", {
       details: [
         { label: "Dashboard", status: "completed", message: "Interactive report bundle was written." },
         {
@@ -437,45 +745,69 @@ export async function scanProject(
       ],
     });
     emitProgress(
-      onProgress,
+      scopedProgress,
       "report-pdf",
       "PDF generation",
       artifacts.onepagerPdfPath ? "completed" : "skipped",
       artifacts.onepagerPdfPath ? "One-page PDF was generated." : "PDF generation was skipped by Electron.",
       { parentId: "report-ready" },
     );
+    emitProgress(
+      scopedProgress,
+      "scan-terminal",
+      "Scan complete",
+      progressStatusForTerminal(terminalStatus),
+      terminalStatus === "success" ? "Scan completed." : `Scan completed with status: ${terminalStatus}.`,
+      {
+        terminalStatus,
+        ...(degradationReasons.length > 0 ? { degradationReasons } : {}),
+      },
+    );
 
-    return {
-      ok: parsed.ok !== false && cli.exitCode === 0,
+    const result: RuntimeScanProjectResult = {
+      ok: true,
       message: parsed.message ?? "Scan completed.",
-      targetPath: parsed.data?.scan?.target ?? targetPath,
+      targetPath: cliSuccess.scan.target,
       reportDir: actualReportDir,
-      ...(htmlPath ? { htmlPath } : {}),
+      htmlPath,
       dashboardHtmlPath: artifacts.dashboardHtmlPath,
       onepagerHtmlPath: artifacts.onepagerHtmlPath,
       ...(artifacts.onepagerPdfPath ? { onepagerPdfPath: artifacts.onepagerPdfPath } : {}),
-      ...(parsed.data?.scan?.id ? { scanId: parsed.data.scan.id } : {}),
+      scanId: cliSuccess.scan.id,
+      runId: cliSuccess.orchestration.runId,
       assistMode,
       assistModeLabel: assistModeLabel(assistMode),
       ...(assistArtifactPath ? { assistArtifactPath } : {}),
       ...(summary ? { summary } : {}),
-      ...(parsed.data?.scan?.durationMs ? { durationMs: parsed.data.scan.durationMs } : {}),
+      ...(cliSuccess.scan.durationMs ? { durationMs: cliSuccess.scan.durationMs } : {}),
       projectState: currentProjectState,
+      terminalStatus,
+      ...(degradationReasons.length > 0 ? { degradationReasons } : {}),
     };
+    control.terminal = true;
+    return result;
   } catch (error) {
     if (error instanceof ScanCanceledError) {
-      emitCanceledProgress(onProgress);
+      emitCanceledProgress(scopedProgress);
+      control.terminal = true;
       return {
         ok: false,
         canceled: true,
         message: "Scan stopped.",
         error: "scan-canceled",
+        runId,
+        terminalStatus: "canceled",
+        degradationReasons: ["Scan stopped by the user."],
       };
     }
+    control.terminal = true;
     return {
       ok: false,
       message: error instanceof Error ? error.message : "Hermsec scan failed.",
       error: error instanceof Error ? error.message : String(error),
+      runId,
+      terminalStatus: "failed",
+      degradationReasons: [error instanceof Error ? error.message : String(error)],
     };
   } finally {
     if (activeScan === control) {
@@ -489,9 +821,10 @@ async function runWithStageProgress(
   args: string[],
   control: ActiveScanControl,
   onProgress?: ScanProgressCallback,
-  assistMode: RuntimeScanAssistMode = "deep-assisted",
+  assistMode: RuntimeScanAssistMode = "scanner-only",
   scannerPlan: ScannerPlanItem[] = [],
   targetPath?: string,
+  includeModel = false,
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   const runnablePlan = scannerPlan.filter((item) => item.adapter === "current" && item.status === "completed");
   const agentOnlyMode = isAgentOnlyMode(assistMode);
@@ -561,9 +894,10 @@ async function runWithStageProgress(
       cwd,
       args,
       control,
-      targetPath ? scannerEnvForCli(targetPath) : undefined,
+      targetPath ? scannerEnvForCli(targetPath, { includeModel }) : undefined,
       onProgress,
       assistMode,
+      includeModel,
     );
     emitProgress(
       onProgress,
@@ -600,16 +934,27 @@ async function runWithStageProgress(
   }
 }
 
-export function cancelActiveScan(): ScanControlResult {
+export function cancelActiveScan(runId: string | undefined): ScanControlResult {
   if (!activeScan) {
     return { ok: false, message: "No scan is currently running." };
+  }
+
+  if (!runIdsMatch(activeScan.runId, runId)) {
+    return { ok: false, message: "The requested scan is no longer active.", runId };
   }
 
   activeScan.canceled = true;
   if (activeScan.child?.pid) {
     killProcessTree(activeScan.child);
   }
-  return { ok: true, message: "Scan stop requested." };
+  return { ok: true, message: "Scan stop requested.", runId: activeScan.runId };
+}
+
+function progressStatusForTerminal(status: NonNullable<ScanProjectResult["terminalStatus"]>): ScanProgressEvent["status"] {
+  if (status === "canceled") return "canceled";
+  if (status === "failed") return "failed";
+  if (status === "partial" || status === "degraded") return "degraded";
+  return "completed";
 }
 
 function throwIfCanceled(control: ActiveScanControl): void {
@@ -618,7 +963,7 @@ function throwIfCanceled(control: ActiveScanControl): void {
   }
 }
 
-function emitInitialProgress(onProgress?: ScanProgressCallback, assistMode: RuntimeScanAssistMode = "deep-assisted"): void {
+function emitInitialProgress(onProgress?: ScanProgressCallback, assistMode: RuntimeScanAssistMode = "scanner-only"): void {
   emitProgress(
     onProgress,
     "scan-assist-mode",
@@ -648,6 +993,8 @@ function emitProgress(
     chips?: string[];
     assistMode?: RuntimeScanAssistMode;
     assistModeLabel?: string;
+    terminalStatus?: ScanProjectResult["terminalStatus"];
+    degradationReasons?: string[];
   } = {},
 ): void {
   onProgress?.({
@@ -660,21 +1007,26 @@ function emitProgress(
     ...(options.chips ? { chips: options.chips } : {}),
     ...(options.assistMode ? { assistMode: options.assistMode } : {}),
     ...(options.assistModeLabel ? { assistModeLabel: options.assistModeLabel } : {}),
+    ...(options.terminalStatus ? { terminalStatus: options.terminalStatus } : {}),
+    ...(options.degradationReasons?.length ? { degradationReasons: options.degradationReasons } : {}),
     timestamp: Date.now(),
   });
 }
 
 function progressStageLabel(id: string, fallback: string, assistMode: RuntimeScanAssistMode): string {
   if (isAgentOnlyMode(assistMode)) {
-    if (id === "choose-tools") return assistMode === "moa-assisted" ? "Choosing agent panel" : "Choosing agent";
+    if (id === "choose-tools") return assistMode === "moa-low" || assistMode === "moa-high" ? "Choosing agent panel" : "Choosing agent";
     if (id === "prepare-tools") return "Preparing code context";
-    if (id === "running-scans") return assistMode === "moa-assisted" ? "Running agent panel" : "Running agent inspection";
+    if (id === "running-scans") return assistMode === "moa-low" || assistMode === "moa-high" ? "Running agent panel" : "Running agent inspection";
   }
   if (id === "model-summary") {
     if (assistMode === "single-agent") return "Single-agent inspection";
-    if (assistMode === "moa-assisted") return "MoA-assisted inspection";
-    if (assistMode === "scanner-moa-assisted") return "Scanner + MoA aggregation";
-    return "Deep model triage";
+    if (assistMode === "moa-low") return "MoA Low inspection";
+    if (assistMode === "moa-high") return "MoA High inspection";
+    if (assistMode === "scanner-single") return "Scanner + Single fusion";
+    if (assistMode === "scanner-moa-low") return "Scanner + MoA Low fusion";
+    if (assistMode === "scanner-moa-high") return "Scanner + MoA High fusion";
+    return "Scanner evidence map";
   }
   return fallback;
 }
@@ -687,9 +1039,12 @@ function progressQueuedMessage(id: string, label: string, assistMode: RuntimeSca
   }
   if (id === "model-summary") {
     if (assistMode === "single-agent") return "Single-agent repository inspection is queued.";
-    if (assistMode === "moa-assisted") return "MoA specialist, judge, and aggregator inspection is queued.";
-    if (assistMode === "scanner-moa-assisted") return "Scanner + MoA judging and aggregation is queued after scanner execution.";
-    return "Deep model-supported triage is queued after scanner evidence.";
+    if (assistMode === "moa-low") return "MoA Low specialist, judge, and aggregator inspection is queued.";
+    if (assistMode === "moa-high") return "MoA High specialist, judge, and aggregator inspection is queued.";
+    if (assistMode === "scanner-single") return "Scanner + Single fusion is queued after scanner execution.";
+    if (assistMode === "scanner-moa-low") return "Scanner + MoA Low judging and aggregation is queued after scanner execution.";
+    if (assistMode === "scanner-moa-high") return "Scanner + MoA High judging and aggregation is queued after scanner execution.";
+    return "Scanner evidence mapping is queued after scanner execution.";
   }
   return `${label} is queued.`;
 }
@@ -705,34 +1060,46 @@ function modelPhaseRunningMessage(assistMode: RuntimeScanAssistMode): string {
   if (assistMode === "single-agent") {
     return "Inspecting bounded repository snippets for product findings.";
   }
-  if (assistMode === "moa-assisted") {
-    return "Running specialist, false-positive judge, and aggregator model review.";
+  if (assistMode === "moa-low") {
+    return "Running three specialists, a false-positive judge, and an aggregator.";
   }
-  if (assistMode === "scanner-moa-assisted") {
-    return "Judging and aggregating scanner findings with independent MoA candidates.";
+  if (assistMode === "moa-high") {
+    return "Running five specialists, a false-positive judge, and an aggregator.";
   }
-  return "Reviewing model-supported scanner evidence.";
+  if (assistMode === "scanner-single") {
+    return "Fusing independent scanner and single-agent evidence.";
+  }
+  if (assistMode === "scanner-moa-low") {
+    return "Judging and aggregating scanner findings with three specialist agents.";
+  }
+  if (assistMode === "scanner-moa-high") {
+    return "Judging and aggregating scanner findings with five specialist agents.";
+  }
+  return "Writing a deterministic scanner evidence map without model review.";
 }
 
 function modelPhaseCompletedMessage(assistMode: RuntimeScanAssistMode): string {
   if (assistMode === "single-agent") {
     return "Single-agent inspection evidence is ready for the report.";
   }
-  if (assistMode === "moa-assisted") {
-    return "MoA inspection evidence is ready for the report.";
+  if (assistMode === "moa-low") {
+    return "MoA Low inspection evidence is ready for the report.";
   }
-  if (assistMode === "scanner-moa-assisted") {
-    return "Scanner and MoA evidence is judged, merged, and ready for the report.";
+  if (assistMode === "moa-high") {
+    return "MoA High inspection evidence is ready for the report.";
   }
-  return "Scanner-matched evidence is ready for deeper triage.";
+  if (assistMode === "scanner-single") return "Scanner and single-agent evidence is fused and ready for the report.";
+  if (assistMode === "scanner-moa-low") return "Scanner and MoA Low evidence is judged, merged, and ready for the report.";
+  if (assistMode === "scanner-moa-high") return "Scanner and MoA High evidence is judged, merged, and ready for the report.";
+  return "Scanner evidence map is ready for the report.";
 }
 
 function isAgentOnlyMode(assistMode: RuntimeScanAssistMode): boolean {
-  return assistMode === "single-agent" || assistMode === "moa-assisted";
+  return !modeUsesScanners(assistMode);
 }
 
 function agentModePlan(assistMode: RuntimeScanAssistMode): NonNullable<ScanProgressEvent["details"]> {
-  if (assistMode === "moa-assisted") {
+  if (assistMode === "moa-low" || assistMode === "moa-high") {
     return [
       {
         id: "moa-specialists",
@@ -769,7 +1136,7 @@ function agentInspectionDetails(
   assistMode: RuntimeScanAssistMode,
   status: Extract<ScanProgressEvent["status"], "running" | "completed">,
 ): NonNullable<ScanProgressEvent["details"]> {
-  if (assistMode === "moa-assisted") {
+  if (assistMode === "moa-low" || assistMode === "moa-high") {
     return [
       {
         id: "moa-agent-runtime",
@@ -1244,7 +1611,7 @@ function emitAgentProgressFromReport(
         "agent-candidate-discovery",
         "Candidate discovery",
         "completed",
-        assistMode === "scanner-moa-assisted"
+        modeUsesScanners(assistMode)
           ? `Collected ${candidateCount} scanner and agent candidate finding${candidateCount === 1 ? "" : "s"} for judging.`
           : `Collected ${candidateCount} agent candidate finding${candidateCount === 1 ? "" : "s"} for judging.`,
         {
@@ -1400,34 +1767,54 @@ function emitToolProgressFromReport(reportDir: string, onProgress?: ScanProgress
   }
 }
 
-function latestReportDir(configuredReportDir: string): string | undefined {
-  try {
-    const entries = readdirSync(configuredReportDir, { withFileTypes: true })
-      .filter((entry: import("node:fs").Dirent) => entry.isDirectory())
-      .map((entry: import("node:fs").Dirent) => path.join(configuredReportDir, entry.name))
-      .filter((entryPath: string) => existsSync(path.join(entryPath, "report-document.json")) || existsSync(path.join(entryPath, "summary.json")))
-      .sort((a: string, b: string) => statSync(b).mtimeMs - statSync(a).mtimeMs);
-    return entries[0];
-  } catch {
-    return undefined;
-  }
-}
-
 function runNodeCli(
   cwd: string,
   args: string[],
   control: ActiveScanControl,
   extraEnv?: Record<string, string>,
   onProgress?: ScanProgressCallback,
-  assistMode: RuntimeScanAssistMode = "deep-assisted",
+  assistMode: RuntimeScanAssistMode = "scanner-only",
+  includeModel = false,
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  const runtimeLease = app.isPackaged ? createVerifiedBundledRuntimeExecutionLease() : undefined;
+  const effectiveArgs = runtimeLease
+    ? [runtimeLease.cliEntryPath, ...args.slice(1)]
+    : args;
+  const effectiveCwd = runtimeLease?.cliRoot ?? cwd;
   return new Promise((resolve, reject) => {
-    const nodeBinary = process.platform === "win32" ? "node.exe" : "node";
-    const child = spawn(nodeBinary, args, {
-      cwd,
-      env: { ...process.env, ...extraEnv },
-      windowsHide: true,
-    });
+    let child: ChildProcessWithoutNullStreams;
+    try {
+      const processSpec = createCliProcessSpec({
+        isPackaged: app.isPackaged,
+        electronExecutable: process.execPath,
+        platform: process.platform,
+        args: effectiveArgs,
+        inheritedEnv: process.env,
+        ...(extraEnv ? { extraEnv } : {}),
+        ...(runtimeLease
+          ? {
+              trustedRuntime: {
+                values: runtimeLease.trustedEnvironment,
+                controlledNames: runtimeLease.controlledEnvironmentNames,
+              },
+            }
+          : {}),
+        includeModel,
+        modelEnvironmentNames: modelEnvironmentVariableNames(),
+      });
+      // The child can execute only from the lease. This is deliberately adjacent
+      // to spawn so a tampered snapshot fails before any scanner/CLI bytes run.
+      runtimeLease?.assertIntact();
+      child = spawn(processSpec.executable, processSpec.args, {
+        cwd: effectiveCwd,
+        env: processSpec.env,
+        windowsHide: true,
+      });
+    } catch (error) {
+      runtimeLease?.release();
+      reject(error);
+      return;
+    }
     control.child = child;
 
     let stdout = "";
@@ -1486,11 +1873,13 @@ function runNodeCli(
     });
     child.on("error", (error) => {
       clearTimeout(timer);
+      runtimeLease?.release();
       reject(error);
     });
     child.on("close", (exitCode) => {
       clearTimeout(timer);
       flushBufferedLines();
+      runtimeLease?.release();
       if (control.child === child) {
         delete control.child;
       }
@@ -1579,6 +1968,8 @@ function rootProgressToDesktopEvent(
     timestamp: Number.isFinite(timestamp) ? timestamp : Date.now(),
     ...(event.message ? { message: event.message } : {}),
     ...(details ? { details } : {}),
+    ...(event.terminalStatus ? { terminalStatus: event.terminalStatus } : {}),
+    ...(event.degradationReasons?.length ? { degradationReasons: event.degradationReasons } : {}),
   };
 
   if (event.stage === "repository") {
@@ -1598,7 +1989,7 @@ function rootProgressToDesktopEvent(
     };
   }
 
-  if (event.stage === "model") {
+  if (event.stage === "model" || event.stage === "agent" || event.stage === "tool" || event.stage === "judge" || event.stage === "aggregator" || event.stage === "fusion" || event.stage === "evaluation") {
     const childId = event.id && event.id !== "model-summary" ? event.id : undefined;
     if (childId) {
       return {
@@ -1666,6 +2057,7 @@ function normalizeProgressStatus(value: string | undefined): ScanProgressEvent["
     case "skipped":
     case "failed":
     case "canceled":
+    case "degraded":
       return value;
     case "ready":
       return "completed";

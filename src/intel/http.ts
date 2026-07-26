@@ -22,6 +22,7 @@ export type IntelJsonRequest = {
   body?: string;
   cache?: IntelFetchCache;
   timeoutMs?: number;
+  signal?: AbortSignal;
 };
 
 const defaultTimeoutMs = 15_000;
@@ -52,7 +53,9 @@ export async function fetchIntelJson<T>(
       method: request.method ?? "GET",
       headers,
       ...(request.body ? { body: request.body } : {}),
-      signal: controller.signal,
+      signal: request.signal
+        ? AbortSignal.any([request.signal, controller.signal])
+        : controller.signal,
     });
 
     const etag = response.headers.get("etag") ?? undefined;
@@ -91,14 +94,21 @@ export async function fetchIntelJson<T>(
     };
   } catch (error) {
     const aborted = error instanceof Error && error.name === "AbortError";
+    const canceled = request.signal?.aborted === true;
     return {
       ok: false,
       url: target,
       error: {
-        code: aborted ? `${source}-timeout` : `${source}-network`,
-        message: aborted
-          ? `${source} request timed out after ${request.timeoutMs ?? defaultTimeoutMs}ms`
-          : `${source} request failed: ${error instanceof Error ? error.message : String(error)}`,
+          code: canceled
+            ? `${source}-canceled`
+            : aborted
+              ? `${source}-timeout`
+              : `${source}-network`,
+          message: canceled
+            ? `${source} request was canceled`
+            : aborted
+            ? `${source} request timed out after ${request.timeoutMs ?? defaultTimeoutMs}ms`
+            : `${source} request failed: ${error instanceof Error ? error.message : String(error)}`,
       },
     };
   } finally {

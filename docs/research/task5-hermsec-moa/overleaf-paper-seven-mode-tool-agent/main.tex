@@ -1,0 +1,332 @@
+\documentclass[sigconf,nonacm]{acmart}
+
+\settopmatter{printacmref=false}
+\setcopyright{none}
+\renewcommand\footnotetextcopyrightpermission[1]{}
+\acmConference[Security Insider Lab II]{Security Insider Lab II Mini Project}{July 2026}{University of Passau}
+\acmYear{2026}
+\copyrightyear{2026}
+
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{xcolor}
+
+% A result-bearing build may use this file only when it was produced by the
+% deterministic macro-generation gate described in README.md. Quantitative
+% macros must never be edited by hand.
+\input{generated/results-macros}
+
+\newcommand{\mode}[1]{\nolinkurl{#1}}
+\newcommand{\findingstate}[1]{\texttt{#1}}
+
+\begin{document}
+
+\title{HermSec: Repeatable Repository Security Evaluation with Deterministic Scanners and Bounded Tool-Using Agents}
+
+\author{Seth Whenton}
+\affiliation{%
+  \institution{University of Passau}
+  \city{Passau}
+  \country{Germany}}
+\email{}
+
+\author{Ghazal Pouresfandiyar Borojeni}
+\affiliation{%
+  \institution{University of Passau}
+  \city{Passau}
+  \country{Germany}}
+\email{}
+
+\begin{abstract}
+Repository security tools occupy an uncomfortable middle ground: deterministic scanners are reproducible but can be incomplete or noisy, while language-model agents can inspect context but introduce stochastic behavior, cost, and new failure modes. We present HermSec, a local-first security harness that compares seven exact review modes under one evidence and evaluation contract: scanner only, a bounded tool-using single agent, two Mixture-of-Agents (MoA) configurations, and three scanner-agent hybrids. The harness treats repository content as untrusted data, confines agents to read-only repository tools, preserves raw evidence, and performs cross-source fusion deterministically. It also records immutable run manifests, exact model routing, usage, cost, source digests, and sanitized replay cassettes.
+
+We evaluate each mode on paired vulnerable and clean repositories with labelled findings. Across \DatasetFixtureCount{} fixtures and \DatasetTruthCount{} truth labels, \CompletedCellCount{} of \ExpectedCellCount{} planned cells ended with terminal status \findingstate{success}. The strongest F1 configuration was \BestFOneMode{} at \BestFOneValue{}, while total physical provider cost was \TotalPhysicalCost{}. These fields are intentionally generated from the current experiment artifacts and remain unfilled in this scaffold. The study is designed to distinguish detector quality from report writing, expose partial failures rather than silently changing modes, and test whether additional agents improve security coverage enough to justify their cost.
+\end{abstract}
+
+\keywords{software security, static analysis, tool-using agents, mixture of agents, vulnerability detection, reproducibility}
+
+\maketitle
+
+\section{Introduction}
+Static security analysis can find defects before software is deployed, but its effectiveness varies by language, rule coverage, and program context. Controlled studies report both false positives and false negatives, especially when moving from synthetic examples to realistic programs \cite{goseva2015capability}. Language-model agents offer another form of analysis: they can search a repository, follow data flow across files, and explain evidence. ReAct and repository-agent research suggest that the available tools and interaction loop materially affect what an agent can discover \cite{yao2023react,yang2024sweagent}. These capabilities do not make model output trustworthy by default.
+
+HermSec studies the combination under a strict contract. Deterministic scanners and model agents are independent detectors. Scanner findings are never erased by a model. Agent findings must cite evidence returned by bounded read-only tools. A deterministic fusion layer assigns stable identities, deduplicates compatible evidence, and preserves source provenance. Model judges may classify candidates as \findingstate{accepted}, \findingstate{rejected}, or \findingstate{needs-review}; they cannot rewrite the evidence record.
+
+The study compares exactly seven modes:
+
+\begin{enumerate}[leftmargin=*]
+  \item \mode{scanner-only};
+  \item \mode{single-agent};
+  \item \mode{moa-low};
+  \item \mode{moa-high};
+  \item \mode{scanner-single};
+  \item \mode{scanner-moa-low}; and
+  \item \mode{scanner-moa-high}.
+\end{enumerate}
+
+The canonical single-agent condition is a bounded, multi-round tool user. We intentionally do not include a one-shot single-agent ablation. Hybrid modes preserve independent detector outputs and fuse them by code rather than by asking another model to decide what survives.
+
+This paper makes four contributions:
+
+\begin{itemize}[leftmargin=*]
+  \item a seven-mode security-evaluation contract that separates detection, adjudication, fusion, and report writing;
+  \item a repository-confined tool-agent runtime with explicit resource ceilings and prompt-injection boundaries;
+  \item deterministic evidence identity, fusion, replay, cost accounting, and provenance checks; and
+  \item a repeatable protocol using paired clean and vulnerable fixtures, category metrics, completeness reporting, and cost-normalized comparison.
+\end{itemize}
+
+\section{Research Questions}
+\label{sec:rqs}
+
+\noindent\textbf{RQ1: Detection quality.}\par
+How do deterministic scanners, a bounded single agent, MoA Low, and MoA High compare in precision, recall, F1, and per-category coverage?
+
+\noindent\textbf{RQ2: Hybrid value.}\par
+When scanner and agent detectors run independently, does deterministic fusion improve coverage without an unacceptable increase in false positives?
+
+\noindent\textbf{RQ3: Capability and cost.}\par
+Do additional specialist and adjudication calls improve detection enough to justify their latency, token use, and provider cost?
+
+\noindent\textbf{RQ4: Repeatability and failure containment.}\par
+Can the harness reproduce model-backed runs from sanitized cassettes, validate source and artifact provenance, and expose incomplete cells without silently substituting another mode?
+
+\section{Background and Related Work}
+
+\subsection{Deterministic Security Scanners}
+HermSec integrates complementary scanner classes rather than treating one tool as complete. Semgrep supports syntactic and taint-style rules with explicit sources, sinks, sanitizers, and propagators \cite{semgrepdocs}. Gitleaks detects secret-like values in files and Git history \cite{gitleaksdocs}. Bandit builds Python abstract syntax trees and applies security-oriented plugins \cite{banditdocs}. OSV represents disclosed dependency vulnerabilities by package ecosystem, affected versions, ranges, and commits; OSV-Scanner maps supported dependency artifacts to this data \cite{osvschema,osvscannerdocs}. pip-audit audits Python environments and dependency specifications, but is neither a source-code analyzer nor protection against malicious packages \cite{pipauditdocs}. SafeDep Package Manager Guard (PMG) wraps supported package-manager operations with install-time package policy and audit controls; in HermSec it is a supply-chain control, not a replacement for static analysis \cite{pmgdocs}.
+
+These tools produce different evidence and confidence semantics. HermSec therefore retains the original scanner record before normalization. A scanner failure is also data: it is represented as an explicit failed or degraded stage, never as an empty successful result.
+
+\subsection{Tool-Using and Multi-Agent Review}
+Tool-using agents interleave model decisions with observations from an external interface \cite{yao2023react}. Repository-focused interfaces can improve navigation and evidence gathering, but also determine what the model can access and change \cite{yang2024sweagent}. HermSec exposes a deliberately smaller interface than a coding agent: project inspection, bounded file listing, code search, snippet reads, manifest reads, and dependency inventory. It provides no shell, write, installation, or arbitrary network tool.
+
+Mixture-of-Agents research reports gains from layered models consuming other models' outputs on general-language benchmarks \cite{wang2025moa}. LLM-Blender similarly combines ranking and generative fusion \cite{jiang2023blender}. These results motivate a security experiment; they do not establish that MoA improves vulnerability detection. Other work finds that strong single-agent prompting can approach multi-agent discussion on some reasoning tasks \cite{wang2024rethinking}. HermSec therefore treats the value of MoA as an empirical question and reports cost beside quality.
+
+\subsection{Untrusted Repository Content}
+Indirect prompt injection can cause an LLM-integrated application to follow instructions embedded in retrieved data \cite{greshake2023indirect}. HermSec treats source files, comments, documentation, issue text, and manifests as untrusted evidence. Tool observations are framed as data, not instructions. Agent outputs are rejected when they cite paths or evidence that were not returned by the confined tool runtime.
+
+\section{System Design}
+\label{sec:design}
+
+\subsection{Evidence-First Architecture}
+HermSec divides a scan into five responsibilities:
+
+\begin{enumerate}[leftmargin=*]
+  \item profile the repository and select applicable scanners or agent roles;
+  \item collect immutable raw scanner and tool-call evidence;
+  \item normalize candidates into a canonical finding schema;
+  \item adjudicate and fuse candidates without erasing source evidence; and
+  \item render reports from the canonical record.
+\end{enumerate}
+
+This separation prevents a polished model summary from becoming the source of truth. Reports may explain and prioritize findings, but they link back to source-specific evidence IDs.
+
+\subsection{Bounded Repository Tools}
+The agent tool contract allows:
+
+\begin{itemize}[leftmargin=*,nosep]
+  \item \mode{inspect_project} and \mode{list_files};
+  \item \mode{search_code} and \mode{read_file_snippet}; and
+  \item \mode{read_manifest} and \mode{read_dependency_inventory}.
+\end{itemize}
+
+Every path is canonicalized and checked against the selected repository root. Ignored secret files and paths outside the root are denied. Reads, bytes, model rounds, time, token use, and cost have hard ceilings. Duplicate tool-call loops are detected.
+
+The single agent has one identity and up to five model rounds. A typical trajectory is:
+
+\begin{quote}
+inspect project $\rightarrow$ choose a search $\rightarrow$ read a snippet
+$\rightarrow$ follow another file $\rightarrow$ emit a grounded finding.
+\end{quote}
+
+Each MoA specialist receives an isolated budget of up to three rounds. Specialist concurrency is bounded at two. One gap-fill round may target coverage that the deterministic planner identifies as missing. Malformed structured output receives at most one repair attempt.
+
+\subsection{MoA Planning and Adjudication}
+MoA Low selects a small relevant specialist panel from the project profile. MoA High uses the complete configured specialist set. Roles cover concerns such as injection, authentication, secrets, supply chain, cryptography, configuration, framework usage, and API or data access. The planner is deterministic: the same profile and configuration produce the same role assignment.
+
+Specialists inspect the repository independently. A coverage auditor compares completed role scopes with the plan. A judge can label known candidate IDs as \findingstate{accepted}, \findingstate{rejected}, or \findingstate{needs-review}. The aggregator receives only known candidate IDs and may reconcile their presentation; it cannot invent a finding, alter raw evidence, or remove a scanner record.
+
+\subsection{Canonical Identity and Deterministic Fusion}
+A canonical finding identity is derived from normalized vulnerability category, repository-relative location, evidence anchor, and detector metadata. Fusion is deterministic and order-independent. Compatible scanner and agent candidates may share a fused presentation, but every source ID and raw payload remains linked. Conflicts are represented rather than resolved by deletion.
+
+The hybrid modes do not make a second paid detector call. For each fixture, the runner executes four physical paths: scanners once, Single Agent once, MoA Low once, and MoA High once. It then derives the three hybrid records by deterministic fusion. Every paid call is persisted once in one shared physical cost ledger. Separate per-cell and per-mode attributed cost records support comparison without duplicating physical spend.
+
+\section{Experimental Method}
+\label{sec:method}
+
+\subsection{Seven-Mode Matrix}
+Table~\ref{tab:modes} defines the exact experimental conditions. A failed detector remains failed in its assigned condition; the runner never silently falls back to another model or mode.
+
+\begin{table*}[t]
+  \caption{Canonical HermSec evaluation modes.}
+  \label{tab:modes}
+  \centering
+  \small
+  \begin{tabular}{p{.19\textwidth}p{.18\textwidth}p{.19\textwidth}p{.35\textwidth}}
+    \toprule
+    Mode & Detector paths & Model review & Output contract \\
+    \midrule
+    \mode{scanner-only} & Deterministic scanner stack & None & Raw and normalized scanner evidence \\
+    \mode{single-agent} & Bounded Single Agent & One tool-using identity & Grounded agent candidates \\
+    \mode{moa-low} & Relevant specialist subset & Judge and constrained aggregator & Candidate verdicts and coverage record \\
+    \mode{moa-high} & Full configured specialist panel & Judge and constrained aggregator & Candidate verdicts and coverage record \\
+    \mode{scanner-single} & Scanner and Single independently & No model-based cross-source fusion & Deterministically fused evidence \\
+    \mode{scanner-moa-low} & Scanner and MoA Low independently & MoA adjudication within its path only & Deterministically fused evidence \\
+    \mode{scanner-moa-high} & Scanner and MoA High independently & MoA adjudication within its path only & Deterministically fused evidence \\
+    \bottomrule
+  \end{tabular}
+\end{table*}
+
+\subsection{Dataset and Truth Set}
+The evaluation uses paired vulnerable and clean repositories. Vulnerable fixtures contain labelled weakness instances with repository-relative locations and vulnerability categories. Clean counterparts exercise similar framework and language paths without the labelled weakness. Paired cases make false-positive behavior visible and follow the controlled-example principle used by suites such as NIST Juliet \cite{boland2012juliet}.
+
+The current experiment artifact determines the final dataset counts: \DatasetFixtureCount{} fixtures and \DatasetTruthCount{} labelled findings. No historical dataset count is carried into this manuscript. Truth labels are versioned with the fixtures, and every suite manifest records a digest of the evaluated source tree.
+
+\subsection{Execution Phases}
+The protocol has three phases:
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Mock}: deterministic model responses exercise routing, grounding, failure states, scoring, and report generation at zero provider cost.
+  \item \textbf{Replay}: sanitized cassettes reproduce the exact provider response sequence and must agree with their source run.
+  \item \textbf{Live}: exact allowlisted model IDs run behind per-call, per-mode, and global cost ceilings.
+\end{enumerate}
+
+Live scored routes use \mode{deepseek/deepseek-v4-flash} and
+\mode{xiaomi/mimo-v2.5}. The model \mode{minimax/minimax-m3} is allowed only
+for the short aggregation role. Provider fallback is disabled. OpenRouter
+supports explicit provider order and a no-fallback setting, while generation
+metadata exposes actual model, provider, usage, latency, and cost
+\cite{openrouterrouting,openroutergeneration}. The run manifest records
+requested and actual routing data instead of assuming the request was honored.
+
+\subsection{Metrics}
+Truth matching is deterministic. We report true positives, false positives, false negatives, precision, recall, and F1 using their standard definitions \cite{sklearnmetrics}. We also report per-category metrics, clean-fixture false positives, finding-level abstention or \findingstate{needs-review} adjudication counts, detector completeness, wall-clock time, token use, and physical provider cost.
+
+Wilson score intervals are appropriate for binomial proportions such as precision and recall \cite{wilson1927probable}. F1 uncertainty is estimated with a paired bootstrap over fixtures rather than applying a Wilson interval directly. Capability-normalized and cost-normalized tables supplement, but do not replace, raw quality metrics. This follows the broader recommendation to evaluate language-model systems across multiple dimensions \cite{bommasani2023helm}.
+
+\subsection{Failure and Completeness Semantics}
+Each experiment cell ends in exactly one terminal status:
+\findingstate{success}, \findingstate{partial}, \findingstate{degraded},
+\findingstate{canceled}, or \findingstate{failed}. Missing scanners, malformed
+model output, budget rejection, timeout, route mismatch, provenance failure,
+and cancellation are recorded separately. The value \findingstate{needs-review}
+is a finding-level adjudication verdict, not a terminal cell status; a cell can
+finish with any supported terminal status while retaining findings marked
+\findingstate{needs-review}. A zero-finding result is valid only when the
+assigned detector path ends with terminal status \findingstate{success}.
+
+\subsection{Provenance and Replay}
+Each suite contains:
+
+\begin{itemize}[leftmargin=*]
+  \item immutable per-run manifests and a suite index;
+  \item source-tree, configuration, pricing-snapshot, and artifact digests;
+  \item exact model, provider, generation ID, routing policy, timestamp, usage, latency, and cost;
+  \item one shared physical cost ledger plus per-cell and per-mode attributed
+    cost records; and
+  \item sanitized replay cassettes with integrity checks.
+\end{itemize}
+
+The runner revalidates source provenance before publishing each cell. Replay must consume the expected cassette sequence and reproduce scored outputs without network access. Cross-process ledger locks prevent concurrent runs from exceeding the shared live-test ceiling.
+
+\section{Results}
+\label{sec:results}
+
+\subsection{Execution Completeness}
+The current result ingestion must populate Table~\ref{tab:completeness}. Quantitative placeholders in this section are visibly marked as generated from current results and must not be completed manually.
+
+\begin{table}[t]
+  \caption{Execution completeness, generated from the current suite.}
+  \label{tab:completeness}
+  \centering
+  \begin{tabular}{lr}
+    \toprule
+    Measure & Current result \\
+    \midrule
+    Planned cells & \ExpectedCellCount \\
+    Successful cells & \CompletedCellCount \\
+    Partial cells & \PartialCellCount \\
+    Degraded cells & \DegradedCellCount \\
+    Canceled cells & \CanceledCellCount \\
+    Failed cells & \FailedCellCount \\
+    Manifest validation rate & \ManifestValidationRate \\
+    Replay agreement & \ReplayAgreement \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Detection Quality}
+Table~\ref{tab:quality} is generated from the current scored summary. The final discussion must distinguish changes in recall from changes in false-positive load and must identify any scanner or agent path that did not complete.
+
+\begin{table*}[t]
+  \caption{Aggregate quality by exact mode, generated from current results.}
+  \label{tab:quality}
+  \centering
+  \small
+  \begin{tabular}{lrrrr}
+    \toprule
+    Mode & Precision & Recall & F1 & Attributed cost \\
+    \midrule
+    \mode{scanner-only} & \ScannerOnlyPrecision & \ScannerOnlyRecall & \ScannerOnlyFOne & \ScannerOnlyCost \\
+    \mode{single-agent} & \SingleAgentPrecision & \SingleAgentRecall & \SingleAgentFOne & \SingleAgentCost \\
+    \mode{moa-low} & \MoaLowPrecision & \MoaLowRecall & \MoaLowFOne & \MoaLowCost \\
+    \mode{moa-high} & \MoaHighPrecision & \MoaHighRecall & \MoaHighFOne & \MoaHighCost \\
+    \mode{scanner-single} & \ScannerSinglePrecision & \ScannerSingleRecall & \ScannerSingleFOne & \ScannerSingleCost \\
+    \mode{scanner-moa-low} & \ScannerMoaLowPrecision & \ScannerMoaLowRecall & \ScannerMoaLowFOne & \ScannerMoaLowCost \\
+    \mode{scanner-moa-high} & \ScannerMoaHighPrecision & \ScannerMoaHighRecall & \ScannerMoaHighFOne & \ScannerMoaHighCost \\
+    \bottomrule
+  \end{tabular}
+\end{table*}
+
+\paragraph{Generated result statement.}
+The strongest F1 mode was \BestFOneMode{} with \BestFOneValue{}. The strongest precision mode was \BestPrecisionMode{} with \BestPrecisionValue{}, and the strongest recall mode was \BestRecallMode{} with \BestRecallValue{}. This paragraph must be regenerated from the current summary and checked against the machine-readable artifact before submission.
+
+\subsection{Cost and Runtime}
+The suite's one shared physical cost ledger recorded total provider cost of \TotalPhysicalCost{}, and median wall-clock time was \MedianWallClockTime{}. Final analysis must derive per-cell and per-mode attributed cost records separately, report unsuccessful paid calls, and avoid claiming that a hybrid incurred another model call when it reused independently collected evidence.
+
+\subsection{Research-Question Answers}
+\textbf{RQ1.} \ResultPending.
+
+\textbf{RQ2.} \ResultPending.
+
+\textbf{RQ3.} \ResultPending.
+
+\textbf{RQ4.} \ResultPending.
+
+\section{Threats to Validity}
+
+\subsection{Construct Validity}
+Label matching approximates whether a mode found a known weakness; it does not directly measure exploitability, remediation quality, or developer usefulness. Secret detectors report secret-like material, not proof that a credential is valid. Dependency databases cover disclosed package vulnerabilities and do not establish source-code safety or detect every malicious package.
+
+\subsection{Internal Validity}
+Mock responses validate harness behavior, not model security performance. Live model output can vary with provider implementation, model revision, and service conditions. Exact model routing, cassettes, manifests, source digests, and recorded generation metadata reduce ambiguity but cannot freeze an external service. Shared physical runs make mode comparisons economical. Persisting paid calls once in one shared physical cost ledger, then deriving separate per-cell and per-mode attributed cost records, is required to avoid double counting.
+
+\subsection{External Validity}
+The controlled dataset is intentionally small and may not represent large polyglot repositories, generated code, unusual build systems, or deep interprocedural vulnerabilities. Static-analysis performance often changes between synthetic and realistic software \cite{goseva2015capability}. The study therefore supports claims about the evaluated fixtures and harness behavior, not universal vulnerability-detection performance.
+
+\subsection{Conclusion Validity}
+Small sample sizes make rank ordering unstable. Precision and recall intervals, paired fixture analysis, and bootstrap uncertainty for F1 must accompany aggregate values. Multiple metrics and explicit completeness prevent one headline score from hiding failed stages or high cost.
+
+\subsection{Agent Safety}
+Repository content may contain adversarial instructions. HermSec's confinement and evidence validation reduce this risk, but a model may still misinterpret code or produce an unsupported explanation. The model has no write or shell capability in the scored harness, and raw evidence remains available for human review.
+
+\section{Reproducibility}
+The artifact is structured so another evaluator can run the same fixture matrix without relying on an unrecorded desktop state. Reproducibility requires source code, fixtures, truth labels, pricing snapshot, exact configuration, sanitized cassettes, run manifests, raw evidence, and generated tables. This follows established recommendations to publish methodology, code, data, and artifact checklists \cite{pineau2021reproducibility}.
+
+The reproducibility package must include the command used for mock, replay, and live execution; the suite ID; source commit and dirty-state digest; Node and operating-system versions; scanner versions; requested and actual provider routes; one shared physical cost ledger; per-cell and per-mode attributed cost records; and every explicit terminal status. The accompanying README defines the fail-closed compile and result-ingestion process.
+
+\section{Discussion}
+HermSec's design makes two deliberate tradeoffs. First, it prefers inspectable evidence over unrestricted agent autonomy. A broader coding-agent interface might solve more navigation tasks, but it would also enlarge the attack surface and make evaluation harder to reproduce. Second, it uses deterministic fusion instead of model-written consensus. This may retain more low-value evidence, but it avoids giving an opaque judge permission to delete scanner output.
+
+MoA should not be assumed to outperform Single Agent. More specialists can improve coverage, duplicate the same mistake, or increase false positives and cost. The seven-mode matrix makes these alternatives observable. Scanner-agent hybrids are useful only when the independent paths contribute complementary evidence; otherwise fusion merely combines their errors.
+
+\section{Conclusion}
+HermSec provides a repeatable way to compare deterministic repository scanners with bounded tool-using Single and MoA agents. Its central claim is architectural rather than numerical: raw evidence is immutable, repository tools are confined, hybrid fusion is deterministic, failures are explicit, and provider cost and provenance are auditable. The final empirical conclusion will be generated only from the current seven-mode artifacts after completeness, replay, and factual checks pass.
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
+
+\end{document}

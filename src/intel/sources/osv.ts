@@ -181,6 +181,7 @@ export const osvFetcher: IntelFetcher = {
       method: "POST",
       headers: { "content-type": "application/json", accept: "application/json" },
       body: JSON.stringify(body),
+      ...(input.signal ? { signal: input.signal } : {}),
     });
     if (!response.ok) {
       return {
@@ -205,7 +206,11 @@ export const osvFetcher: IntelFetcher = {
     const queryRaw = response.data ?? {};
     const vulnerabilities: OsvVulnerability[] = [];
     for (const id of uniqueIds(queryRaw)) {
-      const detail = await fetchIntelJson<OsvVulnerability>("osv", `${osvVulnerabilityUrl}/${encodeURIComponent(id)}`);
+      const detail = await fetchIntelJson<OsvVulnerability>(
+        "osv",
+        `${osvVulnerabilityUrl}/${encodeURIComponent(id)}`,
+        input.signal ? { signal: input.signal } : {},
+      );
       if (!detail.ok) {
         return {
           source: "osv",

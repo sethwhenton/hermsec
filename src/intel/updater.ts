@@ -36,6 +36,7 @@ export async function updateIntelCache(options: UpdateIntelOptions = { mode: "au
     ...(options.workspace ? { workspace: options.workspace } : {}),
     ...(options.inventory ? { inventory: options.inventory } : {}),
     ...(options.since ? { since: options.since } : {}),
+    ...(options.signal ? { signal: options.signal } : {}),
   };
 
   const results: IntelFetchResult[] = [];
@@ -51,6 +52,7 @@ export async function updateIntelCache(options: UpdateIntelOptions = { mode: "au
     }
   } else {
     for (const fetcher of selected) {
+      throwIfAborted(input.signal);
       results.push(await runFetcher(fetcher, input));
     }
   }
@@ -78,6 +80,7 @@ export async function updateIntelCache(options: UpdateIntelOptions = { mode: "au
 }
 
 async function runFetcher(fetcher: IntelFetcher, input: IntelFetchInput): Promise<IntelFetchResult> {
+  throwIfAborted(input.signal);
   const now = new Date(input.now);
   const state = await readIntelSourceState(fetcher.source);
   const cachedItems = await readCachedIntelItemsForSource(fetcher.source);
@@ -102,11 +105,15 @@ async function runFetcher(fetcher: IntelFetcher, input: IntelFetchInput): Promis
 
   try {
     const result = await fetcher.fetch(fetchInput);
+    throwIfAborted(input.signal);
     const hydratedResult = result.status === "cached" && result.items.length === 0 && cachedItems.length > 0
       ? { ...result, items: cachedItems }
       : result;
     return recordIntelFetchResult(hydratedResult);
   } catch (error) {
+    if (input.signal?.aborted) {
+      throw abortError(input.signal);
+    }
     return recordIntelFetchResult({
       source: fetcher.source,
       fetchedAt: input.now,
@@ -118,4 +125,16 @@ async function runFetcher(fetcher: IntelFetcher, input: IntelFetchInput): Promis
       },
     });
   }
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) {
+    throw abortError(signal);
+  }
+}
+
+function abortError(signal: AbortSignal): Error {
+  return signal.reason instanceof Error
+    ? signal.reason
+    : new DOMException("Operation was aborted.", "AbortError");
 }

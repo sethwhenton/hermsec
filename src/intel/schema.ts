@@ -83,6 +83,7 @@ export type IntelFetchInput = {
   since?: string;
   cache?: IntelFetchCache;
   now: string;
+  signal?: AbortSignal;
 };
 
 export type IntelFetchResult = {

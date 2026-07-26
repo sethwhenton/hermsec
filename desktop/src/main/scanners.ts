@@ -10,6 +10,7 @@ import type {
   ScannerSettings,
   ScannerStatusItem,
 } from "../renderer/src/types/scanners";
+import { collectModelEnvironmentVariableNames } from "./cliProcess";
 import { readSettings, updateSettings } from "./store";
 
 const scannerCatalog: ScannerCatalogItem[] = [
@@ -146,7 +147,10 @@ export async function updateScanner(scannerId: string): Promise<ScannerActionRes
   return installScanner(scannerId);
 }
 
-export function scannerEnvForCli(projectPath?: string): Record<string, string> {
+export function scannerEnvForCli(
+  projectPath?: string,
+  options: { includeModel?: boolean } = {},
+): Record<string, string> {
   const appSettings = readSettings();
   const settings = normalizeScannerSettings(appSettings.scanners);
   const statuses = scannerStatuses({ projectPath, labProfile: settings.labInstallAll });
@@ -163,9 +167,23 @@ export function scannerEnvForCli(projectPath?: string): Record<string, string> {
       env[`HERMSEC_${scanner.command.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}_BIN`] = scanner.managedPath;
     }
   }
-  Object.assign(env, modelEnvForCli(appSettings));
-  Object.assign(env, agentModelEnvForCli(appSettings));
+  if (options.includeModel) {
+    Object.assign(env, modelEnvForCli(appSettings));
+    Object.assign(env, agentModelEnvForCli(appSettings));
+  }
   return env;
+}
+
+/**
+ * Names that can route a CLI invocation to a configured model provider. Scanner-only
+ * runs receive a cloned environment with these removed so inherited desktop process
+ * variables cannot accidentally enable model work.
+ */
+export function modelEnvironmentVariableNames(): string[] {
+  const settings = readSettings();
+  return collectModelEnvironmentVariableNames(
+    settings.providers.map((provider) => provider.apiKeyEnvVar?.trim() || defaultProviderKeyEnv(provider)),
+  );
 }
 
 function modelEnvForCli(settings: ReturnType<typeof readSettings>): Record<string, string> {

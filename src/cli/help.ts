@@ -7,7 +7,7 @@ export function rootHelp(): string {
     "  hermsec agent ask <message> [--target <path>] [--mode auto|offline|online] [--json] [--no-model]",
     "  hermsec agent providers [--json]",
     "  hermsec doctor [--json]",
-    "  hermsec scan <target> [--mode auto|offline|online] [--assist-mode deep-assisted|single-agent|moa-assisted|scanner-moa-assisted] [--out <dir>] [--json] [--md] [--html] [--no-model]",
+    "  hermsec scan <target> [--mode auto|offline|online] [--assist-mode scanner-only|single-agent|moa-low|moa-high|scanner-single|scanner-moa-low|scanner-moa-high] [--run-id <id>] [--out <dir>] [--json] [--md] [--html] [--no-model]",
     "  hermsec config get [key]",
     "  hermsec config set <key> <value>",
     "  hermsec config path",
@@ -45,7 +45,7 @@ export function commandHelp(command: string): string {
     case "doctor":
       return "Usage: hermsec doctor [--json]";
     case "scan":
-      return "Usage: hermsec scan <target> [--mode auto|offline|online] [--assist-mode deep-assisted|single-agent|moa-assisted|scanner-moa-assisted] [--out <dir>] [--json] [--md] [--html] [--no-model]";
+      return "Usage: hermsec scan <target> [--mode auto|offline|online] [--assist-mode scanner-only|single-agent|moa-low|moa-high|scanner-single|scanner-moa-low|scanner-moa-high] [--run-id <id>] [--out <dir>] [--json] [--md] [--html] [--no-model]";
     case "config":
       return [
         "Usage: hermsec config get [key] | set <key> <value> | path",

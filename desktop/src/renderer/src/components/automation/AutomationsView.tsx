@@ -1,7 +1,7 @@
 import { CalendarClock, CheckCircle2, Clock, Edit3, MoreHorizontal, Play, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { normalizeScanAssistMode, scanModeLabel } from "@/lib/scanModes";
+import { normalizeScanAssistMode, scanModeLabel, scanModeRequiresModel } from "@/lib/scanModes";
 import { useReportStore } from "@/store/reportStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useUiStore } from "@/store/uiStore";
@@ -34,7 +34,7 @@ export function AutomationsView() {
       reportDir: settings.defaultReportDir,
       mode: "online",
       assistMode,
-      useModel: true,
+      useModel: scanModeRequiresModel(assistMode),
       skipIfUnchanged: true,
       previousProjectState: latestReport?.projectState,
     });

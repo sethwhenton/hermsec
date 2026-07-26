@@ -1,4 +1,5 @@
-import { spawn } from "node:child_process";
+import { app } from "electron";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import path from "node:path";
 import type {
   DoctorCheck,
@@ -11,12 +12,23 @@ import type {
 } from "../renderer/src/types/doctor";
 import type { AppSettings, ProviderConfig } from "../renderer/src/types/settings";
 import { findHermsecRoot } from "./scan";
+import {
+  collectModelEnvironmentVariableNames,
+  createCliProcessSpec,
+  normalizePackagedDoctorOutcome,
+} from "./cliProcess";
+import {
+  createVerifiedBundledRuntimeExecutionLease,
+  findBundledToolExecutable,
+  type BundledRuntimeExecutionLease,
+} from "./runtimeBundle";
 import { readSettings } from "./store";
 
 const CLI_RELATIVE_PATH = path.join("dist", "src", "bin", "hermsec.js");
 const MAX_OUTPUT_CHARS = 2_000_000;
 const CONNECTIVITY_TIMEOUT_MS = 7_000;
 const DOCTOR_CLI_TIMEOUT_MS = 20_000;
+const BUNDLED_SCANNER_PROBE_TIMEOUT_MS = 8_000;
 
 type DoctorCliOutcome = {
   ok?: boolean;
@@ -94,43 +106,217 @@ const SCANNER_IDS = new Set([
   "command-pmg",
 ]);
 
+const BUNDLED_SCANNERS = [
+  ["semgrep", "Semgrep", ["--version"]],
+  ["gitleaks", "Gitleaks", ["--version"]],
+  ["bandit", "Bandit", ["--version"]],
+  ["osv-scanner", "OSV-Scanner", ["--version"]],
+  ["pip-audit", "pip-audit", ["--version"]],
+  ["pmg", "SafeDep PMG", ["version"]],
+] as const;
+
 export async function runDoctor(onProgress?: DoctorProgressEmitter): Promise<DoctorRunResult> {
   const started = Date.now();
-  const root = findHermsecRoot();
-  const [cli, connectivity] = await Promise.all([
-    runDoctorCli(root, onProgress),
-    runConnectivityChecks(onProgress),
-  ]);
+  let runtimeLease: BundledRuntimeExecutionLease | undefined;
+  let packagedRuntimeError: string | undefined;
+  try {
+    if (app.isPackaged) {
+      try {
+        runtimeLease = createVerifiedBundledRuntimeExecutionLease();
+      } catch (error) {
+        packagedRuntimeError = error instanceof Error ? error.message : String(error);
+      }
+    }
+    const root = runtimeLease?.cliRoot ?? findHermsecRoot();
+    const [cli, connectivity] = await Promise.all([
+      packagedRuntimeError
+        ? Promise.resolve(blockedPackagedRuntimeCli(root, packagedRuntimeError))
+        : runDoctorCli(root, onProgress, runtimeLease),
+      runConnectivityChecks(onProgress),
+    ]);
 
-  const settings = readSettings();
-  const providerChecks = desktopProviderChecks(settings);
-  providerChecks.forEach((check) => emitCheckProgress(onProgress, check));
-  const checks = [...(cli.data?.checks ?? []), ...providerChecks];
-  const summary = summarizeChecks(checks);
-  const groups = buildGroups(checks, connectivity);
-  const healthScore = calculateHealthScore(groups);
-  const status = resultStatus(groups);
+    const settings = readSettings();
+    const providerChecks = desktopProviderChecks(settings);
+    const cliChecks = cli.data?.checks ?? [];
+    const scannerChecks = app.isPackaged
+      ? await packagedScannerChecks(runtimeLease, packagedRuntimeError)
+      : [];
+    const nonScannerCliChecks = app.isPackaged
+      ? cliChecks.filter((check) => !SCANNER_IDS.has(check.id))
+      : cliChecks;
+    scannerChecks.forEach((check) => emitCheckProgress(onProgress, check));
+    providerChecks.forEach((check) => emitCheckProgress(onProgress, check));
+    const checks = [...nonScannerCliChecks, ...scannerChecks, ...providerChecks];
+    const summary = summarizeChecks(checks);
+    const groups = buildGroups(checks, connectivity);
+    const healthScore = calculateHealthScore(groups);
+    const status = resultStatus(groups);
 
+    return {
+      ok: Boolean(cli.ok) && status !== "blocked",
+      message: cli.message ?? "Hermsec doctor completed.",
+      generatedAt: cli.data?.generatedAt ?? new Date().toISOString(),
+      durationMs: Date.now() - started,
+      cwd: cli.data?.cwd ?? root,
+      appDataDir: cli.data?.appDataDir ?? "",
+      reportDirectory: cli.data?.reportDirectory ?? "",
+      checks,
+      summary,
+      connectivity,
+      groups,
+      healthScore,
+      status,
+    };
+  } finally {
+    runtimeLease?.release();
+  }
+}
+
+async function packagedScannerChecks(
+  runtimeLease: BundledRuntimeExecutionLease | undefined,
+  knownIntegrityError?: string,
+): Promise<DoctorCheck[]> {
+  if (!runtimeLease) {
+    return BUNDLED_SCANNERS.map(([command, label]) => missingBundledScannerCheck(command, label));
+  }
+  const toolsRoot = runtimeLease.toolsRoot;
+
+  try {
+    if (knownIntegrityError) throw new Error(knownIntegrityError);
+    runtimeLease.assertIntact();
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    return BUNDLED_SCANNERS.map(([command, label]) => ({
+      id: `command-${command}`,
+      label,
+      status: "fail" as const,
+      requirement: "required" as const,
+      message: `Bundled runtime provenance could not be verified: ${detail}`,
+      remediation: "Reinstall Hermsec from a release that includes an intact runtime-tools bundle.",
+    }));
+  }
+
+  return Promise.all(BUNDLED_SCANNERS.map(async ([command, label, versionArgs]) => {
+    const executable = toolsRoot ? findBundledToolExecutable(toolsRoot, command) : undefined;
+    if (!executable) return missingBundledScannerCheck(command, label);
+    try {
+      const version = await probeBundledScanner(runtimeLease, executable, versionArgs);
+      return {
+        id: `command-${command}`,
+        label,
+        status: "pass" as const,
+        requirement: "required" as const,
+        message: `Bundled scanner executable verified: ${version}.`,
+      };
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      return {
+        id: `command-${command}`,
+        label,
+        status: "fail" as const,
+        requirement: "required" as const,
+        message: `Bundled ${label} launcher could not execute: ${detail}`,
+        remediation: "Reinstall Hermsec from a release that includes a complete, executable runtime-tools bundle.",
+      };
+    }
+  }));
+}
+
+function missingBundledScannerCheck(command: string, label: string): DoctorCheck {
   return {
-    ok: Boolean(cli.ok) && status !== "blocked",
-    message: cli.message ?? "Hermsec doctor completed.",
-    generatedAt: cli.data?.generatedAt ?? new Date().toISOString(),
-    durationMs: Date.now() - started,
-    cwd: cli.data?.cwd ?? root,
-    appDataDir: cli.data?.appDataDir ?? "",
-    reportDirectory: cli.data?.reportDirectory ?? "",
-    checks,
-    summary,
-    connectivity,
-    groups,
-    healthScore,
-    status,
+    id: `command-${command}`,
+    label,
+    status: "fail",
+    requirement: "required",
+    message: `Bundled ${label} launcher is missing from the packaged runtime.`,
+    remediation: "Reinstall Hermsec from a release that includes the complete runtime-tools bundle.",
   };
+}
+
+function blockedPackagedRuntimeCli(
+  root: string,
+  detail: string,
+): DoctorCliOutcome {
+  return {
+    ok: false,
+    message: `Bundled scanner runtime integrity verification failed: ${detail}`,
+    data: {
+      cwd: root,
+      checks: [],
+    },
+  };
+}
+
+function probeBundledScanner(
+  runtimeLease: BundledRuntimeExecutionLease,
+  executable: string,
+  args: readonly string[],
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    // The executable comes from the lease rather than resourcesPath. Verify the
+    // snapshot immediately before spawning the scanner process.
+    runtimeLease.assertIntact();
+    const child = spawn(executable, args, {
+      env: packagedScannerProbeEnvironment(runtimeLease),
+      shell: false,
+      windowsHide: true,
+    });
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    const timer = windowlessSetTimeout(() => {
+      if (settled) return;
+      settled = true;
+      child.kill();
+      reject(new Error(`timed out after ${BUNDLED_SCANNER_PROBE_TIMEOUT_MS} ms`));
+    }, BUNDLED_SCANNER_PROBE_TIMEOUT_MS);
+    child.stdout.on("data", (chunk) => {
+      stdout = collectOutput(chunk, stdout);
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr = collectOutput(chunk, stderr);
+    });
+    child.on("error", (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.on("close", (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      const output = `${stdout}\n${stderr}`.trim();
+      if (code !== 0) {
+        reject(new Error(`exited ${code ?? 1}${output ? `: ${output}` : ""}`));
+        return;
+      }
+      if (!output) {
+        reject(new Error("returned no version output"));
+        return;
+      }
+      resolve(output.replace(/\s+/gu, " ").slice(0, 240));
+    });
+  });
+}
+
+function packagedScannerProbeEnvironment(runtimeLease: BundledRuntimeExecutionLease): NodeJS.ProcessEnv {
+  const environment = { ...process.env };
+  const controlled = new Set(runtimeLease.controlledEnvironmentNames.map((name) => normalizeEnvironmentName(name)));
+  for (const name of Object.keys(environment)) {
+    if (controlled.has(normalizeEnvironmentName(name))) delete environment[name];
+  }
+  Object.assign(environment, runtimeLease.trustedEnvironment);
+  for (const name of ["PYTHONHOME", "PYTHONPATH", "VIRTUAL_ENV", "CONDA_PREFIX"]) {
+    delete environment[name];
+  }
+  return environment;
 }
 
 async function runDoctorCli(
   root: string,
   onProgress?: DoctorProgressEmitter,
+  runtimeLease?: BundledRuntimeExecutionLease,
 ): Promise<DoctorCliOutcome> {
   emitProgress(onProgress, {
     id: "doctor-cli",
@@ -141,9 +327,9 @@ async function runDoctorCli(
     message: "Starting Hermsec's scanner readiness command.",
   });
 
-  const cliPath = path.join(root, CLI_RELATIVE_PATH);
+  const cliPath = runtimeLease?.cliEntryPath ?? path.join(root, CLI_RELATIVE_PATH);
   try {
-    const outcome = await runNodeCli(root, [cliPath, "doctor", "--json"], DOCTOR_CLI_TIMEOUT_MS);
+    const outcome = await runDoctorCliProcess(root, [cliPath, "doctor", "--json"], DOCTOR_CLI_TIMEOUT_MS, runtimeLease);
     if (outcome.timedOut) {
       const message = `Hermsec doctor timed out after ${DOCTOR_CLI_TIMEOUT_MS} ms.`;
       emitProgress(onProgress, {
@@ -158,20 +344,22 @@ async function runDoctorCli(
     }
 
     const parsed = parseCliJson(outcome.stdout);
-    const ok = parsed.ok !== false && outcome.exitCode === 0;
+    const normalized = normalizePackagedDoctorOutcome(parsed, outcome.exitCode, app.isPackaged);
+    const normalizedOutcome = normalized.outcome;
+    const ok = normalized.ok;
     emitProgress(onProgress, {
       id: "doctor-cli",
       groupId: "required",
       label: "Hermsec CLI",
       status: ok ? "pass" : "warn",
       requirement: "required",
-      message: parsed.message ?? (outcome.stderr.trim() || "Hermsec doctor completed."),
+      message: normalizedOutcome.message ?? (outcome.stderr.trim() || "Hermsec doctor completed."),
     });
-    (parsed.data?.checks ?? []).forEach((check) => emitCheckProgress(onProgress, check));
+    (normalizedOutcome.data?.checks ?? []).forEach((check) => emitCheckProgress(onProgress, check));
     return {
-      ...parsed,
+      ...normalizedOutcome,
       ok,
-      message: parsed.message ?? (outcome.stderr.trim() || "Hermsec doctor completed."),
+      message: normalizedOutcome.message ?? (outcome.stderr.trim() || "Hermsec doctor completed."),
     };
   } catch (error) {
     const message = `Hermsec doctor could not complete: ${error instanceof Error ? error.message : String(error)}`;
@@ -187,18 +375,42 @@ async function runDoctorCli(
   }
 }
 
-function runNodeCli(
+function runDoctorCliProcess(
   cwd: string,
   args: string[],
   timeoutMs: number,
+  runtimeLease?: BundledRuntimeExecutionLease,
 ): Promise<{ stdout: string; stderr: string; exitCode: number; timedOut?: boolean }> {
   return new Promise((resolve, reject) => {
-    const nodeBinary = process.platform === "win32" ? "node.exe" : "node";
-    const child = spawn(nodeBinary, args, {
-      cwd,
-      env: process.env,
-      windowsHide: true,
-    });
+    let child: ChildProcessWithoutNullStreams;
+    try {
+      const processSpec = createCliProcessSpec({
+        isPackaged: app.isPackaged,
+        electronExecutable: process.execPath,
+        platform: process.platform,
+        args,
+        inheritedEnv: process.env,
+        ...(runtimeLease
+          ? {
+              trustedRuntime: {
+                values: runtimeLease.trustedEnvironment,
+                controlledNames: runtimeLease.controlledEnvironmentNames,
+              },
+            }
+          : {}),
+        includeModel: false,
+        modelEnvironmentNames: collectModelEnvironmentVariableNames(),
+      });
+      runtimeLease?.assertIntact();
+      child = spawn(processSpec.executable, processSpec.args, {
+        cwd: runtimeLease?.cliRoot ?? cwd,
+        env: processSpec.env,
+        windowsHide: true,
+      });
+    } catch (error) {
+      reject(error);
+      return;
+    }
     let stdout = "";
     let stderr = "";
     let settled = false;
@@ -237,6 +449,10 @@ function runNodeCli(
       });
     });
   });
+}
+
+function normalizeEnvironmentName(name: string): string {
+  return process.platform === "win32" ? name.toUpperCase() : name;
 }
 
 function failedCliOutcome(root: string, message: string): DoctorCliOutcome {

@@ -2,7 +2,7 @@ import { CalendarClock, CheckCircle2, Clock, PlayCircle, X } from "lucide-react"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { normalizeScanAssistMode } from "@/lib/scanModes";
+import { normalizeScanAssistMode, scanModeRequiresModel } from "@/lib/scanModes";
 import { useReportStore } from "@/store/reportStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { ScanModeSegmentedControl } from "@/components/scan/ScanModeSegmentedControl";
@@ -57,7 +57,7 @@ export function AutomationPopover({ open, onClose }: AutomationPopoverProps) {
       reportDir: settings?.defaultReportDir,
       mode: "online",
       assistMode: scanMode,
-      useModel: true,
+      useModel: scanModeRequiresModel(scanMode),
       skipIfUnchanged: true,
       previousProjectState: latestReport?.projectState,
     });

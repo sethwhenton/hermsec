@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, FolderOpen, RefreshCw, RotateCw, Square } from "lucide-react";
 import { useEffect } from "react";
 import { requireHermsecApi } from "@/lib/ipc";
+import { scanModeRequiresModel } from "@/lib/scanModes";
 import { useReportStore } from "@/store/reportStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useUiStore } from "@/store/uiStore";
@@ -42,7 +43,7 @@ export function DashboardView() {
       reportDir: settings?.defaultReportDir,
       mode: "online",
       assistMode: settings?.general.scanMode,
-      useModel: true,
+      useModel: scanModeRequiresModel(settings?.general.scanMode ?? "scanner-only"),
       skipIfUnchanged: true,
       previousProjectState: latestReport?.projectState,
     });

@@ -1,12 +1,13 @@
 import { app, BrowserWindow, shell } from "electron";
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { loadEnvFile } from "./env";
 import { registerIpcHandlers } from "./ipc";
 import { dashboardBundle } from "./reportArtifacts";
 import { defaultProjectDir, findHermsecRoot, scanProject } from "./scan";
 import { runDoctor } from "./doctor";
 import { configureBundledRuntime } from "./runtimeBundle";
+import type { ScanProgressEvent } from "../renderer/src/types/scan";
 
 const mainDir = import.meta.dirname;
 
@@ -152,8 +153,8 @@ async function runDashboardSmoke(): Promise<void> {
     targetPath: projectPath,
     reportDir,
     mode: "online",
-    assistMode: "deep-assisted",
-    useModel: process.env.HERMSEC_SMOKE_USE_MODEL !== "false",
+    assistMode: "scanner-only",
+    useModel: false,
   });
 
   assert(result.ok, `Scan failed: ${result.message}`);
@@ -169,7 +170,7 @@ async function runDashboardSmoke(): Promise<void> {
     targetPath: projectPath,
     reportDir,
     mode: "online",
-    assistMode: "deep-assisted",
+    assistMode: "scanner-only",
     useModel: false,
     skipIfUnchanged: true,
     previousProjectState: result.projectState,
@@ -193,6 +194,11 @@ async function runDashboardSmoke(): Promise<void> {
 async function runDoctorSmoke(): Promise<void> {
   const progress: unknown[] = [];
   const result = await runDoctor((event) => progress.push(event));
+  writeDoctorSmokeResultArtifact({
+    schemaVersion: 1,
+    kind: "hermsec-doctor-smoke",
+    result,
+  });
   assert(result.ok, `Doctor failed: ${result.message}`);
 
   const required = result.groups.find((group) => group.id === "required");
@@ -208,6 +214,7 @@ async function runDoctorSmoke(): Promise<void> {
         ok: true,
         status: result.status,
         healthScore: result.healthScore,
+        checks: result.checks,
         groups: result.groups,
         connectivity: result.connectivity,
         progressEvents: progress.length,
@@ -216,6 +223,17 @@ async function runDoctorSmoke(): Promise<void> {
       2,
     ),
   );
+}
+
+function writeDoctorSmokeResultArtifact(payload: unknown): void {
+  const configuredPath = process.env.HERMSEC_SMOKE_RESULT_PATH?.trim();
+  if (!configuredPath) return;
+
+  const destination = resolve(configuredPath);
+  mkdirSync(dirname(destination), { recursive: true });
+  const temporary = `${destination}.partial-${process.pid}-${Date.now()}`;
+  writeFileSync(temporary, JSON.stringify(payload), "utf8");
+  renameSync(temporary, destination);
 }
 
 async function runUiSmoke(): Promise<void> {
@@ -252,10 +270,13 @@ async function runUiSmoke(): Promise<void> {
       return {
         openedSettings,
         openedAgents,
-        generalHasDeep: general.includes("Deep assisted scan"),
-        generalHasSingle: general.includes("Single agent inspection"),
-        generalHasMoa: general.includes("MoA inspection"),
-        generalHasScannerMoa: general.includes("Scanner + MoA inspection"),
+        generalHasScannerOnly: general.includes("Scanner only"),
+        generalHasSingle: general.includes("Single agent"),
+        generalHasMoaLow: general.includes("MoA Low"),
+        generalHasMoaHigh: general.includes("MoA High"),
+        generalHasScannerSingle: general.includes("Scanner + Single"),
+        generalHasScannerMoaLow: general.includes("Scanner + MoA Low"),
+        generalHasScannerMoaHigh: general.includes("Scanner + MoA High"),
         agentsHasLow: agents.includes("Low panel"),
         agentsHasHigh: agents.includes("High panel"),
         agentsMentionsScannerMoa: agents.includes("Scanner + MoA"),
@@ -265,10 +286,13 @@ async function runUiSmoke(): Promise<void> {
   `) as {
     openedSettings?: boolean;
     openedAgents?: boolean;
-    generalHasDeep?: boolean;
+    generalHasScannerOnly?: boolean;
     generalHasSingle?: boolean;
-    generalHasMoa?: boolean;
-    generalHasScannerMoa?: boolean;
+    generalHasMoaLow?: boolean;
+    generalHasMoaHigh?: boolean;
+    generalHasScannerSingle?: boolean;
+    generalHasScannerMoaLow?: boolean;
+    generalHasScannerMoaHigh?: boolean;
     agentsHasLow?: boolean;
     agentsHasHigh?: boolean;
     agentsMentionsScannerMoa?: boolean;
@@ -277,10 +301,13 @@ async function runUiSmoke(): Promise<void> {
 
   assert(result.openedSettings, "Settings button was not clickable in the rendered UI.");
   assert(result.openedAgents, "Agents settings section was not clickable in the rendered UI.");
-  assert(result.generalHasDeep, "General settings did not render Deep assisted scan.");
-  assert(result.generalHasSingle, "General settings did not render Single agent inspection.");
-  assert(result.generalHasMoa, "General settings did not render MoA inspection.");
-  assert(result.generalHasScannerMoa, "General settings did not render Scanner + MoA inspection.");
+  assert(result.generalHasScannerOnly, "General settings did not render Scanner only.");
+  assert(result.generalHasSingle, "General settings did not render Single agent.");
+  assert(result.generalHasMoaLow, "General settings did not render MoA Low.");
+  assert(result.generalHasMoaHigh, "General settings did not render MoA High.");
+  assert(result.generalHasScannerSingle, "General settings did not render Scanner + Single.");
+  assert(result.generalHasScannerMoaLow, "General settings did not render Scanner + MoA Low.");
+  assert(result.generalHasScannerMoaHigh, "General settings did not render Scanner + MoA High.");
   assert(result.agentsHasLow, "Agents settings did not render Low panel.");
   assert(result.agentsHasHigh, "Agents settings did not render High panel.");
   assert(result.agentsMentionsScannerMoa, "Agents settings did not explain Scanner + MoA panel reuse.");
@@ -292,21 +319,20 @@ async function runScanModesSmoke(): Promise<void> {
   const projectPath = process.env.HERMSEC_SMOKE_PROJECT || resolve(findHermsecRoot(), "tests", "fixtures", "repos", "node-express-clean");
   const reportDir =
     process.env.HERMSEC_SMOKE_SCAN_MODES_OUT || join(app.getPath("documents"), "Hermsec", "scan-mode-smoke");
-  const useModel = process.env.HERMSEC_SMOKE_SCAN_MODES_USE_MODEL !== "false";
-  const modes = (process.env.HERMSEC_SMOKE_SCAN_MODES || "deep-assisted,single-agent,moa-assisted,scanner-moa-assisted")
+  const modes = (process.env.HERMSEC_SMOKE_SCAN_MODES || "scanner-only,single-agent,moa-low,moa-high,scanner-single,scanner-moa-low,scanner-moa-high")
     .split(",")
     .map((item) => item.trim())
-    .filter(Boolean) as Array<"deep-assisted" | "single-agent" | "moa-assisted" | "scanner-moa-assisted">;
+    .filter(Boolean) as Array<"scanner-only" | "single-agent" | "moa-low" | "moa-high" | "scanner-single" | "scanner-moa-low" | "scanner-moa-high">;
 
   const runs = [];
   for (const assistMode of modes) {
-    const progress: unknown[] = [];
+    const progress: ScanProgressEvent[] = [];
     const result = await scanProject({
       targetPath: projectPath,
       reportDir: join(reportDir, assistMode),
       mode: "online",
       assistMode,
-      useModel,
+      useModel: assistMode !== "scanner-only",
     }, (event) => progress.push(event));
 
     assert(result.ok, `${assistMode} scan failed: ${result.message}`);
@@ -314,16 +340,23 @@ async function runScanModesSmoke(): Promise<void> {
     assert(result.dashboardHtmlPath && existsSync(result.dashboardHtmlPath), `${assistMode} did not write a dashboard HTML file.`);
     assert(result.onepagerHtmlPath && existsSync(result.onepagerHtmlPath), `${assistMode} did not write a one-page HTML file.`);
     assert(result.onepagerPdfPath && statSync(result.onepagerPdfPath).size > 0, `${assistMode} did not write a one-page PDF.`);
-    assert(progress.some((event) => JSON.stringify(event).includes(assistMode)), `${assistMode} progress did not include the selected mode.`);
+    assert(result.runId, `${assistMode} did not return a run id.`);
+    assert(
+      progress.some((event) => event.runId === result.runId && event.assistMode === assistMode),
+      `${assistMode} progress did not preserve the selected mode and run id.`,
+    );
+    assert(
+      progress.some((event) => event.id === "scan-terminal" && event.runId === result.runId && event.terminalStatus === result.terminalStatus),
+      `${assistMode} did not emit matching terminal progress metadata.`,
+    );
 
     const document = readReportDocument(result.reportDir);
     const agentMode = document.agentMode as { mode?: string; modeLabel?: string; agentsUsed?: unknown[] } | undefined;
-    if (assistMode === "single-agent" || assistMode === "moa-assisted" || assistMode === "scanner-moa-assisted") {
+    if (assistMode !== "scanner-only") {
       assert(agentMode?.mode === assistMode, `${assistMode} report agent metadata was not preserved.`);
     }
-    if (assistMode === "scanner-moa-assisted") {
-      assert(agentMode?.modeLabel === "Scanner + MoA inspection", "Scanner + MoA report label was not preserved.");
-      assert((agentMode.agentsUsed ?? []).includes("scanner-stack"), "Scanner + MoA report did not include scanner-stack metadata.");
+    if (assistMode === "scanner-only") {
+      assert(!agentMode || agentMode.mode === "scanner-only", "Scanner-only mode must not substitute a model agent mode.");
     }
 
     runs.push({
@@ -339,7 +372,7 @@ async function runScanModesSmoke(): Promise<void> {
     });
   }
 
-  const summary = { ok: true, projectPath, reportDir, useModel, metrics: aggregateSmokeMetrics(runs), runs };
+  const summary = { ok: true, projectPath, reportDir, metrics: aggregateSmokeMetrics(runs), runs };
   mkdirSync(reportDir, { recursive: true });
   writeFileSync(join(reportDir, "smoke-summary.json"), JSON.stringify(summary, null, 2));
   await writeStdout(`${JSON.stringify(summary, null, 2)}\n`);

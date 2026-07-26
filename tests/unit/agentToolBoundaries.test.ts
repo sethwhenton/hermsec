@@ -5,7 +5,9 @@ import path from "node:path";
 import test from "node:test";
 import { createCodeInspectionRuntime } from "../../src/agent/codeInspection.js";
 
-const workspaceRoot = path.resolve("tests/fixtures/repos/node-express-clean");
+const workspaceRoot = path.resolve(
+  "tests/fixtures/repos/node-express-clean/project",
+);
 
 test("repo inspection snippets reject traversal outside the target repository", async () => {
   const runtime = await createCodeInspectionRuntime(workspaceRoot);

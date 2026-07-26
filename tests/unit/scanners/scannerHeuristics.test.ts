@@ -33,7 +33,7 @@ test("fixture scanner heuristics select expected offline scanner families", () =
 
 test("offline scanner heuristics flag toy vulnerable fixture patterns", () => {
   const nodeSource = fs.readFileSync(
-    path.join(fixturesRoot, "node-express-vulnerable", "src", "routes", "search.js"),
+    path.join(fixturesRoot, "node-express-vulnerable", "project", "src", "routes", "search.js"),
     "utf8",
   );
   const findings = scanFile("src/routes/search.js", nodeSource);
@@ -48,7 +48,7 @@ test("offline scanner heuristics flag toy vulnerable fixture patterns", () => {
 
 test("offline scanner heuristics keep clean fixture noise low", () => {
   const cleanSource = fs.readFileSync(
-    path.join(fixturesRoot, "node-express-clean", "src", "routes", "search.js"),
+    path.join(fixturesRoot, "node-express-clean", "project", "src", "routes", "search.js"),
     "utf8",
   );
   const findings = scanFile("src/routes/search.js", cleanSource);
@@ -254,7 +254,7 @@ test("fixture manifests enforce local-only fake-secret governance", () => {
 });
 
 function inferScannerFamilies(fixtureId: string): string[] {
-  const repoPath = path.join(fixturesRoot, fixtureId);
+  const repoPath = path.join(fixturesRoot, fixtureId, "project");
   const files = listFiles(repoPath);
   const relativeFiles = files.map((file) => path.relative(repoPath, file).replace(/\\/g, "/"));
   const text = files.map((file) => fs.readFileSync(file, "utf8")).join("\n");

@@ -3,9 +3,17 @@ import { normalizeCweList } from "./cweTolerance.js";
 import { normalizeIdentifiers, normalizeIdentifierSet } from "./identifierNormalize.js";
 import { normalizeEvalPath } from "./pathNormalize.js";
 import type { ActualFindingProjection, EvalLocation, IgnoredActualFinding } from "./schema.js";
+import {
+  inferPrimaryVulnerabilityClass,
+  resolveVulnerabilityClasses,
+} from "./vulnerabilityClass.js";
 
 export type FindingProjectionOptions = {
   fixtureRoot?: string;
+};
+
+export type ActualFindingDedupeOptions = {
+  fingerprintSensitive?: boolean;
 };
 
 export function projectFinding(
@@ -15,12 +23,20 @@ export function projectFinding(
   const location = finding.location
     ? projectLocation(finding.location.file, finding.location.startLine, finding.location.endLine, options.fixtureRoot)
     : undefined;
+  const sourceLocations = finding.sourceLocations?.map((source) =>
+    projectLocation(
+      source.file,
+      source.startLine,
+      source.endLine,
+      options.fixtureRoot,
+    ),
+  );
   const ruleIds = normalizeIdentifierSet(
     [finding.ruleId, finding.tool].filter((value): value is string => typeof value === "string"),
     "rule",
   );
 
-  return {
+  const projection: ActualFindingProjection = {
     id: finding.id,
     fingerprint: finding.fingerprint,
     category: finding.category,
@@ -30,9 +46,17 @@ export function projectFinding(
     identifiers: normalizeIdentifiers(finding.identifiers),
     ruleIds,
     ...(location ? { location } : {}),
+    ...(sourceLocations && sourceLocations.length > 0
+      ? { sourceLocations: sourceLocations.sort(compareLocations) }
+      : {}),
     ...(finding.package ? { package: { ...finding.package } } : {}),
     ...(finding.tool ? { tool: finding.tool } : {}),
+    ...(finding.agent?.judge?.verdict
+      ? { disposition: finding.agent.judge.verdict }
+      : {}),
   };
+  const vulnerabilityClass = inferPrimaryVulnerabilityClass(projection);
+  return vulnerabilityClass ? { ...projection, vulnerabilityClass } : projection;
 }
 
 export function projectFindings(
@@ -44,12 +68,13 @@ export function projectFindings(
 
 export function dedupeActualFindings(
   findings: readonly ActualFindingProjection[],
+  options: ActualFindingDedupeOptions = {},
 ): { findings: ActualFindingProjection[]; ignored: IgnoredActualFinding[] } {
   const selected = new Map<string, ActualFindingProjection>();
   const ignored: IgnoredActualFinding[] = [];
 
   for (const finding of [...findings].sort(compareActualForDedupe)) {
-    const noiseKey = actualFindingNoiseKey(finding);
+    const noiseKey = actualFindingNoiseKey(finding, options);
     const canonical = selected.get(noiseKey);
     if (!canonical) {
       selected.set(noiseKey, finding);
@@ -73,7 +98,10 @@ export function dedupeActualFindings(
   };
 }
 
-export function actualFindingNoiseKey(finding: ActualFindingProjection): string {
+export function actualFindingNoiseKey(
+  finding: ActualFindingProjection,
+  options: ActualFindingDedupeOptions = {},
+): string {
   const identifiers = [
     ...finding.identifiers.cve,
     ...finding.identifiers.ghsa,
@@ -83,18 +111,49 @@ export function actualFindingNoiseKey(finding: ActualFindingProjection): string 
   const packageKey = finding.package
     ? `${finding.package.ecosystem.toLowerCase()}:${finding.package.name.toLowerCase()}`
     : undefined;
+  const vulnerabilityClassKey =
+    resolveVulnerabilityClasses(finding).join(",") || "<unclassified>";
+  const fingerprintKey =
+    options.fingerprintSensitive === false ? "" : finding.fingerprint;
 
   if (finding.category === "dependency" && packageKey) {
-    return ["dependency", packageKey, advisoryKey ?? finding.ruleIds.join(",")].filter(Boolean).join("|");
+    return [
+      "dependency",
+      packageKey,
+      vulnerabilityClassKey,
+      fingerprintKey,
+      advisoryKey ?? finding.ruleIds.join(","),
+    ]
+      .filter(Boolean)
+      .join("|");
   }
 
   const location = finding.location
     ? `${finding.location.path}:${finding.location.startLine ?? ""}:${finding.location.endLine ?? ""}`
     : "";
+  const sourceLocations = (finding.sourceLocations ?? [])
+    .map(
+      (source) =>
+        `${source.path}:${source.startLine ?? ""}:${source.endLine ?? ""}`,
+    )
+    .sort()
+    .join(",");
   const ruleKey = finding.ruleIds.length > 0 ? finding.ruleIds.join(",") : undefined;
   const cweKey = finding.cwe.length > 0 ? finding.cwe.join(",") : undefined;
-  const semanticKey = advisoryKey ?? ruleKey ?? cweKey ?? normalizeTitle(finding.title);
-  return [finding.category, location, semanticKey].join("|");
+  const semanticKey =
+    advisoryKey ??
+    ruleKey ??
+    cweKey ??
+    finding.vulnerabilityClass ??
+    normalizeTitle(finding.title);
+  return [
+    finding.category,
+    vulnerabilityClassKey,
+    location,
+    sourceLocations,
+    fingerprintKey,
+    semanticKey,
+  ].join("|");
 }
 
 function projectLocation(
@@ -112,8 +171,10 @@ function projectLocation(
 
 function compareActualForDedupe(left: ActualFindingProjection, right: ActualFindingProjection): number {
   return (
-    severityRank[right.severity] - severityRank[left.severity] ||
     specificityScore(right) - specificityScore(left) ||
+    vulnerabilityClassSignature(left).localeCompare(
+      vulnerabilityClassSignature(right),
+    ) ||
     left.fingerprint.localeCompare(right.fingerprint) ||
     left.id.localeCompare(right.id)
   );
@@ -136,7 +197,16 @@ function specificityScore(finding: ActualFindingProjection): number {
     finding.ruleIds.length * 2 +
     finding.cwe.length +
     (finding.location ? 1 : 0) +
+    (finding.sourceLocations?.length ?? 0) +
     (finding.package ? 1 : 0)
+  );
+}
+
+function compareLocations(left: EvalLocation, right: EvalLocation): number {
+  return (
+    left.path.localeCompare(right.path) ||
+    (left.startLine ?? 0) - (right.startLine ?? 0) ||
+    (left.endLine ?? 0) - (right.endLine ?? 0)
   );
 }
 
@@ -144,10 +214,8 @@ function normalizeTitle(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
 }
 
-const severityRank: Record<Finding["severity"], number> = {
-  critical: 5,
-  high: 4,
-  medium: 3,
-  low: 2,
-  info: 1,
-};
+function vulnerabilityClassSignature(
+  finding: ActualFindingProjection,
+): string {
+  return resolveVulnerabilityClasses(finding).join(",");
+}

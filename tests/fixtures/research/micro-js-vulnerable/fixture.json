@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "2.0",
+  "id": "micro-js-vulnerable",
+  "pairId": "micro-js-security-pair",
+  "variant": "vulnerable",
+  "language": "javascript",
+  "projectRoot": "project",
+  "evaluatorFiles": [
+    "truth.json"
+  ],
+  "entrypoints": [
+    "src/server.js"
+  ],
+  "sourceFiles": [
+    "src/config.js",
+    "src/db/users.js",
+    "src/server.js",
+    "src/system/ping.js",
+    "src/views/profile.js"
+  ],
+  "supportedVulnerabilityClasses": [
+    "sql-injection",
+    "command-injection",
+    "reflected-xss",
+    "hardcoded-secret"
+  ],
+  "expectedFindingCount": 4,
+  "pairedFixtureId": "micro-js-clean",
+  "safety": {
+    "networkRequired": false,
+    "executionRequired": false,
+    "containsRealSecrets": false,
+    "executionPolicy": "never",
+    "networkPolicy": "deny"
+  }
+}

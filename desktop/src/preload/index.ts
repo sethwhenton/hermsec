@@ -115,7 +115,7 @@ const hermsecApi = {
   scan: {
     project: (request: ScanProjectRequest): Promise<ScanProjectResult> =>
       ipcRenderer.invoke("scan:project", request),
-    cancel: (): Promise<ScanControlResult> => ipcRenderer.invoke("scan:cancel"),
+    cancel: (runId: string): Promise<ScanControlResult> => ipcRenderer.invoke("scan:cancel", runId),
     onProgress: (listener: (event: ScanProgressEvent) => void): (() => void) => {
       const handler = (_event: Electron.IpcRendererEvent, progress: ScanProgressEvent) => listener(progress);
       ipcRenderer.on("scan:progress", handler);

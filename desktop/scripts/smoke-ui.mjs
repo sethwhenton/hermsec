@@ -10,7 +10,12 @@ const electronFallback = process.platform === "win32"
   ? resolve(root, "node_modules/electron/dist/electron.exe")
   : electron;
 
-const electronBinary = existsSync(electron) ? electron : electronFallback;
+const preferredElectron = process.env.HERMSEC_ELECTRON_BINARY;
+const electronBinary = preferredElectron && existsSync(preferredElectron)
+  ? preferredElectron
+  : existsSync(electron)
+    ? electron
+    : electronFallback;
 if (!existsSync(electronBinary)) {
   throw new Error(`Electron binary not found: ${electronBinary}`);
 }

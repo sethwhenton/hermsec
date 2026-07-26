@@ -33,6 +33,10 @@
     "desktop:dist:win": "npm --prefix desktop run dist:win",
     "desktop:dist:mac": "npm --prefix desktop run dist:mac",
     "eval:owasp": "npm run build:core && node scripts/eval-owasp-benchmark.mjs --skip-if-missing",
+    "research:seven-mode": "npm run build:core && node scripts/research/run-seven-mode-experiment.mjs",
+    "research:mock": "npm run research:seven-mode -- --execution mock --dataset micro",
+    "research:paper-results": "npm run build:core && node scripts/research/generate-paper-results.mjs",
+    "research:validate-pricing": "npm run build:core && node scripts/research/verify-pricing-snapshot.mjs",
     "start": "node dist/src/bin/hermsec.js",
     "prepack": "npm run build",
     "pack:dry-run": "npm pack --dry-run --ignore-scripts"

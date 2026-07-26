@@ -1,0 +1,2 @@
+# Deliberately empty. Passing this exact file prevents user or repository uv
+# configuration from adding alternate indexes during release staging.

@@ -8,7 +8,7 @@ import type {
   ExplainReportRequest,
   OpenArtifactRequest,
 } from "../renderer/src/types/reports";
-import type { OpenReportLocationRequest, ScanProjectRequest } from "../renderer/src/types/scan";
+import type { OpenReportLocationRequest } from "../renderer/src/types/scan";
 import type { ScannerListRequest } from "../renderer/src/types/scanners";
 import type { CreateChatSessionRequest, UpdateChatSessionRequest } from "../renderer/src/types/sessions";
 import { runDoctor } from "./doctor";
@@ -17,6 +17,7 @@ import { providerPresets } from "./providerCatalog";
 import { archiveProjectDirectory, deleteProjectDirectory, listProjectDirectories, registerProjectDirectory } from "./projects";
 import { cancelActiveReportAction, converseReport, explainReport, getDashboardBundle, latestReport, openArtifact } from "./reports";
 import { cancelActiveScan, openReportLocation, scanProject } from "./scan";
+import { executeScanProjectRequest } from "./scanRequestValidation";
 import { installScanner, scannerStatuses, uninstallScanner, updateScanner } from "./scanners";
 import {
   archiveChatSession,
@@ -146,11 +147,19 @@ export function registerIpcHandlers(): void {
     openArtifact(request),
   );
 
-  ipcMain.handle("scan:project", async (event, request: ScanProjectRequest) =>
-    scanProject(request, (progress) => event.sender.send("scan:progress", progress)),
+  ipcMain.handle("scan:project", async (event, request: unknown) =>
+    executeScanProjectRequest(
+      request,
+      scanProject,
+      (progress) => {
+        if (!event.sender.isDestroyed()) {
+          event.sender.send("scan:progress", progress);
+        }
+      },
+    ),
   );
 
-  ipcMain.handle("scan:cancel", () => cancelActiveScan());
+  ipcMain.handle("scan:cancel", (_event, runId?: string) => cancelActiveScan(runId));
 
   ipcMain.handle("scan:open-report-location", async (_event, request: OpenReportLocationRequest) =>
     openReportLocation(request),

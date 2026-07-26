@@ -37,6 +37,7 @@ export type RenderReportInput = {
   limitations?: readonly string[];
   generatedAt?: string;
   indexPath?: string;
+  signal?: AbortSignal;
 };
 
 export type RenderReportResult = {
@@ -56,13 +57,17 @@ export type RenderReportResult = {
 };
 
 export async function renderReport(input: RenderReportInput): Promise<RenderReportResult> {
+  throwIfAborted(input.signal);
   const generatedAt = input.generatedAt ?? input.scanRun.finishedAt;
   const destination = await resolveReportDestination(input.configuredReportDir);
+  throwIfAborted(input.signal);
   const paths = createReportArtifactPaths(destination.actualReportRoot, input.workspaceName, generatedAt);
   const formats = new Set(input.formats ?? ["html", "markdown", "json"]);
   await fs.mkdir(paths.reportDir, { recursive: true });
+  throwIfAborted(input.signal);
 
   const previousEntry = await latestReportForWorkspace(input.workspaceId, input.indexPath);
+  throwIfAborted(input.signal);
   const previousFindings = previousEntry ? await readPreviousFindings(previousEntry.summaryPath.replace(/summary\.json$/, "findings.json")) : undefined;
   const evidence = await storeEvidenceBundle({
     scanId: input.scanRun.id,
@@ -70,6 +75,7 @@ export async function renderReport(input: RenderReportInput): Promise<RenderRepo
     rawDir: paths.rawDir,
     ...(input.rawEvidence ? { rawEvidence: input.rawEvidence } : {})
   });
+  throwIfAborted(input.signal);
 
   const explanations = input.explanations ?? {};
   const generatedWithModel = wasGeneratedWithModel(input.agentSummary);
@@ -86,6 +92,11 @@ export async function renderReport(input: RenderReportInput): Promise<RenderRepo
       id: input.scanRun.id,
       mode: input.scanRun.mode,
       ...(agentMode?.modeLabel ? { modeLabel: agentMode.modeLabel } : {}),
+      ...(input.scanRun.assistMode ? { assistMode: input.scanRun.assistMode } : {}),
+      ...(input.scanRun.terminalStatus ? { terminalStatus: input.scanRun.terminalStatus } : {}),
+      ...(input.scanRun.degradationReasons?.length
+        ? { degradationReasons: [...input.scanRun.degradationReasons] }
+        : {}),
       startedAt: input.scanRun.startedAt,
       finishedAt: input.scanRun.finishedAt,
       durationMs: input.scanRun.durationMs,
@@ -132,16 +143,20 @@ export async function renderReport(input: RenderReportInput): Promise<RenderRepo
   };
 
   const json = renderJsonArtifacts(redactedDocument, agentSummary);
-  await writeRequiredJson(paths, json);
+  await writeRequiredJson(paths, json, input.signal);
 
   if (formats.has("markdown")) {
+    throwIfAborted(input.signal);
     await fs.writeFile(paths.markdownPath, renderMarkdownReport(redactedDocument), "utf8");
   }
   if (formats.has("html")) {
+    throwIfAborted(input.signal);
     await fs.writeFile(paths.htmlPath, renderHtmlReport(redactedDocument), "utf8");
+    throwIfAborted(input.signal);
     await fs.writeFile(paths.cssPath, defaultReportCss, "utf8");
   }
 
+  throwIfAborted(input.signal);
   await appendReportIndexEntry(
     {
       scanId: redactedDocument.scanId,
@@ -157,6 +172,7 @@ export async function renderReport(input: RenderReportInput): Promise<RenderRepo
     },
     input.indexPath
   );
+  throwIfAborted(input.signal);
 
   return {
     document: redactedDocument,
@@ -175,14 +191,33 @@ export async function renderReport(input: RenderReportInput): Promise<RenderRepo
   };
 }
 
-async function writeRequiredJson(paths: ReportArtifactPaths, json: ReturnType<typeof renderJsonArtifacts>): Promise<void> {
+async function writeRequiredJson(
+  paths: ReportArtifactPaths,
+  json: ReturnType<typeof renderJsonArtifacts>,
+  signal?: AbortSignal,
+): Promise<void> {
+  throwIfAborted(signal);
   await fs.writeFile(paths.summaryPath, json.summaryJson, "utf8");
+  throwIfAborted(signal);
   await fs.writeFile(paths.findingsPath, json.findingsJson, "utf8");
+  throwIfAborted(signal);
   await fs.writeFile(paths.evidencePath, json.evidenceJson, "utf8");
+  throwIfAborted(signal);
   await fs.writeFile(paths.runPath, json.runJson, "utf8");
+  throwIfAborted(signal);
   await fs.writeFile(paths.agentSummaryPath, json.agentSummaryJson, "utf8");
+  throwIfAborted(signal);
   await fs.writeFile(paths.deltaPath, json.deltaJson, "utf8");
+  throwIfAborted(signal);
   await fs.writeFile(paths.documentPath, json.documentJson, "utf8");
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) {
+    throw signal.reason instanceof Error
+      ? signal.reason
+      : new DOMException("Operation was aborted.", "AbortError");
+  }
 }
 
 async function readPreviousFindings(filePath: string): Promise<Finding[] | undefined> {

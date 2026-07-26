@@ -3,6 +3,16 @@ import path from "node:path";
 import { runScan } from "../core/scan.js";
 import type { CommandResult } from "../shared/types.js";
 import { evaluateFindingsSimple, type SimpleGroundTruthFinding } from "./metrics.js";
+import { loadEvaluationFixture } from "./suite.js";
+
+export {
+  loadEvaluationFixture,
+  runScoredEvaluationSuite,
+} from "./suite.js";
+export type {
+  EvaluationSuiteInput,
+  ScoredEvaluationBundle,
+} from "./suite.js";
 
 export async function runEvaluation(options: {
   cwd: string;
@@ -13,7 +23,8 @@ export async function runEvaluation(options: {
   const suite = path.resolve(options.cwd, options.suite ?? "tests/fixtures/repos/node-express-vulnerable");
   const expectedPath = path.join(suite, "groundtruth.json");
   const expected = JSON.parse(await fs.readFile(expectedPath, "utf8")) as SimpleGroundTruthFinding[];
-  const scan = await runScan({ target: suite, mode: "offline" });
+  const fixture = await loadEvaluationFixture(suite);
+  const scan = await runScan({ target: fixture.projectRoot, mode: "offline" });
   const metrics = evaluateFindingsSimple(expected, scan.findings);
   const outDir = path.resolve(options.cwd, options.outputDirectory ?? ".hermsec/evaluation");
   await fs.mkdir(outDir, { recursive: true });

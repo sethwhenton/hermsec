@@ -45,7 +45,7 @@ function defaultSettings(): AppSettings {
       autoAcceptPermissions: false,
       terminalShell: "Auto (Default)",
       privacyMode: false,
-      scanMode: "deep-assisted",
+      scanMode: "scanner-only",
       thinkingLevel: "balanced",
       contextWindow: "standard",
     },
@@ -58,7 +58,7 @@ function defaultSettings(): AppSettings {
       frequency: "custom-days",
       intervalDays: 1,
       time: "09:00",
-      scanMode: "deep-assisted",
+      scanMode: "scanner-only",
     },
     providers: [defaultProvider(env)],
     scanners: defaultScannerSettings(),
@@ -297,16 +297,21 @@ function normalizeDefaultProjectDir(projectDir: string | undefined): string {
 
 function normalizeScanModeSetting(mode: string | undefined): HermsecProductScanAssistMode {
   if (mode === "single-agent" || mode === "single-agent-inspection") return "single-agent";
-  if (mode === "moa-assisted" || mode === "moa-inspection") return "moa-assisted";
+  if (mode === "moa-low") return "moa-low";
+  if (mode === "moa-high") return "moa-high";
+  if (mode === "moa-assisted" || mode === "moa-inspection") return "moa-low";
+  if (mode === "scanner-single") return "scanner-single";
+  if (mode === "scanner-moa-low") return "scanner-moa-low";
+  if (mode === "scanner-moa-high") return "scanner-moa-high";
   if (
     mode === "scanner-moa-assisted" ||
     mode === "scanner-moa" ||
+    mode === "scanner-moa-inspection" ||
     mode === "scanner-plus-moa" ||
     mode === "scanner+moa" ||
     mode === "hybrid"
-  ) return "scanner-moa-assisted";
-  if (mode === "deep-assisted") return "deep-assisted";
-  return "deep-assisted";
+  ) return "scanner-moa-low";
+  return "scanner-only";
 }
 
 function normalizeThinkingLevel(level: AppSettings["general"]["thinkingLevel"] | undefined): AppSettings["general"]["thinkingLevel"] {

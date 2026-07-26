@@ -13,17 +13,19 @@
     "build": "electron-vite build && node scripts/copy-report-templates.mjs",
     "prepare:cli-bundle": "node scripts/prepare-cli-bundle.mjs",
     "prepare:runtime-tools": "node scripts/prepare-runtime-tools.mjs",
-    "build:packaged": "npm run prepare:cli-bundle && npm run prepare:runtime-tools && npm run build",
+    "prepare:integrity-anchor": "node --experimental-strip-types scripts/prepare-bundled-integrity-anchor.mjs",
+    "build:packaged": "npm run prepare:cli-bundle && npm run prepare:runtime-tools && npm run prepare:integrity-anchor && npm run build",
     "preview": "electron-vite preview",
     "smoke:doctor": "node scripts/smoke-doctor.mjs",
     "smoke:dashboard": "node scripts/smoke-dashboard.mjs",
     "smoke:ui": "node scripts/smoke-ui.mjs",
     "smoke:scan-modes": "node scripts/smoke-scan-modes.mjs",
-    "dist:win": "npm run build:packaged && npx electron-builder --win nsis portable --x64 --publish never",
-    "dist:mac": "npm run build:packaged && npx electron-builder --mac dmg zip --publish never",
-    "dist:mac:x64": "npm run build:packaged && npx electron-builder --mac dmg zip --x64 --publish never",
-    "dist:mac:arm64": "npm run build:packaged && npx electron-builder --mac dmg zip --arm64 --publish never",
-    "dist:linux": "npm run build:packaged && npx electron-builder --linux AppImage --x64 --publish never",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "dist:win": "npm run build:packaged && electron-builder --win nsis portable --x64 --publish never",
+    "dist:mac": "npm run build:packaged && electron-builder --mac dmg zip --publish never",
+    "dist:mac:x64": "npm run build:packaged && electron-builder --mac dmg zip --x64 --publish never",
+    "dist:mac:arm64": "npm run build:packaged && electron-builder --mac dmg zip --arm64 --publish never",
+    "dist:linux": "npm run build:packaged && electron-builder --linux AppImage --x64 --publish never",
     "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",
     "setup:electron": "node node_modules/electron/install.js"
   },
@@ -42,6 +44,7 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.2.0",
     "electron": "^42.3.3",
+    "electron-builder": "26.15.7",
     "electron-vite": "^4.0.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.3",
@@ -50,6 +53,7 @@
   "build": {
     "appId": "com.hermsec.desktop",
     "productName": "Hermsec",
+    "asar": true,
     "directories": {
       "output": "release"
     },
@@ -63,6 +67,9 @@
         "to": "."
       }
     ],
+    "electronFuses": {
+      "enableNodeOptionsEnvironmentVariable": false
+    },
     "win": {
       "icon": "resources/icon.ico",
       "target": [

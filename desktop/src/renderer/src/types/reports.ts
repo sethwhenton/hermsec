@@ -50,6 +50,11 @@ export interface LatestReportResult {
   dashboardHtmlPath?: string;
   onepagerHtmlPath?: string;
   onepagerPdfPath?: string;
+  runId?: string;
+  assistMode?: import("./scan").HermsecProductScanAssistMode;
+  assistModeLabel?: string;
+  terminalStatus?: import("./scan").ScanTerminalStatus;
+  degradationReasons?: string[];
   generatedAt?: string;
   projectState?: import("./scan").ProjectStateFingerprint;
   error?: string;

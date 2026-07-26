@@ -173,6 +173,7 @@ export interface DashboardReport {
   scan: {
     id: string;
     scanId: string;
+    runId: string;
     project: string;
     projectName: string;
     targetPath: string;
@@ -194,6 +195,8 @@ export interface DashboardReport {
     gitCommit: string;
     dirty: boolean;
     dirtyWorkingTree: boolean;
+    terminalStatus: string;
+    degradationReasons: string[];
   };
   summary: {
     totalFindings: number;
@@ -397,6 +400,7 @@ export function buildDashboardReport(reportDir: string): DashboardReport {
     "not recorded";
   const dirty = Boolean(document.run?.git?.dirty ?? metadata?.dirtyWorkingTree ?? projectState?.gitDirty ?? false);
   const scanId = document.scanId ?? document.run?.id ?? metadata?.scanId ?? `scan-${Date.parse(reportGeneratedAt) || Date.now()}`;
+  const runId = metadata?.runId ?? document.run?.id ?? scanId;
   const scanMode = document.run?.mode ?? metadata?.mode ?? "online";
   const agentMode = normalizeAgentMode(agentModeInput, scanMode, sortedFindings);
   const assistMode = metadata?.assistMode ?? assist.mode;
@@ -406,6 +410,7 @@ export function buildDashboardReport(reportDir: string): DashboardReport {
     scan: {
       id: scanId,
       scanId,
+      runId,
       project,
       projectName: project,
       targetPath,
@@ -426,6 +431,8 @@ export function buildDashboardReport(reportDir: string): DashboardReport {
       gitCommit: commit,
       dirty,
       dirtyWorkingTree: dirty,
+      terminalStatus: metadata?.terminalStatus ?? "success",
+      degradationReasons: [...(metadata?.degradationReasons ?? [])],
       modeLabel: agentMode?.modeLabel ?? labelize(scanMode),
     },
     summary,
@@ -464,7 +471,7 @@ function readScanAssist(reportDir: string, metadata: LocalScanMetadata | null): 
     return { ...artifact, available: true };
   }
 
-  const mode = metadata?.assistMode && metadata.assistMode !== "scanner-model-summary" ? metadata.assistMode : "deep-assisted";
+  const mode = metadata?.assistMode ?? "scanner-only";
   const label = metadata?.assistModeLabel ?? assistModeFallbackLabel(mode);
   return {
     schemaVersion: "1.0",
@@ -485,10 +492,13 @@ function readScanAssist(reportDir: string, metadata: LocalScanMetadata | null): 
 }
 
 function assistModeFallbackLabel(mode: string): string {
+  if (mode === "scanner-only") return "Scanner only";
   if (mode === "single-agent") return "Single-agent inspection";
-  if (mode === "moa-assisted") return "MoA-assisted inspection";
-  if (mode === "scanner-moa-assisted") return "Scanner + MoA inspection";
-  return "Deep assisted scan";
+  if (mode === "moa-low") return "MoA Low inspection";
+  if (mode === "moa-high") return "MoA High inspection";
+  if (mode === "scanner-single") return "Scanner + Single inspection";
+  if (mode === "scanner-moa-low") return "Scanner + MoA Low inspection";
+  return "Scanner + MoA High inspection";
 }
 
 function readAgentModeMetadata(

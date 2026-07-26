@@ -1,12 +1,17 @@
+import type { HermsecVisibleScanAssistMode, ScanTerminalStatus } from "../renderer/src/types/scan";
+
 export const SCAN_METADATA_FILE = "scan-metadata.json";
 
 export interface LocalScanMetadata {
   projectPath: string;
   reportDir: string;
   scanId: string;
+  runId?: string;
   mode: "online";
-  assistMode?: "scanner-model-summary" | "deep-assisted" | "single-agent" | "moa-assisted" | "scanner-moa-assisted";
+  assistMode?: HermsecVisibleScanAssistMode;
   assistModeLabel?: string;
+  terminalStatus?: ScanTerminalStatus;
+  degradationReasons?: string[];
   startedAt: string;
   finishedAt: string;
   reportGeneratedAt: string;

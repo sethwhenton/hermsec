@@ -13,7 +13,7 @@ export const moduleSpecs = {
     modulePath: "../core/harness.js",
     exportName: "runScan",
     expectedShape:
-      "export async function runScan(options: { cwd: string; target: string; mode: 'auto' | 'offline' | 'online'; assistMode?: 'scanner-model-summary' | 'deep-assisted' | 'single-agent' | 'moa-assisted' | 'scanner-moa-assisted'; outputDirectory?: string; formats: ('json' | 'md' | 'html')[]; useModel: boolean }): Promise<CommandResult>",
+      "export async function runScan(options: { cwd: string; target: string; mode: 'auto' | 'offline' | 'online'; assistMode?: 'scanner-only' | 'single-agent' | 'moa-low' | 'moa-high' | 'scanner-single' | 'scanner-moa-low' | 'scanner-moa-high'; runId?: string; outputDirectory?: string; formats: ('json' | 'md' | 'html')[]; useModel: boolean }): Promise<CommandResult>",
     unavailableMessage: "The scanner harness is not available yet.",
     remediation: "Implement the core harness facade before running scans.",
   },

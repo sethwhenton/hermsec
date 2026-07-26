@@ -16,6 +16,7 @@ import type { ProviderConfig } from "../renderer/src/types/settings";
 import { redactPrivacyText, redactPrivacyValue } from "./privacy";
 import { dashboardBundle } from "./reportArtifacts";
 import { openReportLocation } from "./scan";
+import type { LocalScanMetadata } from "./scanMetadata";
 import { readSettings } from "./store";
 
 type Finding = {
@@ -269,6 +270,7 @@ function candidateToLatest(candidate: ReportCandidate, projectPath?: string): La
   const onepagerHtmlPath = path.join(reportDir, "onepager", "index.html");
   const onepagerPdfPath = path.join(reportDir, "onepager", "report.pdf");
   const projectState = readJson<LatestReportResult["projectState"]>(path.join(reportDir, "project-state.json"));
+  const metadata = readJson<LocalScanMetadata>(path.join(reportDir, "scan-metadata.json"));
   return {
     ok: true,
     projectPath: projectPath ?? candidate.projectPath,
@@ -277,6 +279,11 @@ function candidateToLatest(candidate: ReportCandidate, projectPath?: string): La
     ...(existsSync(dashboardHtmlPath) ? { dashboardHtmlPath } : {}),
     ...(existsSync(onepagerHtmlPath) ? { onepagerHtmlPath } : {}),
     ...(existsSync(onepagerPdfPath) ? { onepagerPdfPath } : {}),
+    ...(metadata?.runId ? { runId: metadata.runId } : {}),
+    ...(metadata?.assistMode ? { assistMode: metadata.assistMode } : {}),
+    ...(metadata?.assistModeLabel ? { assistModeLabel: metadata.assistModeLabel } : {}),
+    ...(metadata?.terminalStatus ? { terminalStatus: metadata.terminalStatus } : {}),
+    ...(metadata?.degradationReasons?.length ? { degradationReasons: metadata.degradationReasons } : {}),
     generatedAt: candidate.generatedAt,
     ...(projectState ? { projectState } : {}),
   };
@@ -541,10 +548,10 @@ async function callConversationModel({
         "- It inspects project folders, detects languages/manifests/lockfiles/config files, chooses matching scanner tools, runs defensive checks, validates evidence, and writes dashboard, JSON, Markdown, HTML, and PDF reports.",
         "- It includes Doctor readiness checks for scanner tools, model provider access, and internet sources.",
         "- It supports provider/model setup, live chat progress, report links, and in-app scan automations.",
-        "- Deep assisted scan runs scanners first, then uses the model to explain and prioritize scanner-backed findings.",
-        "- Single agent inspection uses one configured model with bounded read/search evidence and does not run scanner tools.",
-        "- MoA inspection means Mixture of Agents: specialist agents inspect focused candidates, then a false-positive judge and aggregator keep accepted evidence. It does not run scanner tools.",
-        "- Scanner + MoA inspection runs scanners and MoA independently, then validates, deduplicates, and merges both evidence sources.",
+        "- Scanner only runs deterministic scanners and does not require a model provider.",
+        "- Single agent uses one configured model with bounded read/search evidence and does not run scanner tools.",
+        "- MoA Low and MoA High use three or five specialists, a false-positive judge, and an aggregator without scanner tools.",
+        "- Scanner + Single, Scanner + MoA Low, and Scanner + MoA High run their detector paths independently, then validate, deduplicate, and merge evidence deterministically.",
         "- When asked what HermSec is, what it does, or how the modes work, explain this simply and directly.",
         "Return only the final answer shown to the user.",
         "Never reveal hidden reasoning, chain-of-thought, planning notes, internal checklists, or statements like 'The user is asking...' or 'I need to...'.",
@@ -791,10 +798,10 @@ function buildConversationalFallback(question: string, evidence: ConversationEvi
       "- Automations for recurring scans while HermSec is open.",
       "",
       "Scan modes:",
-      "- Deep assisted scan: scanners run first, then the model explains scanner-backed findings.",
-      "- Single agent inspection: one model inspects focused code candidates without scanner tools.",
-      "- MoA inspection: specialist agents, a false-positive judge, and an aggregator review focused candidates without scanner tools.",
-      "- Scanner + MoA inspection: scanners and MoA run independently, then HermSec validates, deduplicates, and merges both sources.",
+      "- Scanner only: deterministic scanner evidence without a model provider.",
+      "- Single agent: one model inspects focused code candidates without scanner tools.",
+      "- MoA Low / High: three or five specialists, a false-positive judge, and an aggregator inspect candidates without scanner tools.",
+      "- Scanner + Single / Scanner + MoA Low / High: independent scanner and agent paths, followed by deterministic evidence fusion.",
     ].join("\n");
   }
 

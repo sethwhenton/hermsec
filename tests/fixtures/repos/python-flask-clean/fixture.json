@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "2.0",
+  "id": "python-flask-clean",
+  "pairId": "medium-python-flask-security-pair",
+  "variant": "clean",
+  "language": "python",
+  "projectRoot": "project",
+  "evaluatorFiles": [
+    "groundtruth.yml",
+    "hermsec-fixture.json",
+    "truth.json"
+  ],
+  "entrypoints": [
+    "app.py"
+  ],
+  "sourceFiles": [
+    "app.py"
+  ],
+  "supportedVulnerabilityClasses": [
+    "sql-injection",
+    "command-injection",
+    "path-traversal",
+    "reflected-xss",
+    "weak-cryptography",
+    "hardcoded-secret"
+  ],
+  "expectedFindingCount": 0,
+  "pairedFixtureId": "python-flask-vulnerable",
+  "safety": {
+    "networkRequired": false,
+    "executionRequired": false,
+    "containsRealSecrets": false,
+    "executionPolicy": "never",
+    "networkPolicy": "deny"
+  }
+}

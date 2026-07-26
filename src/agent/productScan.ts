@@ -20,9 +20,12 @@ import type { ModelProviderAdapter, ModelRequest, ProviderConfig } from "../mode
 import type { ReportAgentModeMetadata, ReportFindingSourceLabel } from "../reports/schema.js";
 import { normalizeFinding } from "../scanners/normalization.js";
 import { stableId } from "../shared/text.js";
-import type { AgentFindingMetadata, Finding, FindingCategory, ScanAssistMode, ScannerStatus, Severity } from "../shared/types.js";
+import type { AgentFindingMetadata, Finding, FindingCategory, LegacyScanAssistMode, ScannerStatus, Severity } from "../shared/types.js";
 
-export type ProductAgentScanMode = Extract<ScanAssistMode, "single-agent" | "moa-assisted" | "scanner-moa-assisted">;
+export type ProductAgentScanMode = Extract<
+  LegacyScanAssistMode | "single-agent",
+  "single-agent" | "moa-assisted" | "scanner-moa-assisted"
+>;
 export type ProductAgentRoleId =
   | "single-agent-inspector"
   | "injection-and-execution"

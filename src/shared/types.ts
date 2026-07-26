@@ -9,15 +9,41 @@ export type FindingCategory =
 
 export type ScanMode = "auto" | "offline" | "online";
 
-export type ScanAssistMode = "deep-assisted" | "single-agent" | "moa-assisted" | "scanner-moa-assisted";
+export type ScanAssistMode =
+  | "scanner-only"
+  | "single-agent"
+  | "moa-low"
+  | "moa-high"
+  | "scanner-single"
+  | "scanner-moa-low"
+  | "scanner-moa-high";
 
-export type ScanAssistModeInput = ScanAssistMode | "scanner-model-summary";
+export type CanonicalScanAssistMode = ScanAssistMode;
+
+export type LegacyScanAssistMode =
+  | "deep-assisted"
+  | "moa-assisted"
+  | "scanner-moa-assisted"
+  | "scanner-model-summary"
+  | "single-agent-inspection"
+  | "moa-inspection"
+  | "scanner-moa-inspection"
+  | "scanner-moa";
+
+export type ScanAssistModeInput = ScanAssistMode | LegacyScanAssistMode;
 
 export type ScanProgressStage =
   | "repository"
   | "scanner"
   | "model"
   | "report"
+  | "profile"
+  | "agent"
+  | "tool"
+  | "judge"
+  | "aggregator"
+  | "fusion"
+  | "evaluation"
   | "candidate"
   | "task"
   | "revalidation"
@@ -28,7 +54,17 @@ export type ScanProgressStatus =
   | "running"
   | "completed"
   | "skipped"
-  | "failed";
+  | "failed"
+  | "canceled"
+  | "degraded";
+
+export type ScanTerminalStatus =
+  | "success"
+  | "partial"
+  | "degraded"
+  | "canceled"
+  | "failed"
+  | "unchanged";
 
 export type ScanProgressDetail = {
   id?: string;
@@ -40,16 +76,23 @@ export type ScanProgressDetail = {
 
 export type ScanProgressEvent = {
   schemaVersion: "1.0";
+  runId?: string;
   id: string;
   stage: ScanProgressStage;
   scannerId?: string;
+  componentId?: string;
+  roleId?: string;
+  round?: number;
+  toolName?: string;
   label: string;
   status: ScanProgressStatus;
   message: string;
   details?: ScanProgressDetail[];
   findingCount?: number;
+  resultCount?: number;
+  bytesRead?: number;
   durationMs?: number;
-  assistMode?: ScanAssistMode;
+  assistMode?: ScanAssistModeInput;
   timestamp: string;
 };
 
@@ -81,6 +124,11 @@ export type Finding = {
     startLine?: number;
     endLine?: number;
   };
+  sourceLocations?: Array<{
+    file: string;
+    startLine?: number;
+    endLine?: number;
+  }>;
   package?: {
     ecosystem: string;
     name: string;
@@ -91,7 +139,7 @@ export type Finding = {
 };
 
 export type AgentFindingMetadata = {
-  mode: ScanAssistMode;
+  mode: ScanAssistModeInput;
   source: "scanner-backed" | "single-agent" | "moa-specialist" | "moa-aggregator";
   provider: string;
   model?: string;
@@ -127,6 +175,9 @@ export type ScanSummary = {
 export type ScanRun = {
   schemaVersion: "1.0";
   id: string;
+  assistMode?: CanonicalScanAssistMode;
+  terminalStatus?: ScanTerminalStatus;
+  degradationReasons?: string[];
   target: string;
   mode: ScanMode;
   startedAt: string;

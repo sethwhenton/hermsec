@@ -27,6 +27,7 @@ export type VulnerabilityIntelligenceInput = {
   now?: string;
   fetchers?: IntelFetcher[];
   sources?: IntelSource[];
+  signal?: AbortSignal;
 };
 
 export type VulnerabilityIntelligenceResult = {
@@ -56,8 +57,10 @@ const ecosystemLabels: Record<string, string> = {
 export async function buildVulnerabilityIntelligence(
   input: VulnerabilityIntelligenceInput,
 ): Promise<VulnerabilityIntelligenceResult> {
+  throwIfAborted(input.signal);
   const capturedAt = input.now ?? new Date().toISOString();
   const inventory = await buildProjectInventory(input.target, input.workspaceId, input.findings, capturedAt);
+  throwIfAborted(input.signal);
 
   if (input.mode === "offline" && inventory.previousFindingIds.length === 0 && inventory.packages.length === 0) {
     return {
@@ -75,7 +78,9 @@ export async function buildVulnerabilityIntelligence(
     inventory,
     ...(input.fetchers ? { fetchers: input.fetchers } : {}),
     ...(input.sources ? { sources: input.sources } : {}),
+    ...(input.signal ? { signal: input.signal } : {}),
   });
+  throwIfAborted(input.signal);
   const relevance = mergeRelevance([
     ...matchIntelToWorkspace(summary.items, inventory),
     ...matchIntelToFindings(summary.items, input.findings, input.workspaceId),
@@ -106,6 +111,14 @@ export async function buildVulnerabilityIntelligence(
     status,
     message,
   };
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) {
+    throw signal.reason instanceof Error
+      ? signal.reason
+      : new DOMException("Operation was aborted.", "AbortError");
+  }
 }
 
 export async function buildProjectInventory(

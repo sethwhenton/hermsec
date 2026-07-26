@@ -3,7 +3,7 @@ import { Clock, LayoutDashboard } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { requireHermsecApi } from "@/lib/ipc";
-import { normalizeScanAssistMode, scanModeLabel, scanModeOptions } from "@/lib/scanModes";
+import { normalizeScanAssistMode, scanModeLabel, scanModeOptions, scanModeRequiresModel } from "@/lib/scanModes";
 import { useReportStore } from "@/store/reportStore";
 import { useSessionStore } from "@/store/sessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
@@ -376,7 +376,7 @@ export function ChatView() {
 
     const assistMode = normalizeScanAssistMode(assistModeInput ?? currentSettings?.general.scanMode);
     const label = scanModeLabel(assistMode);
-    if (!hasUsableModel(currentSettings)) {
+    if (scanModeRequiresModel(assistMode) && !hasUsableModel(currentSettings)) {
       await pushMessage("assistant", modelSetupRequiredMessage(label));
       return;
     }
@@ -390,7 +390,7 @@ export function ChatView() {
         reportDir: currentSettings?.defaultReportDir,
         mode: "online",
         assistMode,
-        useModel: true,
+        useModel: scanModeRequiresModel(assistMode),
       });
       if (!isActionCurrent(actionId)) return;
 
@@ -972,10 +972,11 @@ function buildHermsecAboutAnswer(projectPath?: string): string {
     "- Automations: can schedule recurring scans while HermSec is open.",
     "",
     "Scan modes:",
-    "- Deep assisted scan: scanners run first, then the model explains and prioritizes scanner-backed findings.",
-    "- Single agent inspection: one model inspects focused code candidates without scanner tools.",
-    "- MoA inspection: Mixture of Agents. Specialist agents review focused code candidates, then a false-positive judge and aggregator keep accepted evidence.",
-    "- Scanner + MoA inspection: scanners and MoA run independently, then HermSec validates, deduplicates, and merges both evidence sources.",
+      "- Scanner only: deterministic scanner evidence with no model provider required.",
+      "- Single agent: one bounded read-only agent without scanner tools.",
+      "- MoA Low / High: three or five specialist agents with a judge and aggregator, without scanner tools.",
+      "- Scanner + Single: scanners and one agent run independently, then Hermsec deterministically fuses their evidence.",
+      "- Scanner + MoA Low / High: scanners and three or five specialists run independently, then evidence is judged and fused.",
     "",
     projectPath
       ? `Current project: ${projectPath}`
@@ -1162,12 +1163,16 @@ function parseAutomationRequest(text: string): Partial<ParsedAutomation> {
 }
 
 function parseScanModeText(lower: string): HermsecProductScanAssistMode | undefined {
-  if (/\b(scanner|scan|scanners)\s*(\+|plus|and|with)?\s*(moa|mixture\s+of\s+agents|multi[-\s]?agent)\b/.test(lower) || /\b(hybrid|scanner[-\s]?moa|scanner\+moa)\b/.test(lower)) {
-    return "scanner-moa-assisted";
+  const scannerMoa = /\b(scanner|scan|scanners)\s*(\+|plus|and|with)?\s*(moa|mixture\s+of\s+agents|multi[-\s]?agent)\b/.test(lower) || /\b(hybrid|scanner[-\s]?moa|scanner\+moa)\b/.test(lower);
+  const high = /\b(high|five|5)\b/.test(lower);
+  const low = /\b(low|three|3)\b/.test(lower);
+  if (scannerMoa) return high ? "scanner-moa-high" : "scanner-moa-low";
+  if (/\b(scanner|scan|scanners)\s*(\+|plus|and|with)?\s*(single|one\s+agent)\b/.test(lower) || /\b(scanner[-\s]?single|scanner\+single)\b/.test(lower)) {
+    return "scanner-single";
   }
-  if (/\b(moa|mixture\s+of\s+agents|multi[-\s]?agent)\b/.test(lower)) return "moa-assisted";
+  if (/\b(moa|mixture\s+of\s+agents|multi[-\s]?agent)\b/.test(lower)) return high ? "moa-high" : low ? "moa-low" : "moa-low";
   if (/\b(single[-\s]?agent|one\s+agent)\b/.test(lower)) return "single-agent";
-  if (/\b(deep[-\s]?assisted|deep\s+scan|deep)\b/.test(lower)) return "deep-assisted";
+  if (/\b(scanner[-\s]?only|scan[-\s]?only|no\s+model)\b/.test(lower)) return "scanner-only";
   return undefined;
 }
 
