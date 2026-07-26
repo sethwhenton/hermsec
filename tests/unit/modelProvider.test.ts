@@ -4,6 +4,11 @@ import { anthropicProvider } from "../../src/model/anthropic.js";
 import { credentialFingerprint } from "../../src/model/credentials.js";
 import { geminiProvider } from "../../src/model/gemini.js";
 import { createOpenAiCompatibleProvider } from "../../src/model/openaiCompatible.js";
+import {
+  ModelProviderRequestError,
+  type OpenRouterMaxPrice,
+  type ProviderConfig,
+} from "../../src/model/provider.js";
 
 test("provider health verifies env credentials without exposing the key", async () => {
   const envName = "HERMSEC_TEST_PROVIDER_KEY";
@@ -280,6 +285,49 @@ test("OpenAI-compatible JSON completion makes one HTTP request and fails a blank
   }
 });
 
+test("OpenRouter classifies a blank generation as provider unavailable", async () => {
+  const previousFetch = globalThis.fetch;
+  try {
+    const provider = createOpenAiCompatibleProvider({
+      id: "openrouter",
+      baseUrl: "https://openrouter.example/api/v1",
+      models: ["requested/model"],
+      local: true,
+    });
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          model: "requested/model",
+          choices: [{ message: { content: null } }],
+          usage: {
+            prompt_tokens: 10,
+            completion_tokens: 0,
+            total_tokens: 10,
+          },
+        }),
+        { status: 200 },
+      )) as typeof fetch;
+
+    await assert.rejects(
+      () =>
+        provider.complete({
+          messages: [{ role: "user", content: "return json" }],
+          model: "requested/model",
+          responseFormat: "json",
+        }),
+      (error: unknown) => {
+        assert.ok(error instanceof ModelProviderRequestError);
+        assert.equal(error.provider, "openrouter");
+        assert.equal(error.errorType, "provider_unavailable");
+        assert.match(error.message, /returned no message content/i);
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
 test("OpenRouter tool requests send bounded routing controls and retain authoritative metadata", async () => {
   const previousFetch = globalThis.fetch;
   try {
@@ -302,9 +350,14 @@ test("OpenRouter tool requests send bounded routing controls and retain authorit
       };
       assert.deepEqual(body.provider, {
         require_parameters: true,
-        allow_fallbacks: false,
+        allow_fallbacks: true,
         data_collection: "deny",
       });
+      assert.equal(
+        Object.hasOwn(body, "models"),
+        false,
+        "provider endpoint failover must not introduce model-family fallbacks",
+      );
       assert.equal(
         Object.hasOwn(body, "parallel_tool_calls"),
         false,
@@ -396,6 +449,371 @@ test("OpenRouter tool requests send bounded routing controls and retain authorit
   }
 });
 
+test("OpenRouter exact requests preserve explicit endpoint-fallback policy and otherwise default it on", async () => {
+  const previousFetch = globalThis.fetch;
+  try {
+    const provider = createOpenAiCompatibleProvider({
+      id: "openrouter",
+      baseUrl: "https://openrouter.example/api/v1",
+      models: ["requested/model"],
+      local: true,
+    });
+    const observedFallbackPolicies: boolean[] = [];
+    const observedMaxPrices: Array<OpenRouterMaxPrice | undefined> = [];
+    globalThis.fetch = (async (_input, init) => {
+      const body = JSON.parse(String(init?.body)) as {
+        models?: unknown;
+        provider?: {
+          allow_fallbacks?: boolean;
+          max_price?: OpenRouterMaxPrice;
+        };
+      };
+      assert.equal(
+        Object.hasOwn(body, "models"),
+        false,
+        "endpoint fallback must never introduce a model-family fallback list",
+      );
+      assert.equal(typeof body.provider?.allow_fallbacks, "boolean");
+      observedFallbackPolicies.push(body.provider?.allow_fallbacks as boolean);
+      observedMaxPrices.push(body.provider?.max_price);
+      return new Response(JSON.stringify({
+        model: "requested/model",
+        provider: "Route Provider",
+        choices: [{ message: { content: "accepted" } }],
+        openrouter_metadata: {
+          requested: "requested/model",
+          endpoints: {
+            available: [{
+              provider: "Route Provider",
+              model: "requested/model",
+              selected: true,
+            }],
+          },
+        },
+      }), { status: 200 });
+    }) as typeof fetch;
+
+    await provider.complete({
+      messages: [{ role: "user", content: "use the configured route" }],
+      requireExactModel: true,
+    }, {
+      openRouter: {
+        allowFallbacks: false,
+        maxPrice: {
+          prompt: "0.0938",
+          completion: "0.1876",
+          request: "0",
+        },
+      },
+    });
+    await provider.complete({
+      messages: [{ role: "user", content: "use the default route policy" }],
+      requireExactModel: true,
+    });
+
+    assert.deepEqual(observedFallbackPolicies, [false, true]);
+    assert.deepEqual(observedMaxPrices, [
+      {
+        prompt: "0.0938",
+        completion: "0.1876",
+        request: "0",
+      },
+      undefined,
+    ]);
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("OpenRouter rejects malformed max-price ceilings before network dispatch", async () => {
+  const previousFetch = globalThis.fetch;
+  let fetchCalls = 0;
+  try {
+    const provider = createOpenAiCompatibleProvider({
+      id: "openrouter",
+      baseUrl: "https://openrouter.example/api/v1",
+      models: ["requested/model"],
+      local: true,
+    });
+    globalThis.fetch = (async () => {
+      fetchCalls += 1;
+      throw new Error("network must not be called");
+    }) as typeof fetch;
+    const invalidMaxPrices: unknown[] = [
+      {},
+      { prompt: "-1" },
+      { prompt: "NaN" },
+      { prompt: "1e-3" },
+      { prompt: 0.1 },
+      { prompt: "0.1", currency: "USD" },
+    ];
+
+    for (const candidate of invalidMaxPrices) {
+      await assert.rejects(
+        () =>
+          provider.complete(
+            {
+              messages: [{ role: "user", content: "inspect" }],
+              requireExactModel: true,
+            },
+            {
+              openRouter: {
+                maxPrice:
+                  candidate as NonNullable<
+                    NonNullable<
+                      ProviderConfig["openRouter"]
+                    >["maxPrice"]
+                  >,
+              },
+            },
+          ),
+        /max price/iu,
+      );
+    }
+    assert.equal(fetchCalls, 0);
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("OpenRouter transport timeouts become typed timeout failures", async () => {
+  const previousFetch = globalThis.fetch;
+  try {
+    const provider = createOpenAiCompatibleProvider({
+      id: "openrouter",
+      baseUrl: "https://openrouter.example/api/v1",
+      models: ["requested/model"],
+      local: true,
+    });
+    globalThis.fetch = ((_input, init) =>
+      new Promise<Response>((_resolve, reject) => {
+        const signal = init?.signal;
+        assert.ok(signal);
+        const rejectWithReason = () => {
+          reject(
+            signal.reason ??
+              new DOMException("The operation timed out.", "TimeoutError"),
+          );
+        };
+        if (signal.aborted) {
+          rejectWithReason();
+        } else {
+          signal.addEventListener("abort", rejectWithReason, {
+            once: true,
+          });
+        }
+      })) as typeof fetch;
+
+    await assert.rejects(
+      () =>
+        provider.complete(
+          {
+            messages: [{ role: "user", content: "inspect" }],
+          },
+          { timeoutMs: 5 },
+        ),
+      (error: unknown) => {
+        assert.ok(error instanceof ModelProviderRequestError);
+        assert.equal(error.status, undefined);
+        assert.equal(error.errorType, "timeout");
+        assert.equal(error.providerCode, undefined);
+        assert.match(error.message, /provider request timed out/u);
+        assert.doesNotMatch(error.message, /abort/iu);
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("OpenRouter errors retain typed diagnostics without echoing moderation input", async () => {
+  const previousFetch = globalThis.fetch;
+  const flaggedInput = "sensitive-provider-input-that-must-not-be-logged";
+  try {
+    const provider = createOpenAiCompatibleProvider({
+      id: "openrouter",
+      baseUrl: "https://openrouter.example/api/v1",
+      models: ["requested/model"],
+      local: true,
+    });
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          error: {
+            code: 429,
+            message: "Rate limit exceeded",
+            metadata: {
+              error_type: "rate_limit_exceeded",
+              provider_code: "rate_limited",
+              flagged_input: flaggedInput,
+            },
+          },
+        }),
+        { status: 429 },
+      )) as typeof fetch;
+
+    await assert.rejects(
+      () =>
+        provider.complete({
+          messages: [{ role: "user", content: "inspect" }],
+        }),
+      (error: unknown) => {
+        assert.ok(error instanceof ModelProviderRequestError);
+        assert.equal(error.provider, "openrouter");
+        assert.equal(error.status, 429);
+        assert.equal(error.errorType, "rate_limit_exceeded");
+        assert.equal(error.providerCode, "rate_limited");
+        const message =
+          error instanceof Error ? error.message : String(error);
+        assert.match(message, /error_type=rate_limit_exceeded/u);
+        assert.match(message, /provider_code=rate_limited/u);
+        assert.equal(message.includes(flaggedInput), false);
+        assert.equal(message.includes("flagged_input"), false);
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("OpenRouter normalizes safe error tokens and drops secret-shaped metadata", async () => {
+  const previousFetch = globalThis.fetch;
+  const secretShapedProviderCode = "sk-or-v1-abcdefghijklmnop";
+  try {
+    const provider = createOpenAiCompatibleProvider({
+      id: "openrouter",
+      baseUrl: "https://openrouter.example/api/v1",
+      models: ["requested/model"],
+      local: true,
+    });
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          error: {
+            code: 403,
+            message: "Request refused.",
+            metadata: {
+              error_type: "REFUSAL",
+              provider_code: secretShapedProviderCode,
+            },
+          },
+        }),
+        { status: 403 },
+      )) as typeof fetch;
+
+    await assert.rejects(
+      () =>
+        provider.complete({
+          messages: [{ role: "user", content: "inspect" }],
+        }),
+      (error: unknown) => {
+        assert.ok(error instanceof ModelProviderRequestError);
+        assert.equal(error.status, 403);
+        assert.equal(error.errorType, "refusal");
+        assert.equal(error.providerCode, undefined);
+        assert.equal(error.message.includes(secretShapedProviderCode), false);
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("OpenRouter structured errors without a message never echo raw metadata", async () => {
+  const previousFetch = globalThis.fetch;
+  const flaggedInput = "sensitive-missing-message-input-that-must-not-leak";
+  try {
+    const provider = createOpenAiCompatibleProvider({
+      id: "openrouter",
+      baseUrl: "https://openrouter.example/api/v1",
+      models: ["requested/model"],
+      local: true,
+    });
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          error: {
+            code: 400,
+            metadata: {
+              error_type: "content_policy_violation",
+              flagged_input: flaggedInput,
+            },
+          },
+        }),
+        { status: 400 },
+      )) as typeof fetch;
+
+    await assert.rejects(
+      () =>
+        provider.complete({
+          messages: [{ role: "user", content: "inspect" }],
+        }),
+      (error: unknown) => {
+        const message =
+          error instanceof Error ? error.message : String(error);
+        assert.match(message, /error_type=content_policy_violation/u);
+        assert.match(message, /Provider returned an error/u);
+        assert.equal(message.includes(flaggedInput), false);
+        assert.equal(message.includes("flagged_input"), false);
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("OpenRouter surfaces typed errors embedded in a successful HTTP response", async () => {
+  const previousFetch = globalThis.fetch;
+  try {
+    const provider = createOpenAiCompatibleProvider({
+      id: "openrouter",
+      baseUrl: "https://openrouter.example/api/v1",
+      models: ["requested/model"],
+      local: true,
+    });
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          model: "requested/model",
+          choices: [
+            {
+              finish_reason: "error",
+              message: { content: null },
+              error: {
+                code: 503,
+                message: "The selected provider is overloaded.",
+                metadata: {
+                  error_type: "provider_overloaded",
+                },
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      )) as typeof fetch;
+
+    await assert.rejects(
+      () =>
+        provider.complete({
+          messages: [{ role: "user", content: "inspect" }],
+        }),
+      (error: unknown) => {
+        assert.ok(error instanceof ModelProviderRequestError);
+        assert.equal(error.status, 503);
+        assert.equal(error.errorType, "provider_overloaded");
+        assert.match(error.message, /error_type=provider_overloaded/u);
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
 test("OpenRouter scored and exact requests fail closed on model substitution", async () => {
   const previousFetch = globalThis.fetch;
   try {
@@ -415,7 +833,7 @@ test("OpenRouter scored and exact requests fail closed on model substitution", a
       };
       assert.deepEqual(body.provider, {
         require_parameters: true,
-        allow_fallbacks: false,
+        allow_fallbacks: true,
         data_collection: "deny",
       });
       return new Response(JSON.stringify({
@@ -622,10 +1040,44 @@ test("provider transport failures redact URL and environment credentials", async
     await assert.rejects(
       () => provider.complete({ messages: [{ role: "user", content: "hello" }] }),
       (error: unknown) => {
+        assert.ok(error instanceof ModelProviderRequestError);
+        assert.equal(error.errorType, "transport_error");
         const message = error instanceof Error ? error.message : String(error);
         assert.equal(message.includes(urlSecret), false);
         assert.equal(message.includes(envSecret), false);
         assert.match(message, /\[REDACTED\]/u);
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test("provider invalid JSON failures retain a safe typed response classification", async () => {
+  const previousFetch = globalThis.fetch;
+  try {
+    const provider = createOpenAiCompatibleProvider({
+      id: "openrouter",
+      baseUrl: "https://openrouter.example/api/v1",
+      models: ["requested/model"],
+      local: true,
+    });
+    globalThis.fetch = (async () =>
+      new Response("{not-valid-json", { status: 200 })) as typeof fetch;
+
+    await assert.rejects(
+      () =>
+        provider.complete({
+          messages: [{ role: "user", content: "inspect" }],
+        }),
+      (error: unknown) => {
+        assert.ok(error instanceof ModelProviderRequestError);
+        assert.equal(error.provider, "openrouter");
+        assert.equal(error.status, undefined);
+        assert.equal(error.errorType, "invalid_response");
+        assert.equal(error.providerCode, undefined);
+        assert.match(error.message, /invalid json/iu);
         return true;
       },
     );

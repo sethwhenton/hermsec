@@ -17,7 +17,7 @@ test("offline pricing verifier reproduces committed catalog digest", async () =>
   assert.equal(output.networkRequests, 0);
   assert.equal(
     output.digest,
-    "2040f28e700ceab376c9f261b798bbabe18d101fa7d82b696b39ee0fbd5928e7",
+    "6f8d00241ac08042056be6181027d1b6b40ce0a9eee0467912de2f370ad3b49d",
   );
 });
 

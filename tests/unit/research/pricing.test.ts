@@ -126,7 +126,7 @@ test("committed pricing snapshot has exact reviewed values and no placeholder", 
   assert.match(snapshot.catalogDigestSha256, /^[a-f0-9]{64}$/);
   assert.equal(
     catalog.catalogDigestSha256,
-    "2040f28e700ceab376c9f261b798bbabe18d101fa7d82b696b39ee0fbd5928e7",
+    "6f8d00241ac08042056be6181027d1b6b40ce0a9eee0467912de2f370ad3b49d",
   );
   assert.deepEqual(
     snapshot.prices.map((price) => [
@@ -137,7 +137,7 @@ test("committed pricing snapshot has exact reviewed values and no placeholder", 
       price.supportedParameters.includes("tools"),
     ]),
     [
-      ["deepseek/deepseek-v4-flash", 0.0938, 0.1876, 1048576, true],
+      ["deepseek/deepseek-v4-flash", 0.14, 0.28, 1048576, true],
       ["xiaomi/mimo-v2.5", 0.14, 0.28, 1050000, true],
       ["minimax/minimax-m3", 0.3, 1.2, 1048576, true],
     ],

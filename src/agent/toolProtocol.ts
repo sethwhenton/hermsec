@@ -30,6 +30,7 @@ export type AgentToolTrace = {
   durationMs: number;
   redactionMarkers: string[];
   truncated: boolean;
+  qualifiesFinalEvidence: boolean;
   errorCode?: string;
 };
 
@@ -43,6 +44,7 @@ export type InspectionEvidence = {
   bytes: number;
   redactionMarkers: string[];
   truncated: boolean;
+  qualifiesFinalEvidence: boolean;
 };
 
 export type ToolLoopLimits = {
@@ -128,6 +130,7 @@ export function prepareEvidence(input: {
   output: unknown;
   maxBytes: number;
   redactionMarkers?: readonly string[];
+  qualifiesFinalEvidence?: boolean;
 }): PreparedEvidence {
   const redacted = redactForModel(input.output);
   const redactionMarkers = [...new Set([
@@ -151,6 +154,13 @@ export function prepareEvidence(input: {
     bytes: prepared.bytes,
     redactionMarkers,
     truncated: prepared.truncated,
+    qualifiesFinalEvidence:
+      input.qualifiesFinalEvidence === true
+      && prepared.bytes > 0
+      && (
+        input.toolName !== "inspect_project"
+        || prepared.truncated === false
+      ),
   };
   return {
     evidence,
@@ -166,6 +176,7 @@ export function frameUntrustedToolResult(evidence: InspectionEvidence): string {
       evidenceId: evidence.id,
       tool: evidence.toolName,
       truncated: evidence.truncated,
+      qualifiesFinalEvidence: evidence.qualifiesFinalEvidence,
       data: evidence.output,
     }),
     "HERMSEC_UNTRUSTED_REPOSITORY_DATA_END",

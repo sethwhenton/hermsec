@@ -204,6 +204,7 @@ const confidenceValues = new Set(["low", "medium", "high"] as const);
 const STRUCTURED_ROLE_TIMEOUT_MS = 90_000;
 const STRUCTURED_ROLE_MAX_REQUEST_BYTES = 192_000;
 const STRUCTURED_ROLE_MAX_TOTAL_TOKENS = 256_000;
+const INSPECTION_RESPONSE_MAX_TOKENS = 4_000;
 const candidateSchema = JSON.stringify({
   findings: [{
     candidateId: "string",
@@ -381,7 +382,7 @@ async function runMoaDetector(context: {
       ...context,
       role: role.id,
       label: role.label,
-      objective: role.focus,
+      objective: moaInspectionObjective(role),
       categories: [...role.categories],
       limits: boundedLimits(DEFAULT_SPECIALIST_TOOL_LIMITS, context.input.limits?.specialist),
       gapFill: false,
@@ -406,7 +407,7 @@ async function runMoaDetector(context: {
       ...context,
       role: role.id,
       label: `${role.label} gap-fill`,
-      objective: `${role.focus} Perform exactly one additional bounded coverage pass for the assigned security categories.`,
+      objective: `${moaInspectionObjective(role)} Perform exactly one additional bounded coverage pass for the assigned security categories.`,
       categories: [...recommendation.categories],
       gapFiles: recommendation.files,
       limits: gapFillLimits(context.input.limits?.specialist),
@@ -670,6 +671,7 @@ async function runInspectionRole(context: {
     limits: context.limits,
     finalInstruction: candidateFinalInstruction(),
     repairInstruction: candidateRepairInstruction,
+    requireEvidenceBeforeFinal: true,
     ...(context.input.signal ? { signal: context.input.signal } : {}),
     onTrace: async (trace) => {
       await context.reporter.emit({
@@ -833,13 +835,27 @@ async function aggregateCandidates(context: {
   if (context.candidates.length === 0) {
     return { providerFailed: false, canceled: false, provider: "none", model: "none", output: { groups: [] } };
   }
+  const eligibleCandidateIds = new Set(
+    context.judgments
+      .filter((judgment) => judgment.verdict !== "rejected")
+      .map((judgment) => judgment.candidateId),
+  );
+  const eligibleCandidates = context.candidates.filter((candidate) =>
+    eligibleCandidateIds.has(candidate.candidateId)
+  );
+  const eligibleJudgments = context.judgments.filter((judgment) =>
+    eligibleCandidateIds.has(judgment.candidateId)
+  );
   await context.reporter.emit({ phase: "aggregator", status: "started", role: "moa-aggregator", message: "MoA aggregator is grouping known eligible candidate IDs." });
   const response = await completeStructuredRole({
     input: context.input,
     profile: context.profile,
     role: "moa-aggregator",
     gapFill: false,
-    request: aggregatorRequest(context.candidates, context.judgments),
+    request: aggregatorRequest(
+      eligibleCandidates,
+      eligibleJudgments,
+    ),
     budget: context.budget,
   });
   await context.reporter.emit({
@@ -1029,8 +1045,16 @@ function inspectionRequest(
     ],
     ...(model ? { model } : {}),
     responseFormat: "json",
-    maxTokens: 2_000,
+    maxTokens: INSPECTION_RESPONSE_MAX_TOKENS,
   };
+}
+
+function moaInspectionObjective(role: MoaRoleDefinition): string {
+  return [
+    role.focus,
+    `Prioritize these searches: ${role.searchObjectives.join("; ")}.`,
+    `Treat these path fragments only as leads, never as evidence: ${role.pathHints.join(", ")}.`,
+  ].join(" ");
 }
 
 function judgeRequest(candidates: readonly CanonicalCandidate[]): ModelRequest {
@@ -1532,9 +1556,8 @@ function gapFillLimits(requested: Partial<ToolLoopLimits> | undefined): ToolLoop
   const specialist = boundedLimits(DEFAULT_SPECIALIST_TOOL_LIMITS, requested);
   return {
     ...specialist,
-    // One gap-fill tool turn plus its required final structured response.
-    maxRounds: 2,
-    maxFinalRepairs: 0,
+    // Two bounded tool turns plus the required final structured response.
+    maxRounds: 3,
     maxToolCalls: Math.min(specialist.maxToolCalls, 2),
     maxCallsPerRound: 1,
   };

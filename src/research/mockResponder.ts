@@ -1,3 +1,4 @@
+import type { InspectionToolName } from "../agent/toolProtocol.js";
 import type {
   ModelMessage,
   ModelRequest,
@@ -28,7 +29,7 @@ type MockFindingDefinition = {
 };
 
 type MockToolStep = {
-  name: "list_files" | "search_code";
+  name: InspectionToolName;
   arguments: Record<string, unknown>;
 };
 
@@ -84,7 +85,7 @@ export function createDeterministicResearchMockResponder(): (
     const evidence = extractToolEvidence(request.messages);
     const gapFill = isGapFillRequest(request);
     const sequence: readonly MockToolStep[] = gapFill
-      ? [{ name: "list_files", arguments: { limit: 500 } }]
+      ? gapFillSequence(request)
       : sequenceForRole(system);
     const maxCallsThisRound = gapFill ? 1 : 2;
     const toolAccessOpen =
@@ -120,6 +121,59 @@ export function createDeterministicResearchMockResponder(): (
       ),
     );
   };
+}
+
+function gapFillSequence(
+  request: ModelRequest,
+): readonly MockToolStep[] {
+  const steps = recommendedCoveragePaths(request)
+    .slice(0, 2)
+    .map((recommendedPath): MockToolStep => ({
+      name: "read_file_snippet",
+      arguments: {
+        path: recommendedPath,
+        startLine: 1,
+        endLine: 160,
+        maxChars: 6_000,
+      },
+    }));
+  while (steps.length < 2) {
+    steps.push({
+      name: "read_dependency_inventory",
+      arguments: { limit: 8, maxCharsPerManifest: 2_500 },
+    });
+  }
+  return steps;
+}
+
+function recommendedCoveragePaths(
+  request: ModelRequest,
+): string[] {
+  for (const message of request.messages) {
+    for (const line of message.content.split(/\r?\n/u)) {
+      if (!line.includes("recommendedCoverageFiles")) {
+        continue;
+      }
+      try {
+        const value = JSON.parse(line) as unknown;
+        if (
+          isRecord(value)
+          && Array.isArray(value.recommendedCoverageFiles)
+        ) {
+          const paths = value.recommendedCoverageFiles.filter(
+            (item): item is string =>
+              typeof item === "string" && item.length > 0,
+          );
+          if (paths.length > 0) {
+            return paths;
+          }
+        }
+      } catch {
+        // The deterministic fallback remains dependency inventory.
+      }
+    }
+  }
+  return [];
 }
 
 function isGapFillRequest(request: ModelRequest): boolean {

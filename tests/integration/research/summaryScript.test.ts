@@ -5,6 +5,17 @@ import os from "node:os";
 import path from "node:path";
 import test, { type TestContext } from "node:test";
 import { CostLedger } from "../../../src/agent/costTracker.js";
+import type {
+  ModelProviderAdapter,
+  ModelResponse,
+} from "../../../src/model/provider.js";
+import {
+  createDeterministicResearchMockResponder,
+} from "../../../src/research/mockResponder.js";
+import {
+  RESEARCH_EXACT_MODEL_ALLOWLIST,
+  runResearchExperiment,
+} from "../../../src/research/experimentRunner.js";
 import {
   createRunManifest,
   createSuiteIndex,
@@ -18,6 +29,10 @@ import {
   prettyCanonicalJson,
   sha256,
 } from "../../../src/research/integrity.js";
+import {
+  OPENROUTER_MODELS_CATALOG_URL,
+  sealPricingSnapshot,
+} from "../../../src/research/pricing.js";
 import { projectFindings } from "../../../src/eval/findingProjection.js";
 import { matchFindings } from "../../../src/eval/matcher.js";
 import {
@@ -28,7 +43,10 @@ import {
   computeGroupedMetricSummary,
   computeVulnerabilityClassMetrics,
 } from "../../../src/eval/categoryScoring.js";
-import type { Finding } from "../../../src/shared/types.js";
+import type {
+  Finding,
+  ScanRun,
+} from "../../../src/shared/types.js";
 import type { GroundTruthFinding } from "../../../src/eval/schema.js";
 
 const MODES = [
@@ -134,19 +152,19 @@ const DEFAULT_LIVE_CALLS: Readonly<
     },
     {
       role: "identity-and-request-security",
-      model: MIMO,
+      model: DEEPSEEK_FLASH,
       costNanoUsd: 8_000_000,
       tokens: 80,
     },
     {
       role: "sensitive-data-and-cryptography",
-      model: MIMO,
+      model: DEEPSEEK_FLASH,
       costNanoUsd: 8_000_000,
       tokens: 80,
     },
     {
       role: "moa-judge",
-      model: DEEPSEEK_FLASH,
+      model: MIMO,
       costNanoUsd: 5_000_000,
       tokens: 50,
     },
@@ -166,13 +184,13 @@ const DEFAULT_LIVE_CALLS: Readonly<
     },
     {
       role: "identity-and-request-security",
-      model: MIMO,
+      model: DEEPSEEK_FLASH,
       costNanoUsd: 10_000_000,
       tokens: 100,
     },
     {
       role: "sensitive-data-and-cryptography",
-      model: MIMO,
+      model: DEEPSEEK_FLASH,
       costNanoUsd: 10_000_000,
       tokens: 100,
     },
@@ -184,13 +202,13 @@ const DEFAULT_LIVE_CALLS: Readonly<
     },
     {
       role: "platform-storage-and-deployment",
-      model: MIMO,
+      model: DEEPSEEK_FLASH,
       costNanoUsd: 10_000_000,
       tokens: 100,
     },
     {
       role: "moa-judge",
-      model: DEEPSEEK_FLASH,
+      model: MIMO,
       costNanoUsd: 5_000_000,
       tokens: 50,
     },
@@ -357,6 +375,347 @@ test("rejects a tampered raw artifact bound by the suite index", async (t) => {
   assert.equal(result.code, 1);
   assert.match(result.stderr, /result\.json (?:byte count|artifact hash)/u);
   await assert.rejects(fs.access(output));
+});
+
+test("standalone summarizer accepts a sealed scanner-triggered live fail-fast suite", async (t) => {
+  const root = await temporaryRoot(
+    t,
+    "hermsec-summary-live-fail-fast-",
+  );
+  const suite = path.join(root, "suite");
+  const output = path.join(root, "summary");
+  let providerDispatches = 0;
+  const provider: ModelProviderAdapter = {
+    id: "openrouter",
+    capabilities: {
+      tools: true,
+      jsonResponse: true,
+      externalAbort: true,
+      streaming: false,
+    },
+    async listModels() {
+      throw new Error("fail-fast suite listed live models");
+    },
+    async healthCheck() {
+      throw new Error("fail-fast suite checked live provider health");
+    },
+    async complete() {
+      providerDispatches += 1;
+      throw new Error("fail-fast suite dispatched a live model");
+    },
+  };
+  const experiment = await runResearchExperiment({
+    suiteId: "summary-live-fail-fast-suite",
+    suiteDirectory: suite,
+    fixtures: [
+      {
+        fixtureRoot: path.resolve(
+          "tests/fixtures/research/micro-js-vulnerable",
+        ),
+      },
+    ],
+    execution: "live",
+    allowSpend: true,
+    provider,
+    pricingSnapshot: sealPricingSnapshot({
+      schemaVersion: 2,
+      capturedAt: "2026-07-25T00:00:00.000Z",
+      source: OPENROUTER_MODELS_CATALOG_URL,
+      prices: RESEARCH_EXACT_MODEL_ALLOWLIST.map((model) => ({
+        provider: "openrouter",
+        model,
+        inputUsdPerMillionTokens: 0.1,
+        outputUsdPerMillionTokens: 0.2,
+        contextLength: 1_048_576,
+        supportedParameters: [
+          "max_tokens",
+          "tool_choice",
+          "tools",
+        ],
+      })),
+    }),
+    pricingValidation: {
+      now: new Date("2026-07-25T12:00:00.000Z"),
+    },
+    scannerRunner: async () => {
+      throw new Error("deliberate scanner-triggered live fail-fast");
+    },
+  });
+  assert.equal(providerDispatches, 0);
+  assert.deepEqual(experiment.physicalExecutions, {
+    scanners: 1,
+    agents: 0,
+    derivedHybrids: 0,
+  });
+
+  const summarized = await runSummary(suite, output);
+  assert.equal(summarized.code, 0, summarized.stderr);
+  const summary = JSON.parse(
+    await fs.readFile(path.join(output, "summary.json"), "utf8"),
+  ) as {
+    modes: Array<{
+      mode: Mode;
+      evidenceCaveat: string;
+      statusCounts: Record<CellStatus, number>;
+    }>;
+  };
+  assert.equal(summary.modes.length, MODES.length);
+  for (const mode of summary.modes) {
+    assert.match(mode.evidenceCaveat, /^CAVEAT /u);
+    if (mode.mode === "scanner-only") {
+      assert.equal(mode.statusCounts.failed, 1);
+    } else {
+      assert.equal(mode.statusCounts.canceled, 1);
+    }
+  }
+
+  const experimentSummaryPath = path.join(
+    suite,
+    "experiment-summary.json",
+  );
+  const experimentSummaryDocument = JSON.parse(
+    await fs.readFile(experimentSummaryPath, "utf8"),
+  ) as {
+    data: {
+      physicalExecutions: {
+        agents: number;
+        derivedHybrids: number;
+      };
+    };
+  };
+  experimentSummaryDocument.data.physicalExecutions.agents = 1;
+  experimentSummaryDocument.data.physicalExecutions.derivedHybrids = 1;
+  await fs.writeFile(
+    experimentSummaryPath,
+    `${JSON.stringify(experimentSummaryDocument, null, 2)}\n`,
+    "utf8",
+  );
+  await rehashSuiteArtifact(suite, "experiment-summary.json");
+  const tamperedOutput = path.join(root, "tampered-summary");
+  const tampered = await runSummary(suite, tamperedOutput);
+  assert.equal(tampered.code, 1);
+  assert.match(
+    tampered.stderr,
+    /manifest-bound physical agent executions/u,
+  );
+  await assert.rejects(fs.access(tamperedOutput));
+});
+
+test("standalone summarizer accepts a metered mid-MoA live fail-fast subset", async (t) => {
+  const root = await temporaryRoot(
+    t,
+    "hermsec-summary-live-moa-fail-fast-",
+  );
+  const suite = path.join(root, "suite");
+  const output = path.join(root, "summary");
+  const live = liveMoaFailFastProvider();
+  const experiment = await runResearchExperiment({
+    suiteId: "summary-live-moa-fail-fast-suite",
+    suiteDirectory: suite,
+    fixtures: [
+      {
+        fixtureRoot: path.resolve(
+          "tests/fixtures/research/micro-js-vulnerable",
+        ),
+      },
+    ],
+    execution: "live",
+    allowSpend: true,
+    provider: live.provider,
+    pricingSnapshot: sealPricingSnapshot({
+      schemaVersion: 2,
+      capturedAt: "2026-07-25T00:00:00.000Z",
+      source: OPENROUTER_MODELS_CATALOG_URL,
+      prices: RESEARCH_EXACT_MODEL_ALLOWLIST.map((model) => ({
+        provider: "openrouter",
+        model,
+        inputUsdPerMillionTokens: 0.1,
+        outputUsdPerMillionTokens: 0.2,
+        contextLength: 1_048_576,
+        supportedParameters: [
+          "max_tokens",
+          "tool_choice",
+          "tools",
+        ],
+      })),
+    }),
+    pricingValidation: {
+      now: new Date("2026-07-25T12:00:00.000Z"),
+    },
+    scannerRunner: async (options) => ({
+      schemaVersion: "1.0",
+      id: options.runId ?? "summary-live-scanner",
+      assistMode: "scanner-only",
+      terminalStatus: "success",
+      target: options.target,
+      mode: "offline",
+      startedAt: "2026-07-25T00:00:00.000Z",
+      finishedAt: "2026-07-25T00:00:01.000Z",
+      durationMs: 1_000,
+      scannerStatuses: [
+        {
+          id: "summary-live-scanner",
+          label: "Summary live scanner",
+          status: "completed",
+          message: "Synthetic scanner completed.",
+        },
+      ],
+      findings: [],
+      summary: {
+        total: 0,
+        critical: 0,
+        high: 0,
+        medium: 0,
+        low: 0,
+        info: 0,
+      },
+    }),
+  });
+
+  assert.deepEqual(experiment.physicalExecutions, {
+    scanners: 1,
+    agents: 2,
+    derivedHybrids: 2,
+  });
+  const moa = experiment.cells.find(
+    (cell) => cell.mode === "moa-low",
+  );
+  assert.ok(moa);
+  assert.ok(
+    moa.modelCallTrace.calls.some(
+      (call) => call.terminalState === "failed",
+    ),
+  );
+  assert.ok(
+    new Set(
+      moa.modelCallTrace.calls.map((call) => call.role),
+    ).size <
+      moa.modelCallTrace.rolePlan.requiredSpecialistRoles.length,
+  );
+  assert.equal(
+    live.startedRoles.filter(
+      (role) => role !== "single-agent-inspector",
+    ).length,
+    2,
+  );
+
+  const summarized = await runSummary(suite, output);
+  assert.equal(summarized.code, 0, summarized.stderr);
+  assert.ok(
+    (
+      await new CostLedger(
+        path.join(suite, "cost-ledger.jsonl"),
+      ).snapshot()
+    ).reservations.every(
+      (reservation) => reservation.status !== "reserved",
+    ),
+  );
+
+  await mutateRunArtifact(
+    suite,
+    "moa-low",
+    "model-calls.json",
+    (value) => {
+      const trace = value as {
+        calls: Array<Record<string, unknown>>;
+        [key: string]: unknown;
+      };
+      const canceled = trace.calls.find(
+        (call) => call.terminalState === "canceled",
+      );
+      assert.ok(canceled);
+      canceled.terminalState = "failed";
+      canceled.errorCategory = "timeout";
+      refreshProducerValidation(trace);
+    },
+    path.basename(path.dirname(moa.artifactDirectory)),
+  );
+  const multipleTriggerOutput = path.join(
+    root,
+    "summary-multiple-failed-triggers",
+  );
+  const multipleTriggers = await runSummary(
+    suite,
+    multipleTriggerOutput,
+  );
+  assert.equal(multipleTriggers.code, 1);
+  assert.match(
+    multipleTriggers.stderr,
+    /strictly contained live fail-fast subset/u,
+  );
+  await assert.rejects(fs.access(multipleTriggerOutput));
+});
+
+test("standalone summarizer binds a failed budget trace to its terminal overage", async (t) => {
+  const root = await temporaryRoot(
+    t,
+    "hermsec-summary-live-overage-fail-fast-",
+  );
+  const suite = path.join(root, "suite");
+  const output = path.join(root, "summary");
+  const experiment = await runResearchExperiment({
+    suiteId: "summary-live-overage-fail-fast-suite",
+    suiteDirectory: suite,
+    fixtures: [
+      {
+        fixtureRoot: path.resolve(
+          "tests/fixtures/research/micro-js-vulnerable",
+        ),
+      },
+    ],
+    execution: "live",
+    allowSpend: true,
+    provider: liveOverageProvider(),
+    pricingSnapshot: sealPricingSnapshot({
+      schemaVersion: 2,
+      capturedAt: "2026-07-25T00:00:00.000Z",
+      source: OPENROUTER_MODELS_CATALOG_URL,
+      prices: RESEARCH_EXACT_MODEL_ALLOWLIST.map((model) => ({
+        provider: "openrouter",
+        model,
+        inputUsdPerMillionTokens: 0.1,
+        outputUsdPerMillionTokens: 0.2,
+        contextLength: 1_048_576,
+        supportedParameters: [
+          "max_tokens",
+          "tool_choice",
+          "tools",
+        ],
+      })),
+    }),
+    pricingValidation: {
+      now: new Date("2026-07-25T12:00:00.000Z"),
+    },
+    scannerRunner: async (options) =>
+      successfulEmptyScanner(options.target, options.runId),
+  });
+  assert.deepEqual(experiment.physicalExecutions, {
+    scanners: 1,
+    agents: 1,
+    derivedHybrids: 1,
+  });
+  const single = experiment.cells.find(
+    (cell) => cell.mode === "single-agent",
+  );
+  assert.equal(
+    single?.modelCallTrace.calls[0]?.terminalState,
+    "failed",
+  );
+  assert.equal(
+    single?.modelCallTrace.calls[0]?.errorCategory,
+    "budget",
+  );
+  assert.equal(
+    (
+      await new CostLedger(
+        path.join(suite, "cost-ledger.jsonl"),
+      ).snapshot()
+    ).reservations[0]?.status,
+    "overage",
+  );
+
+  const summarized = await runSummary(suite, output);
+  assert.equal(summarized.code, 0, summarized.stderr);
 });
 
 test("accepts a live suite whose physical usage reconciles to the ledger", async (t) => {
@@ -941,19 +1300,16 @@ test("accepts degraded live failed and unknown ledger terminals with canonical c
     await writeSyntheticSuite(suite, root, {
       execution: "live",
       statusByMode: {
-        "single-agent": "degraded",
-        "scanner-single": "degraded",
+        "moa-high": "degraded",
+        "scanner-moa-high": "degraded",
       },
       liveCallsByMode: {
-        "single-agent": [
-          {
-            role: "single-agent-inspector",
-            model: DEEPSEEK_FLASH,
-            costNanoUsd: 10_000_000,
-            tokens: 100,
-            status,
-          },
-        ],
+        "moa-high": DEFAULT_LIVE_CALLS["moa-high"].map(
+          (call, index, calls) =>
+            index === calls.length - 1
+              ? { ...call, status }
+              : call,
+        ),
       },
     });
 
@@ -970,17 +1326,73 @@ test("accepts degraded live failed and unknown ledger terminals with canonical c
       };
     };
     assert.ok(
-      Math.abs(summary.totals.actualPhysicalSpendUsd - 0.108) < 1e-12,
+      Math.abs(summary.totals.actualPhysicalSpendUsd - 0.106) < 1e-12,
     );
     assert.ok(
       Math.abs(
         summary.totals.conservativeCommittedUsd -
-          (status === "unknown" ? 0.118 : 0.108),
+          (status === "unknown" ? 0.118 : 0.106),
       ) < 1e-12,
     );
-    assert.equal(summary.totals.physicalTokens, 1_080);
+    assert.equal(summary.totals.physicalTokens, 1_060);
     assert.equal(summary.totals.physicalModelCalls, 13);
   }
+});
+
+test("accepts a typed failed MoA aggregator as complete degraded trace evidence", async (t) => {
+  const root = await temporaryRoot(
+    t,
+    "hermsec-summary-degraded-moa-aggregator-",
+  );
+  const suite = path.join(root, "suite");
+  const output = path.join(root, "summary");
+  await writeSyntheticSuite(suite, root, {
+    execution: "live",
+    statusByMode: {
+      "moa-high": "degraded",
+      "scanner-moa-high": "degraded",
+    },
+    liveCallsByMode: {
+      "moa-high": DEFAULT_LIVE_CALLS["moa-high"].map(
+        (call, index, calls) =>
+          index === calls.length - 1
+            ? { ...call, status: "unknown" as const }
+            : call,
+      ),
+    },
+  });
+  await mutateRunArtifact(
+    suite,
+    "moa-high",
+    "model-calls.json",
+    (value) => {
+      const trace = value as {
+        calls: Array<Record<string, unknown>>;
+        producerValidation: {
+          valid: boolean;
+          errors: string[];
+        };
+        [key: string]: unknown;
+      };
+      const aggregator = trace.calls.find(
+        (call) => call.role === "moa-aggregator",
+      );
+      assert.ok(aggregator);
+      assert.equal(aggregator.terminalState, "failed");
+      aggregator.errorCategory = "provider-unavailable";
+      aggregator.providerError = {
+        status: 503,
+        errorType: "provider_unavailable",
+      };
+      refreshProducerValidation(trace);
+      assert.equal(trace.producerValidation.valid, true);
+      assert.deepEqual(trace.producerValidation.errors, []);
+    },
+  );
+
+  const result = await runSummary(suite, output);
+  assert.equal(result.code, 0, result.stderr);
+  await fs.access(path.join(output, "summary.json"));
 });
 
 test("rejects malformed failed and unknown live ledger terminals", async (t) => {
@@ -991,19 +1403,16 @@ test("rejects malformed failed and unknown live ledger terminals", async (t) => 
     await writeSyntheticSuite(suite, root, {
       execution: "live",
       statusByMode: {
-        "single-agent": "degraded",
-        "scanner-single": "degraded",
+        "moa-high": "degraded",
+        "scanner-moa-high": "degraded",
       },
       liveCallsByMode: {
-        "single-agent": [
-          {
-            role: "single-agent-inspector",
-            model: DEEPSEEK_FLASH,
-            costNanoUsd: 10_000_000,
-            tokens: 100,
-            status,
-          },
-        ],
+        "moa-high": DEFAULT_LIVE_CALLS["moa-high"].map(
+          (call, index, calls) =>
+            index === calls.length - 1
+              ? { ...call, status }
+              : call,
+        ),
       },
     });
     const ledgerPath = path.join(suite, "cost-ledger.jsonl");
@@ -1011,7 +1420,7 @@ test("rejects malformed failed and unknown live ledger terminals", async (t) => 
     const terminal = events.find(
       (event) =>
         event.action === status &&
-        event.mode === "single-agent",
+        event.mode === "moa-high",
     );
     assert.ok(terminal);
     terminal.costSource =
@@ -1036,19 +1445,16 @@ test("rejects rehashed failed and unknown terminal amount arithmetic", async (t)
     await writeSyntheticSuite(suite, root, {
       execution: "live",
       statusByMode: {
-        "single-agent": "degraded",
-        "scanner-single": "degraded",
+        "moa-high": "degraded",
+        "scanner-moa-high": "degraded",
       },
       liveCallsByMode: {
-        "single-agent": [
-          {
-            role: "single-agent-inspector",
-            model: DEEPSEEK_FLASH,
-            costNanoUsd: 10_000_000,
-            tokens: 100,
-            status,
-          },
-        ],
+        "moa-high": DEFAULT_LIVE_CALLS["moa-high"].map(
+          (call, index, calls) =>
+            index === calls.length - 1
+              ? { ...call, status }
+              : call,
+        ),
       },
     });
     const ledgerPath = path.join(suite, "cost-ledger.jsonl");
@@ -1056,7 +1462,7 @@ test("rejects rehashed failed and unknown terminal amount arithmetic", async (t)
     const terminal = events.find(
       (event) =>
         event.action === status &&
-        event.mode === "single-agent",
+        event.mode === "moa-high",
     );
     assert.ok(terminal);
     terminal.amountNanoUsd = status === "failed" ? 1 : 0;
@@ -1337,7 +1743,7 @@ test("rejects a pre-metering trace entry bound to a live ledger reservation", as
   assert.equal(result.code, 1);
   assert.match(
     result.stderr,
-    /pre-metering model-call rejection must not have an authoritative ledger reservation|does not bind every authoritative ledger reservation|model-call count does not match/u,
+    /pre-metering model-call rejection must not have an authoritative ledger reservation|does not bind every authoritative ledger reservation|model-call count does not match|must be a validated agent\/hybrid placeholder after the reconstructed live paid-gate trigger/u,
   );
   await assert.rejects(fs.access(output));
 });
@@ -1364,6 +1770,84 @@ test("rejects a successful pre-metering trace entry", async (t) => {
   assert.equal(result.code, 1);
   assert.match(result.stderr, /pre-metering-rejection-terminal-invalid/u);
   await assert.rejects(fs.access(output));
+});
+
+test("rejects malformed, conflicting, and terminal-inconsistent provider errors", async (t) => {
+  const root = await temporaryRoot(
+    t,
+    "hermsec-summary-provider-error-contract-",
+  );
+  const cases: Array<{
+    name: string;
+    mutate: (call: Record<string, unknown>) => void;
+    expected: RegExp;
+  }> = [
+    {
+      name: "secret-token",
+      mutate(call) {
+        call.terminalState = "failed";
+        call.errorCategory = "rate-limit";
+        call.providerError = {
+          status: 429,
+          errorType: "rate_limit_exceeded",
+          providerCode: "sk-or-v1-abcdefghijklmnop",
+        };
+      },
+      expected: /providerError providerCode is invalid/u,
+    },
+    {
+      name: "category-conflict",
+      mutate(call) {
+        call.terminalState = "failed";
+        call.errorCategory = "rate-limit";
+        call.providerError = {
+          status: 429,
+          errorType: "invalid_request",
+        };
+      },
+      expected: /model-call-provider-error-category-mismatch/u,
+    },
+    {
+      name: "terminal-conflict",
+      mutate(call) {
+        call.terminalState = "canceled";
+        call.errorCategory = "provider";
+      },
+      expected: /model-call-terminal-error-category-mismatch/u,
+    },
+  ];
+  for (const candidate of cases) {
+    const suite = path.join(root, `suite-${candidate.name}`);
+    const output = path.join(root, `summary-${candidate.name}`);
+    await writeSyntheticSuite(suite, root, {
+      execution: "replay",
+    });
+    await mutateRunArtifact(
+      suite,
+      "single-agent",
+      "model-calls.json",
+      (value) => {
+        const trace = value as {
+          calls: Array<Record<string, unknown>>;
+          detectorStatus: string;
+          [key: string]: unknown;
+        };
+        const call = trace.calls[0];
+        assert.ok(call);
+        delete call.responseProvider;
+        delete call.responseModel;
+        delete call.cassetteReference;
+        candidate.mutate(call);
+        trace.detectorStatus = "degraded";
+        refreshProducerValidation(trace);
+      },
+    );
+
+    const result = await runSummary(suite, output);
+    assert.equal(result.code, 1);
+    assert.match(result.stderr, candidate.expected);
+    await assert.rejects(fs.access(output));
+  }
 });
 
 test("rejects Minimax when declared outside an MoA aggregator run", async (t) => {
@@ -1672,8 +2156,8 @@ test("rejects invalid explicit roles in mock and replay model traces", async (t)
           calls: Array<Record<string, unknown>>;
         };
         trace.calls[0]!.role = "identity-and-request-security";
-        trace.calls[0]!.model = MIMO;
-        trace.calls[0]!.responseModel = MIMO;
+        trace.calls[0]!.model = DEEPSEEK_FLASH;
+        trace.calls[0]!.responseModel = DEEPSEEK_FLASH;
       },
     );
 
@@ -1697,7 +2181,7 @@ test("rejects a rehashed model-call role/model provenance rewrite", async (t) =>
       const trace = data as {
         calls: Array<{ role: string }>;
       };
-      trace.calls[0]!.role = "identity-and-request-security";
+      trace.calls[0]!.role = "moa-judge";
     },
   );
 
@@ -2981,8 +3465,8 @@ async function writeSyntheticSuite(
           fixtureVariant: "vulnerable",
           physical,
           derivedFrom,
-          modelCallTraceSchemaVersion: "1.0",
-          modelCallTraceRolePlanVersion: "1.0",
+          modelCallTraceSchemaVersion: "2.0",
+          modelCallTraceRolePlanVersion: "2.0",
           modelCallTraceCassettePolicy:
             modelCallTrace.cassettePolicy,
           subjectSnapshotSchemaVersion: "2.0",
@@ -3463,7 +3947,12 @@ async function writeLiveLedger(
         model: call.model,
         requestFingerprint: sha256(`${mode}:request:${callIndex}`),
         fingerprintSource: "metered-replay",
-        terminalState: completed ? "succeeded" : "failed",
+        terminalState:
+          completed
+            ? "succeeded"
+            : status === "failed"
+              ? "canceled"
+              : "failed",
         ...(completed
           ? {
               responseProvider: "openrouter",
@@ -3471,7 +3960,7 @@ async function writeLiveLedger(
             }
           : {
               errorCategory:
-                status === "failed" ? "provider" : "unknown",
+                status === "failed" ? "aborted" : "unknown",
             }),
       });
     }
@@ -3590,7 +4079,7 @@ function modelCallTraceForCell(input: {
             ]
           : [];
   const draft: Omit<ResearchModelCallTrace, "producerValidation"> = {
-    schemaVersion: "1.0",
+    schemaVersion: "2.0",
     runId: input.runId,
     mode: input.mode,
     execution: input.execution,
@@ -4144,6 +4633,190 @@ async function writeWrapped(filePath: string, data: unknown): Promise<void> {
     )}\n`,
     "utf8",
   );
+}
+
+function successfulEmptyScanner(
+  target: string,
+  runId?: string,
+): ScanRun {
+  return {
+    schemaVersion: "1.0",
+    id: runId ?? "summary-live-scanner",
+    assistMode: "scanner-only",
+    terminalStatus: "success",
+    target,
+    mode: "offline",
+    startedAt: "2026-07-25T00:00:00.000Z",
+    finishedAt: "2026-07-25T00:00:01.000Z",
+    durationMs: 1_000,
+    scannerStatuses: [
+      {
+        id: "summary-live-scanner",
+        label: "Summary live scanner",
+        status: "completed",
+        message: "Synthetic scanner completed.",
+      },
+    ],
+    findings: [],
+    summary: {
+      total: 0,
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+      info: 0,
+    },
+  };
+}
+
+function liveOverageProvider(): ModelProviderAdapter {
+  const responder = createDeterministicResearchMockResponder();
+  return {
+    id: "openrouter",
+    capabilities: {
+      tools: true,
+      jsonResponse: true,
+      externalAbort: true,
+      streaming: false,
+    },
+    async listModels() {
+      throw new Error("live overage test unexpectedly listed models");
+    },
+    async healthCheck() {
+      throw new Error(
+        "live overage test unexpectedly checked provider health",
+      );
+    },
+    async complete(request, config) {
+      const model = request.model ?? config?.model ?? "";
+      const response = await responder(request, {
+        provider: "openrouter",
+        model,
+      });
+      return {
+        ...response,
+        usage: {
+          ...response.usage!,
+          authoritativeUsd: 0.01,
+          local: false,
+        },
+      };
+    },
+  };
+}
+
+function liveMoaFailFastProvider(): {
+  provider: ModelProviderAdapter;
+  startedRoles: ModelRole[];
+} {
+  const responder = createDeterministicResearchMockResponder();
+  const startedRoles: ModelRole[] = [];
+  let firstSpecialistRole: ModelRole | undefined;
+  let specialistStarts = 0;
+  let announceParallelStart!: () => void;
+  const parallelStarted = new Promise<void>((resolve) => {
+    announceParallelStart = resolve;
+  });
+  const provider: ModelProviderAdapter = {
+    id: "openrouter",
+    capabilities: {
+      tools: true,
+      jsonResponse: true,
+      externalAbort: true,
+      streaming: false,
+    },
+    async listModels() {
+      throw new Error("live MoA test unexpectedly listed models");
+    },
+    async healthCheck() {
+      throw new Error("live MoA test unexpectedly checked provider health");
+    },
+    async complete(request, config) {
+      const model = request.model ?? config?.model ?? "";
+      const systemPrompt =
+        request.messages.find((message) => message.role === "system")
+          ?.content ?? "";
+      const role = livePromptRole(systemPrompt);
+      startedRoles.push(role);
+      if (role === "single-agent-inspector") {
+        const response = await responder(request, {
+          provider: "openrouter",
+          model,
+        });
+        return {
+          ...response,
+          usage: {
+            ...response.usage!,
+            authoritativeUsd: 0.000001,
+            local: false,
+          },
+        };
+      }
+      assert.notEqual(role, "moa-judge");
+      assert.notEqual(role, "moa-aggregator");
+      specialistStarts += 1;
+      firstSpecialistRole ??= role;
+      if (specialistStarts >= 2) {
+        announceParallelStart();
+      }
+      if (role === firstSpecialistRole) {
+        await parallelStarted;
+        throw new Error("deliberate live MoA provider failure");
+      }
+      return new Promise<ModelResponse>((_resolve, reject) => {
+        const rejectForAbort = () => {
+          reject(
+            request.signal?.reason instanceof Error
+              ? request.signal.reason
+              : Object.assign(
+                  new Error("parallel live MoA call aborted"),
+                  { name: "AbortError" },
+                ),
+          );
+        };
+        if (request.signal?.aborted) {
+          rejectForAbort();
+          return;
+        }
+        request.signal?.addEventListener("abort", rejectForAbort, {
+          once: true,
+        });
+      });
+    },
+  };
+  return { provider, startedRoles };
+}
+
+function livePromptRole(systemPrompt: string): ModelRole {
+  const normalized = systemPrompt.toLowerCase();
+  const prompts = [
+    "single bounded investigator",
+    "injection and execution specialist",
+    "identity and request security specialist",
+    "sensitive data and cryptography specialist",
+    "dependencies and supply-chain specialist",
+    "platform, storage, and deployment specialist",
+    "moa evidence judge",
+    "moa aggregator",
+  ] as const;
+  const prompt = prompts.find((candidate) =>
+    normalized.includes(candidate),
+  );
+  assert.ok(prompt, `Unrecognized live research prompt: ${systemPrompt}`);
+  return ({
+    "single bounded investigator": "single-agent-inspector",
+    "injection and execution specialist": "injection-and-execution",
+    "identity and request security specialist":
+      "identity-and-request-security",
+    "sensitive data and cryptography specialist":
+      "sensitive-data-and-cryptography",
+    "dependencies and supply-chain specialist":
+      "dependencies-and-supply-chain",
+    "platform, storage, and deployment specialist":
+      "platform-storage-and-deployment",
+    "moa evidence judge": "moa-judge",
+    "moa aggregator": "moa-aggregator",
+  } as const)[prompt];
 }
 
 function runSummary(

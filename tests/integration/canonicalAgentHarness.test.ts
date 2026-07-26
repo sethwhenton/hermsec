@@ -41,11 +41,28 @@ test("MoA High isolates all five specialists, caps concurrency, normalizes malfo
       ],
     );
     assert.ok(provider.maxInspectionConcurrency <= 2);
+    assert.ok(
+      provider.inspectionSystemPrompts.some(
+        (prompt) =>
+          prompt.includes("command and argument construction") &&
+          prompt.includes("controllers") &&
+          prompt.includes("Treat these path fragments only as leads"),
+      ),
+    );
     assert.equal(result.coverage.kind, "moa");
     if (result.coverage.kind === "moa") {
       assert.equal(result.coverage.gapFillExecuted, true);
     }
     assert.equal(resolved.filter((entry) => entry.gapFill).length, 1);
+    const gapFillRole = result.roles.find((role) => role.gapFill);
+    const gapFillTrace = result.traces.find((trace) => trace.gapFill);
+    assert.equal(gapFillRole?.rounds, 3);
+    assert.equal(gapFillRole?.toolCalls, 2);
+    assert.equal(gapFillTrace?.evidence.length, 2);
+    assert.deepEqual(
+      gapFillTrace?.toolTraces.map((trace) => trace.name),
+      ["inspect_project", "read_file_snippet"],
+    );
     assert.equal(resolved.some((entry) => entry.role === "moa-judge"), true);
     assert.equal(resolved.some((entry) => entry.role === "moa-aggregator"), true);
     assert.equal(result.judgments?.every((judgment) => judgment.verdict === "needs-review"), true);
@@ -76,6 +93,52 @@ test("MoA safely retains accepted candidates when the aggregator provider fails"
     assert.equal(result.findings.length, 1);
     assert.equal(result.groups?.every((group) => group.source === "preserved"), true);
     assert.match(result.limitations.join(" "), /aggregator provider failed/u);
+  } finally {
+    await fs.rm(repo, { recursive: true, force: true });
+  }
+});
+
+test("MoA aggregator receives only candidates the judge did not reject", async () => {
+  const repo = await createMoaFixture();
+  const provider = mochaProvider({ rejectFirst: true });
+
+  try {
+    const result = await runCanonicalAgentDetector({
+      repoRoot: repo,
+      mode: "moa-low",
+      resolveModel: () => ({ provider }),
+    });
+
+    const rejectedIds = new Set(
+      result.judgments
+        ?.filter((judgment) => judgment.verdict === "rejected")
+        .map((judgment) => judgment.candidateId) ?? [],
+    );
+    const eligibleIds = new Set(
+      result.judgments
+        ?.filter((judgment) => judgment.verdict !== "rejected")
+        .map((judgment) => judgment.candidateId) ?? [],
+    );
+    assert.ok(rejectedIds.size > 0);
+    assert.deepEqual(
+      new Set(provider.aggregatorCandidateIds),
+      eligibleIds,
+    );
+    assert.ok(
+      provider.aggregatorCandidateIds.every(
+        (candidateId) => !rejectedIds.has(candidateId),
+      ),
+    );
+    assert.deepEqual(
+      new Set(
+        result.groups?.flatMap((group) => group.candidateIds) ?? [],
+      ),
+      eligibleIds,
+    );
+    assert.doesNotMatch(
+      result.limitations.join(" "),
+      /unknown or ineligible candidate IDs|omitted known eligible/u,
+    );
   } finally {
     await fs.rm(repo, { recursive: true, force: true });
   }
@@ -239,6 +302,7 @@ function mochaProvider(options: {
   malformedJudge?: boolean;
   omitGroups?: boolean;
   failAggregator?: boolean;
+  rejectFirst?: boolean;
   judgeUsageTokens?: number;
   omitJudgeUsage?: boolean;
   abortController?: AbortController;
@@ -247,15 +311,21 @@ function mochaProvider(options: {
   maxInspectionConcurrency: number;
   judgeRequests: number;
   aggregatorRequests: number;
+  aggregatorCandidateIds: readonly string[];
+  inspectionSystemPrompts: readonly string[];
 } {
   let activeInspectionRequests = 0;
   let maxInspectionConcurrency = 0;
   let judgeRequests = 0;
   let aggregatorRequests = 0;
+  let aggregatorCandidateIds: string[] = [];
+  const inspectionSystemPrompts: string[] = [];
   const provider: ModelProviderAdapter & {
     maxInspectionConcurrency: number;
     judgeRequests: number;
     aggregatorRequests: number;
+    aggregatorCandidateIds: readonly string[];
+    inspectionSystemPrompts: readonly string[];
   } = {
     id: "openai-compatible",
     capabilities: { tools: true, jsonResponse: true, externalAbort: true, streaming: false },
@@ -267,6 +337,12 @@ function mochaProvider(options: {
     },
     get aggregatorRequests() {
       return aggregatorRequests;
+    },
+    get aggregatorCandidateIds() {
+      return aggregatorCandidateIds;
+    },
+    get inspectionSystemPrompts() {
+      return inspectionSystemPrompts;
     },
     async listModels() {
       return [{ id: "moa-test-model", local: true, supportsTools: true }];
@@ -289,9 +365,12 @@ function mochaProvider(options: {
           }));
         }
         const response = textResponse(JSON.stringify({
-          judgments: ids.map((candidateId) => ({
+          judgments: ids.map((candidateId, index) => ({
             candidateId,
-            verdict: "accepted",
+            verdict:
+              options.rejectFirst && index === 0
+                ? "rejected"
+                : "accepted",
             confidence: "high",
             reason: "The cited local snippet supports the finding.",
           })),
@@ -313,6 +392,7 @@ function mochaProvider(options: {
       }
       if (system.includes("MoA aggregator")) {
         aggregatorRequests += 1;
+        aggregatorCandidateIds = candidateIds(request);
         if (options.abortDuring === "aggregator") {
           options.abortController?.abort(new Error("aggregator canceled"));
           return new Promise<ModelResponse>(() => undefined);
@@ -323,11 +403,26 @@ function mochaProvider(options: {
         return textResponse(JSON.stringify({ groups: options.omitGroups ? [] : candidateIds(request).map((candidateId) => ({ candidateIds: [candidateId], rationale: "Known candidate." })) }));
       }
 
+      inspectionSystemPrompts.push(system);
       activeInspectionRequests += 1;
       maxInspectionConcurrency = Math.max(maxInspectionConcurrency, activeInspectionRequests);
       try {
         await delay(12);
-        const hasToolEvidence = request.messages.some((message) => message.role === "tool");
+        const toolEvidenceCount = request.messages.filter((message) => message.role === "tool").length;
+        const gapFill = system.toLowerCase().includes(
+          "perform exactly one additional bounded coverage pass",
+        );
+        if (gapFill && toolEvidenceCount === 0) {
+          return toolResponse("gap-inspect", "inspect_project", {});
+        }
+        if (gapFill && toolEvidenceCount === 1) {
+          return toolResponse("gap-read-app", "read_file_snippet", {
+            path: "src/app.js",
+            startLine: 1,
+            endLine: 1,
+          });
+        }
+        const hasToolEvidence = toolEvidenceCount > 0;
         if (!hasToolEvidence) {
           return toolResponse("read-app", "read_file_snippet", {
             path: "src/app.js",

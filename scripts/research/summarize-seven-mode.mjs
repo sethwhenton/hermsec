@@ -111,10 +111,14 @@ const MODEL_CALL_TERMINAL_STATES = Object.freeze([
   "failed",
   "canceled",
 ]);
+const MODEL_CALL_TRACE_SCHEMA_VERSION = "2.0";
+const MODEL_CALL_TRACE_ROLE_PLAN_VERSION = "2.0";
 const MODEL_CALL_ERROR_CATEGORIES = Object.freeze([
   "aborted",
   "budget",
   "exact-model-policy",
+  "provider-unavailable",
+  "rate-limit",
   "replay",
   "timeout",
   "unsafe-request",
@@ -137,11 +141,11 @@ const FIXTURE_PROJECT_ROOT = "project";
 const EXACT_ROLE_MODELS = Object.freeze({
   "single-agent-inspector": DEEPSEEK_FLASH,
   "injection-and-execution": DEEPSEEK_FLASH,
-  "identity-and-request-security": MIMO,
-  "sensitive-data-and-cryptography": MIMO,
+  "identity-and-request-security": DEEPSEEK_FLASH,
+  "sensitive-data-and-cryptography": DEEPSEEK_FLASH,
   "dependencies-and-supply-chain": DEEPSEEK_FLASH,
-  "platform-storage-and-deployment": MIMO,
-  "moa-judge": DEEPSEEK_FLASH,
+  "platform-storage-and-deployment": DEEPSEEK_FLASH,
+  "moa-judge": MIMO,
   "moa-aggregator": MINIMAX_AGGREGATOR,
 });
 const EVAL_CATEGORIES = Object.freeze([
@@ -387,7 +391,12 @@ async function buildSummary(
 
   const cellsByMode = validateCells(experimentSummary, fixtureIds);
   const runsByMode = validateEvaluation(evaluation, fixtureIds);
-  validateExperimentTotals(experimentSummary, cellsByMode, fixtureIds.length);
+  validateExperimentTotals(
+    experimentSummary,
+    cellsByMode,
+    fixtureIds.length,
+    execution,
+  );
   validateCanonicalCellCosts(cellsByMode, experimentSummary);
   const evidenceBindings = await validateSuiteEvidence({
     suiteDirectory,
@@ -398,6 +407,14 @@ async function buildSummary(
     evaluation,
     experimentSummary,
     evaluationEngine,
+  });
+  validateBoundPhysicalExecutionTotals({
+    execution,
+    experimentSummary,
+    cellsByMode,
+    fixtureCount: fixtureIds.length,
+    fixtureIds,
+    manifestBindings: evidenceBindings.manifestBindings,
   });
   await validateCostLedger({
     suiteDirectory,
@@ -858,7 +875,12 @@ function validateEvaluation(evaluation, fixtureIds) {
   return byMode;
 }
 
-function validateExperimentTotals(summary, cellsByMode, fixtureCount) {
+function validateExperimentTotals(
+  summary,
+  cellsByMode,
+  fixtureCount,
+  execution,
+) {
   nonNegativeNumber(
     summary.actualPhysicalSpendUsd,
     "experiment actualPhysicalSpendUsd",
@@ -887,24 +909,264 @@ function validateExperimentTotals(summary, cellsByMode, fixtureCount) {
     fixtureCount,
     "physical scanner executions",
   );
-  expectEqual(
-    nonNegativeInteger(physical.agents, "physical agent executions"),
-    fixtureCount * 3,
+  const agentExecutions = nonNegativeInteger(
+    physical.agents,
     "physical agent executions",
+  );
+  const derivedHybridExecutions = nonNegativeInteger(
+    physical.derivedHybrids,
+    "derived hybrid executions",
+  );
+  const expectedAgentExecutions = fixtureCount * 3;
+  if (execution === "live") {
+    if (agentExecutions > expectedAgentExecutions) {
+      throw new SummaryError(
+        "physical agent executions exceed the complete live matrix.",
+      );
+    }
+    expectEqual(
+      derivedHybridExecutions,
+      agentExecutions,
+      "live fail-fast derived/agent execution binding",
+    );
+  } else {
+    expectEqual(
+      agentExecutions,
+      expectedAgentExecutions,
+      "physical agent executions",
+    );
+    expectEqual(
+      derivedHybridExecutions,
+      expectedAgentExecutions,
+      "derived hybrid executions",
+    );
+  }
+  for (const mode of MODES) {
+    if (!cellsByMode.has(mode)) {
+      throw new SummaryError(`experiment is missing mode ${mode}.`);
+    }
+  }
+}
+
+function validateBoundPhysicalExecutionTotals(input) {
+  if (input.execution !== "live") {
+    return;
+  }
+  const cells = [...input.cellsByMode.values()].flat();
+  validateLiveFailFastSchedulingCausality(input, cells);
+  const failFastAgentPlaceholders = cells.filter((cell) => {
+    if (!cell.physical || cell.mode === "scanner-only") {
+      return false;
+    }
+    const binding = input.manifestBindings.get(
+      `${cell.runId}\u0000${cell.mode}`,
+    );
+    if (!binding) {
+      throw new SummaryError(
+        "physical agent execution totals found an unbound manifest.",
+      );
+    }
+    return binding.failFastPlaceholder === true;
+  });
+  let failFastHybridPlaceholders = 0;
+  for (const agentCell of failFastAgentPlaceholders) {
+    const hybridMode = Object.entries(HYBRID_SOURCES).find(
+      ([, sources]) => sources[1] === agentCell.mode,
+    )?.[0];
+    const hybridCell = hybridMode
+      ? cells.find(
+          (candidate) =>
+            candidate.fixtureId === agentCell.fixtureId &&
+            candidate.mode === hybridMode,
+        )
+      : undefined;
+    if (
+      !hybridCell ||
+      hybridCell.physical ||
+      hybridCell.status !== "canceled" ||
+      !zeroCellCost(hybridCell.cost)
+    ) {
+      throw new SummaryError(
+        `${agentCell.mode}/${agentCell.fixtureId} validated fail-fast placeholder lacks its canceled zero-cost hybrid placeholder.`,
+      );
+    }
+    failFastHybridPlaceholders += 1;
+  }
+  const expectedExecutions = input.fixtureCount * 3;
+  const physical = objectValue(
+    input.experimentSummary.physicalExecutions,
+    "experiment physicalExecutions",
+  );
+  expectEqual(
+    nonNegativeInteger(
+      physical.agents,
+      "physical agent executions",
+    ),
+    expectedExecutions - failFastAgentPlaceholders.length,
+    "manifest-bound physical agent executions",
   );
   expectEqual(
     nonNegativeInteger(
       physical.derivedHybrids,
       "derived hybrid executions",
     ),
-    fixtureCount * 3,
-    "derived hybrid executions",
+    expectedExecutions - failFastHybridPlaceholders,
+    "manifest-bound derived hybrid executions",
   );
-  for (const mode of MODES) {
-    if (!cellsByMode.has(mode)) {
-      throw new SummaryError(`experiment is missing mode ${mode}.`);
+}
+
+function validateLiveFailFastSchedulingCausality(input, cells) {
+  const agentModes = ["single-agent", "moa-low", "moa-high"];
+  let trigger;
+  let strictReason;
+  const findCell = (fixtureId, mode) => {
+    const cell = cells.find(
+      (candidate) =>
+        candidate.fixtureId === fixtureId &&
+        candidate.mode === mode,
+    );
+    if (!cell) {
+      throw new SummaryError(
+        `live fail-fast schedule is missing ${mode}/${fixtureId}.`,
+      );
+    }
+    return cell;
+  };
+  const bindingFor = (cell) => {
+    const binding = input.manifestBindings.get(
+      `${cell.runId}\u0000${cell.mode}`,
+    );
+    if (!binding) {
+      throw new SummaryError(
+        `live fail-fast schedule has no manifest binding for ${cell.mode}/${cell.fixtureId}.`,
+      );
+    }
+    return binding;
+  };
+
+  for (const fixtureId of input.fixtureIds) {
+    const scanner = findCell(fixtureId, "scanner-only");
+    const scannerBinding = bindingFor(scanner);
+    if (scannerBinding.strictLiveGateReasons.length !== 0) {
+      throw new SummaryError(
+        `${scanner.mode}/${fixtureId} cannot be a paid-gate scheduling placeholder.`,
+      );
+    }
+    if (!trigger && scanner.status !== "success") {
+      trigger = {
+        fixtureId,
+        mode: scanner.mode,
+        expectedReason: [
+          "Strict live paid gate stopped physical agent scheduling",
+          `after ${fixtureId}/${scanner.mode}`,
+          `cell status ${scanner.status}`,
+        ].join(": "),
+      };
+    }
+
+    for (const mode of agentModes) {
+      const agent = findCell(fixtureId, mode);
+      const agentBinding = bindingFor(agent);
+      const hybridMode = Object.entries(HYBRID_SOURCES).find(
+        ([, sources]) => sources[1] === mode,
+      )?.[0];
+      const hybrid = findCell(fixtureId, hybridMode);
+      const hybridBinding = bindingFor(hybrid);
+
+      if (trigger) {
+        if (
+          agentBinding.failFastPlaceholder !== true ||
+          agent.status !== "canceled" ||
+          !zeroCellCost(agent.cost) ||
+          hybrid.physical ||
+          hybrid.status !== "canceled" ||
+          !zeroCellCost(hybrid.cost)
+        ) {
+          throw new SummaryError(
+            `${mode}/${fixtureId} must be a validated agent/hybrid placeholder after the reconstructed live paid-gate trigger.`,
+          );
+        }
+        const reason = agentBinding.failFastReason;
+        if (
+          typeof reason !== "string" ||
+          reason !== trigger.expectedReason ||
+          hybridBinding.strictLiveGateReasons.length !== 1 ||
+          hybridBinding.strictLiveGateReasons[0] !== reason
+        ) {
+          throw new SummaryError(
+            `${mode}/${fixtureId} fail-fast reason does not bind the reconstructed trigger ${trigger.fixtureId}/${trigger.mode}.`,
+          );
+        }
+        strictReason ??= reason;
+        if (reason !== strictReason) {
+          throw new SummaryError(
+            "live fail-fast placeholders do not share one immutable trigger reason.",
+          );
+        }
+        continue;
+      }
+
+      if (
+        agentBinding.failFastPlaceholder === true ||
+        !agent.physical ||
+        hybrid.physical ||
+        agentBinding.strictLiveGateReasons.length !== 0 ||
+        hybridBinding.strictLiveGateReasons.length !== 0
+      ) {
+        throw new SummaryError(
+          `${mode}/${fixtureId} is a fail-fast placeholder before any canonical scheduling trigger.`,
+        );
+      }
+      const trace = agentBinding.modelCallTrace;
+      if (
+        agent.status !== "success" ||
+        trace.detectorStatus !== "completed" ||
+        trace.calls.some(
+          (call) => call.terminalState !== "succeeded",
+        )
+      ) {
+        trigger = {
+          fixtureId,
+          mode,
+          expectedReason: reconstructedAgentGateReason(
+            agent,
+            agentBinding,
+          ),
+        };
+      }
     }
   }
+}
+
+function reconstructedAgentGateReason(cell, binding) {
+  const failures = [];
+  const detectorStatus = binding.hasAgentEvidence
+    ? binding.modelCallTrace.detectorStatus
+    : "unavailable";
+  if (detectorStatus !== "completed") {
+    failures.push(`detector status ${detectorStatus}`);
+  }
+  if (cell.status !== "success") {
+    failures.push(`cell status ${cell.status}`);
+  }
+  const nonSucceededCalls = binding.modelCalls.filter(
+    (call) => call.terminalState !== "succeeded",
+  );
+  if (nonSucceededCalls.length > 0) {
+    failures.push(
+      `${nonSucceededCalls.length} physical model call(s) did not succeed`,
+    );
+  }
+  if (failures.length === 0) {
+    throw new SummaryError(
+      `${cell.mode}/${cell.fixtureId} was selected as a live paid-gate trigger without a canonical failure.`,
+    );
+  }
+  return [
+    "Strict live paid gate stopped additional physical agent scheduling",
+    `after ${cell.fixtureId}/${cell.mode}`,
+    failures.join("; "),
+  ].join(": ");
 }
 
 function validateCanonicalCellCosts(cellsByMode, experimentSummary) {
@@ -3627,12 +3889,12 @@ async function validateBoundManifest(input) {
   canonicalEqual(metadata.cost, input.cell.cost, "manifest cost binding");
   expectEqual(
     metadata.modelCallTraceSchemaVersion,
-    "1.0",
+    MODEL_CALL_TRACE_SCHEMA_VERSION,
     "manifest model-call trace schema version",
   );
   expectEqual(
     metadata.modelCallTraceRolePlanVersion,
-    "1.0",
+    MODEL_CALL_TRACE_ROLE_PLAN_VERSION,
     "manifest model-call role-plan version",
   );
   const manifestCassettePolicy = oneOf(
@@ -3764,13 +4026,44 @@ async function validateBoundManifest(input) {
       ].join("\u0000")}`,
     ),
   );
-  validateManifestModelTrace(
+  const failFastPlaceholder = validateManifestModelTrace(
     input.cell,
     declaredModels,
     modelCallTrace,
     input.evaluationRun,
     artifactData.get("detector-evidence.json"),
+    input.execution,
   );
+  const detectorEvidence = objectValue(
+    artifactData.get("detector-evidence.json"),
+    `${input.cell.mode}/${input.cell.fixtureId} detector evidence`,
+  );
+  const strictLiveGateReasons = liveGateReasonsForCase(
+    input.evaluationRun,
+    input.cell,
+  );
+  const metadataDegradationReasons = stringArray(
+    metadata.degradationReasons,
+    `${input.cell.mode}/${input.cell.fixtureId} manifest degradation reasons`,
+  );
+  const metadataStrictLiveGateReasons =
+    metadataDegradationReasons.filter((reason) =>
+      reason.startsWith("Strict live paid gate stopped "),
+    );
+  expectStringArraysEqual(
+    metadataStrictLiveGateReasons,
+    strictLiveGateReasons,
+    `${input.cell.mode}/${input.cell.fixtureId} manifest/evaluation strict paid-gate reasons`,
+  );
+  if (
+    strictLiveGateReasons.length > 0 &&
+    metadataDegradationReasons.length !==
+      strictLiveGateReasons.length
+  ) {
+    throw new SummaryError(
+      `${input.cell.mode}/${input.cell.fixtureId} fail-fast placeholder mixes its strict paid-gate reason with unrelated degradation reasons.`,
+    );
+  }
   bindArtifactData({
     manifest,
     metadata,
@@ -3785,6 +4078,20 @@ async function validateBoundManifest(input) {
     declaredModels,
     modelCalls: modelCallTrace.calls,
     modelCallTrace,
+    failFastPlaceholder,
+    hasAgentEvidence: Object.prototype.hasOwnProperty.call(
+      detectorEvidence,
+      "agentEvidence",
+    ),
+    strictLiveGateReasons,
+    ...(failFastPlaceholder
+      ? {
+          failFastReason: requireSingleStrictLiveGateReason(
+            strictLiveGateReasons,
+            input.cell,
+          ),
+        }
+      : {}),
     mode: input.cell.mode,
     manifestBytes: manifestContent.byteLength,
     manifestFileSha256: sha256Hex(manifestContent),
@@ -3792,6 +4099,28 @@ async function validateBoundManifest(input) {
     durationMs:
       Date.parse(manifest.finishedAt) - Date.parse(manifest.startedAt),
   };
+}
+
+function liveGateReasonsForCase(evaluationRun, cell) {
+  const evaluationCase = evaluationRun.cases.find(
+    (candidate) => candidate.fixtureId === cell.fixtureId,
+  );
+  return (
+    evaluationCase?.completenessInput?.degradedReasons ?? []
+  ).filter(
+    (reason) =>
+      typeof reason === "string" &&
+      reason.startsWith("Strict live paid gate stopped "),
+  );
+}
+
+function requireSingleStrictLiveGateReason(reasons, cell) {
+  if (reasons.length !== 1) {
+    throw new SummaryError(
+      `${cell.mode}/${cell.fixtureId} fail-fast placeholder must carry exactly one strict paid-gate reason.`,
+    );
+  }
+  return reasons[0];
 }
 
 function readManifestModels(value, mode, label) {
@@ -3866,7 +4195,7 @@ function readModelCallsArtifact(
   );
   expectEqual(
     trace.schemaVersion,
-    "1.0",
+    MODEL_CALL_TRACE_SCHEMA_VERSION,
     `${cell.mode} model-calls schemaVersion`,
   );
   expectEqual(trace.runId, cell.runId, `${cell.mode} model-calls runId`);
@@ -3981,6 +4310,11 @@ function readModelCallsArtifact(
           call,
           "cassetteReference",
         );
+      const hasProviderError =
+        Object.prototype.hasOwnProperty.call(
+          call,
+          "providerError",
+        );
       assertExactObjectKeys(
         call,
         terminalState === "succeeded"
@@ -4006,6 +4340,7 @@ function readModelCallsArtifact(
               "model",
               "ordinal",
               "provider",
+              ...(hasProviderError ? ["providerError"] : []),
               "requestFingerprint",
               "role",
               "terminalState",
@@ -4048,6 +4383,7 @@ function readModelCallsArtifact(
         `${cell.mode} model call ${index} fingerprintSource`,
       );
       let errorCategory;
+      let providerError;
       let responseProvider;
       let responseModel;
       let cassetteReference;
@@ -4125,6 +4461,64 @@ function readModelCallsArtifact(
           MODEL_CALL_ERROR_CATEGORIES,
           `${cell.mode} model call ${index} errorCategory`,
         );
+        if (hasProviderError) {
+          const details = objectValue(
+            call.providerError,
+            `${cell.mode} model call ${index} providerError`,
+          );
+          const detailKeys = [
+            ...(Object.prototype.hasOwnProperty.call(details, "status")
+              ? ["status"]
+              : []),
+            ...(Object.prototype.hasOwnProperty.call(details, "errorType")
+              ? ["errorType"]
+              : []),
+            ...(Object.prototype.hasOwnProperty.call(details, "providerCode")
+              ? ["providerCode"]
+              : []),
+          ];
+          if (detailKeys.length === 0) {
+            throw new SummaryError(
+              `${cell.mode} model call ${index} providerError must contain at least one detail.`,
+            );
+          }
+          assertExactObjectKeys(
+            details,
+            detailKeys,
+            `${cell.mode} model call ${index} providerError`,
+          );
+          const status = detailKeys.includes("status")
+            ? nonNegativeInteger(
+                details.status,
+                `${cell.mode} model call ${index} providerError status`,
+              )
+            : undefined;
+          if (
+            status !== undefined &&
+            (status < 400 || status > 599)
+          ) {
+            throw new SummaryError(
+              `${cell.mode} model call ${index} providerError status is invalid.`,
+            );
+          }
+          const errorType = detailKeys.includes("errorType")
+            ? providerErrorToken(
+                details.errorType,
+                `${cell.mode} model call ${index} providerError errorType`,
+              )
+            : undefined;
+          const providerCode = detailKeys.includes("providerCode")
+            ? providerErrorToken(
+                details.providerCode,
+                `${cell.mode} model call ${index} providerError providerCode`,
+              )
+            : undefined;
+          providerError = {
+            ...(status !== undefined ? { status } : {}),
+            ...(errorType ? { errorType } : {}),
+            ...(providerCode ? { providerCode } : {}),
+          };
+        }
       }
       return {
         ordinal,
@@ -4138,6 +4532,7 @@ function readModelCallsArtifact(
         ...(responseProvider ? { responseProvider } : {}),
         ...(responseModel ? { responseModel } : {}),
         ...(errorCategory ? { errorCategory } : {}),
+        ...(providerError ? { providerError } : {}),
         ...(cassetteReference ? { cassetteReference } : {}),
       };
     },
@@ -4171,7 +4566,7 @@ function readModelCallsArtifact(
     `${cell.mode} model-call producer error ordering`,
   );
   const normalizedTrace = {
-    schemaVersion: "1.0",
+    schemaVersion: MODEL_CALL_TRACE_SCHEMA_VERSION,
     runId: cell.runId,
     mode: cell.mode,
     execution,
@@ -4213,6 +4608,7 @@ function validateManifestModelTrace(
   trace,
   evaluationRun,
   detectorEvidenceValue,
+  execution,
 ) {
   const calls = trace.calls;
   const evaluationCase = evaluationRun.cases.find(
@@ -4253,7 +4649,7 @@ function validateManifestModelTrace(
       },
       `${cell.mode}/${cell.fixtureId} non-agent role plan`,
     );
-    return;
+    return false;
   }
   expectEqual(
     trace.detectorStatus,
@@ -4282,6 +4678,22 @@ function validateManifestModelTrace(
     detectorEvidenceValue,
     `${cell.mode}/${cell.fixtureId} detector evidence`,
   );
+  if (
+    !Object.prototype.hasOwnProperty.call(
+      detectorEvidence,
+      "agentEvidence",
+    ) &&
+    validateAbsentFailFastAgentEvidence(
+      cell,
+      declaredModels,
+      trace,
+      execution,
+      detectorEvidence,
+      evaluationCase,
+    )
+  ) {
+    return true;
+  }
   const agentEvidence = objectValue(
     detectorEvidence.agentEvidence,
     `${cell.mode}/${cell.fixtureId} agent evidence`,
@@ -4406,7 +4818,7 @@ function validateManifestModelTrace(
         "a successful complete single-agent cell must trace a successful inspector call.",
       );
     }
-    return;
+    return false;
   }
   if (trace.rolePlan.status !== "complete") {
     throw new SummaryError(
@@ -4461,11 +4873,31 @@ function validateManifestModelTrace(
   const initialCallRoles = uniqueSorted(
     initialSpecialistCalls.map((call) => call.role),
   );
-  expectStringArraysEqual(
-    initialCallRoles,
-    uniqueSorted(trace.rolePlan.requiredSpecialistRoles),
-    `${cell.mode}/${cell.fixtureId} exact initial specialist-call set`,
+  const requiredInitialRoles = uniqueSorted(
+    trace.rolePlan.requiredSpecialistRoles,
   );
+  const missingInitialRoles = requiredInitialRoles.filter(
+    (role) => !initialCallRoles.includes(role),
+  );
+  if (
+    canonicalJson(initialCallRoles) !==
+      canonicalJson(requiredInitialRoles) &&
+    !validLiveFailFastInitialSpecialistSubset({
+      cell,
+      trace,
+      execution,
+      calls,
+      initialCallRoles,
+      requiredInitialRoles,
+      missingInitialRoles,
+      initialRoleExecutions,
+      gapFillCalls,
+    })
+  ) {
+    throw new SummaryError(
+      `${cell.mode}/${cell.fixtureId} exact initial specialist-call set does not match its role plan or a strictly contained live fail-fast subset.`,
+    );
+  }
   if (
     strictCompleteCell &&
     trace.rolePlan.requiredSpecialistRoles.some(
@@ -4482,7 +4914,7 @@ function validateManifestModelTrace(
     );
   }
   if (
-    gapFillCalls.length > 2 ||
+    gapFillCalls.length > 4 ||
     new Set(gapFillCalls.map((call) => call.role)).size > 1
   ) {
     throw new SummaryError(
@@ -4607,6 +5039,207 @@ function validateManifestModelTrace(
       );
     }
   }
+  return false;
+}
+
+function validLiveFailFastInitialSpecialistSubset(input) {
+  if (
+    input.execution !== "live" ||
+    input.cell.status !== "canceled" ||
+    input.trace.detectorStatus !== "canceled" ||
+    input.initialCallRoles.length === 0 ||
+    input.missingInitialRoles.length === 0 ||
+    input.initialCallRoles.some(
+      (role) => !input.requiredInitialRoles.includes(role),
+    ) ||
+    canonicalJson(input.initialCallRoles) !==
+      canonicalJson(
+        uniqueSorted(
+          input.trace.rolePlan.requiredSpecialistRoles.slice(
+            0,
+            input.initialCallRoles.length,
+          ),
+        ),
+      ) ||
+    input.gapFillCalls.length !== 0 ||
+    input.calls.some(
+      (call) =>
+        call.role === "moa-judge" ||
+        call.role === "moa-aggregator",
+    )
+  ) {
+    return false;
+  }
+  const failedCalls = input.calls.filter(
+    (call) => call.terminalState === "failed",
+  );
+  if (
+    failedCalls.length !== 1 ||
+    !input.initialCallRoles.includes(failedCalls[0].role)
+  ) {
+    return false;
+  }
+  return input.missingInitialRoles.every((role) =>
+    input.initialRoleExecutions.some(
+      (execution) =>
+        execution.role === role &&
+        (execution.status === "canceled" ||
+          execution.status === "skipped"),
+    ),
+  );
+}
+
+function validateAbsentFailFastAgentEvidence(
+  cell,
+  declaredModels,
+  trace,
+  execution,
+  detectorEvidence,
+  evaluationCase,
+) {
+  if (
+    execution !== "live" ||
+    !cell.physical ||
+    cell.mode === "scanner-only" ||
+    cell.status !== "canceled"
+  ) {
+    return false;
+  }
+  expectEqual(
+    trace.detectorStatus,
+    "canceled",
+    `${cell.mode}/${cell.fixtureId} fail-fast detector status`,
+  );
+  expectEqual(
+    trace.candidateCount,
+    0,
+    `${cell.mode}/${cell.fixtureId} fail-fast candidate count`,
+  );
+  if (!["none", "recorded"].includes(trace.cassettePolicy)) {
+    throw new SummaryError(
+      `${cell.mode}/${cell.fixtureId} fail-fast cassette policy is not valid for live execution.`,
+    );
+  }
+  expectEqual(
+    trace.calls.length,
+    0,
+    `${cell.mode}/${cell.fixtureId} fail-fast model calls`,
+  );
+  expectEqual(
+    trace.calls.filter(
+      (call) => call.cassetteReference !== undefined,
+    ).length,
+    0,
+    `${cell.mode}/${cell.fixtureId} fail-fast cassette references`,
+  );
+  expectEqual(
+    declaredModels.length,
+    0,
+    `${cell.mode}/${cell.fixtureId} fail-fast declared models`,
+  );
+  for (const [field, value] of Object.entries(cell.cost)) {
+    expectEqual(
+      value,
+      0,
+      `${cell.mode}/${cell.fixtureId} fail-fast ${field}`,
+    );
+  }
+  assertExactObjectKeys(
+    detectorEvidence,
+    [
+      "finalFindings",
+      "rawAgentFindings",
+      "rawScannerFindings",
+      "schemaVersion",
+    ],
+    `${cell.mode}/${cell.fixtureId} fail-fast detector evidence`,
+  );
+  expectEqual(
+    detectorEvidence.schemaVersion,
+    "1.0",
+    `${cell.mode}/${cell.fixtureId} fail-fast detector evidence schema`,
+  );
+  for (const [field, value] of [
+    ["finalFindings", detectorEvidence.finalFindings],
+    ["rawAgentFindings", detectorEvidence.rawAgentFindings],
+    ["rawScannerFindings", detectorEvidence.rawScannerFindings],
+  ]) {
+    expectEqual(
+      arrayValue(
+        value,
+        `${cell.mode}/${cell.fixtureId} fail-fast ${field}`,
+      ).length,
+      0,
+      `${cell.mode}/${cell.fixtureId} fail-fast ${field}`,
+    );
+  }
+  expectEqual(
+    evaluationCase.completeness.status,
+    "degraded",
+    `${cell.mode}/${cell.fixtureId} fail-fast completeness status`,
+  );
+  const completenessInput = evaluationCase.completenessInput;
+  if (
+    !(completenessInput.degradedReasons ?? []).some((reason) =>
+      reason.startsWith("Strict live paid gate stopped "),
+    )
+  ) {
+    throw new SummaryError(
+      `${cell.mode}/${cell.fixtureId} fail-fast completeness lacks the strict paid-gate reason.`,
+    );
+  }
+  expectEqual(
+    completenessInput.completedComponents.length,
+    0,
+    `${cell.mode}/${cell.fixtureId} fail-fast completed components`,
+  );
+  expectEqual(
+    (completenessInput.failedComponents ?? []).length,
+    0,
+    `${cell.mode}/${cell.fixtureId} fail-fast failed components`,
+  );
+  expectStringArraysEqual(
+    uniqueSorted(completenessInput.skippedComponents ?? []),
+    uniqueSorted(completenessInput.plannedComponents),
+    `${cell.mode}/${cell.fixtureId} fail-fast skipped components`,
+  );
+  expectEqual(
+    completenessInput.inspectedFiles ?? 0,
+    0,
+    `${cell.mode}/${cell.fixtureId} fail-fast inspected files`,
+  );
+  expectEqual(
+    completenessInput.inspectedBytes ?? 0,
+    0,
+    `${cell.mode}/${cell.fixtureId} fail-fast inspected bytes`,
+  );
+  if (cell.mode === "single-agent") {
+    canonicalEqual(
+      trace.rolePlan,
+      {
+        status: "complete",
+        requiredSpecialistRoles: ["single-agent-inspector"],
+      },
+      `${cell.mode}/${cell.fixtureId} fail-fast role plan`,
+    );
+    return true;
+  }
+  if (
+    trace.rolePlan.status !== "complete" ||
+    (cell.mode === "moa-low" &&
+      (trace.rolePlan.requiredSpecialistRoles.length !== 3 ||
+        trace.rolePlan.requiredSpecialistRoles.some(
+          (role) => !MOA_SPECIALIST_ROLES.includes(role),
+        ))) ||
+    (cell.mode === "moa-high" &&
+      canonicalJson(trace.rolePlan.requiredSpecialistRoles) !==
+        canonicalJson(MOA_SPECIALIST_ROLES))
+  ) {
+    throw new SummaryError(
+      `${cell.mode}/${cell.fixtureId} fail-fast placeholder lacks its valid explicit role plan.`,
+    );
+  }
+  return true;
 }
 
 function recomputeModelCallTraceValidation(trace) {
@@ -4625,7 +5258,7 @@ function recomputeModelCallTraceSemanticErrors(trace) {
   const derivedFrom = trace.derivedFrom;
   const rolePlan = trace.rolePlan;
   if (
-    trace.schemaVersion !== "1.0" ||
+    trace.schemaVersion !== MODEL_CALL_TRACE_SCHEMA_VERSION ||
     typeof trace.runId !== "string" ||
     !trace.runId.trim() ||
     typeof trace.mode !== "string" ||
@@ -4783,9 +5416,50 @@ function recomputeModelCallTraceSemanticErrors(trace) {
     }
     if (
       call.terminalState !== "succeeded" &&
-      !call.errorCategory
+      !MODEL_CALL_ERROR_CATEGORIES.includes(call.errorCategory)
     ) {
-      errors.push("failed-model-call-missing-error-category");
+      errors.push("failed-model-call-error-category-invalid");
+    }
+    if (
+      (call.terminalState === "canceled" &&
+        call.errorCategory !== "aborted") ||
+      (call.terminalState === "failed" &&
+        call.errorCategory === "aborted")
+    ) {
+      errors.push("model-call-terminal-error-category-mismatch");
+    }
+    if (
+      call.terminalState === "succeeded" &&
+      (call.errorCategory !== undefined ||
+        call.providerError !== undefined)
+    ) {
+      errors.push("successful-model-call-has-error");
+    }
+    if (
+      call.terminalState !== "succeeded" &&
+      (call.responseProvider !== undefined ||
+        call.responseModel !== undefined)
+    ) {
+      errors.push("failed-model-call-has-response-binding");
+    }
+    if (call.providerError !== undefined) {
+      if (
+        call.terminalState !== "failed" ||
+        call.fingerprintSource !== "metered-replay" ||
+        !validProviderErrorDetails(call.providerError)
+      ) {
+        errors.push("model-call-provider-error-invalid");
+      } else if (
+        call.errorCategory !==
+        classifyProviderErrorDetails(call.providerError)
+      ) {
+        errors.push("model-call-provider-error-category-mismatch");
+      }
+    } else if (
+      call.errorCategory === "rate-limit" ||
+      call.errorCategory === "provider-unavailable"
+    ) {
+      errors.push("transient-model-call-missing-provider-error");
     }
   }
   const aggregators = calls.filter(
@@ -4890,14 +5564,16 @@ function recomputeModelCallTraceSemanticErrors(trace) {
     }
     if (trace.candidateCount > 0) {
       if (
-        judges.length !== 1 ||
-        judges[0]?.terminalState !== "succeeded"
+        trace.detectorStatus === "completed" &&
+        (judges.length !== 1 ||
+          judges[0]?.terminalState !== "succeeded")
       ) {
         errors.push("candidate-bearing-moa-judge-incomplete");
       }
       if (
-        aggregators.length !== 1 ||
-        aggregators[0]?.terminalState !== "succeeded"
+        trace.detectorStatus === "completed" &&
+        (aggregators.length !== 1 ||
+          aggregators[0]?.terminalState !== "succeeded")
       ) {
         errors.push("candidate-bearing-moa-aggregator-incomplete");
       }
@@ -4940,6 +5616,124 @@ function validReplayReference(value) {
     (value.scopeIdSha256 === undefined ||
       /^[a-f0-9]{64}$/u.test(value.scopeIdSha256))
   );
+}
+
+function zeroCellCost(cost) {
+  return [
+    cost.actualPhysicalSpendUsd,
+    cost.conservativeCommittedUsd,
+    cost.attributedCostUsd,
+    cost.physicalModelCalls,
+    cost.attributedModelCalls,
+    cost.physicalTokens,
+    cost.attributedTokens,
+  ].every((value) => value === 0);
+}
+
+function providerErrorToken(value, label) {
+  const token = requiredString(value, label);
+  if (
+    !/^[a-z0-9][a-z0-9._-]{0,99}$/u.test(token) ||
+    !redactionStableProviderErrorToken(token)
+  ) {
+    throw new SummaryError(`${label} is invalid.`);
+  }
+  return token;
+}
+
+function validProviderErrorDetails(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const keys = Object.keys(value);
+  if (
+    keys.length === 0 ||
+    keys.some(
+      (key) =>
+        key !== "status" &&
+        key !== "errorType" &&
+        key !== "providerCode",
+    )
+  ) {
+    return false;
+  }
+  return (
+    (value.status === undefined ||
+      (Number.isSafeInteger(value.status) &&
+        value.status >= 400 &&
+        value.status <= 599)) &&
+    (value.errorType === undefined ||
+      (typeof value.errorType === "string" &&
+        /^[a-z0-9][a-z0-9._-]{0,99}$/u.test(value.errorType) &&
+        redactionStableProviderErrorToken(value.errorType))) &&
+    (value.providerCode === undefined ||
+      (typeof value.providerCode === "string" &&
+        /^[a-z0-9][a-z0-9._-]{0,99}$/u.test(value.providerCode) &&
+        redactionStableProviderErrorToken(value.providerCode)))
+  );
+}
+
+function classifyProviderErrorDetails(details) {
+  const status = details.status;
+  const errorType = details.errorType;
+  if (errorType === "rate_limit_exceeded") {
+    return status === undefined || status === 429
+      ? "rate-limit"
+      : "provider";
+  }
+  if (
+    errorType === "provider_overloaded" ||
+    errorType === "provider_unavailable"
+  ) {
+    const allowedStatuses =
+      errorType === "provider_overloaded"
+        ? [502, 503, 529]
+        : [404, 502, 503, 529];
+    return status === undefined || allowedStatuses.includes(status)
+      ? "provider-unavailable"
+      : "provider";
+  }
+  if (errorType === "server") {
+    return status === undefined || [500, 502, 503].includes(status)
+      ? "provider-unavailable"
+      : "provider";
+  }
+  if (errorType === "timeout") {
+    return status === undefined || status === 408 || status === 504
+      ? "timeout"
+      : "provider";
+  }
+  if (
+    errorType === "content_policy_violation" ||
+    errorType === "refusal"
+  ) {
+    return status === undefined || status === 400 || status === 403
+      ? "unsafe-request"
+      : "provider";
+  }
+  if (errorType !== undefined) {
+    return "provider";
+  }
+  if (status === 429) {
+    return "rate-limit";
+  }
+  if (status === 502 || status === 503 || status === 529) {
+    return "provider-unavailable";
+  }
+  if (status === 408 || status === 504) {
+    return "timeout";
+  }
+  return "provider";
+}
+
+function redactionStableProviderErrorToken(value) {
+  return ![
+    /\b(?:ghp|gho|ghu|ghs|ghr|github_pat)_[a-z0-9_]{20,}\b/u,
+    /\bglpat-[a-z0-9_-]{20,}\b/u,
+    /\bsk-[a-z0-9_-]{16,}\b/u,
+    /\bxox[baprs]-[a-z0-9-]{16,}\b/u,
+    /\b(?:sk|rk)_(?:live|test)_[a-z0-9]{16,}\b/u,
+  ].some((pattern) => pattern.test(value));
 }
 
 function validModelCallRolePlanShape(value) {
@@ -5771,6 +6565,10 @@ function parseCostLedger(content) {
       amountNanoUsd,
       promptTokens,
       completionTokens,
+      costSource: event.costSource,
+      ...(event.reason === undefined
+        ? {}
+        : { reason: event.reason }),
       requestFingerprint: current.requestFingerprint,
       reservationSequence: current.reservationSequence,
     });
@@ -5869,6 +6667,7 @@ function validateLedgerModelCalls(reservations, physicalCells, bindings) {
     );
   }
   const boundLedgerCalls = new Set();
+  let locallyTimedOutSettledOrUndispatchedCalls = 0;
   for (const cell of physicalCells) {
     const key = `${cell.runId}\u0000${cell.mode}`;
     const binding = bindings.get(key);
@@ -5940,21 +6739,104 @@ function validateLedgerModelCalls(reservations, physicalCells, bindings) {
         `${cell.mode} model-call ledger model`,
       );
       expectEqual(
-        call.terminalState === "succeeded"
-          ? ledgerCall.action === "settled" ||
-              ledgerCall.action === "overage"
-          : ledgerCall.action === "failed" ||
-              ledgerCall.action === "unknown",
+        validModelCallLedgerTerminalSemantics(
+          call,
+          ledgerCall,
+          binding.modelCallTrace,
+        ),
         true,
         `${cell.mode} model-call/ledger terminal semantics`,
       );
+      if (
+        isLocallyTimedOutSettledOrUndispatchedCall(
+          call,
+          ledgerCall,
+          binding.modelCallTrace,
+        )
+      ) {
+        locallyTimedOutSettledOrUndispatchedCalls += 1;
+      }
     }
+  }
+  if (locallyTimedOutSettledOrUndispatchedCalls > 1) {
+    throw new SummaryError(
+      "live cost ledger contains more than one settled or known-not-charged local timeout trigger.",
+    );
   }
   if (boundLedgerCalls.size !== reservations.length) {
     throw new SummaryError(
       "cost ledger contains an authoritative reservation not bound by model-calls.json.",
     );
   }
+}
+
+function validModelCallLedgerTerminalSemantics(
+  call,
+  ledgerCall,
+  trace,
+) {
+  switch (ledgerCall.action) {
+    case "settled":
+      return (
+        call.terminalState === "succeeded" ||
+        (call.terminalState === "failed" &&
+          call.errorCategory === "replay" &&
+          trace.execution === "live" &&
+          trace.cassettePolicy === "recorded" &&
+          call.cassetteReference === undefined) ||
+        isLocallyTimedOutSettledOrUndispatchedCall(
+          call,
+          ledgerCall,
+          trace,
+        )
+      );
+    case "overage":
+      return (
+        call.terminalState === "failed" &&
+        call.errorCategory === "budget"
+      );
+    case "failed":
+      return (
+        call.terminalState === "canceled" &&
+        call.errorCategory === "aborted"
+      ) || isLocallyTimedOutSettledOrUndispatchedCall(
+        call,
+        ledgerCall,
+        trace,
+      );
+    case "unknown":
+      return (
+        (call.terminalState === "failed" &&
+          call.errorCategory !== "aborted") ||
+        (call.terminalState === "canceled" &&
+          call.errorCategory === "aborted")
+      );
+    default:
+      return false;
+  }
+}
+
+function isLocallyTimedOutSettledOrUndispatchedCall(
+  call,
+  ledgerCall,
+  trace,
+) {
+  if (
+    trace.execution !== "live" ||
+    call.terminalState !== "failed" ||
+    call.errorCategory !== "timeout"
+  ) {
+    return false;
+  }
+  if (ledgerCall.action === "settled") {
+    return true;
+  }
+  return (
+    ledgerCall.action === "failed" &&
+    ledgerCall.costSource === "known-not-charged" &&
+    ledgerCall.reason ===
+      "Live model call was stopped before provider dispatch."
+  );
 }
 
 function ledgerModelCallBindingKey(runId, mode, requestFingerprint) {

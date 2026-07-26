@@ -18,6 +18,14 @@ export type ModelInfo = {
   supportsTools?: boolean;
 };
 
+export type OpenRouterMaxPrice = {
+  prompt?: string;
+  completion?: string;
+  request?: string;
+  image?: string;
+  audio?: string;
+};
+
 export type ProviderConfig = {
   provider?: ModelProviderId;
   baseUrl?: string;
@@ -31,8 +39,39 @@ export type ProviderConfig = {
     allowFallbacks?: boolean;
     dataCollection?: "allow" | "deny";
     captureRouteMetadata?: boolean;
+    maxPrice?: OpenRouterMaxPrice;
   };
 };
+
+export class ModelProviderRequestError extends Error {
+  readonly provider: ModelProviderId;
+  readonly status?: number;
+  readonly errorType?: string;
+  readonly providerCode?: string;
+
+  constructor(
+    message: string,
+    metadata: {
+      provider: ModelProviderId;
+      status?: number;
+      errorType?: string;
+      providerCode?: string;
+    },
+  ) {
+    super(message);
+    this.name = "ModelProviderRequestError";
+    this.provider = metadata.provider;
+    if (metadata.status !== undefined) {
+      this.status = metadata.status;
+    }
+    if (metadata.errorType !== undefined) {
+      this.errorType = metadata.errorType;
+    }
+    if (metadata.providerCode !== undefined) {
+      this.providerCode = metadata.providerCode;
+    }
+  }
+}
 
 export type ProviderHealth = {
   ok: boolean;

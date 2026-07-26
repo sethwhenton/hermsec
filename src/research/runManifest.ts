@@ -10,6 +10,8 @@ import {
 } from "./integrity.js";
 import {
   MODEL_CALL_TRACE_FILE,
+  MODEL_CALL_TRACE_ROLE_PLAN_VERSION,
+  MODEL_CALL_TRACE_SCHEMA_VERSION,
   validateModelCallTrace,
   type ResearchModelCallTrace,
 } from "./modelCallTrace.js";
@@ -687,19 +689,26 @@ export async function validateRunArtifacts(runDirectory: string): Promise<RunInt
       if (integrity.sha256 !== artifact.sha256) {
         errors.push(`Artifact hash changed: ${artifact.path}`);
       }
-      if (
-        artifact.path === MODEL_CALL_TRACE_FILE &&
-        isPlainRecord(manifest.metadata) &&
-        manifest.metadata.modelCallTraceSchemaVersion === "1.0" &&
-        manifest.metadata.modelCallTraceRolePlanVersion === "1.0"
-      ) {
-        errors.push(
-          ...(await validateModelCallTraceArtifact(
-            runDirectory,
-            artifact.path,
-            manifest,
-          )),
-        );
+      if (artifact.path === MODEL_CALL_TRACE_FILE) {
+        if (
+          isPlainRecord(manifest.metadata) &&
+          manifest.metadata.modelCallTraceSchemaVersion ===
+            MODEL_CALL_TRACE_SCHEMA_VERSION &&
+          manifest.metadata.modelCallTraceRolePlanVersion ===
+            MODEL_CALL_TRACE_ROLE_PLAN_VERSION
+        ) {
+          errors.push(
+            ...(await validateModelCallTraceArtifact(
+              runDirectory,
+              artifact.path,
+              manifest,
+            )),
+          );
+        } else {
+          errors.push(
+            "Run manifest model-call trace schema binding is unsupported.",
+          );
+        }
       }
     } catch (error) {
       errors.push(`${artifact.path}: ${errorMessage(error)}`);
@@ -1458,9 +1467,26 @@ async function validateModelCallTraceArtifact(
     !isPlainRecord(trace) ||
     !isPlainRecord(trace.producerValidation) ||
     !Array.isArray(trace.calls) ||
-    !Array.isArray(trace.derivedFrom)
+    !Array.isArray(trace.derivedFrom) ||
+    typeof trace.producerValidation.valid !== "boolean" ||
+    !Array.isArray(trace.producerValidation.errors) ||
+    trace.producerValidation.errors.some(
+      (error) => typeof error !== "string",
+    ) ||
+    canonicalJson(
+      Object.keys(trace.producerValidation).sort(),
+    ) !== canonicalJson(["errors", "valid"])
   ) {
     return ["Model-call trace schema is invalid."];
+  }
+  if (
+    !isPlainRecord(manifest.metadata) ||
+    trace.schemaVersion !==
+      manifest.metadata.modelCallTraceSchemaVersion
+  ) {
+    return [
+      "Model-call trace schema does not match its manifest binding.",
+    ];
   }
   const { producerValidation, ...draft } = trace;
   let recomputed: string[];
@@ -1469,11 +1495,8 @@ async function validateModelCallTraceArtifact(
   } catch {
     return ["Model-call trace schema is invalid."];
   }
-  const recordedErrors = Array.isArray(producerValidation.errors)
-    ? producerValidation.errors.filter(
-        (error): error is string => typeof error === "string",
-      )
-    : [];
+  const recordedErrors =
+    producerValidation.errors as readonly string[];
   const errors: string[] = [];
   if (
     producerValidation.valid !== (recomputed.length === 0) ||

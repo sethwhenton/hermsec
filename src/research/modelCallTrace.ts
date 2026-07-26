@@ -4,12 +4,18 @@ import {
   type MoaRoleId,
 } from "../agent/moaRoles.js";
 import { redactForLog } from "../agent/redaction.js";
-import type {
-  ModelProviderAdapter,
-  ModelRequest,
-  ModelResponse,
-  ProviderConfig,
+import {
+  ModelProviderRequestError,
+  type ModelProviderAdapter,
+  type ModelRequest,
+  type ModelResponse,
+  type ProviderConfig,
 } from "../model/provider.js";
+import {
+  isLiveModelCallFailFastTriggerError,
+  meteredRequestFingerprintForRequest,
+  meteredRequestFingerprintFromError,
+} from "../model/meteredProvider.js";
 import type { ResearchExecutionMode } from "./execution.js";
 import { canonicalJson, sha256 } from "./integrity.js";
 import {
@@ -19,23 +25,37 @@ import {
 } from "./replay.js";
 
 export const MODEL_CALL_TRACE_FILE = "model-calls.json";
+export const MODEL_CALL_TRACE_SCHEMA_VERSION = "2.0";
+export const MODEL_CALL_TRACE_ROLE_PLAN_VERSION = "2.0";
 
 export type ModelCallTerminalState = "succeeded" | "failed" | "canceled";
 
+export const MODEL_CALL_ERROR_CATEGORIES = Object.freeze([
+  "aborted",
+  "budget",
+  "exact-model-policy",
+  "provider-unavailable",
+  "rate-limit",
+  "replay",
+  "timeout",
+  "unsafe-request",
+  "provider",
+  "unknown",
+] as const);
+
 export type ModelCallErrorCategory =
-  | "aborted"
-  | "budget"
-  | "exact-model-policy"
-  | "replay"
-  | "timeout"
-  | "unsafe-request"
-  | "provider"
-  | "unknown";
+  (typeof MODEL_CALL_ERROR_CATEGORIES)[number];
 
 export type ModelCallCassettePolicy =
   | "none"
   | "recorded"
   | "replay";
+
+export type ModelCallProviderError = {
+  status?: number;
+  errorType?: string;
+  providerCode?: string;
+};
 
 export type ResearchModelCallTraceEntry = {
   ordinal: number;
@@ -49,11 +69,12 @@ export type ResearchModelCallTraceEntry = {
   responseProvider?: string;
   responseModel?: string;
   errorCategory?: ModelCallErrorCategory;
+  providerError?: ModelCallProviderError;
   cassetteReference?: ReplayReference;
 };
 
 export type ResearchModelCallTrace = {
-  schemaVersion: "1.0";
+  schemaVersion: typeof MODEL_CALL_TRACE_SCHEMA_VERSION;
   runId: string;
   mode: string;
   execution: ResearchExecutionMode;
@@ -101,6 +122,7 @@ export type ModelCallTraceRecorder = {
     provider: ModelProviderAdapter;
     providerConfig: ProviderConfig;
   }): ModelProviderAdapter;
+  drain(): Promise<void>;
   finalize(input: {
     physical: boolean;
     derivedFrom?: readonly string[];
@@ -124,6 +146,7 @@ export function createModelCallTraceRecorder(input: {
 }): ModelCallTraceRecorder {
   let nextOrdinal = 1;
   const entries: MutableTraceEntry[] = [];
+  const pendingTerminals = new Set<Promise<void>>();
 
   return {
     wrapProvider(context) {
@@ -162,12 +185,23 @@ export function createModelCallTraceRecorder(input: {
             callConfig?.provider ??
             context.providerConfig.provider ??
             base.id;
-          const fingerprint = traceFingerprint({
-            provider,
-            model,
-            request,
-            ordinal,
-          });
+          const meteredRequestFingerprint =
+            meteredRequestFingerprintForRequest(
+              base,
+              request,
+              callConfig,
+            );
+          const fingerprint = meteredRequestFingerprint
+            ? {
+                value: meteredRequestFingerprint,
+                source: "metered-replay" as const,
+              }
+            : traceFingerprint({
+                provider,
+                model,
+                request,
+                ordinal,
+              });
           const position = entries.length;
           entries.push({
             ordinal,
@@ -179,6 +213,29 @@ export function createModelCallTraceRecorder(input: {
             fingerprintSource: fingerprint.source,
             terminalState: "pending",
           });
+          const markCanceled = (): void => {
+            const entry = entries[position];
+            if (entry?.terminalState !== "pending") {
+              return;
+            }
+            entries[position] = {
+              ...entry,
+              terminalState: "canceled",
+              errorCategory: "aborted",
+            };
+          };
+          if (request.signal?.aborted) {
+            markCanceled();
+          } else {
+            request.signal?.addEventListener("abort", markCanceled, {
+              once: true,
+            });
+          }
+          let releaseTerminal!: () => void;
+          const pendingTerminal = new Promise<void>((resolve) => {
+            releaseTerminal = resolve;
+          });
+          pendingTerminals.add(pendingTerminal);
 
           try {
             if (
@@ -219,14 +276,36 @@ export function createModelCallTraceRecorder(input: {
             };
             return response;
           } catch (error) {
+            const meteredRequestFingerprint =
+              meteredRequestFingerprintFromError(error);
+            const terminalState = isAbort(error, request.signal)
+              ? "canceled" as const
+              : "failed" as const;
+            const providerError =
+              terminalState === "failed"
+                ? providerErrorDetails(error)
+                : undefined;
             entries[position] = {
               ...entries[position]!,
-              terminalState: isAbort(error, request.signal)
-                ? "canceled"
-                : "failed",
-              errorCategory: classifyError(error, request.signal),
+              ...(meteredRequestFingerprint
+                ? {
+                    requestFingerprint: meteredRequestFingerprint,
+                    fingerprintSource: "metered-replay" as const,
+                  }
+                : {}),
+              terminalState,
+              errorCategory: classifyError(
+                error,
+                request.signal,
+                providerError,
+              ),
+              ...(providerError ? { providerError } : {}),
             };
             throw error;
+          } finally {
+            request.signal?.removeEventListener("abort", markCanceled);
+            releaseTerminal();
+            pendingTerminals.delete(pendingTerminal);
           }
         },
         ...(base.estimateCost
@@ -238,6 +317,11 @@ export function createModelCallTraceRecorder(input: {
           : {}),
       };
       return Object.freeze(adapter);
+    },
+    async drain(): Promise<void> {
+      while (pendingTerminals.size > 0) {
+        await Promise.all([...pendingTerminals]);
+      }
     },
     finalize(finalInput) {
       const candidateCount = finalInput.candidateCount ?? 0;
@@ -255,7 +339,7 @@ export function createModelCallTraceRecorder(input: {
         })
         .sort((left, right) => left.ordinal - right.ordinal);
       const draft: Omit<ResearchModelCallTrace, "producerValidation"> = {
-        schemaVersion: "1.0",
+        schemaVersion: MODEL_CALL_TRACE_SCHEMA_VERSION,
         runId: input.runId,
         mode: input.mode,
         execution: input.execution,
@@ -310,7 +394,7 @@ export function createEmptyModelCallTrace(input: {
   cassettePolicy?: ModelCallCassettePolicy;
 }): ResearchModelCallTrace {
   const draft: Omit<ResearchModelCallTrace, "producerValidation"> = {
-    schemaVersion: "1.0",
+    schemaVersion: MODEL_CALL_TRACE_SCHEMA_VERSION,
     runId: input.runId,
     mode: input.mode,
     execution: input.execution,
@@ -361,7 +445,22 @@ function validateModelCallTraceSemantics(
     ? trace.derivedFrom
     : [];
   if (
-    trace.schemaVersion !== "1.0" ||
+    !hasExactKeys(trace, [
+      "aggregationDisposition",
+      "calls",
+      "candidateCount",
+      "cassettePolicy",
+      "derivedFrom",
+      "detectorStatus",
+      "execution",
+      "mode",
+      "physical",
+      "rolePlan",
+      "runId",
+      "schemaVersion",
+      "traceCompleteness",
+    ]) ||
+    trace.schemaVersion !== MODEL_CALL_TRACE_SCHEMA_VERSION ||
     typeof trace.runId !== "string" ||
     !trace.runId.trim() ||
     typeof trace.mode !== "string" ||
@@ -378,10 +477,15 @@ function validateModelCallTraceSemantics(
       "canceled",
       "not-applicable",
     ].includes(trace.detectorStatus) ||
+    typeof trace.physical !== "boolean" ||
     !Number.isSafeInteger(trace.candidateCount) ||
     trace.candidateCount < 0 ||
     !Array.isArray(trace.calls) ||
     !Array.isArray(trace.derivedFrom) ||
+    derivedFrom.some(
+      (entry) => typeof entry !== "string" || !entry.trim(),
+    ) ||
+    new Set(derivedFrom).size !== derivedFrom.length ||
     !validRolePlanShape(trace.rolePlan)
   ) {
     errors.push("model-call-trace-schema-invalid");
@@ -459,7 +563,47 @@ function validateModelCallTraceSemantics(
   }
 
   const seenOrdinals = new Set<number>();
-  for (const [index, call] of calls.entries()) {
+  const seenRequestFingerprints = new Set<string>();
+  for (const [index, candidate] of calls.entries()) {
+    if (!isPlainRecord(candidate)) {
+      errors.push("model-call-entry-invalid");
+      continue;
+    }
+    const call = candidate as ResearchModelCallTraceEntry;
+    const hasCassetteReference = Object.hasOwn(
+      call,
+      "cassetteReference",
+    );
+    const hasProviderError = Object.hasOwn(call, "providerError");
+    const expectedKeys =
+      call.terminalState === "succeeded"
+        ? [
+            ...(hasCassetteReference
+              ? ["cassetteReference"]
+              : []),
+            "fingerprintSource",
+            "gapFill",
+            "model",
+            "ordinal",
+            "provider",
+            "requestFingerprint",
+            "responseModel",
+            "responseProvider",
+            "role",
+            "terminalState",
+          ]
+        : [
+            "errorCategory",
+            "fingerprintSource",
+            "gapFill",
+            "model",
+            "ordinal",
+            "provider",
+            ...(hasProviderError ? ["providerError"] : []),
+            "requestFingerprint",
+            "role",
+            "terminalState",
+          ];
     if (
       !Number.isSafeInteger(call.ordinal) ||
       call.ordinal !== index + 1 ||
@@ -469,6 +613,8 @@ function validateModelCallTraceSemantics(
     }
     seenOrdinals.add(call.ordinal);
     if (
+      !hasExactKeys(call, expectedKeys) ||
+      typeof call.gapFill !== "boolean" ||
       call.provider !== "openrouter" ||
       !/^[a-f0-9]{64}$/u.test(call.requestFingerprint) ||
       !["metered-replay", "pre-metering-rejection"].includes(
@@ -478,6 +624,10 @@ function validateModelCallTraceSemantics(
     ) {
       errors.push("model-call-entry-invalid");
     }
+    if (seenRequestFingerprints.has(call.requestFingerprint)) {
+      errors.push("model-call-request-fingerprint-duplicate");
+    }
+    seenRequestFingerprints.add(call.requestFingerprint);
     if (
       call.fingerprintSource === "pre-metering-rejection" &&
       call.terminalState !== "failed"
@@ -515,20 +665,68 @@ function validateModelCallTraceSemantics(
     }
     if (
       call.terminalState !== "succeeded" &&
-      !call.errorCategory
+      !MODEL_CALL_ERROR_CATEGORIES.includes(
+        call.errorCategory as ModelCallErrorCategory,
+      )
     ) {
-      errors.push("failed-model-call-missing-error-category");
+      errors.push("failed-model-call-error-category-invalid");
+    }
+    if (
+      (call.terminalState === "canceled" &&
+        call.errorCategory !== "aborted") ||
+      (call.terminalState === "failed" &&
+        call.errorCategory === "aborted")
+    ) {
+      errors.push("model-call-terminal-error-category-mismatch");
+    }
+    if (
+      call.terminalState === "succeeded" &&
+      (call.errorCategory !== undefined ||
+        call.providerError !== undefined)
+    ) {
+      errors.push("successful-model-call-has-error");
+    }
+    if (
+      call.terminalState !== "succeeded" &&
+      (call.responseProvider !== undefined ||
+        call.responseModel !== undefined)
+    ) {
+      errors.push("failed-model-call-has-response-binding");
+    }
+    if (call.providerError !== undefined) {
+      if (
+        call.terminalState !== "failed" ||
+        call.fingerprintSource !== "metered-replay" ||
+        !validProviderErrorDetails(call.providerError)
+      ) {
+        errors.push("model-call-provider-error-invalid");
+      } else if (
+        call.errorCategory !==
+        classifyProviderErrorDetails(call.providerError)
+      ) {
+        errors.push("model-call-provider-error-category-mismatch");
+      }
+    } else if (
+      call.errorCategory === "rate-limit" ||
+      call.errorCategory === "provider-unavailable"
+    ) {
+      errors.push("transient-model-call-missing-provider-error");
     }
   }
 
-  const aggregators = calls.filter(
+  const structuredCalls = calls.filter(
+    isPlainRecord,
+  ) as unknown as ResearchModelCallTraceEntry[];
+  const aggregators = structuredCalls.filter(
     (call) => call.role === "moa-aggregator",
   );
-  const judges = calls.filter((call) => call.role === "moa-judge");
-  const specialistCalls = calls.filter((call) =>
+  const judges = structuredCalls.filter(
+    (call) => call.role === "moa-judge",
+  );
+  const specialistCalls = structuredCalls.filter((call) =>
     isMoaSpecialistRole(call.role),
   );
-  const minimaxCalls = calls.filter(
+  const minimaxCalls = structuredCalls.filter(
     (call) => call.model === "minimax/minimax-m3",
   );
   if (
@@ -542,7 +740,7 @@ function validateModelCallTraceSemantics(
   }
   if (
     aggregators.length === 1 &&
-    aggregators[0]!.ordinal !== calls.length
+    aggregators[0]!.ordinal !== structuredCalls.length
   ) {
     errors.push("moa-aggregator-not-terminal");
   }
@@ -558,7 +756,7 @@ function validateModelCallTraceSemantics(
       errors.push("single-agent-role-plan-invalid");
     }
     if (
-      calls.some(
+      structuredCalls.some(
         (call) => call.role !== "single-agent-inspector",
       )
     ) {
@@ -566,7 +764,7 @@ function validateModelCallTraceSemantics(
     }
     if (
       trace.detectorStatus === "completed" &&
-      !calls.some(
+      !structuredCalls.some(
         (call) =>
           call.role === "single-agent-inspector" &&
           call.terminalState === "succeeded",
@@ -593,7 +791,7 @@ function validateModelCallTraceSemantics(
       errors.push("moa-high-role-plan-invalid");
     }
     if (
-      calls.some(
+      structuredCalls.some(
         (call) => call.role === "single-agent-inspector",
       )
     ) {
@@ -625,14 +823,16 @@ function validateModelCallTraceSemantics(
 
     if (trace.candidateCount > 0) {
       if (
-        judges.length !== 1 ||
-        judges[0]?.terminalState !== "succeeded"
+        trace.detectorStatus === "completed" &&
+        (judges.length !== 1 ||
+          judges[0]?.terminalState !== "succeeded")
       ) {
         errors.push("candidate-bearing-moa-judge-incomplete");
       }
       if (
-        aggregators.length !== 1 ||
-        aggregators[0]?.terminalState !== "succeeded"
+        trace.detectorStatus === "completed" &&
+        (aggregators.length !== 1 ||
+          aggregators[0]?.terminalState !== "succeeded")
       ) {
         errors.push("candidate-bearing-moa-aggregator-incomplete");
       }
@@ -666,6 +866,14 @@ function validReplayReference(
   value: ReplayReference,
 ): boolean {
   return (
+    isPlainRecord(value) &&
+    hasExactKeys(value, [
+      "integritySha256",
+      "occurrence",
+      "relativePath",
+      "requestFingerprint",
+      "scopeIdSha256",
+    ]) &&
     /^[a-f0-9]{64}$/u.test(value.requestFingerprint) &&
     Number.isSafeInteger(value.occurrence) &&
     value.occurrence > 0 &&
@@ -745,7 +953,11 @@ function validRolePlanShape(
   value: ResearchModelCallTrace["rolePlan"],
 ): boolean {
   return (
-    Boolean(value) &&
+    isPlainRecord(value) &&
+    hasExactKeys(value, [
+      "requiredSpecialistRoles",
+      "status",
+    ]) &&
     ["complete", "unavailable", "not-applicable"].includes(
       value.status,
     ) &&
@@ -831,18 +1043,16 @@ function expectedModelForRole(role: CanonicalAgentRole): string | undefined {
   if (role === "moa-aggregator") {
     return "minimax/minimax-m3";
   }
-  if (
-    role === "identity-and-request-security" ||
-    role === "sensitive-data-and-cryptography" ||
-    role === "platform-storage-and-deployment"
-  ) {
+  if (role === "moa-judge") {
     return "xiaomi/mimo-v2.5";
   }
   if (
     role === "single-agent-inspector" ||
     role === "injection-and-execution" ||
+    role === "identity-and-request-security" ||
+    role === "sensitive-data-and-cryptography" ||
     role === "dependencies-and-supply-chain" ||
-    role === "moa-judge"
+    role === "platform-storage-and-deployment"
   ) {
     return "deepseek/deepseek-v4-flash";
   }
@@ -860,19 +1070,34 @@ function aggregationDisposition(
 }
 
 function isAbort(error: unknown, signal?: AbortSignal): boolean {
+  if (isLiveModelCallFailFastTriggerError(error)) {
+    return false;
+  }
+  if (signal?.aborted === true) {
+    return true;
+  }
+  if (error instanceof ModelProviderRequestError) {
+    return false;
+  }
   return (
-    signal?.aborted === true ||
-    (error instanceof Error &&
-      (error.name === "AbortError" || /abort/iu.test(error.message)))
+    error instanceof Error &&
+    (error.name === "AbortError" || /abort/iu.test(error.message))
   );
 }
 
 function classifyError(
   error: unknown,
   signal?: AbortSignal,
+  providerError?: ModelCallProviderError,
 ): ModelCallErrorCategory {
   if (isAbort(error, signal)) {
     return "aborted";
+  }
+  if (providerError) {
+    return classifyProviderErrorDetails(providerError);
+  }
+  if (error instanceof ModelProviderRequestError) {
+    return "provider";
   }
   const name = error instanceof Error ? error.name.toLowerCase() : "";
   const message =
@@ -886,7 +1111,11 @@ function classifyError(
   if (/timeout|timed out/iu.test(`${name} ${message}`)) {
     return "timeout";
   }
-  if (/redact|secret|unsafe request/iu.test(`${name} ${message}`)) {
+  if (
+    /redact|secret|unsafe request|content[_-]policy[_-]violation|error_type=refusal/iu.test(
+      `${name} ${message}`,
+    )
+  ) {
     return "unsafe-request";
   }
   if (/exact|fallback|model|provider.*policy/iu.test(`${name} ${message}`)) {
@@ -896,6 +1125,165 @@ function classifyError(
     return "provider";
   }
   return "unknown";
+}
+
+function providerErrorDetails(
+  error: unknown,
+): ModelCallProviderError | undefined {
+  if (!(error instanceof ModelProviderRequestError)) {
+    return undefined;
+  }
+  const details: ModelCallProviderError = {};
+  const status = error.status;
+  if (
+    typeof status === "number" &&
+    Number.isSafeInteger(status) &&
+    status >= 400 &&
+    status <= 599
+  ) {
+    details.status = status;
+  }
+  const errorType = normalizedProviderErrorToken(error.errorType);
+  if (errorType) {
+    details.errorType = errorType;
+  }
+  const providerCode = normalizedProviderErrorToken(
+    error.providerCode,
+  );
+  if (providerCode) {
+    details.providerCode = providerCode;
+  }
+  return Object.keys(details).length > 0
+    ? Object.freeze(details)
+    : undefined;
+}
+
+function validProviderErrorDetails(
+  value: ModelCallProviderError,
+): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const keys = Object.keys(value);
+  if (
+    keys.length === 0 ||
+    keys.some(
+      (key) =>
+        key !== "status" &&
+        key !== "errorType" &&
+        key !== "providerCode",
+    )
+  ) {
+    return false;
+  }
+  return (
+    (value.status === undefined ||
+      (Number.isSafeInteger(value.status) &&
+        value.status >= 400 &&
+        value.status <= 599)) &&
+    (value.errorType === undefined ||
+      normalizedProviderErrorToken(value.errorType) ===
+        value.errorType) &&
+    (value.providerCode === undefined ||
+      normalizedProviderErrorToken(value.providerCode) ===
+        value.providerCode)
+  );
+}
+
+function classifyProviderErrorDetails(
+  details: ModelCallProviderError,
+): ModelCallErrorCategory {
+  const status = details.status;
+  const errorType = details.errorType;
+  if (errorType === "rate_limit_exceeded") {
+    return status === undefined || status === 429
+      ? "rate-limit"
+      : "provider";
+  }
+  if (
+    errorType === "provider_overloaded" ||
+    errorType === "provider_unavailable"
+  ) {
+    const allowedStatuses =
+      errorType === "provider_overloaded"
+        ? [502, 503, 529]
+        : [404, 502, 503, 529];
+    return status === undefined || allowedStatuses.includes(status)
+      ? "provider-unavailable"
+      : "provider";
+  }
+  if (errorType === "server") {
+    return status === undefined || [500, 502, 503].includes(status)
+      ? "provider-unavailable"
+      : "provider";
+  }
+  if (errorType === "timeout") {
+    return status === undefined || status === 408 || status === 504
+      ? "timeout"
+      : "provider";
+  }
+  if (
+    errorType === "content_policy_violation" ||
+    errorType === "refusal"
+  ) {
+    return status === undefined || status === 400 || status === 403
+      ? "unsafe-request"
+      : "provider";
+  }
+  if (errorType !== undefined) {
+    return "provider";
+  }
+  if (status === 429) {
+    return "rate-limit";
+  }
+  if (status === 502 || status === 503 || status === 529) {
+    return "provider-unavailable";
+  }
+  if (status === 408 || status === 504) {
+    return "timeout";
+  }
+  return "provider";
+}
+
+function normalizedProviderErrorToken(
+  value: unknown,
+): string | undefined {
+  if (
+    typeof value !== "string" ||
+    !/^[a-z0-9][a-z0-9._-]{0,99}$/iu.test(value)
+  ) {
+    return undefined;
+  }
+  const originalRedaction = redactForLog(value);
+  const normalized = value.toLowerCase();
+  const normalizedRedaction = redactForLog(normalized);
+  return !originalRedaction.redacted &&
+    originalRedaction.value === value &&
+    !normalizedRedaction.redacted &&
+    normalizedRedaction.value === normalized
+    ? normalized
+    : undefined;
+}
+
+function isPlainRecord(
+  value: unknown,
+): value is Record<string, unknown> {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value)
+  );
+}
+
+function hasExactKeys(
+  value: unknown,
+  expected: readonly string[],
+): boolean {
+  return (
+    isPlainRecord(value) &&
+    canonicalJson(Object.keys(value).sort()) ===
+      canonicalJson([...expected].sort())
+  );
 }
 
 function uniqueSorted(values: readonly string[]): string[] {

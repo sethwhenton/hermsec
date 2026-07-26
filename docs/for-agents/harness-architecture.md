@@ -66,14 +66,18 @@ The model never receives shell, write, install, arbitrary network, secret-file,
 or outside-repository capabilities.
 
 The final model round has no tools and must produce structured findings.
+Single and specialist roles must produce at least one successful native
+inspection result before a finding or abstention is accepted. Evidence-free
+text is rejected as premature and may receive a bounded native-tool retry
+without consuming the structured-output repair state.
 
 ## Tool Limits
 
 | Limit | Single | Specialist |
 | --- | ---: | ---: |
 | Model rounds | 5 | 3 |
-| Calls per round | 2 | 2 |
-| Total calls | 8 | 5 |
+| Calls per round | 8 | 16 |
+| Total calls | 8 | 16 |
 | Repeated identical call | 1 retry | 1 retry |
 | Concurrent agents | 1 | 2 across specialists |
 | Structured-output repair | 1 | 1 |
@@ -107,6 +111,13 @@ frameworks, manifests and candidate hints:
 Low runs the top three with deterministic tie-breaking. High runs all five.
 
 Specialists have isolated tool budgets and may not see one another's prose.
+Every tool-using role, including Single Agent, specialists, and gap-fill, uses
+the exact `deepseek/deepseek-v4-flash` route. The structured evidence judge
+uses `xiaomi/mimo-v2.5`; the constrained aggregator alone uses
+`minimax/minimax-m3`. This capability routing is duplicated intentionally in
+the producer, trace validator, and standalone summarizer so a rehashed
+role/model rewrite fails closed.
+
 The judge receives normalized candidate summaries and cited evidence, not broad
 repository tools. Verdicts are:
 
@@ -174,6 +185,16 @@ Every cell writes an immutable run directory with:
 Mock and replay execution never reads provider credentials. Live execution
 requires `--allow-spend`, an exact model allowlist, environment-only credential
 reference, no model-family fallback and a successful cost reservation.
+
+Live suites share one fail-fast latch. The first non-success cell or
+non-succeeded physical call synchronously blocks new dispatch, aborts
+already-dispatched siblings, drains provider and ledger cleanup, and seals all
+remaining agent/hybrid cells as explicit zero-cost cancellations. The
+initiating call remains the sole failed trigger; induced siblings remain
+canceled. Before dispatch, a failed reservation is known not charged; after
+dispatch, an unresolved request remains conservatively unknown; an
+authoritative settlement is never discarded. Empty OpenRouter generations are
+typed as `provider_unavailable`.
 
 ## Evaluation
 

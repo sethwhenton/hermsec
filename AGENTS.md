@@ -7,8 +7,8 @@ Read these files before changing code:
 
 ## Workspace And Git
 
-- Work only in `E:\Programming\hermsec`.
-- Use branch `experiment-harness-rebuild`.
+- Work only in `C:\Users\whent\Documents\Personal Proj\hermsec refined`.
+- Use branch `research-harness-laptop-handoff`.
 - Do not push.
 - Do not modify or copy uncommitted files from other Hermsec checkouts.
 - Do not erase unrelated changes made by another worker.

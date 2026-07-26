@@ -1,7 +1,9 @@
 import path from "node:path";
 import { CostLedger, type CostLedgerOptions } from "../agent/costTracker.js";
 import {
+  createLiveModelCallFailFastGate,
   createMeteredProviderRuntime,
+  type LiveModelCallFailFastGate,
   type MeteredProviderRuntime,
   type MockModelResponder,
 } from "../model/meteredProvider.js";
@@ -46,12 +48,14 @@ export type CreateResearchModelSuiteRuntimeInput = {
   suiteId: string;
   suiteDirectory: string;
   ledgerOptions?: CostLedgerOptions;
+  signal?: AbortSignal;
 };
 
 export type ResearchModelSuiteRuntime = {
   readonly suiteId: string;
   readonly suiteDirectory: string;
   readonly ledger: CostLedger;
+  readonly liveFailFastGate: LiveModelCallFailFastGate;
   createRun(input: CreateResearchModelRunInput): ResearchModelRuntime;
 };
 
@@ -85,11 +89,15 @@ export function createResearchModelSuiteRuntime(
   const ledger = freezeCostLedger(
     new CostLedger(ledgerPath, input.ledgerOptions),
   );
+  const liveFailFastGate = createLiveModelCallFailFastGate(
+    input.signal,
+  );
 
   return Object.freeze({
     suiteId,
     suiteDirectory,
     ledger,
+    liveFailFastGate,
     createRun(runInput: CreateResearchModelRunInput): ResearchModelRuntime {
       assertNoArbitraryLedgerSelection(runInput, true);
       const policy = snapshotExecutionPolicy(runInput.policy);
@@ -103,6 +111,7 @@ export function createResearchModelSuiteRuntime(
         ledger,
         policy,
         suiteId,
+        liveFailFastGate,
       );
     },
   });
@@ -134,6 +143,7 @@ function createBoundResearchModelRuntime(
   ledger: CostLedger,
   policy: Readonly<ResearchExecutionPolicy>,
   suiteId?: string,
+  liveFailFastGate?: LiveModelCallFailFastGate,
 ): ResearchModelRuntime {
   const pricing = createPricingCatalog(
     input.pricingSnapshot,
@@ -174,6 +184,9 @@ function createBoundResearchModelRuntime(
       ? { defaultMaxTokens: input.defaultMaxTokens }
       : {}),
     ...(input.local !== undefined ? { local: input.local } : {}),
+    ...(policy.execution === "live" && liveFailFastGate
+      ? { liveFailFastGate }
+      : {}),
   });
 
   return {

@@ -14,6 +14,9 @@ import {
   validateRunArtifacts,
   validateSuiteIndex,
 } from "../../../src/research/runManifest.js";
+import type {
+  ResearchModelCallTrace,
+} from "../../../src/research/modelCallTrace.js";
 
 test("run manifests are immutable, redacted, tamper-evident, and validate artifacts", async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "hermsec-run-manifest-"));
@@ -396,6 +399,94 @@ test("run manifests reject artifacts outside immutable run directory", async () 
   }
 });
 
+test("run manifests strictly validate model-call v2 producer and schema bindings", async () => {
+  const mutations: Array<{
+    name: string;
+    mutateDocument?: (document: Record<string, unknown>) => void;
+    mutateManifest?: (manifest: Record<string, unknown>) => void;
+    expected: RegExp;
+  }> = [
+    {
+      name: "errors-not-array",
+      mutateDocument(document) {
+        const trace = document.data as {
+          producerValidation: Record<string, unknown>;
+        };
+        trace.producerValidation.errors = "not-an-array";
+      },
+      expected: /model-call trace schema is invalid/iu,
+    },
+    {
+      name: "errors-not-strings",
+      mutateDocument(document) {
+        const trace = document.data as {
+          producerValidation: Record<string, unknown>;
+        };
+        trace.producerValidation.errors = [42];
+      },
+      expected: /model-call trace schema is invalid/iu,
+    },
+    {
+      name: "manifest-version-mismatch",
+      mutateManifest(manifest) {
+        const metadata = manifest.metadata as Record<string, unknown>;
+        metadata.modelCallTraceSchemaVersion = "1.0";
+      },
+      expected: /model-call trace schema binding is unsupported/iu,
+    },
+  ];
+
+  for (const mutation of mutations) {
+    const directory = await fs.mkdtemp(
+      path.join(os.tmpdir(), `hermsec-run-trace-${mutation.name}-`),
+    );
+    try {
+      const runId = `trace-${mutation.name}`;
+      const tracePath = path.join(directory, "model-calls.json");
+      await fs.writeFile(
+        tracePath,
+        `${JSON.stringify(validModelCallTraceDocument(runId), null, 2)}\n`,
+        "utf8",
+      );
+      await createRunManifest(directory, {
+        ...manifestInput("none", runId),
+        metadata: {
+          physical: true,
+          derivedFrom: [],
+          modelCallTraceSchemaVersion: "2.0",
+          modelCallTraceRolePlanVersion: "2.0",
+          modelCallTraceCassettePolicy: "none",
+        },
+        artifactPaths: ["model-calls.json"],
+      });
+      const initial = await validateRunArtifacts(directory);
+      assert.equal(initial.valid, true, initial.errors.join("\n"));
+
+      const document = JSON.parse(
+        await fs.readFile(tracePath, "utf8"),
+      ) as Record<string, unknown>;
+      mutation.mutateDocument?.(document);
+      if (mutation.mutateDocument) {
+        await fs.writeFile(
+          tracePath,
+          `${JSON.stringify(document, null, 2)}\n`,
+          "utf8",
+        );
+      }
+      await rehashRunManifest(
+        directory,
+        mutation.mutateManifest,
+      );
+
+      const validation = await validateRunArtifacts(directory);
+      assert.equal(validation.valid, false);
+      assert.match(validation.errors.join("\n"), mutation.expected);
+    } finally {
+      await fs.rm(directory, { recursive: true, force: true });
+    }
+  }
+});
+
 async function createArtifacts(directory: string): Promise<void> {
   await fs.mkdir(path.join(directory, "findings"), { recursive: true });
   await fs.writeFile(
@@ -404,6 +495,84 @@ async function createArtifacts(directory: string): Promise<void> {
     "utf8",
   );
   await fs.writeFile(path.join(directory, "cost.jsonl"), '{"cost":0}\n', "utf8");
+}
+
+function validModelCallTraceDocument(runId: string): {
+  schemaVersion: "1.0";
+  redactionMarkers: string[];
+  data: ResearchModelCallTrace;
+} {
+  return {
+    schemaVersion: "1.0",
+    redactionMarkers: [],
+    data: {
+      schemaVersion: "2.0",
+      runId,
+      mode: "single-agent",
+      execution: "mock",
+      cassettePolicy: "none",
+      physical: true,
+      derivedFrom: [],
+      detectorStatus: "completed",
+      candidateCount: 0,
+      aggregationDisposition: "not-applicable",
+      rolePlan: {
+        status: "complete",
+        requiredSpecialistRoles: ["single-agent-inspector"],
+      },
+      traceCompleteness: "complete",
+      calls: [{
+        ordinal: 1,
+        role: "single-agent-inspector",
+        gapFill: false,
+        provider: "openrouter",
+        model: "deepseek/deepseek-v4-flash",
+        requestFingerprint: "a".repeat(64),
+        fingerprintSource: "metered-replay",
+        terminalState: "succeeded",
+        responseProvider: "openrouter",
+        responseModel: "deepseek/deepseek-v4-flash",
+      }],
+      producerValidation: {
+        valid: true,
+        errors: [],
+      },
+    },
+  };
+}
+
+async function rehashRunManifest(
+  directory: string,
+  mutate?: (manifest: Record<string, unknown>) => void,
+): Promise<void> {
+  const manifestPath = path.join(directory, "run-manifest.json");
+  const manifest = JSON.parse(
+    await fs.readFile(manifestPath, "utf8"),
+  ) as Record<string, unknown> & {
+    artifacts: Array<{
+      path: string;
+      bytes: number;
+      sha256: string;
+    }>;
+    manifestSha256: string;
+  };
+  const traceArtifact = manifest.artifacts.find(
+    (artifact) => artifact.path === "model-calls.json",
+  );
+  assert.ok(traceArtifact);
+  const traceContent = await fs.readFile(
+    path.join(directory, "model-calls.json"),
+  );
+  traceArtifact.bytes = traceContent.byteLength;
+  traceArtifact.sha256 = sha256(traceContent);
+  mutate?.(manifest);
+  const { manifestSha256: _oldHash, ...unsigned } = manifest;
+  manifest.manifestSha256 = sha256(canonicalJson(unsigned));
+  await fs.writeFile(
+    manifestPath,
+    `${JSON.stringify(manifest, null, 2)}\n`,
+    "utf8",
+  );
 }
 
 async function createSuiteArtifacts(

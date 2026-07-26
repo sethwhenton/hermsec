@@ -194,13 +194,18 @@ The protocol has three phases:
   \item \textbf{Live}: exact allowlisted model IDs run behind per-call, per-mode, and global cost ceilings.
 \end{enumerate}
 
-Live scored routes use \mode{deepseek/deepseek-v4-flash} and
-\mode{xiaomi/mimo-v2.5}. The model \mode{minimax/minimax-m3} is allowed only
-for the short aggregation role. Provider fallback is disabled. OpenRouter
-supports explicit provider order and a no-fallback setting, while generation
+Live scored routing is capability-bound. The Single Agent, every tool-using
+specialist, and specialist gap-fill use
+\mode{deepseek/deepseek-v4-flash}; the evidence judge uses
+\mode{xiaomi/mimo-v2.5}; and \mode{minimax/minimax-m3} is allowed only for the
+short aggregation role. Cross-model fallback is disabled. Endpoint failover is
+permitted only between endpoints serving the same exact requested model.
+OpenRouter supports explicit provider routing controls, while generation
 metadata exposes actual model, provider, usage, latency, and cost
-\cite{openrouterrouting,openroutergeneration}. The run manifest records
-requested and actual routing data instead of assuming the request was honored.
+\cite{openrouterrouting,openroutergeneration}. The run manifest binds the
+requested routing plan to the model-call trace and cassette package, where
+actual response model and provider data are recorded instead of assuming the
+request was honored.
 
 \subsection{Metrics}
 Truth matching is deterministic. We report true positives, false positives, false negatives, precision, recall, and F1 using their standard definitions \cite{sklearnmetrics}. We also report per-category metrics, clean-fixture false positives, finding-level abstention or \findingstate{needs-review} adjudication counts, detector completeness, wall-clock time, token use, and physical provider cost.
@@ -217,6 +222,13 @@ is a finding-level adjudication verdict, not a terminal cell status; a cell can
 finish with any supported terminal status while retaining findings marked
 \findingstate{needs-review}. A zero-finding result is valid only when the
 assigned detector path ends with terminal status \findingstate{success}.
+
+Live cells share one suite-wide paid-request latch. The first non-success cell
+or non-succeeded physical call blocks later dispatch, aborts and drains
+already-dispatched siblings, and leaves the remaining cells as explicit
+\findingstate{canceled} records. A post-dispatch request without authoritative
+settlement remains conservatively charged as unknown; an authoritative cost is
+never discarded.
 
 \subsection{Provenance and Replay}
 Each suite contains:

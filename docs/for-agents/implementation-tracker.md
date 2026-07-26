@@ -17,7 +17,7 @@ review findings, and ordered commands are maintained in
 
 ## Non-Negotiable Constraints
 
-- Work only in `E:\Programming\hermsec`.
+- Work only in `C:\Users\whent\Documents\Personal Proj\hermsec refined`.
 - Work on `research-harness-laptop-handoff`; do not merge or push `main`
   without explicit user approval.
 - Keep the seven canonical experiment modes.
@@ -61,9 +61,9 @@ The integrated system receives a final `gpt-5.6-sol` `xhigh` audit.
 | H14 | Micro fixtures and truth set | Agent E1 | VERIFIED | H07 | Commits `65e52d8` and `ea6757a`; paired micro and medium clean/vulnerable fixtures |
 | H15 | Desktop IPC and mode integration | Agent F | IN PROGRESS | H04,H09,H10 | Seven modes, progress, cancel, partial-state and results |
 | H16 | Focused worker reviews and corrections | Reviewers | VERIFIED | H02-H15 | Provenance, tool-loop/redaction, live-contract, and packaging slices approved with no unresolved P1/P2 |
-| H17 | Core unit/integration verification | Lead | BACKLOG | H16 | Build and complete core test suite pass |
-| H18 | Micro and medium mock-provider matrices | Lead | VERIFIED | H11-H17 | Fresh v9 all-fixture mock/replay: 42/42 each, scoped cassettes validated, deterministic summaries byte-identical |
-| H19 | Budget-capped live OpenRouter matrix | Lead | CHANGES REQUIRED | H18 | Diagnostic micro proved evidence-free abstention/gap-fill weakness; enforce real tool evidence before final run |
+| H17 | Core unit/integration verification | Lead | VERIFIED | H16 | Core build and complete 499-test suite pass |
+| H18 | Micro and medium mock-provider matrices | Lead | VERIFIED | H11-H17 | Fresh v9 all-fixture mock/replay: 42/42 each, 234 succeeded scoped calls each, deterministic summaries byte-identical |
+| H19 | Budget-capped live OpenRouter matrix | Lead | BLOCKED | H18 | Strict micro v7 validated routing through MoA Low, then stopped on a typed exact-model `provider_unavailable` generation in MoA High; no all-fixture run |
 | H20 | Desktop build, smoke and visual verification | Lead | IN PROGRESS | H15-H17 | Runtime/package slice reviewed; packaged scan and packaged renderer/UI smoke remain |
 | H21 | Fresh standalone paper | Paper agent | BLOCKED | H18,H19,H20 | Scaffold audited; quantitative work waits for one eligible final live suite |
 | H22 | Paper compilation and factual audit | Lead/Reviewer | BACKLOG | H21 | PDF compiles; tables match artifacts; claims are evidenced |
@@ -116,11 +116,16 @@ Global live-test ceiling: USD 3.25.
 
 Model allowlist:
 
-- `deepseek/deepseek-v4-flash`
-- `xiaomi/mimo-v2.5`
-- `minimax/minimax-m3` only for a short aggregation role when configured
+- Single Agent, all specialists, and specialist gap-fill:
+  `deepseek/deepseek-v4-flash`
+- MoA evidence judge: `xiaomi/mimo-v2.5`
+- MoA aggregator: `minimax/minimax-m3`
 
-No model-family fallback is permitted during scored runs.
+No model-family fallback is permitted during scored runs. Exact-model endpoint
+failover may use another endpoint only when it serves the same requested model.
+Any non-success live cell or non-succeeded physical call trips one suite-wide
+fail-fast latch, drains in-flight cleanup, and prevents later physical
+dispatch.
 
 ## Verification Log
 
@@ -147,10 +152,19 @@ No model-family fallback is permitted during scored runs.
 | 2026-07-26 | Scoped all-fixture mock matrix | `final-v4-scoped/mock-suite` | PASS | 6 fixtures, 42 successful cells, valid immutable index and zero spend |
 | 2026-07-26 | Scoped all-fixture replay matrix | `final-v4-scoped/replay-suite` | PASS | 6 fixtures, 42 successful cells, valid immutable index and zero spend |
 | 2026-07-26 | Scoped reproducibility | Integrity-bound mock/replay summaries | PASS | Metrics, completeness, cost and LaTeX tables are byte-identical |
-| 2026-07-26 | Final v9 zero-cost gate | Fresh all-fixture mock and replay | PASS | 42/42 cells each; 222 scoped call references each; deterministic tables byte-identical |
+| 2026-07-26 | Earlier zero-cost gate | Fresh all-fixture mock and replay | PASS | 42/42 cells each; 222 scoped call references each; superseded by the evidence-before-final protocol |
 | 2026-07-26 | Live-contract focused verification | Core build plus tool-loop/canonical/redaction suites | PASS | 51/51 tests; Terra xhigh review approved |
 | 2026-07-26 | Diagnostic live micro | Seven modes on paired micro fixtures | WARN | 14 cells: 6 success, 6 degraded, 2 partial; USD 0.006720598 actual; evidence-before-final gate still required |
 | 2026-07-26 | Laptop handoff | `git branch --show-current` | PASS | `research-harness-laptop-handoff` |
+| 2026-07-26 | Evidence-before-final focused verification | Core build; tool-loop/canonical/MoA, summary/runner, and paper-export suites | PASS | 45/45, 79/79, and 20/20 tests passed; Terra xhigh re-review approved |
+| 2026-07-26 | Evidence-before-final zero-cost gate | Fresh all-fixture mock and offline replay | PASS | 42/42 cells each; 234 scoped call references each; suite indexes valid; five deterministic CSV/LaTeX outputs byte-identical |
+| 2026-07-26 | Capability-routed v9 zero-cost gate | Fresh all-fixture mock and replay | PASS | 42/42 cells each; 234/234 calls succeeded; zero route mismatches; suite indexes valid; five CSV/LaTeX outputs byte-identical |
+| 2026-07-26 | Pricing refresh | OpenRouter catalog plus offline verifier | PASS | DeepSeek price updated to USD 0.14/M input and USD 0.28/M output; sealed digest `6f8d00241ac08042056be6181027d1b6b40ce0a9eee0467912de2f370ad3b49d` |
+| 2026-07-26 | Full core verification | `npm test` | PASS | 499/499 tests passed after capability routing, strict fail-fast, pricing, and typed blank-generation handling |
+| 2026-07-26 | Paid micro v4 | Strict live micro | WARN | Aggregator eligibility contradiction; 4 success, 2 partial, 8 canceled; USD 0.004459928 |
+| 2026-07-26 | Paid micro v5 | Strict live micro | WARN | MoA Low passed; MiMo tool roles emitted inert JSON pseudo-tools; 6 success, 2 degraded, 6 canceled; USD 0.006336238 |
+| 2026-07-26 | Paid micro v6 | Strict live micro | WARN | MiMo judge failed after dispatch without a safe diagnostic; 4 success, 10 canceled; USD 0.002396484 settled / 0.003599224 conservative |
+| 2026-07-26 | Paid micro v7 | Strict live micro | BLOCKED | Single and MoA Low passed exact capability routing; MoA High stopped on typed DeepSeek `provider_unavailable`; 6 success, 8 canceled; USD 0.006308035 settled / 0.011166735 conservative |
 
 ## Review Log
 
@@ -163,12 +177,16 @@ No model-family fallback is permitted during scored runs.
 | H18 runner/CLI | Terra `xhigh` | APPROVED | Gap-fill call bounds, real zero-cost ledgers, source mutation boundaries, role routing and CLI gates | Corrected in `93f4fe3`; fresh mock/replay matrices approved |
 | H15 desktop packaging/runtime | Terra `xhigh` | APPROVED | Scanner override, runtime integrity, launcher reproducibility, inherited Node environment | Corrected; 71 desktop tests passed with 2 expected skips |
 | H18 summary/provenance | Terra `xhigh` | APPROVED | Suite/hash/ledger binding, cassette policy, exact replay scope and concurrent recorder ownership | Corrected; adversarial tests and v9 mock/replay gate passed |
-| H19 live contract | Terra `xhigh` | APPROVED | Provider timeout, specialist budget, parser-aware repair, definite-assignment redaction | Corrected and focused 51-test suite passed; separate evidence-before-final improvement remains |
+| H19 live contract | Terra `xhigh` | APPROVED | Provider timeout, specialist budget, parser-aware repair, definite-assignment redaction | Corrected and focused 51-test suite passed; evidence-before-final follow-up is recorded below |
+| H19 evidence-before-final | Terra `xhigh` | APPROVED | Premature finals, native-only recovery, repair isolation, penultimate recovery, gap-fill rounds and summary bounds | Corrected; no remaining P1/P2 findings |
+| H19 suite fail-fast and capability routing | Parallel read-only reviewers | APPROVED | Trigger causality, sibling cancellation, exact role mapping, aggregator eligibility filtering and replay invalidation | Producer, trace validator, summarizer and tests agree; no unresolved P1/P2 |
 
 ## Open Decisions
 
-- Enforce at least one real inspection tool result before accepting a model
-  finding or abstention.
+- Do not run the all-fixture live matrix while the exact-model route is
+  returning empty/provider-unavailable generations.
+- Any future paid retry requires explicit approval and must first pass one
+  14/14-cell micro with zero non-succeeded physical calls.
 - Add packaged scan and packaged renderer/UI smoke coverage.
 - Generate quantitative paper content only from a future eligible final live
   suite and its offline replay.

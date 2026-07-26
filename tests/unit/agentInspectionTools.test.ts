@@ -28,6 +28,76 @@ test("inspection registry exposes only the six bounded read-only tools", async (
   });
 });
 
+test("only trusted untruncated empty-project inventory qualifies as final evidence", async () => {
+  const root = await fs.mkdtemp(
+    path.join(os.tmpdir(), "hermsec-empty-inspection-tool-"),
+  );
+  try {
+    const runtime = await createCodeInspectionRuntime(root);
+    const registry = createInspectionToolRegistry(runtime);
+    const context = {
+      workspaceRoot: root,
+      offlineMode: false,
+      userApproved: true,
+    };
+
+    const inspected = await dispatchTool(
+      registry,
+      "inspect_project",
+      {},
+      context,
+    );
+    const listed = await dispatchTool(
+      registry,
+      "list_files",
+      { pathIncludes: "filtered-empty" },
+      context,
+    );
+
+    assert.equal(inspected.qualifiesFinalEvidence, true);
+    assert.equal(listed.qualifiesFinalEvidence, false);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("a truncated zero-readable-file profile cannot qualify inventory", async () => {
+  const root = await fs.mkdtemp(
+    path.join(os.tmpdir(), "hermsec-truncated-secret-profile-"),
+  );
+  try {
+    await fs.writeFile(
+      path.join(root, ".env"),
+      "SECRET_ONE=fixture-secret-one\n",
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(root, ".env.local"),
+      "SECRET_TWO=fixture-secret-two\n",
+      "utf8",
+    );
+    const runtime = await createCodeInspectionRuntime(root, {
+      maxFiles: 1,
+    });
+    const inspected = await dispatchTool(
+      createInspectionToolRegistry(runtime),
+      "inspect_project",
+      {},
+      {
+        workspaceRoot: root,
+        offlineMode: false,
+        userApproved: true,
+      },
+    );
+
+    assert.equal(runtime.profile.indexedFiles, 0);
+    assert.equal(runtime.profile.truncated, true);
+    assert.equal(inspected.qualifiesFinalEvidence, false);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
 test("inspection tools validate inputs, redact model output, and deny secret files", async () => {
   await withFixture(async ({ root, secret }) => {
     const runtime = await createCodeInspectionRuntime(root);
@@ -42,6 +112,7 @@ test("inspection tools validate inputs, redact model output, and deny secret fil
     const serializedList = JSON.stringify(listed.output);
     assert.doesNotMatch(serializedList, /\.env\.local/u);
     assert.doesNotMatch(serializedList, /\.envrc/u);
+    assert.equal(listed.qualifiesFinalEvidence, false);
     assert.equal(runtime.profile.deniedSecretFiles, 2);
 
     const searched = await dispatchTool(
@@ -53,6 +124,7 @@ test("inspection tools validate inputs, redact model output, and deny secret fil
     const serializedSearch = JSON.stringify(searched.output);
     assert.match(serializedSearch, /\[REDACTED_FOR_MODEL\]/u);
     assert.equal(serializedSearch.includes(secret), false);
+    assert.equal(searched.qualifiesFinalEvidence, true);
 
     await assert.rejects(
       () => dispatchTool(
@@ -104,6 +176,7 @@ test("manifest and dependency inventory tools return bounded repository evidence
       context,
     );
     assert.match(JSON.stringify(manifest.output), /express/u);
+    assert.equal(manifest.qualifiesFinalEvidence, true);
 
     const inventory = await dispatchTool(
       registry,
@@ -114,6 +187,7 @@ test("manifest and dependency inventory tools return bounded repository evidence
     const serialized = JSON.stringify(inventory.output);
     assert.match(serialized, /package\.json/u);
     assert.match(serialized, /package-lock\.json/u);
+    assert.equal(inventory.qualifiesFinalEvidence, true);
   });
 });
 

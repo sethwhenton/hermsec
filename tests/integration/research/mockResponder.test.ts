@@ -97,9 +97,19 @@ test("deterministic mock preserves moa-low identity through judge and aggregator
     assert.ok(
       gapFillTraces.every(
         (trace) =>
-          trace.rounds === 2 &&
-          trace.toolCalls === 1 &&
-          trace.evidence.length === 1,
+          trace.rounds === 3 &&
+          trace.toolCalls === 2 &&
+          trace.evidence.length === 2 &&
+          trace.evidence.every(
+            (evidence) => evidence.qualifiesFinalEvidence,
+          ) &&
+          trace.evidence.some(
+            (evidence) =>
+              evidence.toolName === "read_file_snippet" &&
+              typeof (evidence.output as { text?: unknown }).text ===
+                "string" &&
+              ((evidence.output as { text: string }).text.length > 0),
+          ),
       ),
     );
     assert.ok(

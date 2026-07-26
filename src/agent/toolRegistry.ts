@@ -13,6 +13,7 @@ export type HermsecTool<I = unknown, O = unknown> = {
   validateInput(input: unknown): I;
   validateOutput(output: unknown): O;
   run(input: I, context: ToolContext): Promise<O>;
+  qualifiesFinalEvidence?(input: I, output: O): boolean;
 };
 
 export type ToolRegistry = {

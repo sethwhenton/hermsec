@@ -257,7 +257,84 @@ test("suite runtime uses one policy snapshot for containment and dispatch", asyn
   }
 });
 
-test("suite runtime rejects divergent ledgers and overage A blocks distinct run B", async () => {
+test("suite runtime shares one live fail-fast gate across runs and drains all ledger cleanup", async () => {
+  const directory = await fs.mkdtemp(
+    path.join(os.tmpdir(), "hermsec-suite-live-fail-fast-"),
+  );
+  let dispatchesA = 0;
+  let dispatchesB = 0;
+  try {
+    const suite = createResearchModelSuiteRuntime({
+      suiteId: `live-fail-fast-${path.basename(directory)}`,
+      suiteDirectory: path.join(directory, "suite"),
+    });
+    const runtimeA = suite.createRun({
+      runDirectory: path.join(directory, "runs", "a"),
+      runId: "live-fail-fast-a",
+      mode: "single-agent",
+      policy: livePolicy(),
+      provider: {
+        ...liveProvider(0.00001, () => undefined),
+        async complete() {
+          dispatchesA += 1;
+          throw new Error("run A provider failure");
+        },
+      },
+      pricingSnapshot: snapshot(),
+      pricingValidation: {
+        now: new Date("2026-07-25T12:00:00.000Z"),
+      },
+    });
+    const runtimeB = suite.createRun({
+      runDirectory: path.join(directory, "runs", "b"),
+      runId: "live-fail-fast-b",
+      mode: "moa-low",
+      policy: livePolicy(),
+      provider: liveProvider(0.00001, () => {
+        dispatchesB += 1;
+      }),
+      pricingSnapshot: snapshot(),
+      pricingValidation: {
+        now: new Date("2026-07-25T12:00:00.000Z"),
+      },
+    });
+
+    await assert.rejects(
+      runtimeA.provider.complete({
+        model: MODEL,
+        messages: [{ role: "user", content: "Fail run A." }],
+        maxTokens: 20,
+      }),
+      /run A provider failure/u,
+    );
+    await suite.liveFailFastGate.drain();
+    await assert.rejects(
+      runtimeB.provider.complete({
+        model: MODEL,
+        messages: [{ role: "user", content: "Do not dispatch run B." }],
+        maxTokens: 20,
+      }),
+      (error: unknown) =>
+        error instanceof Error && error.name === "AbortError",
+    );
+    await suite.liveFailFastGate.drain();
+
+    const ledger = await suite.ledger.snapshot();
+    assert.equal(dispatchesA, 1);
+    assert.equal(dispatchesB, 0);
+    assert.equal(ledger.reservations.length, 1);
+    assert.equal(ledger.reservations[0]?.status, "unknown");
+    assert.ok(
+      ledger.reservations.every(
+        (reservation) => reservation.status !== "reserved",
+      ),
+    );
+  } finally {
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("suite runtime rejects divergent ledgers and overage A fail-fast blocks distinct run B", async () => {
   const directory = await fs.mkdtemp(
     path.join(os.tmpdir(), "hermsec-runtime-shared-ledger-"),
   );
@@ -371,7 +448,8 @@ test("suite runtime rejects divergent ledgers and overage A blocks distinct run 
           messages: [{ role: "user", content: "Inspect run B." }],
           maxTokens: 50,
         }),
-      CostKillSwitchError,
+      (error: unknown) =>
+        error instanceof Error && error.name === "AbortError",
     );
     assert.equal(dispatchesA, 1);
     assert.equal(dispatchesB, 0);

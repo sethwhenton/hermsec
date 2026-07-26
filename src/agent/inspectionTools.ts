@@ -76,6 +76,12 @@ function inspectProjectTool(runtime: CodeInspectionRuntime): HermsecTool<Inspect
       return strictObject(input, "inspect_project", []);
     },
     validateOutput: objectOutput("inspect_project"),
+    qualifiesFinalEvidence() {
+      return (
+        runtime.profile.indexedFiles === 0
+        && runtime.profile.truncated === false
+      );
+    },
     async run(_input, context) {
       throwIfAborted(context);
       const files = runtime.listFiles({ limit: 5_000 });
@@ -160,6 +166,9 @@ function searchCodeTool(runtime: CodeInspectionRuntime): HermsecTool<SearchCodeI
       };
     },
     validateOutput: objectOutput("search_code"),
+    qualifiesFinalEvidence() {
+      return true;
+    },
     async run(input, context) {
       return runtime.searchCode({
         ...input,
@@ -206,6 +215,9 @@ function readFileSnippetTool(runtime: CodeInspectionRuntime): HermsecTool<ReadFi
         truncated: requiredBoolean(value, "truncated"),
       };
     },
+    qualifiesFinalEvidence() {
+      return true;
+    },
     async run(input, context) {
       return runtime.readFileSnippet({
         ...input,
@@ -233,6 +245,9 @@ function readManifestTool(runtime: CodeInspectionRuntime): HermsecTool<ReadManif
       };
     },
     validateOutput: objectOutput("read_manifest"),
+    qualifiesFinalEvidence() {
+      return true;
+    },
     async run(input, context) {
       const manifest = runtime.listFiles({ kind: "manifest", limit: 5_000 })
         .find((file) => file.path === normalizeRelative(input.path));
@@ -275,6 +290,9 @@ function readDependencyInventoryTool(
       };
     },
     validateOutput: objectOutput("read_dependency_inventory"),
+    qualifiesFinalEvidence() {
+      return true;
+    },
     async run(input, context) {
       const limit = input.limit ?? 8;
       const maxChars = input.maxCharsPerManifest ?? 2_500;

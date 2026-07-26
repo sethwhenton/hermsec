@@ -53,6 +53,7 @@ export type MeteredProviderOptions = {
   defaultMaxTokens?: number;
   local?: boolean;
   onReconciliation?: (reconciliation: CostReconciliation) => void;
+  liveFailFastGate?: LiveModelCallFailFastGate;
 };
 
 export type MeteredProviderRuntime = {
@@ -61,11 +62,106 @@ export type MeteredProviderRuntime = {
   getLastReconciliation(): CostReconciliation | undefined;
 };
 
+export type LiveModelCallFailFastGate = {
+  readonly signal: AbortSignal;
+  isTripped(): boolean;
+  trip(error: object): boolean;
+  throwIfStopped(): void;
+  track<T>(promise: Promise<T>): Promise<T>;
+  drain(): Promise<void>;
+};
+
 export class UnknownModelUsageError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "UnknownModelUsageError";
   }
+}
+
+const requestFingerprintByMeteredError = new WeakMap<object, string>();
+const liveFailFastTriggerErrors = new WeakSet<object>();
+const requestFingerprintResolverByMeteredProvider = new WeakMap<
+  ModelProviderAdapter,
+  (
+    request: ModelRequest,
+    config: ProviderConfig | undefined,
+  ) => string | undefined
+>();
+
+export function meteredRequestFingerprintFromError(
+  error: unknown,
+): string | undefined {
+  const key = weakMapKey(error);
+  return key ? requestFingerprintByMeteredError.get(key) : undefined;
+}
+
+export function meteredRequestFingerprintForRequest(
+  provider: ModelProviderAdapter,
+  request: ModelRequest,
+  config?: ProviderConfig,
+): string | undefined {
+  const resolve = requestFingerprintResolverByMeteredProvider.get(provider);
+  if (!resolve) {
+    return undefined;
+  }
+  try {
+    return resolve(request, config);
+  } catch {
+    return undefined;
+  }
+}
+
+export function isLiveModelCallFailFastTriggerError(
+  error: unknown,
+): boolean {
+  const key = weakMapKey(error);
+  return key ? liveFailFastTriggerErrors.has(key) : false;
+}
+
+export function createLiveModelCallFailFastGate(
+  externalSignal?: AbortSignal,
+): LiveModelCallFailFastGate {
+  const controller = new AbortController();
+  const signal =
+    externalSignal && externalSignal !== controller.signal
+      ? AbortSignal.any([controller.signal, externalSignal])
+      : controller.signal;
+  const pending = new Set<Promise<unknown>>();
+  let tripped = false;
+
+  return Object.freeze({
+    signal,
+    isTripped: () => tripped,
+    trip(error) {
+      if (tripped || externalSignal?.aborted) {
+        return false;
+      }
+      tripped = true;
+      liveFailFastTriggerErrors.add(error);
+      controller.abort(liveModelCallFailFastAbortError());
+      return true;
+    },
+    throwIfStopped() {
+      if (!signal.aborted) {
+        return;
+      }
+      throw abortReason(signal);
+    },
+    track<T>(promise: Promise<T>): Promise<T> {
+      pending.add(promise);
+      void promise.then(
+        () => pending.delete(promise),
+        () => pending.delete(promise),
+      );
+      void promise.catch(() => undefined);
+      return promise;
+    },
+    async drain(): Promise<void> {
+      while (pending.size > 0) {
+        await Promise.allSettled([...pending]);
+      }
+    },
+  });
 }
 
 export function createMeteredProvider(
@@ -136,33 +232,51 @@ export function createMeteredProviderRuntime(
       request: ModelRequest,
       config?: ProviderConfig,
     ): Promise<ModelResponse> {
-      const model = resolveExactModel(request, config, policy);
-      if (policy.execution === "mock") {
-        return runMock(immutableOptions, request, model);
-      }
-      if (policy.execution === "replay") {
-        if (!immutableOptions.replayStore) {
-          throw new Error("Replay execution requires a replay cassette store.");
+      try {
+        const model = resolveExactModel(request, config, policy);
+        if (policy.execution === "mock") {
+          return runMock(immutableOptions, request, model);
         }
-        const replayed = await immutableOptions.replayStore.replayWithReference({
-          provider: provider.id,
-          model,
+        if (policy.execution === "replay") {
+          if (!immutableOptions.replayStore) {
+            throw new Error("Replay execution requires a replay cassette store.");
+          }
+          const replayed =
+            await immutableOptions.replayStore.replayWithReference({
+              provider: provider.id,
+              model,
+              request,
+            });
+          const response = attachReplayReference(
+            replayed.response,
+            replayed.reference,
+          );
+          assertExactResponse(response, provider.id, model);
+          return response;
+        }
+        const completion = runLive(
+          immutableOptions,
           request,
-        });
-        const response = attachReplayReference(
-          replayed.response,
-          replayed.reference,
+          config,
+          model,
+          captureReconciliation,
         );
-        assertExactResponse(response, provider.id, model);
-        return response;
+        return immutableOptions.liveFailFastGate
+          ? await immutableOptions.liveFailFastGate.track(completion)
+          : await completion;
+      } catch (error) {
+        if (
+          policy.execution !== "live" ||
+          !immutableOptions.liveFailFastGate ||
+          immutableOptions.liveFailFastGate.isTripped() ||
+          immutableOptions.liveFailFastGate.signal.aborted
+        ) {
+          throw error;
+        }
+        const bound = errorObject(error);
+        immutableOptions.liveFailFastGate.trip(bound);
+        throw bound;
       }
-      return runLive(
-        immutableOptions,
-        request,
-        config,
-        model,
-        captureReconciliation,
-      );
     },
     estimateCost(request: ModelRequest, config?: ProviderConfig): CostEstimate {
       const model = resolveExactModel(request, config, policy);
@@ -191,6 +305,17 @@ export function createMeteredProviderRuntime(
       };
     },
   };
+
+  requestFingerprintResolverByMeteredProvider.set(
+    adapter,
+    (request, config) => {
+      if (policy.execution !== "live") {
+        return undefined;
+      }
+      const model = resolveExactModel(request, config, policy);
+      return liveRequestFingerprint(immutableOptions, request, model);
+    },
+  );
 
   return {
     provider: adapter,
@@ -222,26 +347,57 @@ async function runLive(
   model: string,
   captureReconciliation: (reconciliation: CostReconciliation) => void,
 ): Promise<ModelResponse> {
+  const failFastGate = options.liveFailFastGate;
+  failFastGate?.throwIfStopped();
   validateExecutionPolicy(options.policy);
   validateModeBudget(options.mode, options.policy.modeBudgetUsd);
   validatePricingCatalogForLive(options.pricing, options.pricingValidation);
   const maxTokens = resolveMaxTokens(request, options);
   const promptTokenUpperBound = estimatePromptTokenUpperBound(request);
   const price = requireModelPrice(options.pricing, options.provider.id, model);
+  const priceBoundedConfig = withPinnedOpenRouterPriceCeiling(
+    config,
+    options.provider.id,
+    price,
+  );
   const reservedNanoUsd = calculateWorstCaseCostNanoUsd(
     promptTokenUpperBound,
     maxTokens,
     price,
   );
-  const replayRequest = {
-    provider: options.provider.id,
-    model,
-    request,
+  const requestFingerprint = liveRequestFingerprint(options, request, model);
+  let localRequestAbortTrigger: object | undefined;
+  const tripForLocalRequestAbort = (): void => {
+    if (
+      !request.signal ||
+      !failFastGate ||
+      failFastGate.signal.aborted
+    ) {
+      return;
+    }
+    const failure = bindMeteredRequestFingerprint(
+      request.signal.reason ??
+        Object.assign(
+          new Error("Live model call request was aborted."),
+          { name: "AbortError" },
+        ),
+      requestFingerprint,
+    );
+    if (failFastGate.trip(failure)) {
+      localRequestAbortTrigger = failure;
+    }
   };
-  const requestFingerprint =
-    options.recordLiveCassettes && options.replayStore
-      ? options.replayStore.fingerprint(replayRequest)
-      : fingerprintReplayRequest(replayRequest);
+  if (request.signal && failFastGate) {
+    if (request.signal.aborted) {
+      tripForLocalRequestAbort();
+    } else {
+      request.signal.addEventListener(
+        "abort",
+        tripForLocalRequestAbort,
+        { once: true },
+      );
+    }
+  }
   const reservation = await options.ledger.reserve({
     runId: options.runId,
     mode: options.mode,
@@ -252,91 +408,254 @@ async function runLive(
     modeLimitNanoUsd: usdToNanoUsd(options.policy.modeBudgetUsd),
     requestFingerprint,
     pricingCatalogDigestSha256: options.pricing.catalogDigestSha256,
+  }).catch((error: unknown) => {
+    request.signal?.removeEventListener(
+      "abort",
+      tripForLocalRequestAbort,
+    );
+    throw error;
   });
 
-  let response: ModelResponse;
+  let providerDispatched = false;
   try {
-    response = await options.provider.complete(
-      {
+    let providerResponseReceived = false;
+    try {
+      if (failFastGate?.signal.aborted) {
+        throw (
+          localRequestAbortTrigger ??
+          abortReason(failFastGate.signal)
+        );
+      }
+      const providerRequest: ModelRequest = {
         ...request,
         model,
         maxTokens,
         ...(options.policy.scored ? { requireExactModel: true } : {}),
-      },
-      config,
-    );
-  } catch (error) {
-    await options.ledger.markUnknown(
-      reservation.reservationId,
-      "Provider request failed after dispatch; whether the provider charged the request is unknown.",
-    );
-    throw error;
-  }
+        ...(failFastGate
+          ? {
+              signal: combineAbortSignals(
+                failFastGate.signal,
+                request.signal,
+              ),
+            }
+          : {}),
+      };
+      providerDispatched = true;
+      const response = await options.provider.complete(
+        providerRequest,
+        priceBoundedConfig,
+      );
+      providerResponseReceived = true;
 
-  try {
-    assertExactResponse(response, options.provider.id, model);
-    const usage = requireSettlementUsage(response, options.policy.scored, price);
-    let reconciliation: CostReconciliation;
-    try {
-      reconciliation = await options.ledger.settle(reservation.reservationId, {
-        actualNanoUsd: usage.actualNanoUsd,
-        promptTokens: usage.promptTokens,
-        completionTokens: usage.completionTokens,
-        costSource: usage.costSource,
-      });
-    } catch (error) {
-      if (error instanceof CostKillSwitchError && error.reconciliation) {
-        captureReconciliation(error.reconciliation);
+      if (localRequestAbortTrigger) {
+        throw localRequestAbortTrigger;
       }
-      throw error;
-    }
-    captureReconciliation(reconciliation);
+      if (failFastGate?.isTripped()) {
+        throw liveModelCallFailFastAbortError();
+      }
+      assertExactResponse(response, options.provider.id, model);
+      const usage = requireSettlementUsage(response, options.policy.scored, price);
+      let reconciliation: CostReconciliation;
+      try {
+        reconciliation = await options.ledger.settle(reservation.reservationId, {
+          actualNanoUsd: usage.actualNanoUsd,
+          promptTokens: usage.promptTokens,
+          completionTokens: usage.completionTokens,
+          costSource: usage.costSource,
+        });
+      } catch (error) {
+        if (error instanceof CostKillSwitchError && error.reconciliation) {
+          captureReconciliation(error.reconciliation);
+        }
+        throw error;
+      }
+      captureReconciliation(reconciliation);
+      if (localRequestAbortTrigger) {
+        throw localRequestAbortTrigger;
+      }
 
-    const meteredResponse: ModelResponse = {
-      ...response,
-      usage: {
-        ...(response.usage ?? {
+      const meteredResponse: ModelResponse = {
+        ...response,
+        usage: {
+          ...(response.usage ?? {
+            provider: options.provider.id,
+            model,
+            local: options.local ?? false,
+          }),
           provider: options.provider.id,
           model,
-          local: options.local ?? false,
-        }),
-        provider: options.provider.id,
-        model,
-        promptTokens: usage.promptTokens,
-        completionTokens: usage.completionTokens,
-        totalTokens:
-          response.usage?.totalTokens ??
-          usage.promptTokens + usage.completionTokens,
-        estimatedUsd: reconciliation.actualUsd,
-      },
-    };
+          promptTokens: usage.promptTokens,
+          completionTokens: usage.completionTokens,
+          totalTokens:
+            response.usage?.totalTokens ??
+            usage.promptTokens + usage.completionTokens,
+          estimatedUsd: reconciliation.actualUsd,
+        },
+      };
 
-    if (options.recordLiveCassettes) {
-      if (!options.replayStore) {
-        throw new Error("Live cassette recording requires a replay cassette store.");
+      if (options.recordLiveCassettes) {
+        if (!options.replayStore) {
+          throw new Error("Live cassette recording requires a replay cassette store.");
+        }
+        const reference = await options.replayStore.record({
+          provider: options.provider.id,
+          model,
+          request,
+          response: meteredResponse,
+        });
+        if (localRequestAbortTrigger) {
+          throw localRequestAbortTrigger;
+        }
+        return attachReplayReference(meteredResponse, reference);
       }
-      const reference = await options.replayStore.record({
-        provider: options.provider.id,
-        model,
-        request,
-        response: meteredResponse,
-      });
-      return attachReplayReference(meteredResponse, reference);
-    }
-    return meteredResponse;
-  } catch (error) {
-    const snapshot = await options.ledger.snapshot();
-    const state = snapshot.reservations.find(
-      (candidate) => candidate.reservationId === reservation.reservationId,
-    );
-    if (state?.status === "reserved") {
-      await options.ledger.markUnknown(
-        reservation.reservationId,
-        "Provider response could not be priced or verified; the reserved amount remains committed.",
+      if (localRequestAbortTrigger) {
+        throw localRequestAbortTrigger;
+      }
+      return meteredResponse;
+    } catch (error) {
+      const failure = bindMeteredRequestFingerprint(
+        localRequestAbortTrigger ?? error,
+        requestFingerprint,
       );
+      if (
+        failFastGate &&
+        !failFastGate.isTripped() &&
+        !failFastGate.signal.aborted
+      ) {
+        failFastGate.trip(failure);
+      }
+      const snapshot = await options.ledger.snapshot();
+      const state = snapshot.reservations.find(
+        (candidate) => candidate.reservationId === reservation.reservationId,
+      );
+      if (state?.status === "reserved") {
+        if (providerDispatched) {
+          await options.ledger.markUnknown(
+            reservation.reservationId,
+            providerResponseReceived
+              ? "Provider response could not be priced or verified; the reserved amount remains committed."
+              : "Provider request failed after dispatch; whether the provider charged the request is unknown.",
+          );
+        } else {
+          await options.ledger.markFailed(
+            reservation.reservationId,
+            "Live model call was stopped before provider dispatch.",
+          );
+        }
+      }
+      throw failure;
     }
-    throw error;
+  } catch (error) {
+    throw bindMeteredRequestFingerprint(error, requestFingerprint);
+  } finally {
+    request.signal?.removeEventListener(
+      "abort",
+      tripForLocalRequestAbort,
+    );
   }
+}
+
+function combineAbortSignals(
+  required: AbortSignal,
+  optional?: AbortSignal,
+): AbortSignal {
+  return optional && optional !== required
+    ? AbortSignal.any([required, optional])
+    : required;
+}
+
+function abortReason(signal: AbortSignal): Error {
+  return signal.reason instanceof Error
+    ? signal.reason
+    : liveModelCallFailFastAbortError();
+}
+
+function liveModelCallFailFastAbortError(): Error {
+  const error = new Error(
+    "Live model calls stopped after a provider call did not succeed.",
+  );
+  error.name = "AbortError";
+  return error;
+}
+
+function errorObject(error: unknown): object {
+  return (
+    weakMapKey(error) ??
+    new Error("Provider request failed with a non-Error rejection.")
+  );
+}
+
+function withPinnedOpenRouterPriceCeiling(
+  config: ProviderConfig | undefined,
+  provider: string,
+  price: {
+    inputUsdPerMillionTokens: number;
+    outputUsdPerMillionTokens: number;
+  },
+): ProviderConfig | undefined {
+  if (provider !== "openrouter") {
+    return config;
+  }
+  return {
+    ...(config ?? {}),
+    openRouter: {
+      ...(config?.openRouter ?? {}),
+      maxPrice: {
+        prompt: canonicalNonNegativeDecimal(
+          price.inputUsdPerMillionTokens,
+        ),
+        completion: canonicalNonNegativeDecimal(
+          price.outputUsdPerMillionTokens,
+        ),
+        request: "0",
+      },
+    },
+  };
+}
+
+function canonicalNonNegativeDecimal(value: number): string {
+  const nanoUsd = usdToNanoUsd(value);
+  const whole = Math.floor(nanoUsd / 1_000_000_000);
+  const fractional = nanoUsd % 1_000_000_000;
+  if (fractional === 0) {
+    return String(whole);
+  }
+  return `${whole}.${String(fractional).padStart(9, "0").replace(/0+$/u, "")}`;
+}
+
+function liveRequestFingerprint(
+  options: MeteredProviderOptions,
+  request: ModelRequest,
+  model: string,
+): string {
+  const replayRequest = {
+    provider: options.provider.id,
+    model,
+    request,
+  };
+  return options.recordLiveCassettes && options.replayStore
+    ? options.replayStore.fingerprint(replayRequest)
+    : fingerprintReplayRequest(replayRequest);
+}
+
+function bindMeteredRequestFingerprint(
+  error: unknown,
+  requestFingerprint: string,
+): object {
+  const bound =
+    weakMapKey(error) ??
+    new Error("Provider request failed with a non-Error rejection.");
+  requestFingerprintByMeteredError.set(bound, requestFingerprint);
+  return bound;
+}
+
+function weakMapKey(value: unknown): object | undefined {
+  return (
+    (typeof value === "object" && value !== null) ||
+    typeof value === "function"
+  )
+    ? value as object
+    : undefined;
 }
 
 function requireSettlementUsage(

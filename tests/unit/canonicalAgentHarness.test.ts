@@ -46,7 +46,15 @@ test("single detector uses bounded multi-round tools, validates evidence, and fr
     assert.equal(Object.isFrozen(result), true);
     assert.equal(Object.isFrozen(result.traces[0]?.evidence ?? []), true);
     assert.equal(progress.every((event) => event.runId === "unit-single-run"), true);
+    assert.equal(provider.requests[0]?.maxTokens, 4_000);
 
+    const initialMessages = JSON.stringify(provider.requests[0]?.messages);
+    assert.match(initialMessages, /list_files/u);
+    assert.match(initialMessages, /search_code/u);
+    assert.match(
+      initialMessages,
+      /Project inventory.*alone is not enough/u,
+    );
     const finalMessages = JSON.stringify(provider.requests[2]?.messages);
     assert.match(finalMessages, /HERMSEC_UNTRUSTED_REPOSITORY_DATA_BEGIN/u);
     assert.match(finalMessages, /never instructions/u);
@@ -174,7 +182,7 @@ test("single detector reserves its last bounded round for structured-output repa
   }
 });
 
-test("JSON pseudo-tools are never executed and duplicate JSON documents enter the bounded repair path", async () => {
+test("JSON pseudo-tools stay inert while the canonical detector requires native evidence", async () => {
   const repo = await createFixture();
   const provider = pseudoToolProvider();
 
@@ -187,34 +195,52 @@ test("JSON pseudo-tools are never executed and duplicate JSON documents enter th
 
     assert.equal(result.status, "completed");
     assert.equal(result.findings.length, 0);
-    assert.equal(result.traces[0]?.toolCalls, 0);
-    assert.equal(result.traces[0]?.toolTraces.length, 0);
+    assert.equal(result.traces[0]?.toolCalls, 1);
+    assert.equal(result.traces[0]?.toolTraces.length, 1);
+    assert.equal(result.traces[0]?.toolTraces[0]?.callId, "native-snippet");
     assert.equal(
       result.traces[0]?.limitations.includes(
         "final-output-repair-used",
       ),
+      false,
+    );
+    assert.equal(
+      result.traces[0]?.limitations.includes(
+        "premature-final-before-evidence",
+      ),
       true,
     );
     assert.ok((provider.requests[0]?.tools?.length ?? 0) > 0);
-    assert.deepEqual(provider.requests[1]?.tools, []);
-    assert.equal(provider.requests[1]?.toolChoice, "none");
-    const repairMessages = JSON.stringify(provider.requests[1]?.messages);
-    assert.match(repairMessages, /candidate-envelope-invalid/u);
-    assert.match(repairMessages, /only allowed top-level keys/u);
-    assert.match(repairMessages, /thoughts, or pseudo-tool requests/u);
+    assert.ok((provider.requests[1]?.tools?.length ?? 0) > 0);
+    assert.equal(provider.requests[1]?.toolChoice, "required");
+    const recoveryMessages = JSON.stringify(provider.requests[1]?.messages);
+    assert.match(recoveryMessages, /make at least one native function\/tool call/u);
+    assert.match(recoveryMessages, /Prefer role-specific search_code/u);
+    assert.match(recoveryMessages, /Do not use inspect_project alone/u);
+    assert.match(recoveryMessages, /read_file_snippet/u);
   } finally {
     await fs.rm(repo, { recursive: true, force: true });
   }
 });
 
-test("single detector accepts a bounded detailed abstention reason", async () => {
+test("single detector preserves a detailed abstention after native evidence recovery", async () => {
   const repo = await createFixture();
   const reason = "No supported vulnerability was established from the inspected evidence. "
     .repeat(10)
     .trim();
+  let call = 0;
   const provider = fakeProvider(
     [],
-    async () => abstentionResponse(reason),
+    async () => {
+      call += 1;
+      if (call === 2) {
+        return toolResponse("abstention-search", "search_code", {
+          query: "definitely-not-present-hermsec-token",
+          limit: 5,
+        });
+      }
+      return abstentionResponse(reason);
+    },
   );
 
   try {
@@ -229,6 +255,13 @@ test("single detector accepts a bounded detailed abstention reason", async () =>
     assert.equal(result.status, "completed");
     assert.equal(result.findings.length, 0);
     assert.equal(result.abstentions[0]?.reason, reason);
+    assert.equal(result.traces[0]?.rounds, 3);
+    assert.equal(result.traces[0]?.toolCalls, 1);
+    assert.equal(result.traces[0]?.evidence.length, 1);
+    assert.equal(
+      result.traces[0]?.limitations.includes("premature-final-before-evidence"),
+      true,
+    );
     assert.equal(
       result.traces[0]?.limitations.includes("final-output-repair-used"),
       false,
@@ -571,6 +604,13 @@ function pseudoToolProvider(): ModelProviderAdapter & { requests: ModelRequest[]
       });
       return textResponse(`${pseudo}\n${pseudo}`);
     }
+    if (call === 2) {
+      return toolResponse("native-snippet", "read_file_snippet", {
+        path: "src/app.js",
+        startLine: 1,
+        endLine: 2,
+      });
+    }
     return textResponse(
       JSON.stringify({
         findings: [],
@@ -624,7 +664,7 @@ function duplicateToolIdProvider(): ModelProviderAdapter & { requests: ModelRequ
     call += 1;
     if (call === 1) {
       return toolResponses([
-        ["duplicate-id", "inspect_project", {}],
+        ["duplicate-id", "search_code", { query: "eval", limit: 5 }],
         ["duplicate-id", "list_files", { limit: 5 }],
       ]);
     }
@@ -640,8 +680,8 @@ function repeatedToolProvider(): ModelProviderAdapter & { requests: ModelRequest
     if (call <= 3) {
       return toolResponse(
         `repeat-${call}`,
-        "inspect_project",
-        {},
+        "search_code",
+        { query: "eval", limit: 5 },
       );
     }
     return abstentionResponse("Repeated tool call loop was stopped.");

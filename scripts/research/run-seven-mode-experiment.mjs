@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
+import { classifyExperimentExit } from "./experiment-exit-policy.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const args = parseArgs(process.argv.slice(2));
@@ -88,9 +89,7 @@ const result = await experimentModule.runResearchExperiment({
   ...(execution === "live" ? { allowSpend: true } : {}),
 });
 
-const failedCells = result.cells.filter(
-  (cell) => cell.status === "failed" || cell.status === "canceled",
-);
+const exitPolicy = classifyExperimentExit(result);
 const summary = {
   suiteId: result.suiteId,
   execution: result.execution,
@@ -99,7 +98,10 @@ const summary = {
   fixtures: result.fixtureIds.length,
   modes: result.modes.length,
   cells: result.cells.length,
-  failedCells: failedCells.length,
+  failedCells: exitPolicy.failedCells.length,
+  liveNonSuccessCells: exitPolicy.liveNonSuccessCells.length,
+  liveNonSucceededPhysicalModelCalls:
+    exitPolicy.liveNonSucceededPhysicalModelCalls.length,
   physicalExecutions: result.physicalExecutions,
   actualPhysicalSpendUsd: result.actualPhysicalSpendUsd,
   conservativeCommittedUsd: result.conservativeCommittedUsd,
@@ -107,11 +109,13 @@ const summary = {
 };
 process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
 
-if (failedCells.length > 0) {
+if (exitPolicy.exitCode !== 0) {
   process.stderr.write(
-    `Experiment completed with ${failedCells.length} failed or canceled cell(s).\n`,
+    result.execution === "live"
+      ? `Live experiment failed the paid gate with ${exitPolicy.liveNonSuccessCells.length} non-success cell(s) and ${exitPolicy.liveNonSucceededPhysicalModelCalls.length} non-succeeded physical model call(s).\n`
+      : `Experiment completed with ${exitPolicy.failedCells.length} failed or canceled cell(s).\n`,
   );
-  process.exitCode = 2;
+  process.exitCode = exitPolicy.exitCode;
 }
 
 function fixtureRoots(selection) {

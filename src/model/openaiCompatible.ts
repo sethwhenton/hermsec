@@ -1,16 +1,21 @@
-import { redactForLog, sanitizeErrorMessage } from "../agent/redaction.js";
+import {
+  redactForLog,
+  sanitizeErrorMessage,
+} from "../agent/redaction.js";
 import { credentialStatusFromEnv, normalizeCredentialEnvName, readCredentialFromEnv } from "./credentials.js";
-import type {
-  ModelInfo,
-  ModelProviderAdapter,
-  ModelProviderId,
-  ModelMessage,
-  ModelRequest,
-  ModelResponse,
-  ModelRouteMetadata,
-  ModelToolCall,
-  ProviderConfig,
-  ProviderHealth
+import {
+  ModelProviderRequestError,
+  type OpenRouterMaxPrice,
+  type ModelInfo,
+  type ModelProviderAdapter,
+  type ModelProviderId,
+  type ModelMessage,
+  type ModelRequest,
+  type ModelResponse,
+  type ModelRouteMetadata,
+  type ModelToolCall,
+  type ProviderConfig,
+  type ProviderHealth,
 } from "./provider.js";
 
 const MAX_PROVIDER_RESPONSE_BYTES = 2_000_000;
@@ -29,8 +34,10 @@ export type OpenAiCompatibleDefaults = {
 
 type OpenAiChatPayload = {
   id?: string;
+  error?: OpenAiProviderError;
   choices?: Array<{
     finish_reason?: string;
+    error?: OpenAiProviderError;
     message?: {
       content?: string | null | Array<{ text?: string; content?: string }>;
       tool_calls?: Array<{
@@ -79,6 +86,15 @@ type OpenAiChatPayload = {
       model?: string;
       status?: number;
     }>;
+  };
+};
+
+type OpenAiProviderError = {
+  code?: unknown;
+  message?: unknown;
+  metadata?: {
+    error_type?: unknown;
+    provider_code?: unknown;
   };
 };
 
@@ -171,12 +187,49 @@ export function createOpenAiCompatibleProvider(defaults: OpenAiCompatibleDefault
           ...(config ? { providerConfig: config } : {}),
         });
       } catch (error) {
-        throw new Error(`${defaults.id} provider request failed: ${sanitizeErrorMessage(error)}`);
+        if (error instanceof ModelProviderRequestError) {
+          throw error;
+        }
+        if (isTimeoutError(error)) {
+          throw new ModelProviderRequestError(
+            `${defaults.id} provider request timed out.`,
+            {
+              provider: defaults.id,
+              errorType: "timeout",
+            },
+          );
+        }
+        throw new ModelProviderRequestError(
+          `${defaults.id} provider request failed: ${sanitizeErrorMessage(error)}`,
+          {
+            provider: defaults.id,
+            errorType: providerTransportErrorType(error),
+          },
+        );
       }
       const { payload } = result;
+      const embeddedError =
+        payload.error ??
+        payload.choices?.find((choice) => choice.error)?.error;
+      if (embeddedError) {
+        throw providerRequestError(
+          defaults.id,
+          providerErrorStatus(embeddedError.code),
+          embeddedError,
+        );
+      }
       const content = extractMessageContent(payload);
       const toolCalls = extractToolCalls(payload);
       if (!content && toolCalls.length === 0) {
+        if (defaults.id === "openrouter") {
+          throw new ModelProviderRequestError(
+            "openrouter provider returned no message content.",
+            {
+              provider: defaults.id,
+              errorType: "provider_unavailable",
+            },
+          );
+        }
         throw new Error(`${defaults.id} provider returned no message content.`);
       }
       const returnedModel = safeMetadataString(payload.model, 500) ?? model;
@@ -326,8 +379,11 @@ async function requestChatCompletion(input: {
 
   if (!response.ok) {
     const rawError = await readBoundedResponseText(response, MAX_PROVIDER_ERROR_BYTES);
-    const redacted = redactForLog(rawError).value;
-    throw new Error(`${input.defaultsId} provider request failed with ${response.status}: ${String(redacted).slice(0, 500)}`);
+    throw providerRequestError(
+      input.defaultsId,
+      response.status,
+      parseProviderError(rawError),
+    );
   }
 
   const rawPayload = await readBoundedResponseText(response, MAX_PROVIDER_RESPONSE_BYTES);
@@ -344,6 +400,130 @@ async function requestChatCompletion(input: {
   }
 }
 
+function parseProviderError(raw: string): OpenAiProviderError | undefined {
+  try {
+    const parsed = JSON.parse(raw) as {
+      error?: OpenAiProviderError;
+    };
+    return parsed?.error &&
+      typeof parsed.error === "object" &&
+      !Array.isArray(parsed.error)
+      ? parsed.error
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function providerErrorMessage(
+  provider: string,
+  status: number | undefined,
+  errorType: string | undefined,
+  providerCode: string | undefined,
+  message: string,
+): string {
+  return [
+    `${provider} provider request failed${status === undefined ? "" : ` with ${status}`}`,
+    errorType ? `error_type=${errorType}` : "",
+    providerCode ? `provider_code=${providerCode}` : "",
+    message,
+  ].filter(Boolean).join(": ");
+}
+
+function providerRequestError(
+  provider: ModelProviderId,
+  status: number | undefined,
+  error: OpenAiProviderError | undefined,
+): ModelProviderRequestError {
+  const message =
+    typeof error?.message === "string"
+      ? sanitizeErrorMessage(error.message)
+      : "Provider returned an error.";
+  const errorType =
+    safeErrorToken(error?.metadata?.error_type) ??
+    inferredProviderErrorType(status);
+  const providerCode = safeErrorToken(error?.metadata?.provider_code);
+  return new ModelProviderRequestError(
+    providerErrorMessage(
+      provider,
+      status,
+      errorType,
+      providerCode,
+      message,
+    ),
+    {
+      provider,
+      ...(status !== undefined ? { status } : {}),
+      ...(errorType ? { errorType } : {}),
+      ...(providerCode ? { providerCode } : {}),
+    },
+  );
+}
+
+function inferredProviderErrorType(
+  status: number | undefined,
+): string | undefined {
+  if (status === 429) {
+    return "rate_limit_exceeded";
+  }
+  if (status === 529) {
+    return "provider_overloaded";
+  }
+  if (status === 502 || status === 503) {
+    return "provider_unavailable";
+  }
+  if (status === 408 || status === 504) {
+    return "timeout";
+  }
+  return undefined;
+}
+
+function providerErrorStatus(value: unknown): number | undefined {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && /^[45]\d{2}$/u.test(value)
+        ? Number(value)
+        : undefined;
+  return Number.isSafeInteger(parsed) && (parsed ?? 0) >= 400 && (parsed ?? 0) <= 599
+    ? parsed
+    : undefined;
+}
+
+function safeErrorToken(value: unknown): string | undefined {
+  if (
+    typeof value !== "string" ||
+    !/^[a-z0-9][a-z0-9._-]{0,99}$/iu.test(value)
+  ) {
+    return undefined;
+  }
+  const originalRedaction = redactForLog(value);
+  const normalized = value.toLowerCase();
+  const normalizedRedaction = redactForLog(normalized);
+  return !originalRedaction.redacted &&
+    originalRedaction.value === value &&
+    !normalizedRedaction.redacted &&
+    normalizedRedaction.value === normalized
+    ? normalized
+    : undefined;
+}
+
+function isTimeoutError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.name === "TimeoutError"
+  );
+}
+
+function providerTransportErrorType(
+  error: unknown,
+): "invalid_response" | "transport_error" {
+  return error instanceof Error &&
+      /invalid json|response exceeds/iu.test(error.message)
+    ? "invalid_response"
+    : "transport_error";
+}
+
 function openRouterRequestPolicy(
   request: ModelRequest,
   config: ProviderConfig | undefined,
@@ -352,6 +532,7 @@ function openRouterRequestPolicy(
     require_parameters: boolean;
     allow_fallbacks: boolean;
     data_collection: "allow" | "deny";
+    max_price?: OpenRouterMaxPrice;
   };
   captureRouteMetadata: boolean;
 } {
@@ -361,14 +542,59 @@ function openRouterRequestPolicy(
   if (!boundedResearchRequest && !hasExplicitRouting) {
     return { captureRouteMetadata: false };
   }
+  const maxPrice = normalizeOpenRouterMaxPrice(configured?.maxPrice);
   return {
     provider: {
       require_parameters: boundedResearchRequest ? true : configured?.requireParameters ?? false,
-      allow_fallbacks: boundedResearchRequest ? false : configured?.allowFallbacks ?? true,
+      // Exact-model enforcement rejects model-family substitution locally.
+      // OpenRouter provider fallbacks only fail over between endpoints serving
+      // that same requested model, which improves availability without
+      // weakening the exact-model contract.
+      allow_fallbacks: configured?.allowFallbacks ?? true,
       data_collection: boundedResearchRequest ? "deny" : configured?.dataCollection ?? "deny",
+      ...(maxPrice ? { max_price: maxPrice } : {}),
     },
     captureRouteMetadata: boundedResearchRequest ? true : configured?.captureRouteMetadata ?? false,
   };
+}
+
+function normalizeOpenRouterMaxPrice(
+  value: OpenRouterMaxPrice | undefined,
+): OpenRouterMaxPrice | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("OpenRouter max price must be a pricing object.");
+  }
+  const allowed = new Set([
+    "prompt",
+    "completion",
+    "request",
+    "image",
+    "audio",
+  ]);
+  const keys = Object.keys(value);
+  if (keys.length === 0 || keys.some((key) => !allowed.has(key))) {
+    throw new Error(
+      "OpenRouter max price must contain only prompt, completion, request, image, or audio ceilings.",
+    );
+  }
+  const normalized: OpenRouterMaxPrice = {};
+  for (const key of keys as Array<keyof OpenRouterMaxPrice>) {
+    const candidate = value[key];
+    if (
+      typeof candidate !== "string" ||
+      !/^(?:0|[1-9]\d*)(?:\.\d+)?$/u.test(candidate) ||
+      !Number.isFinite(Number(candidate))
+    ) {
+      throw new Error(
+        `OpenRouter max price ${key} must be a canonical non-negative decimal string.`,
+      );
+    }
+    normalized[key] = candidate;
+  }
+  return normalized;
 }
 
 function requiresExactOpenRouterModel(

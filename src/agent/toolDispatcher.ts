@@ -7,6 +7,7 @@ export type DispatchedToolResult = {
   name: InspectionToolName;
   output: unknown;
   redactionMarkers: string[];
+  qualifiesFinalEvidence: boolean;
 };
 
 export async function dispatchTool(
@@ -28,10 +29,18 @@ export async function dispatchTool(
   const validatedInput = tool.validateInput(input);
   const rawOutput = await tool.run(validatedInput, context);
   const validatedOutput = tool.validateOutput(rawOutput);
+  let qualifiesFinalEvidence = false;
+  try {
+    qualifiesFinalEvidence =
+      tool.qualifiesFinalEvidence?.(validatedInput, validatedOutput) === true;
+  } catch {
+    // Final-evidence qualification is a fail-closed local policy check.
+  }
   const redacted = redactForModel(validatedOutput);
   return {
     name,
     output: redacted.value,
     redactionMarkers: redacted.markers,
+    qualifiesFinalEvidence,
   };
 }

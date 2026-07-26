@@ -1,6 +1,10 @@
 import type { ModelProviderAdapter, ModelRequest, ModelResponse, ModelToolCall, ProviderConfig } from "../model/provider.js";
 import { dispatchTool } from "./toolDispatcher.js";
-import { finalRoundInstruction, repairFinalOutputInstruction } from "./inspectionPrompt.js";
+import {
+  finalRoundInstruction,
+  requireInspectionEvidenceInstruction,
+  repairFinalOutputInstruction,
+} from "./inspectionPrompt.js";
 import { redactForModel } from "./redaction.js";
 import { toolDefinitions, type ToolRegistry } from "./toolRegistry.js";
 import {
@@ -31,8 +35,8 @@ export const DEFAULT_SINGLE_TOOL_LIMITS: ToolLoopLimits = {
 
 export const DEFAULT_SPECIALIST_TOOL_LIMITS: ToolLoopLimits = {
   maxRounds: 3,
-  maxToolCalls: 8,
-  maxCallsPerRound: 8,
+  maxToolCalls: 16,
+  maxCallsPerRound: 16,
   maxTotalBytes: 48_000,
   maxTotalTokens: 160_000,
   maxRepeatedCallCount: 2,
@@ -50,6 +54,7 @@ export type BoundedToolLoopOptions<T> = {
   limits?: Partial<ToolLoopLimits>;
   finalInstruction?: string;
   repairInstruction?: (errorCode: string) => string;
+  requireEvidenceBeforeFinal?: boolean;
   signal?: AbortSignal;
   onTrace?: (trace: AgentToolTrace) => void | Promise<void>;
 };
@@ -97,6 +102,7 @@ export async function runBoundedInspectionLoop<T>(
   let totalTokens = 0;
   let finalRepairs = 0;
   let forceFinal = false;
+  let forceEvidenceToolRound = false;
   let partial = false;
   let degraded = false;
 
@@ -114,16 +120,43 @@ export async function runBoundedInspectionLoop<T>(
         );
       }
 
+      const hasInspectionEvidence = evidence.some((entry) =>
+        entry.qualifiesFinalEvidence && entry.bytes > 0
+      );
+      const needsInspectionEvidence =
+        options.requireEvidenceBeforeFinal === true &&
+        !hasInspectionEvidence;
+      const evidenceRecoveryRound =
+        (
+          forceEvidenceToolRound ||
+          (
+            needsInspectionEvidence &&
+            round >= limits.maxRounds &&
+            round < maxProviderRounds
+          )
+        ) &&
+        !forceFinal &&
+        toolCalls < limits.maxToolCalls &&
+        totalBytes < limits.maxTotalBytes;
+      forceEvidenceToolRound = false;
       const finalOnly =
-        forceFinal ||
-        round >= limits.maxRounds ||
-        toolCalls >= limits.maxToolCalls ||
-        totalBytes >= limits.maxTotalBytes;
+        !evidenceRecoveryRound &&
+        (
+          forceFinal ||
+          round >= limits.maxRounds ||
+          toolCalls >= limits.maxToolCalls ||
+          totalBytes >= limits.maxTotalBytes
+        );
       const roundMessages = [...messages];
       if (finalOnly) {
         roundMessages.push({
           role: "user",
           content: options.finalInstruction ?? finalRoundInstruction(),
+        });
+      } else if (needsInspectionEvidence && evidence.length > 0) {
+        roundMessages.push({
+          role: "user",
+          content: requireInspectionEvidenceInstruction(),
         });
       }
 
@@ -133,7 +166,12 @@ export async function runBoundedInspectionLoop<T>(
         requireExactModel: true,
         ...(finalOnly
           ? { tools: [], toolChoice: "none" as const }
-          : { tools: definitions, toolChoice: "auto" as const }),
+          : {
+              tools: definitions,
+              toolChoice: needsInspectionEvidence
+                ? "required" as const
+                : "auto" as const,
+            }),
         signal: combinedSignal,
       };
       const requestTokenReservation = requestTokenUpperBound(request);
@@ -240,6 +278,7 @@ export async function runBoundedInspectionLoop<T>(
               durationMs: Date.now() - startedAt,
               redactionMarkers: [],
               truncated: false,
+              qualifiesFinalEvidence: false,
               errorCode: errorCodeFor(error),
             });
             messages.push({
@@ -288,6 +327,7 @@ export async function runBoundedInspectionLoop<T>(
               output: dispatched.output,
               maxBytes: remainingBytes,
               redactionMarkers: dispatched.redactionMarkers,
+              qualifiesFinalEvidence: dispatched.qualifiesFinalEvidence,
             });
             evidence.push(prepared.evidence);
             totalBytes += prepared.evidence.bytes;
@@ -308,6 +348,8 @@ export async function runBoundedInspectionLoop<T>(
               durationMs: Date.now() - startedAt,
               redactionMarkers: prepared.evidence.redactionMarkers,
               truncated: prepared.evidence.truncated,
+              qualifiesFinalEvidence:
+                prepared.evidence.qualifiesFinalEvidence,
             });
             messages.push({
               role: "tool",
@@ -328,6 +370,7 @@ export async function runBoundedInspectionLoop<T>(
                 durationMs: Date.now() - startedAt,
                 redactionMarkers: [],
                 truncated: false,
+                qualifiesFinalEvidence: false,
                 errorCode,
               });
               return finishWithoutOutput(
@@ -347,6 +390,7 @@ export async function runBoundedInspectionLoop<T>(
               durationMs: Date.now() - startedAt,
               redactionMarkers: [],
               truncated: false,
+              qualifiesFinalEvidence: false,
               errorCode,
             });
             messages.push({
@@ -368,6 +412,25 @@ export async function runBoundedInspectionLoop<T>(
         degraded = true;
         limitations.add("empty-model-response");
         return finishWithoutOutput(evidence.length > 0 ? "degraded" : "failed", "empty-response");
+      }
+      if (needsInspectionEvidence) {
+        const hasFutureToolRound =
+          !finalOnly &&
+          round + 1 < maxProviderRounds &&
+          toolCalls < limits.maxToolCalls &&
+          totalBytes < limits.maxTotalBytes;
+        if (hasFutureToolRound) {
+          limitations.add("premature-final-before-evidence");
+          forceEvidenceToolRound = true;
+          messages.push({ role: "assistant", content: finalContent });
+          messages.push({
+            role: "user",
+            content: requireInspectionEvidenceInstruction(),
+          });
+          continue;
+        }
+        limitations.add("inspection-evidence-required");
+        return finishWithoutOutput("failed", "inspection-evidence-required");
       }
 
       try {
@@ -446,6 +509,7 @@ export async function runBoundedInspectionLoop<T>(
       durationMs: 0,
       redactionMarkers: [],
       truncated: false,
+      qualifiesFinalEvidence: false,
       errorCode,
     });
     messages.push({
@@ -475,6 +539,7 @@ export async function runBoundedInspectionLoop<T>(
       durationMs: Date.now() - startedAt,
       redactionMarkers: [],
       truncated: false,
+      qualifiesFinalEvidence: false,
       errorCode,
     });
     messages.push({
@@ -539,7 +604,7 @@ function normalizeLimits(input: Partial<ToolLoopLimits> | undefined): ToolLoopLi
       HARD_MAX_PROVIDER_ROUNDS,
     ),
     maxToolCalls: boundedInt(input?.maxToolCalls, DEFAULT_SINGLE_TOOL_LIMITS.maxToolCalls, 0, 40),
-    maxCallsPerRound: boundedInt(input?.maxCallsPerRound, DEFAULT_SINGLE_TOOL_LIMITS.maxCallsPerRound, 1, 8),
+    maxCallsPerRound: boundedInt(input?.maxCallsPerRound, DEFAULT_SINGLE_TOOL_LIMITS.maxCallsPerRound, 1, 16),
     maxTotalBytes: boundedInt(input?.maxTotalBytes, DEFAULT_SINGLE_TOOL_LIMITS.maxTotalBytes, 0, 1_000_000),
     maxTotalTokens: boundedInt(
       input?.maxTotalTokens,

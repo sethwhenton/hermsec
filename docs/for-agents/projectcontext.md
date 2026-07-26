@@ -12,7 +12,7 @@ handoff branch and do not merge to `main` without explicit user approval.
 
 ## Authoritative Workspace
 
-- Repository: `E:\Programming\hermsec`
+- Repository: `C:\Users\whent\Documents\Personal Proj\hermsec refined`
 - Branch: `research-harness-laptop-handoff`
 - Baseline commit: `1ca6da53dc9970d7c91321d5482cd74c05019bae`
 - Remote: `https://github.com/sethwhenton/hermsec.git`
@@ -44,6 +44,10 @@ Single Agent is one agent identity using several bounded tool rounds.
 - MoA judges use `accepted`, `rejected`, or `needs-review`.
 - Aggregators may reconcile known finding IDs but may not invent or erase them.
 - Partial failures are explicit and never silently replaced with another mode.
+- Exact research routing is capability-bound: DeepSeek for every tool-using
+  role, MiMo for the judge, and Minimax only for aggregation.
+- A live non-success or non-succeeded physical call trips one suite-wide latch;
+  later dispatch is forbidden and in-flight cleanup is drained.
 - OpenRouter live testing has a global USD 3.25 kill switch.
 - Secrets must not appear in source, prompts, logs, reports, or replay fixtures.
 

@@ -11,10 +11,12 @@ import {
   type CanonicalAgentDetectorResult,
   type CanonicalAgentRole,
 } from "../agent/canonicalHarness.js";
+import { createCodeInspectionRuntime } from "../agent/codeInspection.js";
 import {
   MOA_ROLES,
   selectMoaRoles,
 } from "../agent/moaRoles.js";
+import { profileProject } from "../agent/projectProfiler.js";
 import { redactForLog, sanitizeErrorMessage } from "../agent/redaction.js";
 import {
   runCanonicalScanOrchestration,
@@ -62,6 +64,8 @@ import {
   createEmptyModelCallTrace,
   createModelCallTraceRecorder,
   MODEL_CALL_TRACE_FILE,
+  MODEL_CALL_TRACE_ROLE_PLAN_VERSION,
+  MODEL_CALL_TRACE_SCHEMA_VERSION,
   type ResearchModelCallTrace,
 } from "./modelCallTrace.js";
 import { createDeterministicResearchMockResponder } from "./mockResponder.js";
@@ -101,6 +105,11 @@ import {
 } from "./subjectSnapshot.js";
 
 export const RESEARCH_EXPERIMENT_MODES = canonicalScanAssistModes;
+
+export const DEFAULT_RESEARCH_HARNESS_VERSION =
+  "canonical-seven-mode-v8-capability-routed-typed-provider-unavailable-required-evidence-suite-live-fail-fast";
+export const DEFAULT_RESEARCH_PROMPT_VERSION =
+  "bounded-tool-agent-v3-focused-required-evidence";
 
 export const RESEARCH_EXACT_MODEL_ALLOWLIST = Object.freeze([
   "deepseek/deepseek-v4-flash",
@@ -431,6 +440,7 @@ async function runResearchExperimentWithWorkspace(
   const suiteRuntime = createResearchModelSuiteRuntime({
     suiteId: input.suiteId,
     suiteDirectory,
+    ...(input.signal ? { signal: input.signal } : {}),
   });
   await materializeZeroCostLedger(suiteRuntime.ledger);
   const mockResponder = await resolveMockResponder(input);
@@ -439,6 +449,7 @@ async function runResearchExperimentWithWorkspace(
   let scannerExecutions = 0;
   let agentExecutions = 0;
   let derivedHybrids = 0;
+  let strictLivePaidGateReason: string | undefined;
 
   for (const fixture of fixtures) {
     scannerExecutions += 1;
@@ -452,13 +463,66 @@ async function runResearchExperimentWithWorkspace(
       suiteId: input.suiteId,
       fixture,
       draft: scannerCellDraft(input, fixture, scanner),
-      harnessVersion: input.harnessVersion ?? "canonical-seven-mode-v1",
-      promptVersion: input.promptVersion ?? "bounded-tool-agent-v1",
+      harnessVersion: input.harnessVersion ?? DEFAULT_RESEARCH_HARNESS_VERSION,
+      promptVersion: input.promptVersion ?? DEFAULT_RESEARCH_PROMPT_VERSION,
     });
     cells.push(scannerCell.cell);
     manifestPaths.push(scannerCell.manifestRelativePath);
+    if (
+      input.execution === "live" &&
+      scannerCell.cell.status !== "success"
+    ) {
+      strictLivePaidGateReason ??= [
+        "Strict live paid gate stopped physical agent scheduling",
+        `after ${scannerCell.cell.fixtureId}/${scannerCell.cell.mode}`,
+        `cell status ${scannerCell.cell.status}`,
+      ].join(": ");
+    }
 
     for (const mode of PHYSICAL_AGENT_MODES) {
+      if (strictLivePaidGateReason) {
+        const canceledAgentCell = await publishCell({
+          suiteDirectory,
+          suiteId: input.suiteId,
+          fixture,
+          draft: await strictLiveGateCanceledAgentCellDraft(
+            input,
+            fixture,
+            mode,
+            strictLivePaidGateReason,
+            now,
+          ),
+          harnessVersion:
+            input.harnessVersion ?? DEFAULT_RESEARCH_HARNESS_VERSION,
+          promptVersion:
+            input.promptVersion ?? DEFAULT_RESEARCH_PROMPT_VERSION,
+        });
+        cells.push(canceledAgentCell.cell);
+        manifestPaths.push(canceledAgentCell.manifestRelativePath);
+
+        const canceledHybridCell = await publishCell({
+          suiteDirectory,
+          suiteId: input.suiteId,
+          fixture,
+          draft: strictLiveGateCanceledHybridCellDraft(
+            input,
+            fixture,
+            scanner,
+            HYBRID_MODE_BY_AGENT[mode],
+            mode,
+            strictLivePaidGateReason,
+            now,
+          ),
+          harnessVersion:
+            input.harnessVersion ?? DEFAULT_RESEARCH_HARNESS_VERSION,
+          promptVersion:
+            input.promptVersion ?? DEFAULT_RESEARCH_PROMPT_VERSION,
+        });
+        cells.push(canceledHybridCell.cell);
+        manifestPaths.push(canceledHybridCell.manifestRelativePath);
+        continue;
+      }
+
       agentExecutions += 1;
       const agent = await executePhysicalAgent({
         input,
@@ -473,11 +537,16 @@ async function runResearchExperimentWithWorkspace(
         suiteId: input.suiteId,
         fixture,
         draft: agentCellDraft(input, fixture, agent),
-        harnessVersion: input.harnessVersion ?? "canonical-seven-mode-v1",
-        promptVersion: input.promptVersion ?? "bounded-tool-agent-v1",
+        harnessVersion: input.harnessVersion ?? DEFAULT_RESEARCH_HARNESS_VERSION,
+        promptVersion: input.promptVersion ?? DEFAULT_RESEARCH_PROMPT_VERSION,
       });
       cells.push(agentCell.cell);
       manifestPaths.push(agentCell.manifestRelativePath);
+      strictLivePaidGateReason ??= strictLivePaidGateFailureReason(
+        input,
+        agent,
+        agentCell.cell,
+      );
 
       derivedHybrids += 1;
       const hybrid = await deriveHybridCell({
@@ -493,8 +562,8 @@ async function runResearchExperimentWithWorkspace(
         suiteId: input.suiteId,
         fixture,
         draft: hybrid,
-        harnessVersion: input.harnessVersion ?? "canonical-seven-mode-v1",
-        promptVersion: input.promptVersion ?? "bounded-tool-agent-v1",
+        harnessVersion: input.harnessVersion ?? DEFAULT_RESEARCH_HARNESS_VERSION,
+        promptVersion: input.promptVersion ?? DEFAULT_RESEARCH_PROMPT_VERSION,
       });
       cells.push(hybridCell.cell);
       manifestPaths.push(hybridCell.manifestRelativePath);
@@ -803,8 +872,8 @@ async function executePhysicalAgent(input: {
   const replayScopeId = [
     input.fixture.loaded.manifest.id,
     input.fixture.sourceState.fixtureDigestSha256,
-    input.input.harnessVersion ?? "canonical-seven-mode-v1",
-    input.input.promptVersion ?? "bounded-tool-agent-v1",
+    input.input.harnessVersion ?? DEFAULT_RESEARCH_HARNESS_VERSION,
+    input.input.promptVersion ?? DEFAULT_RESEARCH_PROMPT_VERSION,
     input.mode,
   ].join("\u0000");
   const scopedMockResponder = input.mockResponder
@@ -819,6 +888,10 @@ async function executePhysicalAgent(input: {
       : input.mode === "moa-high"
         ? ALL_MOA_SPECIALIST_ROLES
         : undefined;
+  const liveProviderGate =
+    input.input.execution === "live"
+      ? input.suiteRuntime.liveFailFastGate
+      : undefined;
   const traceRecorder = createModelCallTraceRecorder({
     runId,
     mode: input.mode,
@@ -870,25 +943,57 @@ async function executePhysicalAgent(input: {
       repoRoot: input.fixture.subjectRoot,
       mode: detectorMode,
       runId,
-      ...(input.input.signal ? { signal: input.input.signal } : {}),
+      ...(liveProviderGate
+        ? { signal: liveProviderGate.signal }
+        : input.input.signal
+          ? { signal: input.input.signal }
+          : {}),
       resolveModel: ({ role, gapFill, profile }) => {
         plannedSpecialistRoles = bindCanonicalRolePlan(
           plannedSpecialistRoles,
           rolePlanForProfile(detectorMode, profile),
         );
         const providerConfig = providerConfigForRole(role);
+        const tracedProvider = traceRecorder.wrapProvider({
+          role,
+          gapFill,
+          provider: runtime!.provider,
+          providerConfig,
+        });
         return {
-          provider: traceRecorder.wrapProvider({
-            role,
-            gapFill,
-            provider: runtime!.provider,
-            providerConfig,
-          }),
+          provider: liveProviderGate
+            ? providerWithComplete(
+                tracedProvider,
+                (request, config) => {
+                  liveProviderGate.throwIfStopped();
+                  const completion = tracedProvider.complete(
+                    request,
+                    config,
+                  ).catch((error: unknown) => {
+                    liveProviderGate.trip(
+                      error !== null &&
+                        (typeof error === "object" ||
+                          typeof error === "function")
+                        ? error
+                        : new Error(
+                            "Live model call failed with a non-Error rejection.",
+                          ),
+                    );
+                    throw error;
+                  });
+                  return liveProviderGate.track(completion);
+                },
+              )
+            : tracedProvider,
           providerConfig,
         };
       },
       now: input.now,
     });
+    await Promise.all([
+      traceRecorder.drain(),
+      liveProviderGate?.drain() ?? Promise.resolve(),
+    ]);
     plannedSpecialistRoles = bindCanonicalRolePlan(
       plannedSpecialistRoles,
       rolePlanForResult(detectorMode, result),
@@ -907,7 +1012,10 @@ async function executePhysicalAgent(input: {
         Boolean(input.input.recordMockCassettes) ||
         Boolean(input.input.recordLiveCassettes),
     });
-    const costs = await runtimeCosts(runtime, runId, input.mode);
+    const {
+      tokens: ledgerTokens,
+      ...costs
+    } = await runtimeCosts(runtime, runId, input.mode);
     return {
       kind: "agent",
       mode: input.mode,
@@ -915,23 +1023,38 @@ async function executePhysicalAgent(input: {
       result,
       runtime,
       ...costs,
-      tokens: totalTokens(result.usages),
+      tokens:
+        input.input.execution === "live"
+          ? ledgerTokens
+          : totalTokens(result.usages),
       modelCalls: modelCallTrace.calls.length,
       models: usedTraceModels(modelCallTrace),
       modelCallTrace,
     };
   } catch (error) {
+    await Promise.all([
+      traceRecorder.drain(),
+      liveProviderGate?.drain() ?? Promise.resolve(),
+    ]);
     const modelCallTrace = traceRecorder.finalize({
       physical: true,
-      detectorStatus: input.input.signal?.aborted ? "canceled" : "failed",
+      detectorStatus:
+        liveProviderGate?.signal.aborted ||
+        input.input.signal?.aborted
+          ? "canceled"
+          : "failed",
       candidateCount: 0,
       ...(plannedSpecialistRoles
         ? { requiredSpecialistRoles: plannedSpecialistRoles }
         : {}),
     });
-    const costs = runtime
+    const runtimeCostSnapshot = runtime
       ? await runtimeCosts(runtime, runId, input.mode)
-      : { actualSpendUsd: 0, committedUsd: 0 };
+      : { actualSpendUsd: 0, committedUsd: 0, tokens: 0 };
+    const {
+      tokens: ledgerTokens,
+      ...costs
+    } = runtimeCostSnapshot;
     return {
       kind: "agent",
       mode: input.mode,
@@ -939,7 +1062,10 @@ async function executePhysicalAgent(input: {
       error: safeError(error, `${input.mode} execution failed.`),
       ...(runtime ? { runtime } : {}),
       ...costs,
-      tokens: 0,
+      tokens:
+        input.input.execution === "live"
+          ? ledgerTokens
+          : 0,
       modelCalls: modelCallTrace.calls.length,
       models: usedTraceModels(modelCallTrace),
       modelCallTrace,
@@ -950,6 +1076,32 @@ async function executePhysicalAgent(input: {
       `completed ${input.mode} physical execution`,
     );
   }
+}
+
+function providerWithComplete(
+  provider: ModelProviderAdapter,
+  complete: ModelProviderAdapter["complete"],
+): ModelProviderAdapter {
+  return {
+    id: provider.id,
+    ...(provider.capabilities
+      ? { capabilities: { ...provider.capabilities } }
+      : {}),
+    listModels(config) {
+      return provider.listModels(config);
+    },
+    healthCheck(config) {
+      return provider.healthCheck(config);
+    },
+    complete,
+    ...(provider.estimateCost
+      ? {
+          estimateCost(request: ModelRequest, config?: ProviderConfig) {
+            return provider.estimateCost!(request, config);
+          },
+        }
+      : {}),
+  };
 }
 
 async function deriveHybridCell(input: {
@@ -1260,6 +1412,190 @@ function agentCellDraft(
   };
 }
 
+function strictLivePaidGateFailureReason(
+  input: ResearchExperimentRunnerInput,
+  outcome: PhysicalAgentOutcome,
+  cell: ResearchExperimentCell,
+): string | undefined {
+  if (input.execution !== "live") {
+    return undefined;
+  }
+  const failures: string[] = [];
+  const detectorStatus = outcome.result?.status ?? "unavailable";
+  if (detectorStatus !== "completed") {
+    failures.push(`detector status ${detectorStatus}`);
+  }
+  if (cell.status !== "success") {
+    failures.push(`cell status ${cell.status}`);
+  }
+  const nonSucceededCalls = outcome.modelCallTrace.calls.filter(
+    (call) => call.terminalState !== "succeeded",
+  );
+  if (nonSucceededCalls.length > 0) {
+    failures.push(
+      `${nonSucceededCalls.length} physical model call(s) did not succeed`,
+    );
+  }
+  if (failures.length === 0) {
+    return undefined;
+  }
+  return [
+    "Strict live paid gate stopped additional physical agent scheduling",
+    `after ${cell.fixtureId}/${cell.mode}`,
+    failures.join("; "),
+  ].join(": ");
+}
+
+async function strictLiveGateCanceledAgentCellDraft(
+  input: ResearchExperimentRunnerInput,
+  fixture: FixtureContext,
+  mode: (typeof PHYSICAL_AGENT_MODES)[number],
+  reason: string,
+  now: () => Date,
+): Promise<CellDraft> {
+  const runId = cellRunId(
+    input.suiteId,
+    fixture.loaded.manifest.id,
+    mode,
+  );
+  const timestamp = now().toISOString();
+  const traceRecorder = createModelCallTraceRecorder({
+    runId,
+    mode,
+    execution: input.execution,
+    cassettePolicy:
+      input.recordLiveCassettes || input.recordMockCassettes
+        ? "recorded"
+        : input.execution === "replay"
+          ? "replay"
+          : "none",
+    expectedProvider: "openrouter",
+    modelForRole,
+  });
+  const modelCallTrace = traceRecorder.finalize({
+    physical: true,
+    detectorStatus: "canceled",
+    candidateCount: 0,
+    requiredSpecialistRoles: await strictLiveGateRolePlan(
+      fixture,
+      mode,
+    ),
+  });
+  return {
+    schemaVersion: "1.0",
+    runId,
+    fixtureId: fixture.loaded.manifest.id,
+    pairId: fixture.loaded.manifest.pairId,
+    fixtureVariant: fixture.loaded.manifest.variant,
+    mode,
+    execution: input.execution,
+    physical: true,
+    derivedFrom: [],
+    status: "canceled",
+    findings: [],
+    rawScannerFindings: [],
+    rawAgentFindings: [],
+    completeness: skippedCompleteness(
+      componentsForMode(mode),
+      [reason],
+      fixture,
+    ),
+    degradationReasons: [reason],
+    cost: emptyPhysicalCost(),
+    models: [],
+    modelCallTrace,
+    startedAt: timestamp,
+    finishedAt: timestamp,
+  };
+}
+
+function strictLiveGateCanceledHybridCellDraft(
+  input: ResearchExperimentRunnerInput,
+  fixture: FixtureContext,
+  scanner: PhysicalScannerOutcome,
+  mode: Extract<
+    ResearchExperimentMode,
+    "scanner-single" | "scanner-moa-low" | "scanner-moa-high"
+  >,
+  agentMode: (typeof PHYSICAL_AGENT_MODES)[number],
+  reason: string,
+  now: () => Date,
+): CellDraft {
+  const runId = cellRunId(
+    input.suiteId,
+    fixture.loaded.manifest.id,
+    mode,
+  );
+  const timestamp = now().toISOString();
+  const scannerComponents = componentsForMode(mode).filter((component) =>
+    component.startsWith("scanner:"),
+  );
+  const agentComponents = componentsForMode(mode).filter(
+    (component) => !component.startsWith("scanner:"),
+  );
+  const scannerPart = scanner.result
+    ? scannerCompleteness(scanner.result.scan, fixture)
+    : failedCompleteness(
+        scannerComponents,
+        [scanner.error ?? "Physical scanner unavailable."],
+        fixture,
+      );
+  return {
+    schemaVersion: "1.0",
+    runId,
+    fixtureId: fixture.loaded.manifest.id,
+    pairId: fixture.loaded.manifest.pairId,
+    fixtureVariant: fixture.loaded.manifest.variant,
+    mode,
+    execution: input.execution,
+    physical: false,
+    derivedFrom: ["scanner-only", agentMode],
+    status: "canceled",
+    findings:
+      scanner.result?.scannerFindings.map(cloneFinding) ?? [],
+    rawScannerFindings:
+      scanner.result?.scannerFindings.map(cloneFinding) ?? [],
+    rawAgentFindings: [],
+    ...(scanner.result
+      ? { scannerEvidence: scannerEvidence(scanner.result.scan) }
+      : {}),
+    completeness: mergeCompleteness(
+      scannerPart,
+      skippedCompleteness(agentComponents, [reason], fixture),
+    ),
+    degradationReasons: [reason],
+    cost: emptyPhysicalCost(),
+    models: [],
+    modelCallTrace: createEmptyModelCallTrace({
+      runId,
+      mode,
+      execution: input.execution,
+      physical: false,
+      derivedFrom: ["scanner-only", agentMode],
+      detectorStatus: "canceled",
+    }),
+    startedAt: timestamp,
+    finishedAt: timestamp,
+  };
+}
+
+async function strictLiveGateRolePlan(
+  fixture: FixtureContext,
+  mode: (typeof PHYSICAL_AGENT_MODES)[number],
+): Promise<readonly CanonicalAgentRole[]> {
+  if (mode === "single-agent") {
+    return ["single-agent-inspector"];
+  }
+  if (mode === "moa-high") {
+    return ALL_MOA_SPECIALIST_ROLES;
+  }
+  const runtime = await createCodeInspectionRuntime(
+    fixture.subjectRoot,
+  );
+  const profile = await profileProject(runtime);
+  return rolePlanForProfile(detectorModeFor(mode), profile);
+}
+
 function orchestrationCellDraft(input: {
   input: ResearchExperimentRunnerInput;
   fixture: FixtureContext;
@@ -1409,8 +1745,10 @@ async function publishCell(input: {
           fixtureVariant: input.draft.fixtureVariant,
           physical: input.draft.physical,
           derivedFrom: input.draft.derivedFrom,
-          modelCallTraceSchemaVersion: "1.0",
-          modelCallTraceRolePlanVersion: "1.0",
+          modelCallTraceSchemaVersion:
+            MODEL_CALL_TRACE_SCHEMA_VERSION,
+          modelCallTraceRolePlanVersion:
+            MODEL_CALL_TRACE_ROLE_PLAN_VERSION,
           modelCallTraceCassettePolicy:
             input.draft.modelCallTrace.cassettePolicy,
           subjectSnapshotSchemaVersion: "2.0",
@@ -1678,6 +2016,23 @@ function failedCompleteness(
     completedComponents: [],
     failedComponents: [...plannedComponents],
     skippedComponents: [],
+    eligibleFiles: fixture.loaded.manifest.sourceFiles.length,
+    inspectedFiles: 0,
+    inspectedBytes: 0,
+    degradedReasons: [...reasons],
+  };
+}
+
+function skippedCompleteness(
+  plannedComponents: readonly string[],
+  reasons: readonly string[],
+  fixture: FixtureContext,
+): ExecutionCompletenessInput {
+  return {
+    plannedComponents: [...plannedComponents],
+    completedComponents: [],
+    failedComponents: [],
+    skippedComponents: [...plannedComponents],
     eligibleFiles: fixture.loaded.manifest.sourceFiles.length,
     inspectedFiles: 0,
     inspectedBytes: 0,
@@ -2367,9 +2722,9 @@ async function claimFreshCassetteRecordingDirectory(
           `hermsec-cassette-generation\u0000${input.suiteId}`,
         ),
         harnessVersion:
-          input.harnessVersion ?? "canonical-seven-mode-v1",
+          input.harnessVersion ?? DEFAULT_RESEARCH_HARNESS_VERSION,
         promptVersion:
-          input.promptVersion ?? "bounded-tool-agent-v1",
+          input.promptVersion ?? DEFAULT_RESEARCH_PROMPT_VERSION,
       })}\n`,
       "utf8",
     );
@@ -2406,7 +2761,8 @@ function providerConfigForRole(role: CanonicalAgentRole): ProviderConfig {
     openRouter: {
       scored: true,
       requireParameters: true,
-      allowFallbacks: false,
+      // Provider endpoint failover remains within the exact model ID.
+      allowFallbacks: true,
       dataCollection: "deny",
       captureRouteMetadata: true,
     },
@@ -2417,11 +2773,7 @@ function modelForRole(role: CanonicalAgentRole): string {
   if (role === "moa-aggregator") {
     return MINIMAX_AGGREGATOR;
   }
-  if (
-    role === "identity-and-request-security" ||
-    role === "sensitive-data-and-cryptography" ||
-    role === "platform-storage-and-deployment"
-  ) {
+  if (role === "moa-judge") {
     return MIMO;
   }
   return DEEPSEEK_FLASH;
@@ -2468,14 +2820,33 @@ async function runtimeCosts(
   runtime: ResearchModelRuntime,
   runId: string,
   mode: string,
-): Promise<{ actualSpendUsd: number; committedUsd: number }> {
+): Promise<{
+  actualSpendUsd: number;
+  committedUsd: number;
+  tokens: number;
+}> {
   const actualSpendUsd = sum(
     runtime.getReconciliations().map((entry) => entry.actualUsd),
   );
   const snapshot = await runtime.ledger.snapshot();
   const committedUsd =
     snapshot.committedByRunMode[`${runId}\u0000${mode}`] ?? 0;
-  return { actualSpendUsd, committedUsd };
+  const tokens = sum(
+    snapshot.reservations
+      .filter(
+        (reservation) =>
+          reservation.runId === runId &&
+          reservation.mode === mode &&
+          (reservation.status === "settled" ||
+            reservation.status === "overage"),
+      )
+      .map(
+        (reservation) =>
+          (reservation.promptTokens ?? 0) +
+          (reservation.completionTokens ?? 0),
+      ),
+  );
+  return { actualSpendUsd, committedUsd, tokens };
 }
 
 function attributedAgentCost(outcome: PhysicalAgentOutcome): number {

@@ -10,6 +10,7 @@ import {
 import { createCodeInspectionRuntime } from "../../../src/agent/codeInspection.js";
 import { CostLedger } from "../../../src/agent/costTracker.js";
 import { createInspectionToolRegistry } from "../../../src/agent/inspectionTools.js";
+import { profileProject } from "../../../src/agent/projectProfiler.js";
 import { dispatchTool } from "../../../src/agent/toolDispatcher.js";
 import type {
   CanonicalAgentDetectorRunner,
@@ -30,6 +31,8 @@ import {
   sealPricingSnapshot,
 } from "../../../src/research/pricing.js";
 import {
+  DEFAULT_RESEARCH_HARNESS_VERSION,
+  DEFAULT_RESEARCH_PROMPT_VERSION,
   RESEARCH_EXACT_MODEL_ALLOWLIST,
   RESEARCH_EXPERIMENT_MODES,
   runResearchExperiment,
@@ -159,6 +162,15 @@ test("runner executes four physical paths, derives hybrids, scores all modes, an
     assert.equal(modelCalls, physicalAgentCalls);
     assert.ok(modelCalls > 0);
     assertExactRoleRouting(modelsByRole);
+    const gapFillCalls = result.cells.flatMap((cell) =>
+      cell.modelCallTrace.calls.filter((call) => call.gapFill),
+    );
+    assert.ok(gapFillCalls.length > 0);
+    assert.ok(
+      gapFillCalls.every(
+        (call) => call.model === "deepseek/deepseek-v4-flash",
+      ),
+    );
     assert.ok(
       result.cells
         .filter((cell) => !cell.physical)
@@ -297,6 +309,14 @@ test("runner executes four physical paths, derives hybrids, scores all modes, an
       assert.equal(validation.manifest?.mode, cell.mode);
       assert.equal(validation.manifest?.runId, cell.runId);
       assert.equal(validation.manifest?.suite, result.suiteId);
+      assert.equal(
+        validation.manifest?.harnessVersion,
+        DEFAULT_RESEARCH_HARNESS_VERSION,
+      );
+      assert.equal(
+        validation.manifest?.promptVersion,
+        DEFAULT_RESEARCH_PROMPT_VERSION,
+      );
       assert.ok(
         validation.manifest?.artifacts.some(
           (artifact) => artifact.path === "model-calls.json",
@@ -668,6 +688,134 @@ test("model-call trace enforces exact specialist plans and candidate adjudicatio
       "candidate-bearing-moa-aggregator-incomplete",
     ),
   );
+
+  const degradedAggregator = traceDraft({
+    mode: "moa-low",
+    candidateCount: 1,
+    detectorStatus: "degraded",
+    calls: [
+      traceCall(1, "injection-and-execution"),
+      traceCall(2, "identity-and-request-security"),
+      traceCall(3, "sensitive-data-and-cryptography"),
+      traceCall(4, "moa-judge"),
+      failedTraceCall(5, "moa-aggregator"),
+    ],
+  });
+  assert.deepEqual(
+    validateModelCallTrace(degradedAggregator),
+    [],
+    "a degraded outcome must retain a complete trace of its failed aggregator",
+  );
+});
+
+test("model-call trace rejects malformed v2 shapes and terminal/category drift", () => {
+  const valid = traceDraft({
+    mode: "single-agent",
+    candidateCount: 0,
+    calls: [traceCall(1, "single-agent-inspector")],
+  });
+  const nonBooleanGapFill = structuredClone(valid) as unknown as {
+    calls: Array<Record<string, unknown>>;
+  };
+  nonBooleanGapFill.calls[0]!.gapFill = "no";
+  assert.ok(
+    validateModelCallTrace(
+      nonBooleanGapFill as unknown as typeof valid,
+    ).includes("model-call-entry-invalid"),
+  );
+
+  const extraCallField = structuredClone(valid) as unknown as {
+    calls: Array<Record<string, unknown>>;
+  };
+  extraCallField.calls[0]!.unexpected = true;
+  assert.ok(
+    validateModelCallTrace(
+      extraCallField as unknown as typeof valid,
+    ).includes("model-call-entry-invalid"),
+  );
+
+  const nonBooleanPhysical = {
+    ...structuredClone(valid),
+    physical: "yes",
+  };
+  assert.ok(
+    validateModelCallTrace(
+      nonBooleanPhysical as unknown as typeof valid,
+    ).includes("model-call-trace-schema-invalid"),
+  );
+
+  const nullCall = {
+    ...structuredClone(valid),
+    calls: [null],
+  };
+  assert.ok(
+    validateModelCallTrace(
+      nullCall as unknown as typeof valid,
+    ).includes("model-call-entry-invalid"),
+  );
+
+  const duplicateFingerprint = traceDraft({
+    mode: "single-agent",
+    candidateCount: 0,
+    calls: [
+      traceCall(1, "single-agent-inspector"),
+      {
+        ...traceCall(2, "single-agent-inspector"),
+        requestFingerprint:
+          traceCall(1, "single-agent-inspector")
+            .requestFingerprint,
+      },
+    ],
+    traceCompleteness: "incomplete",
+  });
+  assert.ok(
+    validateModelCallTrace(duplicateFingerprint).includes(
+      "model-call-request-fingerprint-duplicate",
+    ),
+  );
+
+  for (const [terminalState, errorCategory] of [
+    ["failed", "aborted"],
+    ["canceled", "provider"],
+  ] as const) {
+    const mismatched = traceDraft({
+      mode: "single-agent",
+      candidateCount: 0,
+      detectorStatus: "degraded",
+      traceCompleteness: "incomplete",
+      calls: [{
+        ...failedTraceCall(1, "single-agent-inspector"),
+        terminalState,
+        errorCategory,
+      }],
+    });
+    assert.ok(
+      validateModelCallTrace(mismatched).includes(
+        "model-call-terminal-error-category-mismatch",
+      ),
+    );
+  }
+
+  const secretToken = traceDraft({
+    mode: "single-agent",
+    candidateCount: 0,
+    detectorStatus: "degraded",
+    traceCompleteness: "incomplete",
+    calls: [{
+      ...failedTraceCall(1, "single-agent-inspector"),
+      errorCategory: "rate-limit",
+      providerError: {
+        status: 429,
+        errorType: "rate_limit_exceeded",
+        providerCode: "sk-or-v1-abcdefghijklmnop",
+      },
+    }],
+  });
+  assert.ok(
+    validateModelCallTrace(secretToken).includes(
+      "model-call-provider-error-invalid",
+    ),
+  );
 });
 
 test("trusted resolver wrapper blocks Minimax on a non-aggregator role before dispatch", async () => {
@@ -956,6 +1104,423 @@ test("failed physical agent cells remain explicit while the hybrid preserves sca
     assert.equal(hybrid?.modelCallTrace.physical, false);
     assert.deepEqual(hybrid?.modelCallTrace.calls, []);
     assert.equal(result.evaluation.runs.length, 7);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("live paid gate seals later cells without another agent or provider dispatch", async () => {
+  const root = await fs.mkdtemp(
+    path.join(os.tmpdir(), "hermsec-experiment-live-gate-status-"),
+  );
+  const live = deterministicLiveProvider();
+  let agentDispatches = 0;
+  const detectorRunner: CanonicalAgentDetectorRunner = async (input) => {
+    agentDispatches += 1;
+    const result = await runCanonicalAgentDetector(input);
+    assert.equal(result.status, "completed");
+    return {
+      ...result,
+      status: "degraded",
+      limitations: [
+        ...result.limitations,
+        "deliberate live gate degradation",
+      ],
+    };
+  };
+  try {
+    const result = await runResearchExperiment({
+      suiteId: `live-gate-status-${path.basename(root)}`,
+      suiteDirectory: path.join(root, "suite"),
+      fixtures: [{ fixtureRoot: vulnerableRoot }],
+      execution: "live",
+      allowSpend: true,
+      provider: live.provider,
+      pricingSnapshot: pricingSnapshot(),
+      pricingValidation: {
+        now: new Date("2026-07-25T12:00:00.000Z"),
+      },
+      scannerRunner: async (options) =>
+        truthBackedScan(options.target, options.runId),
+      agentDetectorRunner: detectorRunner,
+    });
+
+    assert.equal(agentDispatches, 1);
+    assert.ok(live.models.length > 0);
+    assert.ok(
+      live.models.every(
+        (model) => model === "deepseek/deepseek-v4-flash",
+      ),
+    );
+    assert.equal(result.cells.length, 7);
+    assert.deepEqual(result.physicalExecutions, {
+      scanners: 1,
+      agents: 1,
+      derivedHybrids: 1,
+    });
+    assert.equal(
+      result.cells.find((cell) => cell.mode === "single-agent")
+        ?.status,
+      "degraded",
+    );
+    const skipped = result.cells.filter(
+      (cell) =>
+        ["moa-low", "moa-high", "scanner-moa-low", "scanner-moa-high"]
+          .includes(cell.mode),
+    );
+    assert.ok(skipped.every((cell) => cell.status === "canceled"));
+    assert.ok(
+      skipped.every(
+        (cell) =>
+          cell.modelCallTrace.calls.length === 0 &&
+          cell.modelCallTrace.producerValidation.valid,
+      ),
+      skipped
+        .flatMap((cell) => cell.modelCallTrace.producerValidation.errors)
+        .join("\n"),
+    );
+    const scanner = result.cells.find(
+      (cell) => cell.mode === "scanner-only",
+    );
+    for (const mode of ["scanner-moa-low", "scanner-moa-high"] as const) {
+      const canceledHybrid = result.cells.find(
+        (cell) => cell.mode === mode,
+      );
+      assert.deepEqual(
+        canceledHybrid?.findings.map(findingIdentity),
+        scanner?.findings.map(findingIdentity),
+      );
+      assert.deepEqual(
+        canceledHybrid?.rawScannerFindings.map(findingIdentity),
+        scanner?.rawScannerFindings.map(findingIdentity),
+      );
+    }
+    for (const cell of result.cells) {
+      const validation = await validateRunArtifacts(
+        cell.artifactDirectory,
+      );
+      assert.equal(
+        validation.valid,
+        true,
+        validation.errors.join("\n"),
+      );
+    }
+    const suiteValidation = await validateSuiteIndex(
+      result.suiteDirectory,
+    );
+    assert.equal(
+      suiteValidation.valid,
+      true,
+      suiteValidation.errors.join("\n"),
+    );
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("live paid gate stops the current cell after its first failed physical trace call", async () => {
+  const root = await fs.mkdtemp(
+    path.join(os.tmpdir(), "hermsec-experiment-live-gate-trace-"),
+  );
+  const live = deterministicLiveProvider({ failFirst: true });
+  let agentDispatches = 0;
+  const detectorRunner: CanonicalAgentDetectorRunner = async (input) => {
+    agentDispatches += 1;
+    const runtime = await createCodeInspectionRuntime(input.repoRoot);
+    const profile = await profileProject(runtime);
+    const selection = await input.resolveModel({
+      role: "single-agent-inspector",
+      mode: input.mode,
+      profile,
+      gapFill: false,
+    });
+    assert.ok(selection?.providerConfig?.model);
+    const providerConfig = selection.providerConfig;
+    const model = providerConfig.model!;
+    await assert.rejects(
+      selection.provider.complete(
+        {
+          messages: [
+            {
+              role: "user",
+              content: "deliberate distinct paid-gate preflight",
+            },
+          ],
+          model,
+          maxTokens: 16,
+        },
+        providerConfig,
+      ),
+      /deliberate live provider failure/u,
+    );
+    const continued = await runCanonicalAgentDetector(input);
+    assert.equal(continued.status, "canceled");
+    return continued;
+  };
+  try {
+    const result = await runResearchExperiment({
+      suiteId: `live-gate-trace-${path.basename(root)}`,
+      suiteDirectory: path.join(root, "suite"),
+      fixtures: [{ fixtureRoot: vulnerableRoot }],
+      execution: "live",
+      allowSpend: true,
+      provider: live.provider,
+      pricingSnapshot: pricingSnapshot(),
+      pricingValidation: {
+        now: new Date("2026-07-25T12:00:00.000Z"),
+      },
+      scannerRunner: async (options) =>
+        truthBackedScan(options.target, options.runId),
+      agentDetectorRunner: detectorRunner,
+    });
+    const first = result.cells.find(
+      (cell) => cell.mode === "single-agent",
+    );
+    assert.equal(agentDispatches, 1);
+    assert.equal(live.models.length, 1);
+    assert.equal(first?.status, "canceled");
+    assert.equal(first?.modelCallTrace.calls.length, 1);
+    assert.equal(
+      first?.modelCallTrace.calls[0]?.terminalState,
+      "failed",
+    );
+    assert.equal(
+      result.cells.find((cell) => cell.mode === "moa-low")?.status,
+      "canceled",
+    );
+    assert.equal(result.physicalExecutions.agents, 1);
+    assert.ok(
+      (
+        await new CostLedger(
+          path.join(result.suiteDirectory, "cost-ledger.jsonl"),
+        ).snapshot()
+      ).reservations.every(
+        (reservation) => reservation.status !== "reserved",
+      ),
+    );
+    assert.equal(
+      (await validateSuiteIndex(result.suiteDirectory)).valid,
+      true,
+    );
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("live MoA failure aborts parallel specialists and suppresses later phases", async () => {
+  const root = await fs.mkdtemp(
+    path.join(os.tmpdir(), "hermsec-experiment-live-moa-gate-"),
+  );
+  const live = moaFailFastLiveProvider();
+  try {
+    const result = await runResearchExperiment({
+      suiteId: `live-moa-gate-${path.basename(root)}`,
+      suiteDirectory: path.join(root, "suite"),
+      fixtures: [{ fixtureRoot: vulnerableRoot }],
+      execution: "live",
+      allowSpend: true,
+      provider: live.provider,
+      pricingSnapshot: pricingSnapshot(),
+      pricingValidation: {
+        now: new Date("2026-07-25T12:00:00.000Z"),
+      },
+      scannerRunner: async (options) =>
+        truthBackedScan(options.target, options.runId),
+    });
+
+    const moa = result.cells.find((cell) => cell.mode === "moa-low");
+    assert.ok(moa);
+    assert.equal(result.physicalExecutions.agents, 2);
+    assert.ok(
+      moa.modelCallTrace.calls.some(
+        (call) => call.terminalState === "failed",
+      ),
+    );
+    assert.equal(
+      moa.modelCallTrace.calls.some(
+        (call) => call.terminalState === "succeeded",
+      ),
+      false,
+    );
+    assert.ok(
+      moa.modelCallTrace.calls
+        .filter((call) => call.terminalState !== "failed")
+        .every((call) => call.terminalState === "canceled"),
+    );
+    assert.equal(
+      moa.modelCallTrace.calls.some(
+        (call) =>
+          call.gapFill ||
+          call.role === "moa-judge" ||
+          call.role === "moa-aggregator",
+      ),
+      false,
+    );
+    assert.equal(
+      live.startedRoles.some(
+        (role) => role === "moa-judge" || role === "moa-aggregator",
+      ),
+      false,
+    );
+    assert.equal(
+      live.startedRoles.filter(
+        (role) => role !== "single-agent-inspector",
+      ).length,
+      2,
+    );
+    assert.equal(
+      result.cells.find((cell) => cell.mode === "moa-high")?.status,
+      "canceled",
+    );
+    assert.ok(
+      (
+        await new CostLedger(
+          path.join(result.suiteDirectory, "cost-ledger.jsonl"),
+        ).snapshot()
+      ).reservations.every(
+        (reservation) => reservation.status !== "reserved",
+      ),
+    );
+    assert.equal(
+      (await validateSuiteIndex(result.suiteDirectory)).valid,
+      true,
+    );
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("live bounded-loop timeout trips the paid gate before another MoA role can start", async () => {
+  const root = await fs.mkdtemp(
+    path.join(os.tmpdir(), "hermsec-experiment-live-moa-timeout-"),
+  );
+  const live = moaLocalTimeoutLiveProvider();
+  try {
+    const result = await runResearchExperiment({
+      suiteId: `live-moa-timeout-${path.basename(root)}`,
+      suiteDirectory: path.join(root, "suite"),
+      fixtures: [{ fixtureRoot: vulnerableRoot }],
+      execution: "live",
+      allowSpend: true,
+      provider: live.provider,
+      pricingSnapshot: pricingSnapshot(),
+      pricingValidation: {
+        now: new Date("2026-07-25T12:00:00.000Z"),
+      },
+      scannerRunner: async (options) =>
+        truthBackedScan(options.target, options.runId),
+      agentDetectorRunner: (input) =>
+        runCanonicalAgentDetector({
+          ...input,
+          limits: {
+            specialist: {
+              timeoutMs: 100,
+            },
+          },
+        }),
+    });
+
+    const moa = result.cells.find((cell) => cell.mode === "moa-low");
+    assert.ok(moa);
+    assert.equal(result.physicalExecutions.agents, 2);
+    assert.equal(
+      moa.modelCallTrace.calls.filter(
+        (call) => call.terminalState === "failed",
+      ).length,
+      1,
+    );
+    assert.equal(
+      moa.modelCallTrace.calls.find(
+        (call) => call.terminalState === "failed",
+      )?.errorCategory,
+      "timeout",
+    );
+    assert.ok(
+      moa.modelCallTrace.calls
+        .filter((call) => call.terminalState !== "failed")
+        .every((call) => call.terminalState === "canceled"),
+    );
+    assert.equal(
+      live.startedRoles.filter(
+        (role) => role !== "single-agent-inspector",
+      ).length,
+      2,
+    );
+    assert.equal(
+      live.startedRoles.some(
+        (role) => role === "moa-judge" || role === "moa-aggregator",
+      ),
+      false,
+    );
+    assert.equal(
+      result.cells.find((cell) => cell.mode === "moa-high")?.status,
+      "canceled",
+    );
+    assert.ok(
+      (
+        await new CostLedger(
+          path.join(result.suiteDirectory, "cost-ledger.jsonl"),
+        ).snapshot()
+      ).reservations.every(
+        (reservation) => reservation.status !== "reserved",
+      ),
+    );
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("live scanner non-success seals the matrix without paid dispatch", async () => {
+  const root = await fs.mkdtemp(
+    path.join(os.tmpdir(), "hermsec-experiment-live-gate-scanner-"),
+  );
+  const live = deterministicLiveProvider();
+  let agentDispatches = 0;
+  try {
+    const result = await runResearchExperiment({
+      suiteId: `live-gate-scanner-${path.basename(root)}`,
+      suiteDirectory: path.join(root, "suite"),
+      fixtures: [{ fixtureRoot: vulnerableRoot }],
+      execution: "live",
+      allowSpend: true,
+      provider: live.provider,
+      pricingSnapshot: pricingSnapshot(),
+      pricingValidation: {
+        now: new Date("2026-07-25T12:00:00.000Z"),
+      },
+      scannerRunner: async () => {
+        throw new Error("deliberate live scanner failure");
+      },
+      agentDetectorRunner: async (input) => {
+        agentDispatches += 1;
+        return runCanonicalAgentDetector(input);
+      },
+    });
+    assert.equal(agentDispatches, 0);
+    assert.equal(live.models.length, 0);
+    assert.deepEqual(result.physicalExecutions, {
+      scanners: 1,
+      agents: 0,
+      derivedHybrids: 0,
+    });
+    assert.equal(result.cells.length, 7);
+    assert.equal(
+      result.cells.find((cell) => cell.mode === "scanner-only")?.status,
+      "failed",
+    );
+    assert.ok(
+      result.cells
+        .filter((cell) => cell.mode !== "scanner-only")
+        .every(
+          (cell) =>
+            cell.status === "canceled" &&
+            cell.modelCallTrace.producerValidation.valid,
+        ),
+    );
+    assert.equal(
+      (await validateSuiteIndex(result.suiteDirectory)).valid,
+      true,
+    );
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }
@@ -1992,6 +2557,169 @@ function pricingSnapshot() {
   });
 }
 
+function deterministicLiveProvider(
+  options: { failFirst?: boolean } = {},
+): {
+  provider: ModelProviderAdapter;
+  models: string[];
+} {
+  const responder = createDeterministicResearchMockResponder();
+  const models: string[] = [];
+  let calls = 0;
+  const provider: ModelProviderAdapter = {
+    ...throwingProvider(),
+    async complete(request, config) {
+      calls += 1;
+      const model = request.model ?? config?.model ?? "";
+      models.push(model);
+      if (options.failFirst && calls === 1) {
+        throw new Error("deliberate live provider failure");
+      }
+      const response = await responder(request, {
+        provider: "openrouter",
+        model,
+      });
+      return {
+        ...response,
+        usage: {
+          ...response.usage!,
+          authoritativeUsd: 0.000001,
+          local: false,
+        },
+      };
+    },
+  };
+  return { provider, models };
+}
+
+function moaFailFastLiveProvider(): {
+  provider: ModelProviderAdapter;
+  startedRoles: CanonicalAgentRole[];
+} {
+  const responder = createDeterministicResearchMockResponder();
+  const startedRoles: CanonicalAgentRole[] = [];
+  let firstSpecialistRole: CanonicalAgentRole | undefined;
+  let specialistStarts = 0;
+  let releaseFirstSpecialist!: () => void;
+  const parallelSpecialistStarted = new Promise<void>((resolve) => {
+    releaseFirstSpecialist = resolve;
+  });
+  const provider: ModelProviderAdapter = {
+    ...throwingProvider(),
+    async complete(request, config) {
+      const model = request.model ?? config?.model ?? "";
+      const systemPrompt =
+        request.messages.find((message) => message.role === "system")
+          ?.content ?? "";
+      const role = promptRole(systemPrompt);
+      startedRoles.push(role);
+
+      if (role === "single-agent-inspector") {
+        const response = await responder(request, {
+          provider: "openrouter",
+          model,
+        });
+        return {
+          ...response,
+          usage: {
+            ...response.usage!,
+            authoritativeUsd: 0.000001,
+            local: false,
+          },
+        };
+      }
+
+      assert.notEqual(role, "moa-judge");
+      assert.notEqual(role, "moa-aggregator");
+      specialistStarts += 1;
+      firstSpecialistRole ??= role;
+      if (specialistStarts >= 2) {
+        releaseFirstSpecialist();
+      }
+      if (role === firstSpecialistRole) {
+        await parallelSpecialistStarted;
+        throw new Error("deliberate MoA specialist failure");
+      }
+
+      return new Promise<ModelResponse>((_resolve, reject) => {
+        const rejectForAbort = () => {
+          reject(
+            request.signal?.reason instanceof Error
+              ? request.signal.reason
+              : Object.assign(
+                  new Error("parallel specialist aborted"),
+                  { name: "AbortError" },
+                ),
+          );
+        };
+        if (request.signal?.aborted) {
+          rejectForAbort();
+          return;
+        }
+        request.signal?.addEventListener("abort", rejectForAbort, {
+          once: true,
+        });
+      });
+    },
+  };
+  return { provider, startedRoles };
+}
+
+function moaLocalTimeoutLiveProvider(): {
+  provider: ModelProviderAdapter;
+  startedRoles: CanonicalAgentRole[];
+} {
+  const responder = createDeterministicResearchMockResponder();
+  const startedRoles: CanonicalAgentRole[] = [];
+  const provider: ModelProviderAdapter = {
+    ...throwingProvider(),
+    async complete(request, config) {
+      const model = request.model ?? config?.model ?? "";
+      const systemPrompt =
+        request.messages.find((message) => message.role === "system")
+          ?.content ?? "";
+      const role = promptRole(systemPrompt);
+      startedRoles.push(role);
+      if (role === "single-agent-inspector") {
+        const response = await responder(request, {
+          provider: "openrouter",
+          model,
+        });
+        return {
+          ...response,
+          usage: {
+            ...response.usage!,
+            authoritativeUsd: 0.000001,
+            local: false,
+          },
+        };
+      }
+      return new Promise<ModelResponse>((_resolve, reject) => {
+        const rejectForAbort = () => {
+          setTimeout(() => {
+            reject(
+              request.signal?.reason instanceof Error
+                ? request.signal.reason
+                : Object.assign(
+                    new Error("bounded specialist timed out"),
+                    { name: "AbortError" },
+                  ),
+            );
+          }, 150);
+        };
+        if (request.signal?.aborted) {
+          rejectForAbort();
+          return;
+        }
+        request.signal?.addEventListener("abort", rejectForAbort, {
+          once: true,
+        });
+      });
+    },
+  };
+  return { provider, startedRoles };
+}
+
 function throwingProvider(): ModelProviderAdapter {
   const fail = (): never => {
     throw new Error("mock experiment contacted the live provider");
@@ -2024,7 +2752,7 @@ function findingIdentity(finding: Finding): string {
   ].join(":");
 }
 
-function promptRole(systemPrompt: string): string {
+function promptRole(systemPrompt: string): CanonicalAgentRole {
   const system = systemPrompt.toLowerCase();
   const roles = [
     "single bounded investigator",
@@ -2038,7 +2766,7 @@ function promptRole(systemPrompt: string): string {
   ] as const;
   const role = roles.find((candidate) => system.includes(candidate));
   assert.ok(role, `Unrecognized research prompt role: ${systemPrompt}`);
-  return {
+  return ({
     "single bounded investigator": "single-agent-inspector",
     "injection and execution specialist": "injection-and-execution",
     "identity and request security specialist":
@@ -2051,7 +2779,7 @@ function promptRole(systemPrompt: string): string {
       "platform-storage-and-deployment",
     "moa evidence judge": "moa-judge",
     "moa aggregator": "moa-aggregator",
-  }[role];
+  } as const)[role];
 }
 
 function assertExactRoleRouting(
@@ -2060,11 +2788,11 @@ function assertExactRoleRouting(
   const expected = new Map<string, string>([
     ["single-agent-inspector", "deepseek/deepseek-v4-flash"],
     ["injection-and-execution", "deepseek/deepseek-v4-flash"],
-    ["identity-and-request-security", "xiaomi/mimo-v2.5"],
-    ["sensitive-data-and-cryptography", "xiaomi/mimo-v2.5"],
+    ["identity-and-request-security", "deepseek/deepseek-v4-flash"],
+    ["sensitive-data-and-cryptography", "deepseek/deepseek-v4-flash"],
     ["dependencies-and-supply-chain", "deepseek/deepseek-v4-flash"],
-    ["platform-storage-and-deployment", "xiaomi/mimo-v2.5"],
-    ["moa-judge", "deepseek/deepseek-v4-flash"],
+    ["platform-storage-and-deployment", "deepseek/deepseek-v4-flash"],
+    ["moa-judge", "xiaomi/mimo-v2.5"],
     ["moa-aggregator", "minimax/minimax-m3"],
   ]);
   assert.deepEqual(
@@ -2081,14 +2809,7 @@ function assertExactRoleRouting(
       `Minimax routing mismatch for ${role}`,
     );
     if (models.has("xiaomi/mimo-v2.5")) {
-      assert.ok(
-        [
-          "identity-and-request-security",
-          "sensitive-data-and-cryptography",
-          "platform-storage-and-deployment",
-        ].includes(role),
-        `MiMo must not be routed to ${role}`,
-      );
+      assert.equal(role, "moa-judge", `MiMo must not be routed to ${role}`);
     }
   }
 }
@@ -2137,17 +2858,18 @@ function traceDraft(input: {
   mode: "single-agent" | "moa-low" | "moa-high";
   calls: ResearchModelCallTrace["calls"];
   candidateCount: number;
+  detectorStatus?: ResearchModelCallTrace["detectorStatus"];
   traceCompleteness?: ResearchModelCallTrace["traceCompleteness"];
 }): Omit<ResearchModelCallTrace, "producerValidation"> {
   return {
-    schemaVersion: "1.0",
+    schemaVersion: "2.0",
     runId: `trace-${input.mode}`,
     mode: input.mode,
     execution: "mock",
     cassettePolicy: "none",
     physical: true,
     derivedFrom: [],
-    detectorStatus: "completed",
+    detectorStatus: input.detectorStatus ?? "completed",
     candidateCount: input.candidateCount,
     aggregationDisposition:
       input.mode.startsWith("moa") && input.candidateCount > 0
@@ -2217,9 +2939,7 @@ function failedTraceCall(
 function expectedTraceModel(role: CanonicalAgentRole): string {
   return role === "moa-aggregator"
     ? "minimax/minimax-m3"
-    : role === "identity-and-request-security" ||
-        role === "sensitive-data-and-cryptography" ||
-        role === "platform-storage-and-deployment"
+    : role === "moa-judge"
       ? "xiaomi/mimo-v2.5"
       : "deepseek/deepseek-v4-flash";
 }

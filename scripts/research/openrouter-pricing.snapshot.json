@@ -1,14 +1,14 @@
 {
   "schemaVersion": 2,
-  "capturedAt": "2026-07-25T00:00:00.000Z",
+  "capturedAt": "2026-07-26T23:20:30.238Z",
   "source": "https://openrouter.ai/api/v1/models",
-  "catalogDigestSha256": "2040f28e700ceab376c9f261b798bbabe18d101fa7d82b696b39ee0fbd5928e7",
+  "catalogDigestSha256": "6f8d00241ac08042056be6181027d1b6b40ce0a9eee0467912de2f370ad3b49d",
   "prices": [
     {
       "provider": "openrouter",
       "model": "deepseek/deepseek-v4-flash",
-      "inputUsdPerMillionTokens": 0.0938,
-      "outputUsdPerMillionTokens": 0.1876,
+      "inputUsdPerMillionTokens": 0.14,
+      "outputUsdPerMillionTokens": 0.28,
       "contextLength": 1048576,
       "supportedParameters": [
         "frequency_penalty",
