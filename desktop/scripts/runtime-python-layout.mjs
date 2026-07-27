@@ -114,8 +114,9 @@ export function relativePythonLauncherContent(tool, platform = process.platform)
     return [
       "#!/bin/sh",
       "set -eu",
+      "export PYTHONDONTWRITEBYTECODE=1",
       "SELF_DIR=$(CDPATH= cd -- \"$(dirname -- \"$0\")\" && pwd)",
-      `exec \"$SELF_DIR/../python-runtime/bin/python3\" -I -m ${moduleName} \"$@\"`,
+      `exec \"$SELF_DIR/../python-runtime/bin/python3\" -I -B -m ${moduleName} \"$@\"`,
     ].join("\n") + "\n";
   }
   throw new Error(`No relative Python launcher format is configured for ${platform}.`);
@@ -164,7 +165,7 @@ export function assertRelativePythonLauncher(content, input) {
     throw new Error(`${tool} launcher contains a build-machine path.`);
   }
 
-  const expected = `exec \"$SELF_DIR/../python-runtime/bin/python3\" -I -m ${moduleName} \"$@\"`;
+  const expected = `exec \"$SELF_DIR/../python-runtime/bin/python3\" -I -B -m ${moduleName} \"$@\"`;
   if (!normalized.includes(expected)) {
     throw new Error(`${tool} ${platform} launcher is not a relative embedded-Python wrapper.`);
   }
@@ -194,6 +195,7 @@ export function createPortableRuntimeSmokeEnvironment(input = {}) {
   env.PATH = platform === "win32"
     ? `${path.join(systemRoot, "System32")};${systemRoot}`
     : "/usr/bin:/bin:/usr/sbin:/sbin";
+  env.PYTHONDONTWRITEBYTECODE = "1";
   delete env.PYTHONHOME;
   delete env.PYTHONPATH;
   delete env.VIRTUAL_ENV;
@@ -205,7 +207,7 @@ export function smokePortableRuntimeTree(input) {
   const platform = input.platform ?? process.platform;
   const runtime = assertPortableRuntimeTree({ toolsRoot: input.toolsRoot, platform });
   const env = createPortableRuntimeSmokeEnvironment({ platform, inheritedEnv: input.inheritedEnv });
-  const probe = run(runtime.python, ["-I", "-c", "import sys; print(sys.executable); print(sys.prefix)"], { env });
+  const probe = run(runtime.python, ["-I", "-B", "-c", "import sys; print(sys.executable); print(sys.prefix)"], { env });
   assertRuntimePathsConfined(probe.stdout, runtime.toolsRoot);
 
   for (const tool of Object.keys(PYTHON_SCANNER_MODULES)) {

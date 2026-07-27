@@ -91,6 +91,7 @@ test("runtime assets include source-pinned portable Python for every release tar
 
 test("Python scanners install only from a fully hashed no-deps platform lock", async () => {
   const source = await fs.readFile(path.join(desktopRoot, "scripts/prepare-runtime-tools.mjs"), "utf8");
+  const runtimeLayoutSource = await fs.readFile(path.join(desktopRoot, "scripts/runtime-python-layout.mjs"), "utf8");
   const launcherSource = await fs.readFile(path.join(desktopRoot, "scripts/portable-python-launcher.c"), "utf8");
   assert.match(source, /assertUvVersion\(uv\)/u);
   assert.match(source, /--system/u);
@@ -106,7 +107,9 @@ test("Python scanners install only from a fully hashed no-deps platform lock", a
   assert.doesNotMatch(source, /UV_TOOL_DIR/u);
   assert.match(launcherSource, /CreateProcessW\(python/u);
   assert.match(launcherSource, /CreateProcessW\(python,\s*child_command,\s*NULL,\s*NULL,\s*FALSE/u);
-  assert.match(launcherSource, /-I -m %ls/u);
+  assert.match(launcherSource, /SetEnvironmentVariableW\(L"PYTHONDONTWRITEBYTECODE", L"1"\)/u);
+  assert.match(launcherSource, /-I -B -m %ls/u);
+  assert.match(runtimeLayoutSource, /\["-I", "-B", "-c"/u);
   assert.doesNotMatch(launcherSource, /cmd\.exe|powershell/iu);
 });
 
@@ -181,6 +184,8 @@ test("relative Python launchers are confined to runtime-tools and reject build-m
   for (const platform of ["darwin", "linux"]) {
     for (const tool of ["semgrep", "bandit", "pip-audit"]) {
       const content = relativePythonLauncherContent(tool, platform);
+      assert.match(content, / -I -B -m /u);
+      assert.match(content, /export PYTHONDONTWRITEBYTECODE=1/u);
       assert.doesNotThrow(() => assertRelativePythonLauncher(content, { tool, platform }));
       assert.throws(() => assertRelativePythonLauncher(`${content}\nC:\\build\\python.exe`, { tool, platform }));
     }
@@ -383,11 +388,13 @@ test("portable runtime smoke clears system Python state and checks an actual sta
       SystemRoot: "C:\\Windows",
       PYTHONHOME: "C:\\Python312",
       PYTHONPATH: "C:\\Python312\\Lib",
+      PYTHONDONTWRITEBYTECODE: "0",
       VIRTUAL_ENV: "C:\\Python312\\venv",
       CONDA_PREFIX: "C:\\Conda",
     },
   });
   assert.equal(env.PATH, "C:\\Windows\\System32;C:\\Windows");
+  assert.equal(env.PYTHONDONTWRITEBYTECODE, "1");
   assert.equal(env.PYTHONHOME, undefined);
   assert.equal(env.PYTHONPATH, undefined);
   assert.equal(env.VIRTUAL_ENV, undefined);

@@ -72,7 +72,7 @@ int wmain(void) {
     child_command,
     command_capacity,
     _TRUNCATE,
-    L"\"%ls\" -I -m %ls%ls%ls",
+    L"\"%ls\" -I -B -m %ls%ls%ls",
     python,
     module,
     *tail ? L" " : L"",
@@ -82,6 +82,10 @@ int wmain(void) {
   STARTUPINFOW startup = {0};
   startup.cb = sizeof(startup);
   PROCESS_INFORMATION process = {0};
+  if (!SetEnvironmentVariableW(L"PYTHONDONTWRITEBYTECODE", L"1")) {
+    free(child_command);
+    return fail(L"could not protect the runtime from bytecode writes");
+  }
   if (!CreateProcessW(python, child_command, NULL, NULL, FALSE, 0, NULL, NULL, &startup, &process)) {
     free(child_command);
     return fail(L"could not start embedded Python");
