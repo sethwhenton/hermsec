@@ -90,7 +90,7 @@
     const p = R.posture;
     const commitShort =
       scan.gitCommit && scan.gitCommit.length > 7 ? scan.gitCommit.slice(0, 7) : scan.gitCommit;
-    const assistLabel = R.assist?.label || scan.assistModeLabel || "Deep assisted scan";
+    const assistLabel = R.assist?.label || scan.assistModeLabel || "Scanner only";
     const agentMode = R.agentMode || null;
 
     document.getElementById("op-cover").innerHTML = `

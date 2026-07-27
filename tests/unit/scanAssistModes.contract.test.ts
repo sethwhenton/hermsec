@@ -4,32 +4,57 @@ import path from "node:path";
 import test from "node:test";
 import { assistModeFrom } from "../../src/core/progress.js";
 
-const coreAssistModes = ["deep-assisted", "single-agent", "moa-assisted", "scanner-moa-assisted"];
-const visibleAssistModes = ["deep-assisted", "single-agent", "moa-assisted", "scanner-moa-assisted"];
+const coreAssistModes = [
+  "scanner-only",
+  "single-agent",
+  "moa-low",
+  "moa-high",
+  "scanner-single",
+  "scanner-moa-low",
+  "scanner-moa-high",
+];
+const canonicalLabels = [
+  "Scanner only",
+  "Single agent",
+  "MoA Low",
+  "MoA High",
+  "Scanner + Single",
+  "Scanner + MoA Low",
+  "Scanner + MoA High",
+];
 
-test("scanner-model-summary remains a legacy alias for deep-assisted", () => {
+test("scanner-model-summary remains an input alias for scanner-only", () => {
   assert.equal(
     assistModeFrom("scanner-model-summary" as Parameters<typeof assistModeFrom>[0]),
-    "deep-assisted",
+    "scanner-only",
   );
 });
 
-test("core scan assist mode union documents the planned product modes only", async () => {
+test("core scan assist mode union documents the seven canonical modes", async () => {
   const source = await fs.readFile(path.resolve("src/shared/types.ts"), "utf8");
 
   assert.deepEqual(extractStringUnion(source, "ScanAssistMode"), coreAssistModes);
 });
 
-test("renderer scan mode options expose only the planned product modes and labels", async () => {
-  const source = await fs.readFile(path.resolve("desktop/src/renderer/src/lib/scanModes.ts"), "utf8");
-  const optionIds = [...source.matchAll(/\bid:\s*"([^"]+)"/g)].map((match) => match[1]);
+test("renderer types and options expose exactly the seven canonical modes and labels", async () => {
+  const typesSource = await fs.readFile(path.resolve("desktop/src/renderer/src/types/scan.ts"), "utf8");
+  const optionsSource = await fs.readFile(path.resolve("desktop/src/renderer/src/lib/scanModes.ts"), "utf8");
+  const optionsBlock = optionsSource.match(/export\s+const\s+scanModeOptions[\s\S]*?\n\];/)?.[0];
+  const optionIds = [...optionsSource.matchAll(/\bid:\s*"([^"]+)"/g)].map((match) => match[1]);
+  const optionLabels = [...optionsSource.matchAll(/\blabel:\s*"([^"]+)"/g)].map((match) => match[1]);
 
-  assert.deepEqual(optionIds, visibleAssistModes);
-  assert.equal(optionIds.includes("scanner-model-summary"), false);
-  assert.match(source, /label:\s*"Deep assisted scan"/);
-  assert.match(source, /label:\s*"Single agent inspection"/);
-  assert.match(source, /label:\s*"MoA inspection"/);
-  assert.match(source, /label:\s*"Scanner \+ MoA inspection"/);
+  assert.ok(optionsBlock, "missing renderer scan mode options");
+  assert.deepEqual(extractStringArray(typesSource, "hermsecCanonicalScanAssistModes"), coreAssistModes);
+  assert.deepEqual(optionIds, coreAssistModes);
+  assert.deepEqual(optionLabels, canonicalLabels);
+  assert.doesNotMatch(optionsBlock, /Deep assisted scan|Single agent inspection|MoA inspection|scanner-model-summary/);
+});
+
+test("desktop defaults new settings and automations to scanner-only", async () => {
+  const storeSource = await fs.readFile(path.resolve("desktop/src/main/store.ts"), "utf8");
+  const defaults = [...storeSource.matchAll(/\bscanMode:\s*"([^"]+)"/g)].map((match) => match[1]);
+
+  assert.deepEqual(defaults.slice(0, 2), ["scanner-only", "scanner-only"]);
 });
 
 test("agent settings expose only low and high MoA panels", async () => {
@@ -58,6 +83,16 @@ function extractStringUnion(source: string, typeName: string): string[] {
   const unionSource = match?.[1];
   assert.ok(unionSource, `missing exported ${typeName} union`);
   return [...unionSource.matchAll(/"([^"]+)"/g)].map((item) => {
+    assert.ok(item[1]);
+    return item[1];
+  });
+}
+
+function extractStringArray(source: string, variableName: string): string[] {
+  const match = source.match(new RegExp(`export\\s+const\\s+${variableName}\\s*=\\s*\\[([\\s\\S]*?)\\]\\s+as\\s+const`));
+  const arraySource = match?.[1];
+  assert.ok(arraySource, `missing exported ${variableName} array`);
+  return [...arraySource.matchAll(/"([^"]+)"/g)].map((item) => {
     assert.ok(item[1]);
     return item[1];
   });

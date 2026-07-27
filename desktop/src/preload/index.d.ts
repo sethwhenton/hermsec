@@ -86,7 +86,7 @@ export interface HermsecApi {
   };
   scan: {
     project: (request: ScanProjectRequest) => Promise<ScanProjectResult>;
-    cancel: () => Promise<ScanControlResult>;
+    cancel: (runId: string) => Promise<ScanControlResult>;
     onProgress: (listener: (event: ScanProgressEvent) => void) => () => void;
     openReportLocation: (
       request: OpenReportLocationRequest,

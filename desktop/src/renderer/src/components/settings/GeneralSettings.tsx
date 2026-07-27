@@ -97,7 +97,7 @@ export function GeneralSettings() {
       </SettingRow>
       <SettingRow
         title="Scan mode"
-        description="Default scan behavior. Deep uses scanners, Single Agent and MoA are scanner-free, and Scanner + MoA combines both."
+        description="Choose the exact experiment mode. Scanner only never needs a provider; every other mode uses the configured model route."
       >
         <div className="w-[760px] max-w-full">
           <ScanModeSegmentedControl

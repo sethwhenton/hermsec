@@ -210,7 +210,7 @@ function StageIcon({ status, active }: { status: ScanProgressStatus; active?: bo
       </span>
     );
   }
-  if (status === "failed") {
+  if (status === "failed" || status === "degraded") {
     return (
       <span className="relative z-10 mt-0.5 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-600 bg-zinc-900 text-zinc-300">
         <X className="h-3.5 w-3.5" />
@@ -234,7 +234,7 @@ function StageIcon({ status, active }: { status: ScanProgressStatus; active?: bo
 function SmallStatusIcon({ status }: { status: ScanProgressStatus }) {
   if (status === "running") return <Spiral5x5 size={11} gap={1} className="mt-0.5 text-zinc-200" />;
   if (status === "completed") return <Check className="mt-0.5 h-3.5 w-3.5 text-zinc-200" />;
-  if (status === "failed") return <X className="mt-0.5 h-3.5 w-3.5 text-zinc-300" />;
+  if (status === "failed" || status === "degraded") return <X className="mt-0.5 h-3.5 w-3.5 text-zinc-300" />;
   if (status === "skipped" || status === "canceled") return <Minus className="mt-0.5 h-3.5 w-3.5 text-zinc-500" />;
   return <Circle className="mt-0.5 h-3.5 w-3.5 text-zinc-500" />;
 }
@@ -272,13 +272,8 @@ function buildTimelineModel(events: ScanProgressEvent[]) {
   const modeEvent = [...events]
     .reverse()
     .find((event) => event.assistMode || event.assistModeLabel || event.id === "scan-assist-mode");
-  const inferredMode = normalizeScanAssistMode(
-    modeEvent?.assistMode
-      ?? (events.some((event) => /deep-assisted|deep assisted scan|deep model triage/i.test(`${event.message ?? ""} ${event.label}`))
-        ? "deep-assisted"
-        : undefined),
-  );
-  const mode = modeEvent?.assistModeLabel && !/scanner \+ model summary/i.test(modeEvent.assistModeLabel)
+  const inferredMode = normalizeScanAssistMode(modeEvent?.assistMode);
+  const mode = modeEvent?.assistModeLabel
     ? modeEvent.assistModeLabel
     : scanModeLabel(inferredMode);
 
@@ -287,15 +282,19 @@ function buildTimelineModel(events: ScanProgressEvent[]) {
     chips: Array.from(chips),
     mode,
     tokenLabel: tokenLabelForMode(inferredMode),
-    done: stages.every((stage) => ["completed", "skipped"].includes(stage.status)),
+    done: stages.every((stage) => ["completed", "skipped", "degraded", "failed", "canceled"].includes(stage.status)),
   };
 }
 
 function tokenLabelForMode(mode: string): string {
+  if (mode === "scanner-only") return "No model calls";
   if (mode === "single-agent") return "Focused agent review";
-  if (mode === "moa-assisted") return "Multi-agent review";
-  if (mode === "scanner-moa-assisted") return "Hybrid review";
-  return "More context, more tokens";
+  if (mode === "moa-low") return "Three specialists";
+  if (mode === "moa-high") return "Five specialists";
+  if (mode === "scanner-single") return "Scanner + agent fusion";
+  if (mode === "scanner-moa-low") return "Scanner + three specialists";
+  if (mode === "scanner-moa-high") return "Scanner + five specialists";
+  return "Scan mode";
 }
 
 function inferParentStageId(event: ScanProgressEvent): string | undefined {

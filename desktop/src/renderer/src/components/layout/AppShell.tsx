@@ -4,6 +4,7 @@ import { useReportStore } from "@/store/reportStore";
 import { useSessionStore } from "@/store/sessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useUiStore } from "@/store/uiStore";
+import { scanModeRequiresModel } from "@/lib/scanModes";
 import { AutomationsView } from "@/components/automation/AutomationsView";
 import { ChatView } from "@/components/chat/ChatView";
 import { DashboardView } from "@/components/dashboard/DashboardView";
@@ -65,7 +66,7 @@ export function AppShell() {
           reportDir: settings.defaultReportDir,
           mode: "online",
           assistMode: settings.automation.scanMode ?? settings.general.scanMode,
-          useModel: true,
+          useModel: scanModeRequiresModel(settings.automation.scanMode ?? settings.general.scanMode),
           skipIfUnchanged: true,
           previousProjectState: latest?.projectState,
         });

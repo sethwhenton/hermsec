@@ -1,25 +1,42 @@
-import path from "node:path";
 import fs from "node:fs/promises";
-import { runAgentTurn } from "../agent/runtime.js";
+import path from "node:path";
+import type {
+  CanonicalAgentRole,
+  CanonicalModelResolver,
+} from "../agent/canonicalHarness.js";
+import { redactForReport } from "../agent/redaction.js";
+import { buildVulnerabilityIntelligence } from "../intel/reportEnrichment.js";
 import {
-  runProductAgentScan,
-  type ProductAgentModelSelection,
-  type ProductAgentRoleId,
-  type ProductAgentScanMode,
-} from "../agent/productScan.js";
-import type { ModelExplanation } from "../agent/structuredOutput.js";
-import { normalizeCredentialEnvName, providerCredentialEnv } from "../model/credentials.js";
+  normalizeCredentialEnvName,
+  providerCredentialEnv,
+} from "../model/credentials.js";
 import type { ModelProviderId, ProviderConfig } from "../model/provider.js";
 import { selectModelProvider } from "../model/providerRouter.js";
-import { assistModeFrom, emitScanProgress, type ScanProgressCallback } from "./progress.js";
-import { runScan as runLocalScan, summarize } from "./scan.js";
-import { buildVulnerabilityIntelligence } from "../intel/reportEnrichment.js";
 import { renderReport } from "../reports/reportRenderer.js";
+import type {
+  ReportAgentModeMetadata,
+  ReportFormat,
+  ReportIntelligenceItem,
+} from "../reports/schema.js";
+import type {
+  CommandResult,
+  Finding,
+  OutputFormat,
+  ScanAssistModeInput,
+  ScanMode,
+} from "../shared/types.js";
 import { stableId } from "../shared/text.js";
-import type { CommandResult, Finding, OutputFormat, ScanAssistModeInput, ScanMode, ScannerStatus } from "../shared/types.js";
-import type { ReportAgentModeMetadata, ReportIntelligenceItem } from "../reports/schema.js";
-import type { ReportFormat } from "../reports/schema.js";
 import { loadUserConfig } from "../storage/userConfig.js";
+import {
+  runCanonicalScanOrchestration,
+  type CanonicalScanOrchestrationResult,
+} from "./canonicalOrchestrator.js";
+import { emitScanProgress, type ScanProgressCallback } from "./progress.js";
+import {
+  resolveScanAssistMode,
+  scanAssistModeLabel,
+  scanAssistModeSpec,
+} from "./scanAssistModes.js";
 
 export type HarnessScanOptions = {
   cwd: string;
@@ -29,402 +46,23 @@ export type HarnessScanOptions = {
   outputDirectory?: string;
   formats: OutputFormat[];
   useModel: boolean;
+  runId?: string;
+  signal?: AbortSignal;
+  resolveModel?: CanonicalModelResolver;
   onProgress?: ScanProgressCallback;
 };
 
-export async function runScan(options: HarnessScanOptions): Promise<CommandResult> {
-  const assistMode = assistModeFrom(options.assistMode);
-  const productAgentMode = isProductAgentMode(assistMode);
-  const agentOnlyMode = isAgentOnlyMode(assistMode);
-  const scanRun = await runLocalScan({
-    target: options.target,
-    mode: options.mode,
-    assistMode,
-    scannerMode: agentOnlyMode ? "none" : "full",
-    ...(options.onProgress ? { onProgress: options.onProgress } : {}),
-  });
-  const workspaceName = path.basename(scanRun.target) || "workspace";
-  const modelStarted = Date.now();
-  if (options.useModel) {
-    emitScanProgress(options.onProgress, {
-      id: "model-summary",
-      stage: "model",
-      label: modelPhaseLabel(assistMode),
-      status: "running",
-      message: modelPhaseRunningMessage(assistMode),
-      findingCount: scanRun.findings.length,
-      assistMode,
-    });
-  } else {
-    emitScanProgress(options.onProgress, {
-      id: "model-summary",
-      stage: "model",
-      label: modelPhaseLabel(assistMode),
-      status: "skipped",
-      message: "Model phase skipped because model assistance is disabled.",
-      findingCount: scanRun.findings.length,
-      assistMode,
-    });
-  }
-  const agent = await explainScanRun(scanRun.findings, { ...options, assistMode, target: scanRun.target });
-  if (!agent.ok) {
-    if (agent.status) {
-      scanRun.scannerStatuses.push(agent.status);
-    }
-    emitScanProgress(options.onProgress, {
-      id: "model-summary",
-      stage: "model",
-      label: modelPhaseLabel(assistMode),
-      status: "failed",
-      message: agent.message,
-      findingCount: scanRun.findings.length,
-      durationMs: Date.now() - modelStarted,
-      assistMode,
-    });
-    return {
-      ok: false,
-      errorCode: agent.errorCode,
-      message: agent.message,
-      remediation: agent.remediation,
-    };
-  }
-  if (agent.status) {
-    scanRun.scannerStatuses.push(agent.status);
-  }
-  if (agent.findings.length > 0) {
-    scanRun.findings = productAgentMode ? agent.findings : mergeFindings(scanRun.findings, agent.findings);
-    scanRun.summary = summarize(scanRun.findings);
-  } else if (productAgentMode) {
-    scanRun.findings = [];
-    scanRun.summary = summarize(scanRun.findings);
-  }
-  if (options.useModel) {
-    emitScanProgress(options.onProgress, {
-      id: "model-summary",
-      stage: "model",
-      label: modelPhaseLabel(assistMode),
-      status: agent.summary.provider === "none" && agent.summary.fallbackReason ? "skipped" : "completed",
-      message: agent.summary.fallbackReason
-        ? `Model phase used fallback summary: ${agent.summary.fallbackReason}`
-        : productAgentMode
-          ? "Agent-only inspection completed using bounded repository evidence."
-          : "Model phase completed using scanner-backed evidence.",
-      findingCount: scanRun.findings.length,
-      durationMs: Date.now() - modelStarted,
-      assistMode,
-    });
-  }
-  const intelligence = agentOnlyMode
-    ? {
-        status: "skipped" as const,
-        message: `${modelPhaseLabel(assistMode)} is agent-only; scanner/advisory enrichment did not run.`,
-        items: [],
-        limitations: [`${modelPhaseLabel(assistMode)} is agent-only; scanner and advisory enrichment were not run.`],
-      }
-    : await runVulnerabilityIntelligence(scanRun.target, scanRun.findings, options.mode, assistMode, options.onProgress);
-  const reportStarted = Date.now();
-  emitScanProgress(options.onProgress, {
-    id: "report-ready",
-    stage: "report",
-    label: "Report ready",
-    status: "running",
-    message: "Writing HermSec report artifacts.",
-    assistMode,
-  });
-  const report = await renderReport({
-    scanRun,
-    workspaceId: stableId(scanRun.target, "ws"),
-    workspaceName,
-    ...(options.outputDirectory ? { configuredReportDir: options.outputDirectory } : {}),
-    formats: mapFormats(options.formats),
-    target: {
-      kind: "local-path",
-      value: scanRun.target,
-      displayName: workspaceName,
-    },
-    explanations: agent.explanations,
-    agentSummary: agent.summary,
-    ...(agent.agentMode ? { agentMode: agent.agentMode } : {}),
-    intelligence: intelligence.items,
-    limitations: [...intelligence.limitations, ...agent.limitations],
-  });
-  await writeBenchmarkExportIfRequested(report.paths.reportDir, scanRun);
-  emitScanProgress(options.onProgress, {
-    id: "report-ready",
-    stage: "report",
-    label: "Report ready",
-    status: "completed",
-    message: "HermSec report artifacts were written.",
-    durationMs: Date.now() - reportStarted,
-    assistMode,
-  });
+type CanonicalModelContext = {
+  available: boolean;
+  resolveModel?: CanonicalModelResolver;
+  fallbackReason?: string;
+};
 
-  return {
-    ok: true,
-    message: `Scan completed: ${scanRun.summary.total} finding(s). Report: ${report.paths.reportDir}`,
-    data: {
-      scan: scanRun,
-      report: report.artifacts,
-    },
-  };
-}
-
-async function runVulnerabilityIntelligence(
-  target: string,
-  findings: Awaited<ReturnType<typeof runLocalScan>>["findings"],
-  mode: ScanMode,
-  assistMode: ReturnType<typeof assistModeFrom>,
-  onProgress?: ScanProgressCallback,
-): Promise<{
-  status: "completed" | "skipped" | "failed";
-  message: string;
-  items: ReportIntelligenceItem[];
-  limitations: string[];
-}> {
-  const intelligenceStarted = Date.now();
-  emitScanProgress(onProgress, {
-    id: "vulnerability-intelligence",
-    stage: "scanner",
-    scannerId: "vulnerability-intelligence",
-    label: "Vulnerability intelligence",
-    status: "running",
-    message: "Cross-checking dependency inventory and scanner identifiers against KEV/CVE advisory feeds.",
-    findingCount: findings.length,
-    assistMode,
-  });
-  const intelligence = await resolveVulnerabilityIntelligence({
-    target,
-    workspaceId: stableId(target, "ws"),
-    findings,
-    mode: intelligenceModeForScan(mode),
-  });
-  emitScanProgress(onProgress, {
-    id: "vulnerability-intelligence",
-    stage: "scanner",
-    scannerId: "vulnerability-intelligence",
-    label: "Vulnerability intelligence",
-    status: intelligence.status,
-    message: intelligence.message,
-    findingCount: intelligence.items.length,
-    durationMs: Date.now() - intelligenceStarted,
-    assistMode,
-  });
-  return intelligence;
-}
-
-async function resolveVulnerabilityIntelligence(input: {
-  target: string;
-  workspaceId: string;
-  findings: Awaited<ReturnType<typeof runLocalScan>>["findings"];
-  mode: "auto" | "online" | "offline";
-}): Promise<{
-  status: "completed" | "skipped" | "failed";
-  message: string;
-  items: ReportIntelligenceItem[];
-  limitations: string[];
-}> {
-  try {
-    const result = await buildVulnerabilityIntelligence(input);
-    const failedSources = result.results
-      .filter((source) => source.status === "failed")
-      .map((source) => source.source);
-    const limitations = failedSources.length > 0
-      ? [`Vulnerability intelligence source failures: ${failedSources.join(", ")}.`]
-      : [];
-    return {
-      status: result.status,
-      message: result.message,
-      items: result.items,
-      limitations,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return {
-      status: "failed",
-      message: `Vulnerability intelligence failed safely: ${message}`,
-      items: [],
-      limitations: [`Vulnerability intelligence failed safely: ${message}`],
-    };
-  }
-}
-
-function intelligenceModeForScan(mode: ScanMode): "auto" | "online" | "offline" {
-  if (mode === "offline" || process.env.HERMSEC_SCANNER_ONLINE_UPDATES === "false") {
-    return "offline";
-  }
-  return mode === "online" ? "online" : "auto";
-}
-
-async function writeBenchmarkExportIfRequested(reportDir: string, scanRun: Awaited<ReturnType<typeof runLocalScan>>): Promise<void> {
-  if (process.env.HERMSEC_BENCHMARK_EXPORT_RAW !== "1") {
-    return;
-  }
-  const exportPath = path.join(reportDir, "benchmark-findings.raw.json");
-  await fs.writeFile(exportPath, `${JSON.stringify({
-    schemaVersion: "1.0",
-    scanId: scanRun.id,
-    target: scanRun.target,
-    generatedAt: scanRun.finishedAt,
-    findings: scanRun.findings,
-  }, null, 2)}\n`, "utf8");
-}
-
-async function explainScanRun(
-  findings: Awaited<ReturnType<typeof runLocalScan>>["findings"],
-  options: HarnessScanOptions & { assistMode: ReturnType<typeof assistModeFrom>; target: string },
-): Promise<AssistPhaseResult> {
-  if (!options.useModel) {
-    if (isProductAgentMode(options.assistMode)) {
-      return {
-        ok: false,
-        findings: [],
-        explanations: {},
-        summary: {
-          provider: "none",
-          fallbackReason: "Model disabled with --no-model.",
-        },
-        errorCode: "MODEL_PROVIDER_REQUIRED",
-        message: `${modelPhaseLabel(options.assistMode)} requires model assistance; --no-model cannot run this mode.`,
-        remediation: "Enable model assistance or choose deep-assisted mode.",
-        limitations: ["Product agent mode was not run because model assistance was disabled."],
-      };
-    }
-    return {
-      ok: true,
-      findings: [],
-      explanations: {},
-      summary: {
-        provider: "none",
-        fallbackReason: "Model disabled with --no-model.",
-      },
-      limitations: [],
-    };
-  }
-
-  const userConfig = await loadUserConfig();
-  const providerId = providerIdFromEnv(process.env.HERMSEC_MODEL_PROVIDER) ?? userConfig.preferredModelProvider ?? "none";
-  const apiKeyEnv = normalizeCredentialEnvName(process.env.HERMSEC_MODEL_API_KEY_ENV) ?? (userConfig.providerCredentialRef?.kind === "env"
-    ? userConfig.providerCredentialRef.name
-    : providerCredentialEnv[providerId]);
-  const baseUrl = process.env.HERMSEC_MODEL_BASE_URL?.trim();
-  const model = process.env.HERMSEC_MODEL?.trim();
-  const providerConfig: HarnessProviderConfig = {
-    provider: providerId,
-    ...(baseUrl ? { baseUrl } : {}),
-    ...(apiKeyEnv ? { apiKeyEnv } : {}),
-    ...(model ? { model } : {}),
-    allowRemoteProviders: process.env.HERMSEC_ALLOW_REMOTE_PROVIDERS === "true" || userConfig.privacyMode !== "local-only",
-    timeoutMs: modelTimeoutMs(findings.length),
-  };
-  const agentModelRoutes = parseAgentModelRoutes(process.env.HERMSEC_AGENT_MODEL_CONFIG);
-  const selection = await selectModelProvider(
-    providerConfig,
-    userConfig.privacyMode,
-  );
-
-  if (isProductAgentMode(options.assistMode)) {
-    if (selection.provider.id === "none") {
-      const reason = selection.fallbackReason ? ` ${selection.fallbackReason}` : "";
-      return {
-        ok: false,
-        findings: [],
-        explanations: {},
-        summary: {
-          provider: "none",
-          ...(selection.fallbackReason ? { fallbackReason: selection.fallbackReason } : {}),
-        },
-        errorCode: "MODEL_PROVIDER_REQUIRED",
-        message: `${modelPhaseLabel(options.assistMode)} requires an enabled model provider.${reason}`,
-        remediation: "Enable a local or approved remote model provider, or choose deep-assisted mode for scanner-backed reporting.",
-        limitations: [`${modelPhaseLabel(options.assistMode)} did not run because no model provider was available.`],
-      };
-    }
-    if (options.mode === "offline" && !selection.health.local) {
-      return {
-        ok: false,
-        findings: [],
-        explanations: {},
-        summary: {
-          provider: selection.provider.id,
-          fallbackReason: "Offline scan mode does not allow remote model providers for product agent modes.",
-        },
-        errorCode: "MODEL_PROVIDER_REQUIRED",
-        message: `${modelPhaseLabel(options.assistMode)} requires a local model provider when scan mode is offline.`,
-        remediation: "Use a local provider such as Ollama, switch scan mode to auto/online, or choose deep-assisted mode.",
-        limitations: ["Remote model provider was blocked by offline scan mode."],
-      };
-    }
-    const productResult = await runProductAgentScan({
-      repoRoot: options.target,
-      mode: options.assistMode,
-      provider: selection.provider,
-      ...(providerConfig ? { providerConfig } : {}),
-      ...(options.assistMode === "scanner-moa-assisted" ? { scannerFindings: findings } : {}),
-      ...(options.outputDirectory ? { reportOutputDirectory: options.outputDirectory } : {}),
-      ...(options.onProgress ? { onProgress: options.onProgress } : {}),
-      modelResolver: createProductModelResolver({
-        routes: agentModelRoutes,
-        mode: options.assistMode,
-        fallbackProviderConfig: providerConfig,
-        privacyMode: userConfig.privacyMode,
-      }),
-    });
-    if (!productResult.ok) {
-      return {
-        ok: false,
-        findings: [],
-        explanations: {},
-        summary: {
-          provider: productResult.provider,
-          fallbackReason: productResult.message,
-        },
-        status: productResult.status,
-        errorCode: productResult.errorCode,
-        message: productResult.message,
-        remediation: productResult.remediation,
-        limitations: productResult.limitations,
-      };
-    }
-    return {
-      ok: true,
-      findings: productResult.findings,
-      explanations: {},
-      summary: {
-        provider: productResult.provider,
-        ...(productResult.model ? { model: productResult.model } : {}),
-        executiveSummary: productResult.executiveSummary,
-        priorityActions: productResult.priorityActions,
-      },
-      status: productResult.status,
-      limitations: productResult.limitations,
-      agentMode: productResult.agentMode,
-    };
-  }
-
-  const agentTurn = await runAgentTurn({
-    message: agentPromptForAssistMode(options.assistMode),
-    findings,
-    provider: selection.provider,
-    providerConfig,
-    privacyMode: userConfig.privacyMode,
-    offlineMode: options.mode === "offline" && !selection.health.local,
-    forceIntent: "explain_findings",
-  });
-
-  const fallbackReason = [selection.fallbackReason, agentTurn.modelSkippedReason].filter(Boolean).join("; ");
-  return {
-    ok: true,
-    findings: [],
-    explanations: agentTurn.explanations ?? {},
-    summary: {
-      provider: agentTurn.providerUsed,
-      ...(fallbackReason ? { fallbackReason } : {}),
-      executiveSummary: agentTurn.message,
-      priorityActions: agentTurn.priorityActions ?? [],
-    },
-    limitations: [],
-  };
-}
+type HarnessProviderConfig = ProviderConfig & {
+  provider: ModelProviderId;
+  allowRemoteProviders: boolean;
+  timeoutMs: number;
+};
 
 type AgentModelRoute = {
   provider?: ModelProviderId;
@@ -439,32 +77,306 @@ type AgentModelRoutes = {
   moa?: Record<string, AgentModelRoute>;
 };
 
-type HarnessProviderConfig = ProviderConfig & {
-  provider: ModelProviderId;
-  allowRemoteProviders: boolean;
-  timeoutMs: number;
-};
+export async function runScan(
+  options: HarnessScanOptions,
+): Promise<CommandResult> {
+  const assistMode = resolveScanAssistMode(options.assistMode);
+  const modeSpec = scanAssistModeSpec(assistMode);
 
-function createProductModelResolver(input: {
-  routes: AgentModelRoutes;
-  mode: ProductAgentScanMode;
-  fallbackProviderConfig: HarnessProviderConfig;
-  privacyMode: Awaited<ReturnType<typeof loadUserConfig>>["privacyMode"];
-}): (roleId: ProductAgentRoleId) => Promise<ProductAgentModelSelection | undefined> {
-  return async (roleId) => {
-    const route = input.mode === "single-agent"
-      ? input.routes.singleAgent
-      : input.routes.moa?.[roleId];
-    if (!route) {
-      return undefined;
-    }
-    const providerConfig = {
-      ...input.fallbackProviderConfig,
-      ...route,
-      allowRemoteProviders: route.allowRemoteProviders ?? input.fallbackProviderConfig.allowRemoteProviders,
+  if (!options.useModel && modeSpec.requiresModel && !modeSpec.runsScanners) {
+    return {
+      ok: false,
+      errorCode: "MODEL_PROVIDER_REQUIRED",
+      message: `${scanAssistModeLabel(assistMode)} requires model assistance.`,
+      remediation:
+        "Enable a configured model provider or choose Scanner only mode.",
     };
-    const selected = await selectModelProvider(providerConfig, input.privacyMode);
-    if (selected.provider.id === "none") {
+  }
+
+  const modelContext = options.resolveModel
+    ? {
+        available: true,
+        resolveModel: options.resolveModel,
+      }
+    : options.useModel && modeSpec.requiresModel
+      ? await createCanonicalModelContext(options)
+      : { available: false };
+
+  if (
+    modeSpec.requiresModel &&
+    !modeSpec.runsScanners &&
+    !modelContext.available
+  ) {
+    return {
+      ok: false,
+      errorCode: "MODEL_PROVIDER_REQUIRED",
+      message: `${scanAssistModeLabel(assistMode)} requires an enabled model provider.${modelContext.fallbackReason ? ` ${modelContext.fallbackReason}` : ""}`,
+      remediation:
+        "Configure a local or approved remote provider, or choose Scanner only mode.",
+    };
+  }
+
+  const orchestration = await runCanonicalScanOrchestration({
+    target: options.target,
+    assistMode,
+    scanMode: options.mode,
+    ...(options.runId ? { runId: options.runId } : {}),
+    ...(options.signal ? { signal: options.signal } : {}),
+    ...(modelContext.resolveModel
+      ? { resolveModel: modelContext.resolveModel }
+      : {}),
+    ...(options.onProgress ? { onProgress: options.onProgress } : {}),
+  });
+
+  if (orchestration.terminalStatus === "canceled") {
+    return {
+      ok: false,
+      errorCode: "SCAN_CANCELED",
+      message: "The Hermsec scan was canceled.",
+      remediation: "Start a new scan when you are ready.",
+    };
+  }
+  if (
+    orchestration.terminalStatus === "failed" &&
+    orchestration.findings.length === 0
+  ) {
+    if (agentProviderWasUnavailable(orchestration)) {
+      return {
+        ok: false,
+        errorCode: "MODEL_PROVIDER_REQUIRED",
+        message: `${scanAssistModeLabel(assistMode)} requires an enabled model provider.`,
+        remediation:
+          "Configure a local or approved remote provider, or choose Scanner only mode.",
+      };
+    }
+    return {
+      ok: false,
+      errorCode: "SCAN_FAILED",
+      message: `${scanAssistModeLabel(assistMode)} failed before producing evidence.`,
+      remediation:
+        orchestration.degradationReasons.join(" ") ||
+        "Review scanner and provider readiness, then retry.",
+    };
+  }
+
+  let intelligence: {
+    status: "completed" | "skipped" | "failed";
+    message: string;
+    items: ReportIntelligenceItem[];
+    limitations: string[];
+  };
+  try {
+    intelligence = modeSpec.runsScanners
+      ? await runVulnerabilityIntelligence({
+          target: orchestration.scan.target,
+          findings: orchestration.scan.findings,
+          mode: options.mode,
+          assistMode,
+          runId: orchestration.runId,
+          ...(options.signal ? { signal: options.signal } : {}),
+          ...(options.onProgress ? { onProgress: options.onProgress } : {}),
+        })
+      : {
+          status: "skipped",
+          message:
+            "Agent-only mode does not run scanner-backed vulnerability intelligence.",
+          items: [],
+          limitations: [
+            "Agent-only mode does not run scanner-backed vulnerability intelligence.",
+          ],
+        };
+  } catch (error) {
+    if (options.signal?.aborted) {
+      return canceledScanResult();
+    }
+    throw error;
+  }
+
+  if (options.signal?.aborted) {
+    return canceledScanResult();
+  }
+
+  const reportStarted = Date.now();
+  emitScanProgress(options.onProgress, {
+    id: "report-ready",
+    runId: orchestration.runId,
+    stage: "report",
+    label: "Report generation",
+    status: "running",
+    message: "Writing report artifacts from immutable detector evidence.",
+    assistMode,
+  });
+  if (options.signal?.aborted) {
+    return canceledScanResult();
+  }
+  const workspaceName =
+    path.basename(orchestration.scan.target) || "workspace";
+  const agentMode = reportMetadataForOrchestration(orchestration);
+  let report: Awaited<ReturnType<typeof renderReport>>;
+  try {
+    report = await renderReport({
+      scanRun: orchestration.scan,
+      workspaceId: stableId(orchestration.scan.target, "ws"),
+      workspaceName,
+      ...(options.outputDirectory
+        ? { configuredReportDir: options.outputDirectory }
+        : {}),
+      formats: mapFormats(options.formats),
+      target: {
+        kind: "local-path",
+        value: orchestration.scan.target,
+        displayName: workspaceName,
+      },
+      explanations: {},
+      agentSummary: summaryForOrchestration(orchestration, agentMode),
+      agentMode,
+      intelligence: intelligence.items,
+      limitations: [
+        ...intelligence.limitations,
+        ...orchestration.degradationReasons,
+        ...(orchestration.agentResult?.limitations ?? []),
+        "Raw scanner and agent detector findings are retained and cannot be erased by model review.",
+      ],
+      ...(options.signal ? { signal: options.signal } : {}),
+    });
+    await writeRawDetectorEvidence(
+      report.paths.reportDir,
+      orchestration,
+      options.signal,
+    );
+    await writeBenchmarkExportIfRequested(
+      report.paths.reportDir,
+      orchestration,
+      options.signal,
+    );
+  } catch (error) {
+    if (options.signal?.aborted) {
+      return canceledScanResult();
+    }
+    throw error;
+  }
+  if (options.signal?.aborted) {
+    return canceledScanResult();
+  }
+  emitScanProgress(options.onProgress, {
+    id: "report-ready",
+    runId: orchestration.runId,
+    stage: "report",
+    label: "Report generation",
+    status: "completed",
+    message: "Hermsec report artifacts were written.",
+    durationMs: Date.now() - reportStarted,
+    assistMode,
+  });
+
+  const qualifier =
+    orchestration.terminalStatus === "success"
+      ? ""
+      : ` (${orchestration.terminalStatus})`;
+  return {
+    ok: true,
+    message:
+      `${scanAssistModeLabel(assistMode)} completed${qualifier}: ` +
+      `${orchestration.scan.summary.total} finding(s). Report: ${report.paths.reportDir}`,
+    data: {
+      scan: orchestration.scan,
+      report: report.artifacts,
+      orchestration: {
+        runId: orchestration.runId,
+        mode: orchestration.mode,
+        terminalStatus: orchestration.terminalStatus,
+        degradationReasons: orchestration.degradationReasons,
+        scannerFindings: orchestration.scannerFindings,
+        agentFindings: orchestration.agentFindings,
+      },
+    },
+  };
+}
+
+async function createCanonicalModelContext(
+  options: HarnessScanOptions,
+): Promise<CanonicalModelContext> {
+  const userConfig = await loadUserConfig();
+  const providerId =
+    providerIdFromEnv(process.env.HERMSEC_MODEL_PROVIDER) ??
+    userConfig.preferredModelProvider ??
+    "none";
+  const apiKeyEnv =
+    normalizeCredentialEnvName(process.env.HERMSEC_MODEL_API_KEY_ENV) ??
+    (userConfig.providerCredentialRef?.kind === "env"
+      ? userConfig.providerCredentialRef.name
+      : providerCredentialEnv[providerId]);
+  const baseUrl = process.env.HERMSEC_MODEL_BASE_URL?.trim();
+  const model = process.env.HERMSEC_MODEL?.trim();
+  const fallbackConfig: HarnessProviderConfig = {
+    provider: providerId,
+    ...(baseUrl ? { baseUrl } : {}),
+    ...(apiKeyEnv ? { apiKeyEnv } : {}),
+    ...(model ? { model } : {}),
+    allowRemoteProviders:
+      process.env.HERMSEC_ALLOW_REMOTE_PROVIDERS === "true" ||
+      userConfig.privacyMode !== "local-only",
+    timeoutMs: 120_000,
+    ...(providerId === "openrouter"
+      ? {
+          openRouter: {
+            allowFallbacks: false,
+            dataCollection: "deny",
+            captureRouteMetadata: true,
+          },
+        }
+      : {}),
+  };
+  const fallback = await selectModelProvider(
+    fallbackConfig,
+    userConfig.privacyMode,
+  );
+  if (fallback.provider.id === "none") {
+    return {
+      available: false,
+      ...(fallback.fallbackReason
+        ? { fallbackReason: fallback.fallbackReason }
+        : {}),
+    };
+  }
+  if (options.mode === "offline" && !fallback.health.local) {
+    return {
+      available: false,
+      fallbackReason:
+        "Offline scan mode blocks the configured remote model provider.",
+    };
+  }
+
+  const routes = parseAgentModelRoutes(
+    process.env.HERMSEC_AGENT_MODEL_CONFIG,
+  );
+  const selections = new Map<
+    string,
+    Awaited<ReturnType<typeof selectModelProvider>>
+  >();
+  const resolveModel: CanonicalModelResolver = async ({ role }) => {
+    const route = canonicalRouteForRole(routes, role);
+    if (!route) {
+      return {
+        provider: fallback.provider,
+        providerConfig: fallbackConfig,
+      };
+    }
+    const providerConfig: HarnessProviderConfig = {
+      ...fallbackConfig,
+      ...route,
+      allowRemoteProviders:
+        route.allowRemoteProviders ?? fallbackConfig.allowRemoteProviders,
+    };
+    const key = JSON.stringify(providerConfig);
+    const selected =
+      selections.get(key) ??
+      (await selectModelProvider(providerConfig, userConfig.privacyMode));
+    selections.set(key, selected);
+    if (
+      selected.provider.id === "none" ||
+      (options.mode === "offline" && !selected.health.local)
+    ) {
       return undefined;
     }
     return {
@@ -472,6 +384,318 @@ function createProductModelResolver(input: {
       providerConfig,
     };
   };
+  return {
+    available: true,
+    resolveModel,
+  };
+}
+
+function canonicalRouteForRole(
+  routes: AgentModelRoutes,
+  role: CanonicalAgentRole,
+): AgentModelRoute | undefined {
+  if (role === "single-agent-inspector") {
+    return routes.singleAgent;
+  }
+  return routes.moa?.[role];
+}
+
+function reportMetadataForOrchestration(
+  orchestration: Readonly<CanonicalScanOrchestrationResult>,
+): ReportAgentModeMetadata {
+  const agent = orchestration.agentResult;
+  const roles = agent?.roles ?? [];
+  const judgments = agent?.judgments ?? [];
+  const findingMetadata = Object.fromEntries(
+    orchestration.findings.map((finding) => [
+      finding.id,
+      {
+        ...(finding.agent?.source
+          ? { sourceLabel: finding.agent.source }
+          : {}),
+        ...(finding.agent?.judge?.verdict
+          ? { judgeStatus: finding.agent.judge.verdict }
+          : {}),
+        ...(finding.agent?.judge?.reason
+          ? { judgeReason: finding.agent.judge.reason }
+          : {}),
+        ...(finding.agent?.role
+          ? { agentIds: [finding.agent.role] }
+          : {}),
+      },
+    ]),
+  );
+  return {
+    mode: orchestration.mode,
+    scanMode: orchestration.scan.mode,
+    modeLabel: scanAssistModeLabel(orchestration.mode),
+    terminalStatus: orchestration.terminalStatus,
+    ...(orchestration.degradationReasons.length > 0
+      ? { degradationReasons: [...orchestration.degradationReasons] }
+      : {}),
+    rawScannerFindingCount: orchestration.scannerFindings.length,
+    rawAgentFindingCount: orchestration.agentFindings.length,
+    candidateCount: agent?.candidates.length ?? 0,
+    candidateFindingCount: agent?.rawFindings.length ?? 0,
+    focusedTaskCount: roles.length,
+    acceptedFindingCount: judgments.filter(
+      (item) => item.verdict === "accepted",
+    ).length,
+    rejectedFindingCount: judgments.filter(
+      (item) => item.verdict === "rejected",
+    ).length,
+    needsHumanReviewCount: judgments.filter(
+      (item) => item.verdict === "needs-review",
+    ).length,
+    agents: roles.map((role) => ({
+      id: role.role,
+      label: role.label,
+      role: role.role,
+      status: role.status,
+    })),
+    agentsUsed: roles.map((role) => role.role),
+    ...(Object.keys(findingMetadata).length > 0
+      ? { findings: findingMetadata }
+      : {}),
+  };
+}
+
+function summaryForOrchestration(
+  orchestration: Readonly<CanonicalScanOrchestrationResult>,
+  agentMode: ReportAgentModeMetadata,
+): {
+  provider: string;
+  model?: string;
+  fallbackReason?: string;
+  agentMode: ReportAgentModeMetadata;
+  executiveSummary: string;
+  priorityActions: string[];
+} {
+  const usages = orchestration.agentResult?.usages ?? [];
+  const firstUsage = usages[0];
+  const priorityActions = [
+    ...new Set(
+      orchestration.findings
+        .filter(
+          (finding) =>
+            finding.severity === "critical" ||
+            finding.severity === "high",
+        )
+        .map((finding) => `${finding.title}: ${finding.remediation}`),
+    ),
+  ].slice(0, 5);
+  const requiresModel = scanAssistModeSpec(orchestration.mode).requiresModel;
+  return {
+    provider: firstUsage?.provider ?? "none",
+    ...(firstUsage?.model ? { model: firstUsage.model } : {}),
+    ...(requiresModel && usages.length === 0
+      ? {
+          fallbackReason:
+            "No model request completed; available detector evidence was preserved.",
+        }
+      : {}),
+    agentMode,
+    executiveSummary:
+      `${scanAssistModeLabel(orchestration.mode)} completed with ` +
+      `${orchestration.scan.summary.total} evidence-backed finding(s) and ` +
+      `terminal status ${orchestration.terminalStatus}.`,
+    priorityActions,
+  };
+}
+
+async function runVulnerabilityIntelligence(input: {
+  target: string;
+  findings: readonly Finding[];
+  mode: ScanMode;
+  assistMode: ReturnType<typeof resolveScanAssistMode>;
+  runId: string;
+  signal?: AbortSignal;
+  onProgress?: ScanProgressCallback;
+}): Promise<{
+  status: "completed" | "skipped" | "failed";
+  message: string;
+  items: ReportIntelligenceItem[];
+  limitations: string[];
+}> {
+  const started = Date.now();
+  emitScanProgress(input.onProgress, {
+    id: "vulnerability-intelligence",
+    runId: input.runId,
+    stage: "scanner",
+    scannerId: "vulnerability-intelligence",
+    label: "Vulnerability intelligence",
+    status: "running",
+    message:
+      "Cross-checking dependency inventory and scanner identifiers against advisory feeds.",
+    findingCount: input.findings.length,
+    assistMode: input.assistMode,
+  });
+  const intelligence = await resolveVulnerabilityIntelligence({
+    target: input.target,
+    workspaceId: stableId(input.target, "ws"),
+    findings: input.findings,
+    mode: intelligenceModeForScan(input.mode),
+    ...(input.signal ? { signal: input.signal } : {}),
+  });
+  emitScanProgress(input.onProgress, {
+    id: "vulnerability-intelligence",
+    runId: input.runId,
+    stage: "scanner",
+    scannerId: "vulnerability-intelligence",
+    label: "Vulnerability intelligence",
+    status: intelligence.status,
+    message: intelligence.message,
+    findingCount: intelligence.items.length,
+    durationMs: Date.now() - started,
+    assistMode: input.assistMode,
+  });
+  return intelligence;
+}
+
+async function resolveVulnerabilityIntelligence(input: {
+  target: string;
+  workspaceId: string;
+  findings: readonly Finding[];
+  mode: "auto" | "online" | "offline";
+  signal?: AbortSignal;
+}): Promise<{
+  status: "completed" | "skipped" | "failed";
+  message: string;
+  items: ReportIntelligenceItem[];
+  limitations: string[];
+}> {
+  try {
+    const result = await buildVulnerabilityIntelligence({
+      ...input,
+      findings: [...input.findings],
+    });
+    const failedSources = result.results
+      .filter((source) => source.status === "failed")
+      .map((source) => source.source);
+    return {
+      status: result.status,
+      message: result.message,
+      items: result.items,
+      limitations:
+        failedSources.length > 0
+          ? [
+              `Vulnerability intelligence source failures: ${failedSources.join(", ")}.`,
+            ]
+          : [],
+    };
+  } catch (error) {
+    if (input.signal?.aborted) {
+      throw input.signal.reason instanceof Error
+        ? input.signal.reason
+        : new DOMException("Operation was aborted.", "AbortError");
+    }
+    const unsafeMessage =
+      error instanceof Error ? error.message : String(error);
+    const redacted = redactForReport({ message: unsafeMessage }).value as {
+      message?: string;
+    };
+    const message = redacted.message ?? "Unknown intelligence error.";
+    return {
+      status: "failed",
+      message: `Vulnerability intelligence failed safely: ${message}`,
+      items: [],
+      limitations: [
+        `Vulnerability intelligence failed safely: ${message}`,
+      ],
+    };
+  }
+}
+
+function agentProviderWasUnavailable(
+  orchestration: Readonly<CanonicalScanOrchestrationResult>,
+): boolean {
+  const agent = orchestration.agentResult;
+  return Boolean(
+    agent &&
+      agent.usages.length === 0 &&
+      agent.roles.length > 0 &&
+      agent.roles.every((role) =>
+        role.limitations.includes("model-selection-unavailable"),
+      ),
+  );
+}
+
+function canceledScanResult(): CommandResult {
+  return {
+    ok: false,
+    errorCode: "SCAN_CANCELED",
+    message: "The Hermsec scan was canceled.",
+    remediation: "Start a new scan when you are ready.",
+  };
+}
+
+function intelligenceModeForScan(
+  mode: ScanMode,
+): "auto" | "online" | "offline" {
+  if (
+    mode === "offline" ||
+    process.env.HERMSEC_SCANNER_ONLINE_UPDATES === "false"
+  ) {
+    return "offline";
+  }
+  return mode === "online" ? "online" : "auto";
+}
+
+async function writeRawDetectorEvidence(
+  reportDirectory: string,
+  orchestration: Readonly<CanonicalScanOrchestrationResult>,
+  signal?: AbortSignal,
+): Promise<void> {
+  throwIfAborted(signal);
+  const payload = {
+    schemaVersion: "1.0",
+    runId: orchestration.runId,
+    mode: orchestration.mode,
+    terminalStatus: orchestration.terminalStatus,
+    degradationReasons: orchestration.degradationReasons,
+    scannerFindings: orchestration.scannerFindings,
+    agentFindings: orchestration.agentFindings,
+    finalFindings: orchestration.findings,
+  };
+  const redacted = redactForReport(payload).value;
+  await fs.writeFile(
+    path.join(reportDirectory, "detector-evidence.json"),
+    `${JSON.stringify(redacted, null, 2)}\n`,
+    "utf8",
+  );
+}
+
+async function writeBenchmarkExportIfRequested(
+  reportDir: string,
+  orchestration: Readonly<CanonicalScanOrchestrationResult>,
+  signal?: AbortSignal,
+): Promise<void> {
+  throwIfAborted(signal);
+  if (process.env.HERMSEC_BENCHMARK_EXPORT_RAW !== "1") {
+    return;
+  }
+  const payload = redactForReport({
+    schemaVersion: "1.0",
+    scanId: orchestration.scan.id,
+    target: orchestration.scan.target,
+    generatedAt: orchestration.scan.finishedAt,
+    assistMode: orchestration.mode,
+    terminalStatus: orchestration.terminalStatus,
+    findings: orchestration.scan.findings,
+  }).value;
+  await fs.writeFile(
+    path.join(reportDir, "benchmark-findings.raw.json"),
+    `${JSON.stringify(payload, null, 2)}\n`,
+    "utf8",
+  );
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) {
+    throw signal.reason instanceof Error
+      ? signal.reason
+      : new DOMException("Operation was aborted.", "AbortError");
+  }
 }
 
 function parseAgentModelRoutes(raw: string | undefined): AgentModelRoutes {
@@ -488,17 +712,16 @@ function parseAgentModelRoutes(raw: string | undefined): AgentModelRoutes {
     if (singleAgent) {
       routes.singleAgent = singleAgent;
     }
-    const moa = parsed.moa;
-    if (isRecord(moa)) {
-      const roleRoutes: Record<string, AgentModelRoute> = {};
-      for (const [roleId, value] of Object.entries(moa)) {
+    if (isRecord(parsed.moa)) {
+      const moa: Record<string, AgentModelRoute> = {};
+      for (const [role, value] of Object.entries(parsed.moa)) {
         const route = routeFromUnknown(value);
         if (route) {
-          roleRoutes[roleId] = route;
+          moa[role] = route;
         }
       }
-      if (Object.keys(roleRoutes).length > 0) {
-        routes.moa = roleRoutes;
+      if (Object.keys(moa).length > 0) {
+        routes.moa = moa;
       }
     }
     return routes;
@@ -514,10 +737,13 @@ function routeFromUnknown(value: unknown): AgentModelRoute | undefined {
   const provider = providerIdFromEnv(stringFromUnknown(value.provider));
   const baseUrl = stringFromUnknown(value.baseUrl);
   const model = stringFromUnknown(value.model);
-  const apiKeyEnv = normalizeCredentialEnvName(stringFromUnknown(value.apiKeyEnv));
-  const allowRemoteProviders = typeof value.allowRemoteProviders === "boolean"
-    ? value.allowRemoteProviders
-    : undefined;
+  const apiKeyEnv = normalizeCredentialEnvName(
+    stringFromUnknown(value.apiKeyEnv),
+  );
+  const allowRemoteProviders =
+    typeof value.allowRemoteProviders === "boolean"
+      ? value.allowRemoteProviders
+      : undefined;
   if (!provider && !baseUrl && !model && !apiKeyEnv) {
     return undefined;
   }
@@ -526,109 +752,15 @@ function routeFromUnknown(value: unknown): AgentModelRoute | undefined {
     ...(baseUrl ? { baseUrl } : {}),
     ...(model ? { model } : {}),
     ...(apiKeyEnv ? { apiKeyEnv } : {}),
-    ...(allowRemoteProviders !== undefined ? { allowRemoteProviders } : {}),
+    ...(allowRemoteProviders !== undefined
+      ? { allowRemoteProviders }
+      : {}),
   };
 }
 
-function stringFromUnknown(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() ? value.trim() : undefined;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function agentPromptForAssistMode(assistMode: HarnessScanOptions["assistMode"]): string {
-  return [
-    "Deep assisted report: explain, prioritize, and connect these completed scanner findings for the Hermsec report.",
-    "Use only supplied scanner evidence.",
-    "Do not create findings, identifiers, files, packages, or line numbers that are not present in the scanner data.",
-    "When findings appear related, say so only through the supplied evidence in the explanation fields.",
-  ].join(" ");
-}
-
-function mapFormats(formats: OutputFormat[]): ReportFormat[] {
-  const mapped = formats.map((format) => (format === "md" ? "markdown" : format)) as ReportFormat[];
-  return mapped.length ? mapped : ["html", "markdown", "json"];
-}
-
-function modelTimeoutMs(findingCount: number): number {
-  return Math.min(120_000, Math.max(45_000, 30_000 + findingCount * 2_500));
-}
-
-type AssistPhaseResult =
-  | {
-      ok: true;
-      findings: Finding[];
-      explanations: Record<string, ModelExplanation | undefined>;
-      summary: {
-        provider: string;
-        model?: string;
-        fallbackReason?: string;
-        executiveSummary?: string;
-        priorityActions?: string[];
-      };
-      status?: ScannerStatus;
-      limitations: string[];
-      agentMode?: ReportAgentModeMetadata;
-    }
-  | {
-      ok: false;
-      findings: [];
-      explanations: Record<string, ModelExplanation | undefined>;
-      summary: {
-        provider: string;
-        fallbackReason?: string;
-      };
-      status?: ScannerStatus;
-      errorCode: string;
-      message: string;
-      remediation: string;
-      limitations: string[];
-    };
-
-function isProductAgentMode(mode: ReturnType<typeof assistModeFrom>): mode is ProductAgentScanMode {
-  return mode === "single-agent" || mode === "moa-assisted" || mode === "scanner-moa-assisted";
-}
-
-function isAgentOnlyMode(mode: ReturnType<typeof assistModeFrom>): boolean {
-  return mode === "single-agent" || mode === "moa-assisted";
-}
-
-function modelPhaseLabel(mode: ReturnType<typeof assistModeFrom>): string {
-  if (mode === "single-agent") return "Single-agent inspection";
-  if (mode === "moa-assisted") return "MoA-assisted inspection";
-  if (mode === "scanner-moa-assisted") return "Scanner + MoA inspection";
-  return "Deep model triage";
-}
-
-function modelPhaseRunningMessage(mode: ReturnType<typeof assistModeFrom>): string {
-  if (mode === "single-agent") {
-    return "Model is inspecting bounded repository snippets for additional product findings.";
-  }
-  if (mode === "moa-assisted") {
-    return "Model specialists, false-positive judge, and aggregator are inspecting bounded repository snippets.";
-  }
-  if (mode === "scanner-moa-assisted") {
-    return "Scanners and MoA candidates are being judged and aggregated into a final evidence-bound set.";
-  }
-  return "Model is supporting triage over scanner-confirmed evidence.";
-}
-
-function mergeFindings(scannerFindings: readonly Finding[], agentFindings: readonly Finding[]): Finding[] {
-  const seen = new Set<string>();
-  const merged: Finding[] = [];
-  for (const finding of [...scannerFindings, ...agentFindings]) {
-    if (seen.has(finding.fingerprint)) {
-      continue;
-    }
-    seen.add(finding.fingerprint);
-    merged.push(finding);
-  }
-  return merged;
-}
-
-function providerIdFromEnv(value: string | undefined): ModelProviderId | undefined {
+function providerIdFromEnv(
+  value: string | undefined,
+): ModelProviderId | undefined {
   switch (value?.trim()) {
     case "none":
     case "ollama":
@@ -649,4 +781,21 @@ function providerIdFromEnv(value: string | undefined): ModelProviderId | undefin
     default:
       return undefined;
   }
+}
+
+function mapFormats(formats: OutputFormat[]): ReportFormat[] {
+  const mapped = formats.map((format) =>
+    format === "md" ? "markdown" : format,
+  ) as ReportFormat[];
+  return mapped.length > 0 ? mapped : ["html", "markdown", "json"];
+}
+
+function stringFromUnknown(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim()
+    ? value.trim()
+    : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }

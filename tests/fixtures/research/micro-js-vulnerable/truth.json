@@ -1,0 +1,158 @@
+{
+  "schemaVersion": "2.0",
+  "fixtureId": "micro-js-vulnerable",
+  "findings": [
+    {
+      "id": "MICRO-JS-SQLI-001",
+      "category": "code",
+      "vulnerabilityClass": "sql-injection",
+      "title": "User email is concatenated into a SQL query",
+      "severity": "high",
+      "cwe": [
+        "CWE-89"
+      ],
+      "identifiers": {
+        "cve": [],
+        "ghsa": [],
+        "osv": []
+      },
+      "location": {
+        "path": "src/db/users.js",
+        "startLine": 3
+      },
+      "evidence": {
+        "type": "primary-location",
+        "description": "The SQL query built from the request value is executed here."
+      },
+      "matchPolicy": {
+        "category": "exact",
+        "vulnerabilityClass": "compatible",
+        "location": "required",
+        "line": "required",
+        "evidence": "primary-location"
+      },
+      "ruleIds": [
+        "micro.sql-injection"
+      ],
+      "matchHints": {
+        "lineTolerance": 1,
+        "cweTolerance": "exact",
+        "severityTolerance": "category-only"
+      }
+    },
+    {
+      "id": "MICRO-JS-CMDI-001",
+      "category": "code",
+      "vulnerabilityClass": "command-injection",
+      "title": "User-controlled host is interpolated into a shell command",
+      "severity": "critical",
+      "cwe": [
+        "CWE-78"
+      ],
+      "identifiers": {
+        "cve": [],
+        "ghsa": [],
+        "osv": []
+      },
+      "location": {
+        "path": "src/system/ping.js",
+        "startLine": 4
+      },
+      "evidence": {
+        "type": "primary-location",
+        "description": "The untrusted host reaches exec through a template string."
+      },
+      "matchPolicy": {
+        "category": "exact",
+        "vulnerabilityClass": "compatible",
+        "location": "required",
+        "line": "required",
+        "evidence": "primary-location"
+      },
+      "ruleIds": [
+        "micro.command-injection"
+      ],
+      "matchHints": {
+        "lineTolerance": 1,
+        "cweTolerance": "exact",
+        "severityTolerance": "category-only"
+      }
+    },
+    {
+      "id": "MICRO-JS-XSS-001",
+      "category": "code",
+      "vulnerabilityClass": "reflected-xss",
+      "title": "User-controlled name is returned in HTML without encoding",
+      "severity": "medium",
+      "cwe": [
+        "CWE-79"
+      ],
+      "identifiers": {
+        "cve": [],
+        "ghsa": [],
+        "osv": []
+      },
+      "location": {
+        "path": "src/views/profile.js",
+        "startLine": 6
+      },
+      "evidence": {
+        "type": "primary-location",
+        "description": "The request value is inserted into the HTML response."
+      },
+      "matchPolicy": {
+        "category": "exact",
+        "vulnerabilityClass": "compatible",
+        "location": "required",
+        "line": "required",
+        "evidence": "primary-location"
+      },
+      "ruleIds": [
+        "micro.reflected-xss"
+      ],
+      "matchHints": {
+        "lineTolerance": 1,
+        "cweTolerance": "exact",
+        "severityTolerance": "category-only"
+      }
+    },
+    {
+      "id": "MICRO-JS-SECRET-001",
+      "category": "secret",
+      "vulnerabilityClass": "hardcoded-secret",
+      "title": "A fixture API key is hardcoded in source",
+      "severity": "high",
+      "cwe": [
+        "CWE-798"
+      ],
+      "identifiers": {
+        "cve": [],
+        "ghsa": [],
+        "osv": []
+      },
+      "location": {
+        "path": "src/config.js",
+        "startLine": 2
+      },
+      "evidence": {
+        "type": "secret-location",
+        "description": "This is an intentionally fake fixture value, not a real credential."
+      },
+      "matchPolicy": {
+        "category": "exact",
+        "vulnerabilityClass": "compatible",
+        "location": "required",
+        "line": "required",
+        "evidence": "secret-location"
+      },
+      "ruleIds": [
+        "micro.hardcoded-secret"
+      ],
+      "matchHints": {
+        "lineTolerance": 1,
+        "cweTolerance": "exact",
+        "severityTolerance": "category-only"
+      }
+    }
+  ]
+}

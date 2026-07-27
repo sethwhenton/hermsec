@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: "Release tag to create or update. Defaults to package version."
-        required: false
+        description: "Existing release tag to build and publish. It must resolve to the checked-out commit."
+        required: true
         type: string
 
 permissions:
@@ -41,20 +41,37 @@ jobs:
             asset_name: Hermsec-macos-x64.dmg
 
     env:
-      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      CSC_IDENTITY_AUTO_DISCOVERY: "false" # Unsigned development build; production signing is intentionally not claimed.
       ELECTRON_CACHE: ${{ github.workspace }}/.electron-cache
       ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.electron-builder-cache
       npm_config_audit: "false"
       npm_config_fund: "false"
 
+      PMG_DISABLE_TELEMETRY: "true"
+
     steps:
+
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.sha }}
+          fetch-depth: 0
           persist-credentials: false
 
+      - name: Verify release tag matches checkout
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+        run: |
+          tag_commit="$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")"
+          head_commit="$(git rev-parse HEAD)"
+          if [[ "${tag_commit}" != "${head_commit}" ]]; then
+            echo "Release tag ${RELEASE_TAG} resolves to ${tag_commit}, not checked-out commit ${head_commit}."
+            exit 1
+          fi
+
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version: "24"
           cache: "npm"
@@ -63,12 +80,14 @@ jobs:
             desktop/package-lock.json
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: "3.12"
 
-      - name: Install uv runtime bundler
-        run: python -m pip install --upgrade uv
+      - name: Setup exact uv runtime bundler
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9
+        with:
+          version: "0.10.12"
 
       - name: Install dependencies without lifecycle scripts
         run: |
@@ -97,14 +116,48 @@ jobs:
       - name: Run root tests
         run: npm test
 
+      - name: Run desktop packaging and runtime tests
+        run: npm --prefix desktop test
+
       - name: Build macOS app
         run: npm --prefix desktop run ${{ matrix.package_script }}
 
       - name: Run desktop smoke checks
-        continue-on-error: true
         run: |
           npm --prefix desktop run smoke:doctor
           npm --prefix desktop run smoke:dashboard
+
+      - name: Smoke packaged macOS runtime without system Node
+        shell: bash
+        run: |
+          app="$(find desktop/release -type f -path '*.app/Contents/MacOS/Hermsec' -print -quit)"
+          if [[ -z "${app}" ]]; then
+            echo "No packaged Hermsec macOS executable was produced."
+            exit 1
+          fi
+          node desktop/scripts/smoke-packaged-runtime.mjs --app "${app}"
+
+      - name: Smoke released DMG artifact
+        shell: bash
+        run: |
+          dmg="$(find desktop/release -maxdepth 1 -name '*.dmg' -print -quit)"
+          if [[ -z "${dmg}" ]]; then
+            echo "No DMG was produced."
+            exit 1
+          fi
+          mountpoint="$(mktemp -d "${RUNNER_TEMP:-/tmp}/hermsec-dmg-smoke.XXXXXX")"
+          cleanup() {
+            hdiutil detach "${mountpoint}" -quiet >/dev/null 2>&1 || true
+            rmdir "${mountpoint}" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          hdiutil attach "${dmg}" -nobrowse -readonly -mountpoint "${mountpoint}"
+          app="$(find "${mountpoint}" -type f -path '*.app/Contents/MacOS/Hermsec' -print -quit)"
+          if [[ -z "${app}" ]]; then
+            echo "The mounted DMG does not contain a Hermsec app executable."
+            exit 1
+          fi
+          node desktop/scripts/smoke-packaged-runtime.mjs --app "${app}"
 
       - name: Normalize DMG filename
         shell: bash
@@ -118,47 +171,149 @@ jobs:
           ls -lh desktop/release
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ${{ matrix.asset_name }}
           path: desktop/release/${{ matrix.asset_name }}
           if-no-files-found: error
           retention-days: 14
 
+  linux-runtime-gate:
+    name: Gate Linux x64 Portable Runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      contents: read
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false" # Unsigned development build; production signing is intentionally not claimed.
+      ELECTRON_CACHE: ${{ github.workspace }}/.electron-cache
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.electron-builder-cache
+      npm_config_audit: "false"
+      npm_config_fund: "false"
+
+
+      PMG_DISABLE_TELEMETRY: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify release tag matches checkout
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+        run: |
+          tag_commit="$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")"
+          head_commit="$(git rev-parse HEAD)"
+          if [[ "${tag_commit}" != "${head_commit}" ]]; then
+            echo "Release tag ${RELEASE_TAG} resolves to ${tag_commit}, not checked-out commit ${head_commit}."
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: |
+            package-lock.json
+            desktop/package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+
+      - name: Setup exact uv runtime bundler
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9
+        with:
+          version: "0.10.12"
+
+      - name: Start PMG package guard
+        uses: safedep/pmg@cb34b76fbcd1d1d517b1c0922b32d0ecf3f0e4a2
+        with:
+          server-mode: true
+
+      - name: Install dependencies without lifecycle scripts
+        run: |
+          npm ci --ignore-scripts
+          npm --prefix desktop ci --ignore-scripts
+
+      - name: Rebuild approved install-script dependencies
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            npm --prefix desktop rebuild esbuild --ignore-scripts=false && npm --prefix desktop run setup:electron && exit 0
+            status=$?
+            echo "approved dependency rebuild failed with exit code ${status} on attempt ${attempt}."
+            if [[ "${attempt}" == "3" ]]; then
+              exit "${status}"
+            fi
+            sleep $((attempt * 15))
+          done
+
+      - name: Run desktop packaging and runtime tests
+        run: npm --prefix desktop test
+
+      - name: Build Linux x64 portable-runtime gate
+        run: npm --prefix desktop run dist:linux
+
+      - name: Smoke packaged Linux runtime without system Node or Python
+        shell: bash
+        run: |
+          app="$(find desktop/release -type f -path '*linux-unpacked/*' \( -name 'hermsec' -o -name 'Hermsec' \) -print -quit)"
+          if [[ -z "${app}" ]]; then
+            echo "No packaged Hermsec Linux executable was produced."
+            exit 1
+          fi
+          node desktop/scripts/smoke-packaged-runtime.mjs --app "${app}"
+
+      - name: Enforce PMG policy
+        if: always()
+        run: pmg proxy stop --fail-on-violation
+
   publish:
     name: Publish macOS Release Assets
-    needs: build
+    needs: [build, linux-runtime-gate]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       actions: read
       contents: write
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.sha }}
+          fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: "24"
+      - name: Verify release tag matches checkout
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+        run: |
+          tag_commit="$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")"
+          head_commit="$(git rev-parse HEAD)"
+          if [[ "${tag_commit}" != "${head_commit}" ]]; then
+            echo "Release tag ${RELEASE_TAG} resolves to ${tag_commit}, not checked-out commit ${head_commit}."
+            exit 1
+          fi
 
       - name: Resolve release tag
         id: release
         shell: bash
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.tag_name }}" ]]; then
-            tag="${{ inputs.tag_name }}"
-          elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            tag="${GITHUB_REF_NAME}"
-          else
-            tag="v$(node -p "require('./package.json').version")"
-          fi
-          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+        run: echo "tag=${RELEASE_TAG}" >> "${GITHUB_OUTPUT}"
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           path: release-assets
 
@@ -174,7 +329,7 @@ jobs:
           - **macOS Intel:** use `Hermsec-macos-x64.dmg`.
           - **Windows:** use `Hermsec-Setup-Windows-x64.exe` from the Windows release workflow.
 
-          macOS builds are currently unsigned unless signing secrets are configured. On first launch, approve Hermsec from System Settings > Privacy & Security if macOS blocks it.
+          These are unsigned development builds, not production-signed releases. On first launch, approve Hermsec from System Settings > Privacy & Security if macOS blocks it.
 
           After installing, open Hermsec and run `/doctor` from chat to verify bundled scanners, internet connectivity, and provider configuration.
           NOTES

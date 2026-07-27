@@ -1,0 +1,5 @@
+# Direct Hermsec scanner requirements. Transitive versions and distribution
+# hashes are resolved separately for every supported release target.
+semgrep==1.167.0
+bandit==1.9.4
+pip-audit==2.10.1

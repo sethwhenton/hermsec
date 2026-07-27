@@ -103,10 +103,13 @@ const severityRank: Record<Severity, number> = {
 };
 
 export function assistModeLabel(mode: RuntimeScanAssistMode): string {
+  if (mode === "scanner-only") return "Scanner only";
   if (mode === "single-agent") return "Single-agent inspection";
-  if (mode === "moa-assisted") return "MoA-assisted inspection";
-  if (mode === "scanner-moa-assisted") return "Scanner + MoA inspection";
-  return "Deep assisted scan";
+  if (mode === "moa-low") return "MoA Low inspection";
+  if (mode === "moa-high") return "MoA High inspection";
+  if (mode === "scanner-single") return "Scanner + Single inspection";
+  if (mode === "scanner-moa-low") return "Scanner + MoA Low inspection";
+  return "Scanner + MoA High inspection";
 }
 
 export function writeScanAssistArtifact(
@@ -345,27 +348,42 @@ function trimEvidence(value: string): string {
 }
 
 function modeNote(mode: RuntimeScanAssistMode): string {
+  if (mode === "scanner-only") {
+    return "Scanner-only mode records deterministic scanner evidence without model calls.";
+  }
   if (mode === "single-agent") {
     return "Single-agent inspection uses bounded read-only repository context without running scanner tools.";
   }
-  if (mode === "moa-assisted") {
-    return "MoA-assisted inspection uses specialist agents, a false-positive judge, and an aggregator without running scanner tools.";
+  if (mode === "moa-low") {
+    return "MoA Low inspection uses three specialists, a false-positive judge, and an aggregator without running scanner tools.";
   }
-  if (mode === "scanner-moa-assisted") {
-    return "Scanner + MoA inspection runs scanners and MoA independently, then judges and merges both evidence sources.";
+  if (mode === "moa-high") {
+    return "MoA High inspection uses five specialists, a false-positive judge, and an aggregator without running scanner tools.";
   }
-  return "Deep assisted scan groups matching scanner findings and allows model-supported triage over that scanner evidence.";
+  if (mode === "scanner-single") {
+    return "Scanner + Single inspection runs scanners and one agent independently, then deterministically fuses both evidence sources.";
+  }
+  if (mode === "scanner-moa-low") {
+    return "Scanner + MoA Low inspection runs scanners and three specialists independently, then judges and merges both evidence sources.";
+  }
+  return "Scanner + MoA High inspection runs scanners and five specialists independently, then judges and merges both evidence sources.";
 }
 
 function modelSupportNote(mode: RuntimeScanAssistMode): string {
+  if (mode === "scanner-only") {
+    return "Scanner-only mode preserves raw scanner evidence without model involvement.";
+  }
   if (mode === "single-agent") {
     return "Single-agent mode produces validated agent-only findings with agent provenance.";
   }
-  if (mode === "moa-assisted") {
+  if (mode === "moa-low" || mode === "moa-high") {
     return "MoA mode produces validated agent-only findings after specialist review, false-positive judging, and aggregation.";
   }
-  if (mode === "scanner-moa-assisted") {
+  if (mode === "scanner-single") {
+    return "Scanner + Single mode preserves independent scanner and agent evidence before deterministic fusion.";
+  }
+  if (mode === "scanner-moa-low" || mode === "scanner-moa-high") {
     return "Scanner + MoA mode produces validated findings by judging scanner-backed and MoA candidate evidence together.";
   }
-  return "Deep mode may use the model to explain and prioritize this merged scanner-backed group.";
+  return "Hermsec records evidence for this scan mode.";
 }

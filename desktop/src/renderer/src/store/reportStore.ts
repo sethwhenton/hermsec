@@ -2,12 +2,15 @@ import { create } from "zustand";
 import { getHermsecApi, requireHermsecApi } from "@/lib/ipc";
 import type { LatestReportResult } from "@/types/reports";
 import type { ScanProgressEvent, ScanProjectRequest, ScanProjectResult } from "@/types/scan";
+import { shouldAcceptRunEvent, shouldApplyRunCompletion } from "../../../shared/scanRunIsolation";
 
 interface ReportState {
   latestReport: LatestReportResult | null;
   dashboardHtml: string | null;
   progress: ScanProgressEvent[];
   scanRunning: boolean;
+  activeRunId: string | null;
+  terminalRunId: string | null;
   toast: string | null;
   lastScanRequest: ScanProjectRequest | null;
   restartAfterCancel: boolean;
@@ -28,6 +31,8 @@ export const useReportStore = create<ReportState>((set, get) => ({
   dashboardHtml: null,
   progress: [],
   scanRunning: false,
+  activeRunId: null,
+  terminalRunId: null,
   toast: null,
   lastScanRequest: null,
   restartAfterCancel: false,
@@ -37,9 +42,15 @@ export const useReportStore = create<ReportState>((set, get) => ({
     const api = getHermsecApi();
     if (!api) return;
     unsubscribeProgress = api.scan.onProgress((event) => {
-      set((state) => ({
-        progress: upsertProgress(state.progress, event),
-      }));
+      set((state) => {
+        if (!shouldAcceptRunEvent(state.activeRunId, state.terminalRunId, event.runId)) {
+          return state;
+        }
+        return {
+          progress: upsertProgress(state.progress, event),
+          ...(event.terminalStatus ? { terminalRunId: event.runId } : {}),
+        };
+      });
     });
   },
 
@@ -71,9 +82,30 @@ export const useReportStore = create<ReportState>((set, get) => ({
   },
 
   runScan: async (request) => {
-    set({ scanRunning: true, progress: [], toast: null, lastScanRequest: request });
+    const currentRunId = get().activeRunId;
+    if (currentRunId) {
+      return {
+        ok: false,
+        message: "A scan is already running. Stop or restart it before starting another scan.",
+        error: "scan-already-running",
+        runId: currentRunId,
+      };
+    }
+    const runId = createRunId();
+    const requestForRun = { ...request, runId };
+    set({
+      scanRunning: true,
+      progress: [],
+      toast: null,
+      activeRunId: runId,
+      terminalRunId: null,
+      lastScanRequest: { ...request, runId: undefined },
+    });
     try {
-      const result = await requireHermsecApi().scan.project(request);
+      const result = await requireHermsecApi().scan.project(requestForRun);
+      if (!shouldApplyRunCompletion(get().activeRunId, runId)) {
+        return result;
+      }
       if (result.ok && !result.unchanged) {
         const latest: LatestReportResult = {
           ok: true,
@@ -83,6 +115,11 @@ export const useReportStore = create<ReportState>((set, get) => ({
           dashboardHtmlPath: result.dashboardHtmlPath,
           onepagerHtmlPath: result.onepagerHtmlPath,
           onepagerPdfPath: result.onepagerPdfPath,
+          runId: result.runId ?? runId,
+          assistMode: result.assistMode,
+          assistModeLabel: result.assistModeLabel,
+          terminalStatus: result.terminalStatus,
+          degradationReasons: result.degradationReasons,
           projectState: result.projectState,
         };
         set({ latestReport: latest });
@@ -96,10 +133,14 @@ export const useReportStore = create<ReportState>((set, get) => ({
       if (result.canceled) {
         set({ toast: "Scan stopped." });
       }
+      set({ terminalRunId: result.runId ?? runId });
       return result;
     } finally {
-      const restartRequest = get().restartAfterCancel ? get().lastScanRequest : null;
-      set({ scanRunning: false, restartAfterCancel: false });
+      const isCurrentRun = shouldApplyRunCompletion(get().activeRunId, runId);
+      const restartRequest = isCurrentRun && get().restartAfterCancel ? get().lastScanRequest : null;
+      if (isCurrentRun) {
+        set({ scanRunning: false, activeRunId: null, restartAfterCancel: false });
+      }
       if (restartRequest) {
         window.setTimeout(() => {
           void get().runScan(restartRequest);
@@ -109,7 +150,12 @@ export const useReportStore = create<ReportState>((set, get) => ({
   },
 
   cancelScan: async () => {
-    const result = await requireHermsecApi().scan.cancel();
+    const activeRunId = get().activeRunId;
+    if (!activeRunId) {
+      set({ toast: "No scan is currently running." });
+      return;
+    }
+    const result = await requireHermsecApi().scan.cancel(activeRunId);
     set({ toast: result.message });
   },
 
@@ -121,7 +167,10 @@ export const useReportStore = create<ReportState>((set, get) => ({
     }
     if (get().scanRunning) {
       set({ restartAfterCancel: true, lastScanRequest: currentRequest, toast: "Restarting scan..." });
-      await requireHermsecApi().scan.cancel();
+      const activeRunId = get().activeRunId;
+      if (activeRunId) {
+        await requireHermsecApi().scan.cancel(activeRunId);
+      }
       return;
     }
     void get().runScan(currentRequest);
@@ -135,4 +184,9 @@ function upsertProgress(events: ScanProgressEvent[], next: ScanProgressEvent): S
   const byId = new Map(events.map((event) => [event.id, event]));
   byId.set(next.id, next);
   return Array.from(byId.values());
+}
+
+function createRunId(): string {
+  const uuid = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `renderer-${uuid}`;
 }

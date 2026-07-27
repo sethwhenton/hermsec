@@ -252,7 +252,7 @@ function MenuSurface({
 
 const aboutFeatureItems: Array<[string, string]> = [
   ["Desktop chat", "Guide scans, run Doctor, explain findings, set automations, and open final report artifacts."],
-  ["Four scan modes", "Use Deep assisted, Single Agent, MoA, or Scanner + MoA inspection from chat, settings, or automations."],
+  ["Seven scan modes", "Choose Scanner only, Single agent, MoA Low/High, or the corresponding scanner-plus-agent evidence modes."],
   ["Doctor", "Check runtime readiness, scanner availability, provider status, and internet access to advisory sources."],
   ["Live progress", "See project inspection, tool preparation, scanner lanes, agent stages, judging, aggregation, and report generation."],
   ["Scanner management", "Review installed, missing, enabled, auto-installable, and project-relevant scanners in Settings."],
@@ -265,9 +265,9 @@ const scanFlowItems = [
   "Detect languages, manifests, lockfiles, IaC, and git metadata.",
   "Choose matching scanners from Hermsec's supported catalog.",
   "Prepare missing tools in Hermsec-managed storage when auto-install is enabled.",
-  "Run built-in heuristics and external scanners with safe wrappers for Deep assisted scans.",
+  "Run built-in heuristics and external scanners with safe wrappers for Scanner only and hybrid scans.",
   "Normalize, dedupe, and merge findings into one evidence format.",
-  "Use Single Agent or MoA to inspect bounded code evidence without scanner tools, or Scanner + MoA to run both scanner and agent evidence paths.",
+  "Use Single agent or MoA Low/High for bounded code evidence without scanners, or choose a scanner-plus-agent mode to run both paths independently.",
   "Apply mode-specific watchdogs so long hybrid scans can finish while stalled runs still stop safely.",
   "Write final report artifacts and link them in chat.",
 ];
@@ -341,7 +341,7 @@ function AboutHermsecModal({ open, onClose }: { open: boolean; onClose: () => vo
         <AboutSection
           icon={<Bot className="h-4 w-4" />}
           title="Agent Boundary"
-          body="Deep assisted mode explains scanner-backed findings. Single Agent and MoA inspect bounded repository evidence directly without scanners. Scanner + MoA runs scanners and agent inspection independently, then judges and aggregates both sources. The model is not allowed to invent findings, files, line numbers, packages, CVEs, CWEs, or remediation evidence that is not already present."
+          body="Scanner only records deterministic evidence without a provider. Single Agent and MoA Low/High inspect bounded repository evidence directly without scanners. Scanner + Single and Scanner + MoA modes run detectors independently, then deterministically fuse preserved evidence. The model is not allowed to invent findings, files, line numbers, packages, CVEs, CWEs, or remediation evidence that is not already present."
         />
         <FeatureGrid
           items={aboutFeatureItems}
@@ -349,7 +349,7 @@ function AboutHermsecModal({ open, onClose }: { open: boolean; onClose: () => vo
         <AboutSection
           icon={<ScanLine className="h-4 w-4" />}
           title="How A Scan Works"
-          body="Deep assisted scans use the deterministic scanner harness. Single Agent and MoA skip scanner execution. Scanner + MoA runs scanners and agent inspection independently, then merges judged evidence into the same report format."
+          body="Scanner only uses the deterministic scanner harness. Single Agent and MoA Low/High skip scanner execution. Scanner + Single and Scanner + MoA modes run scanner and agent inspection independently, then merge judged evidence into the same report format."
         />
         <NumberedFlow items={scanFlowItems} />
         <div>
@@ -385,7 +385,7 @@ function AboutHermsecModal({ open, onClose }: { open: boolean; onClose: () => vo
           <MiniCard
             icon={<Activity className="h-4 w-4" />}
             title="Hybrid Review"
-            text="Scanner + MoA combines deterministic scanner findings with independent multi-agent inspection, then validates candidates before reporting."
+            text="Hybrid modes combine deterministic scanner findings with independent agent inspection, then validate and retain evidence before reporting."
           />
         </div>
         <BulletPanel title="Security Posture" items={safetyItems} />

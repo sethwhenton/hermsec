@@ -397,8 +397,8 @@ async function loadFixtures(repoRoot, subset, fixtureFilter) {
     const groundTruth = await parseFixtureGroundTruth(path.join(fixtureRoot, "groundtruth.yml"));
     return {
       ...definition,
-      path: definition.relativePath,
-      absolutePath: fixtureRoot,
+      path: `${definition.relativePath}/project`,
+      absolutePath: path.join(fixtureRoot, "project"),
       kind: groundTruth.kind,
       safeToRun: groundTruth.safeToRun,
       expectedFindings: groundTruth.expectedFindings,

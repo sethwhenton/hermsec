@@ -1,22 +1,23 @@
 import type { ModelConfig, ProviderTestRequest, ProviderTestResult } from "../renderer/src/types/settings";
 import { getEnvDefaults } from "./env";
 import { labelFromModelId } from "./providerCatalog";
+import {
+  redactExactCredential,
+  resolveCredentialValue,
+  safeEnvironmentVariableName,
+} from "./providerCredentials";
+import { isLoopbackProviderUrl } from "../shared/providerSecurity";
+import { redactSecretText } from "./privacy";
 
 const TIMEOUT_MS = 8000;
 const ANTHROPIC_VERSION = "2023-06-01";
 
 function resolveApiKey(request: ProviderTestRequest): string | undefined {
-  if (request.apiKey?.trim()) {
-    return request.apiKey.trim();
-  }
   if (request.providerId === "ollama-local") {
     return undefined;
   }
-  if (request.apiKeyEnvVar?.trim()) {
-    return process.env[request.apiKeyEnvVar.trim()];
-  }
   const env = getEnvDefaults();
-  return process.env[env.apiKeyEnvVar];
+  return resolveCredentialValue(request, [env.apiKeyEnvVar]);
 }
 
 function resolveBaseUrl(request: ProviderTestRequest): string {
@@ -40,9 +41,17 @@ export async function testProvider(request: ProviderTestRequest): Promise<Provid
   }
 
   if (!apiKey && providerRequiresApiKey(request)) {
+    const environmentVariable = safeEnvironmentVariableName(
+      request.apiKeyEnvVar,
+      getEnvDefaults().apiKeyEnvVar,
+    );
     return {
       ok: false,
-      message: `API key is required. Enter a key or set ${request.apiKeyEnvVar || "the provider API key environment variable"}.`,
+      message: `API key is required. Enter a key${
+        environmentVariable
+          ? ` or set ${environmentVariable}`
+          : " or configure the provider API key environment variable"
+      }.`,
       latencyMs: Date.now() - started,
     };
   }
@@ -51,6 +60,25 @@ export async function testProvider(request: ProviderTestRequest): Promise<Provid
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
+    if (apiKey && isOpenRouterRequest(request, baseUrl)) {
+      const credentialResponse = await fetch(`${baseUrl}/key`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        signal: controller.signal,
+      });
+      if (!credentialResponse.ok) {
+        return providerFailureResult(
+          credentialResponse,
+          started,
+          "OpenRouter credential check failed",
+          apiKey,
+        );
+      }
+    }
+
     const response = await fetchModelList({ request, baseUrl, apiKey, signal: controller.signal });
     const latencyMs = Date.now() - started;
 
@@ -68,22 +96,7 @@ export async function testProvider(request: ProviderTestRequest): Promise<Provid
       };
     }
 
-    let detail = "";
-    try {
-      const body = await response.text();
-      detail = body.slice(0, 200);
-    } catch {
-      detail = "";
-    }
-
-    return {
-      ok: false,
-      status: response.status,
-      message: detail
-        ? `Request failed (${response.status}): ${detail}`
-        : `Request failed with status ${response.status}`,
-      latencyMs,
-    };
+    return providerFailureResult(response, started, "Request failed", apiKey);
   } catch (error) {
     const latencyMs = Date.now() - started;
     if (error instanceof Error && error.name === "AbortError") {
@@ -95,7 +108,7 @@ export async function testProvider(request: ProviderTestRequest): Promise<Provid
     }
     return {
       ok: false,
-      message: error instanceof Error ? error.message : "Unknown network error",
+      message: safeProviderErrorMessage(error, apiKey),
       latencyMs,
     };
   } finally {
@@ -104,7 +117,70 @@ export async function testProvider(request: ProviderTestRequest): Promise<Provid
 }
 
 function providerRequiresApiKey(request: ProviderTestRequest): boolean {
-  return request.providerId === "ollama-cloud" || request.apiFormat === "cursor";
+  return request.providerId !== "ollama-local" &&
+    !isLoopbackProviderUrl(request.baseUrl);
+}
+
+function isOpenRouterRequest(
+  request: ProviderTestRequest,
+  baseUrl: string,
+): boolean {
+  if (request.providerId === "openrouter") return true;
+  try {
+    return new URL(baseUrl).hostname.toLocaleLowerCase() === "openrouter.ai";
+  } catch {
+    return false;
+  }
+}
+
+async function providerFailureResult(
+  response: Response,
+  started: number,
+  prefix = "Request failed",
+  credential?: string,
+): Promise<ProviderTestResult> {
+  let detail = "";
+  try {
+    detail = safeProviderErrorDetail(await response.text(), credential);
+  } catch {
+    detail = "";
+  }
+
+  return {
+    ok: false,
+    status: response.status,
+    message: detail
+      ? `${prefix} (${response.status}): ${detail}`
+      : `${prefix} with status ${response.status}`,
+    latencyMs: Date.now() - started,
+  };
+}
+
+function safeProviderErrorDetail(raw: string, credential?: string): string {
+  let detail = raw;
+  try {
+    const parsed = JSON.parse(raw) as {
+      error?: { message?: unknown };
+      message?: unknown;
+    };
+    const message = parsed.error?.message ?? parsed.message;
+    detail = typeof message === "string" ? message : "";
+  } catch {
+    // Plain-text provider errors are still redacted and bounded below.
+  }
+  return redactSecretText(redactExactCredential(detail, credential))
+    .replace(/\s+/gu, " ")
+    .trim()
+    .slice(0, 200);
+}
+
+function safeProviderErrorMessage(error: unknown, credential?: string): string {
+  const message = error instanceof Error ? error.message : "Unknown network error";
+  const safeMessage = redactSecretText(redactExactCredential(message, credential))
+    .replace(/\s+/gu, " ")
+    .trim()
+    .slice(0, 300);
+  return safeMessage || "Unknown network error";
 }
 
 async function fetchModelList({

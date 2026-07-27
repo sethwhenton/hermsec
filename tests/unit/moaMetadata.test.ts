@@ -55,7 +55,7 @@ function scanRun(): ScanRun {
   return {
     schemaVersion: "1.0",
     id: "scan-moa",
-    target: path.resolve("tests/fixtures/repos/node-express-clean"),
+    target: path.resolve("tests/fixtures/repos/node-express-clean/project"),
     mode: "offline",
     startedAt: "2026-06-27T00:00:00.000Z",
     finishedAt: "2026-06-27T00:00:01.000Z",

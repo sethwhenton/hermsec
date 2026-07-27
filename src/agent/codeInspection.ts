@@ -1,8 +1,10 @@
+import type { BigIntStats } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { DEFAULT_IGNORES, readTextFile, walkSourceTree, type SourceFile } from "../core/files.js";
+import { DEFAULT_IGNORES, walkSourceTree, type SourceFile } from "../core/files.js";
 import { toPosixPath } from "../shared/paths.js";
-import { clampText, redactSecrets } from "../shared/text.js";
+import { clampText } from "../shared/text.js";
+import { redactForModel } from "./redaction.js";
 
 export type CodeInspectionFile = {
   path: string;
@@ -55,6 +57,7 @@ export type SearchCodeHelper = (input: {
   maxMatchesPerFile?: number;
   caseSensitive?: boolean;
   pathPrefix?: string;
+  signal?: AbortSignal;
 }) => Promise<{ matches: CodeSearchResult[]; truncated: boolean }>;
 
 export type ReadFileSnippetHelper = (input: {
@@ -63,10 +66,17 @@ export type ReadFileSnippetHelper = (input: {
   endLine?: number;
   contextLines?: number;
   maxChars?: number;
+  signal?: AbortSignal;
 }) => Promise<FileSnippet>;
 
 export type CodeInspectionRuntime = {
   repoRoot: string;
+  profile: {
+    indexedFiles: number;
+    deniedSecretFiles: number;
+    ignoredDirectories: Array<{ name: string; count: number }>;
+    truncated: boolean;
+  };
   listFiles: ListFilesHelper;
   list_files: ListFilesHelper;
   searchCode: SearchCodeHelper;
@@ -101,6 +111,29 @@ const DEFAULT_SNIPPET_LINES = 80;
 const MAX_QUERY_LENGTH = 200;
 const MAX_CONTEXT_LINES = 20;
 const MAX_SNIPPET_LINES = 160;
+const MAX_SECRET_IDENTITY_SCAN_ENTRIES = 50_000;
+const SECRET_FILE_NAMES = new Set([
+  ".npmrc",
+  ".yarnrc",
+  ".pypirc",
+  ".netrc",
+  ".dockercfg",
+  "credentials",
+  "credentials.json",
+  "service-account.json",
+  "id_rsa",
+  "id_dsa",
+  "id_ecdsa",
+  "id_ed25519",
+]);
+const SECRET_FILE_EXTENSIONS = new Set([
+  ".key",
+  ".pem",
+  ".p12",
+  ".pfx",
+  ".jks",
+  ".keystore",
+]);
 
 const SECURITY_SEARCH_QUERIES = [
   "eval(",
@@ -134,7 +167,16 @@ export async function createCodeInspectionRuntime(
     maxTextFileBytes: boundedInt(options.maxTextFileBytes, DEFAULT_MAX_TEXT_FILE_BYTES, 1_000, 5_000_000),
     maxLockfileBytes: boundedInt(options.maxLockfileBytes, DEFAULT_MAX_LOCKFILE_BYTES, 1_000, 10_000_000),
   });
-  const files = walk.files;
+  const maxTextFileBytes = boundedInt(options.maxTextFileBytes, DEFAULT_MAX_TEXT_FILE_BYTES, 1_000, 5_000_000);
+  const maxLockfileBytes = boundedInt(options.maxLockfileBytes, DEFAULT_MAX_LOCKFILE_BYTES, 1_000, 10_000_000);
+  const deniedSecretSourceFiles = walk.files.filter((file) => isSecretFilePath(file.relativePath));
+  const deniedSecretFiles = deniedSecretSourceFiles.length;
+  const indexedDeniedSecretIdentities = await collectIndexedSecretFileIdentities(
+    deniedSecretSourceFiles,
+    root,
+  );
+  const files = walk.files.filter((file) => !isSecretFilePath(file.relativePath));
+  const indexedFileIdentities = await collectIndexedFileIdentities(files, root);
   const fileByPath = new Map(files.map((file) => [file.relativePath, file]));
   const maxSearchFiles = boundedInt(options.maxSearchFiles, DEFAULT_MAX_SEARCH_FILES, 1, DEFAULT_MAX_FILES);
 
@@ -150,6 +192,7 @@ export async function createCodeInspectionRuntime(
   }
 
   async function searchCode(input: Parameters<CodeInspectionRuntime["searchCode"]>[0]): ReturnType<CodeInspectionRuntime["searchCode"]> {
+    throwIfAborted(input.signal);
     const query = normalizeQuery(input.query);
     const limit = boundedInt(input.limit, DEFAULT_SEARCH_LIMIT, 1, 500);
     const maxMatchesPerFile = boundedInt(input.maxMatchesPerFile, DEFAULT_MATCHES_PER_FILE, 1, 25);
@@ -159,7 +202,8 @@ export async function createCodeInspectionRuntime(
     let searchedFiles = 0;
 
     for (const file of files) {
-      if (pathPrefix && !file.relativePath.startsWith(pathPrefix)) {
+      throwIfAborted(input.signal);
+      if (pathPrefix && file.relativePath !== pathPrefix && !file.relativePath.startsWith(`${pathPrefix}/`)) {
         continue;
       }
       if (searchedFiles >= maxSearchFiles) {
@@ -169,8 +213,18 @@ export async function createCodeInspectionRuntime(
 
       let content: string;
       try {
-        content = await readTextFile(file);
-      } catch {
+        content = await readAllowedTextFile(
+          file,
+          root,
+          indexedFileIdentities.get(file.relativePath),
+          indexedDeniedSecretIdentities,
+          readLimitFor(file, maxTextFileBytes, maxLockfileBytes),
+          input.signal,
+        );
+      } catch (error) {
+        if (input.signal?.aborted) {
+          throw error;
+        }
         continue;
       }
       const lines = content.split(/\r?\n/);
@@ -186,7 +240,7 @@ export async function createCodeInspectionRuntime(
           file: file.relativePath,
           line: index + 1,
           column: column + 1,
-          preview: clampText(redactSecrets(line), 240),
+          preview: clampText(String(redactForModel(line).value), 240),
         });
         fileMatches += 1;
         if (matches.length >= limit) {
@@ -201,15 +255,21 @@ export async function createCodeInspectionRuntime(
   }
 
   async function readFileSnippet(input: Parameters<CodeInspectionRuntime["readFileSnippet"]>[0]): ReturnType<CodeInspectionRuntime["readFileSnippet"]> {
+    throwIfAborted(input.signal);
     const relativePath = assertSafeRelativePath(input.path, root);
+    assertNotSecretFilePath(relativePath);
     const file = fileByPath.get(relativePath);
     if (!file) {
       throw new Error(`File is not in the allowed source set: ${relativePath}`);
     }
-    const realFilePath = await fs.realpath(file.absolutePath);
-    assertWithinRoot(realFilePath, root);
-
-    const content = await readTextFile(file);
+    const content = await readAllowedTextFile(
+      file,
+      root,
+      indexedFileIdentities.get(file.relativePath),
+      indexedDeniedSecretIdentities,
+      readLimitFor(file, maxTextFileBytes, maxLockfileBytes),
+      input.signal,
+    );
     const lines = content.split(/\r?\n/);
     const requestedStart = boundedInt(input.startLine, 1, 1, Math.max(lines.length, 1));
     const requestedEnd = boundedInt(input.endLine, Math.min(lines.length, requestedStart + DEFAULT_SNIPPET_LINES - 1), requestedStart, lines.length);
@@ -222,13 +282,13 @@ export async function createCodeInspectionRuntime(
     let truncated = false;
     for (let lineNumber = startLine; lineNumber <= endLine; lineNumber += 1) {
       const rawLine = lines[lineNumber - 1] ?? "";
-      selectedLines.push(`${lineNumber}: ${redactSecrets(rawLine)}`);
+      selectedLines.push(`${lineNumber}: ${rawLine}`);
       if (selectedLines.join("\n").length > maxChars) {
         truncated = true;
         break;
       }
     }
-    const text = selectedLines.join("\n");
+    const text = String(redactForModel(selectedLines.join("\n")).value);
     return {
       file: file.relativePath,
       startLine,
@@ -293,6 +353,12 @@ export async function createCodeInspectionRuntime(
 
   return {
     repoRoot: root,
+    profile: {
+      indexedFiles: files.length,
+      deniedSecretFiles,
+      ignoredDirectories: walk.ignoredDirectories,
+      truncated: walk.truncated,
+    },
     listFiles,
     list_files: listFiles,
     searchCode,
@@ -346,10 +412,236 @@ function assertSafeRelativePath(input: string, root: string): string {
   return toPosixPath(path.relative(root, resolved));
 }
 
+export function isSecretFilePath(input: string): boolean {
+  const normalized = toPosixPath(input).toLowerCase();
+  return normalized.split("/").some((segment) => {
+    if (segment.startsWith(".env")) {
+      return true;
+    }
+    if (SECRET_FILE_NAMES.has(segment) || SECRET_FILE_EXTENSIONS.has(path.posix.extname(segment))) {
+      return true;
+    }
+    return /^(?:secrets?|credentials?)(?:[._-].*)?$/iu.test(segment);
+  });
+}
+
+function assertNotSecretFilePath(input: string): void {
+  if (isSecretFilePath(input)) {
+    throw new Error("Secret-bearing files are denied from model inspection.");
+  }
+}
+
 function assertWithinRoot(targetPath: string, root: string): void {
   const relative = path.relative(root, targetPath);
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
     throw new Error("Path escapes the repository root.");
+  }
+}
+
+async function readAllowedTextFile(
+  file: SourceFile,
+  root: string,
+  indexedFileIdentity: string | undefined,
+  indexedDeniedSecretIdentities: ReadonlySet<string>,
+  maxBytes: number,
+  signal?: AbortSignal,
+): Promise<string> {
+  assertNotSecretFilePath(file.relativePath);
+  throwIfAborted(signal);
+
+  const firstRealPath = await fs.realpath(file.absolutePath);
+  assertWithinRoot(firstRealPath, root);
+  assertNotSecretFilePath(toPosixPath(path.relative(root, firstRealPath)));
+  const handle = await fs.open(firstRealPath, "r");
+  try {
+    const secondRealPath = await fs.realpath(file.absolutePath);
+    assertWithinRoot(secondRealPath, root);
+    assertNotSecretFilePath(toPosixPath(path.relative(root, secondRealPath)));
+    if (!samePath(firstRealPath, secondRealPath)) {
+      throw new Error("File target changed during inspection.");
+    }
+    const stats = await handle.stat({ bigint: true });
+    if (!stats.isFile()) {
+      throw new Error(`Inspection target is not a regular file: ${file.relativePath}`);
+    }
+    if (!indexedFileIdentity || fileIdentity(stats) !== indexedFileIdentity) {
+      throw new Error("File identity changed after the inspection index was created.");
+    }
+    if (stats.size > BigInt(maxBytes)) {
+      throw new Error(`Inspection target exceeds the allowed byte limit: ${file.relativePath}`);
+    }
+    if (indexedDeniedSecretIdentities.has(fileIdentity(stats))) {
+      throw new Error("Secret-bearing file aliases are denied from model inspection.");
+    }
+    if (stats.nlink > 1n) {
+      const deniedIdentities = await collectDeniedSecretFileIdentities(root, signal);
+      if (deniedIdentities.has(fileIdentity(stats))) {
+        throw new Error("Secret-bearing file aliases are denied from model inspection.");
+      }
+    }
+    throwIfAborted(signal);
+    const buffer = await handle.readFile();
+    throwIfAborted(signal);
+    if (buffer.byteLength > maxBytes) {
+      throw new Error(`Inspection target exceeds the allowed byte limit: ${file.relativePath}`);
+    }
+    if (buffer.includes(0)) {
+      throw new Error(`Skipping binary-like file: ${file.relativePath}`);
+    }
+    const content = buffer.toString("utf8");
+    assertSafeInspectionContent(content);
+    return content;
+  } finally {
+    await handle.close();
+  }
+}
+
+async function collectIndexedFileIdentities(
+  files: readonly SourceFile[],
+  root: string,
+): Promise<Map<string, string>> {
+  const identities = new Map<string, string>();
+  for (const file of files) {
+    try {
+      const resolved = await fs.realpath(file.absolutePath);
+      assertWithinRoot(resolved, root);
+      assertNotSecretFilePath(toPosixPath(path.relative(root, resolved)));
+      const stats = await fs.stat(resolved, { bigint: true });
+      if (stats.isFile()) {
+        identities.set(file.relativePath, fileIdentity(stats));
+      }
+    } catch {
+      // A file whose identity cannot be captured is listed but remains unreadable.
+    }
+  }
+  return identities;
+}
+
+async function collectIndexedSecretFileIdentities(
+  files: readonly SourceFile[],
+  root: string,
+): Promise<Set<string>> {
+  const identities = new Set<string>();
+  for (const file of files) {
+    try {
+      const resolved = await fs.realpath(file.absolutePath);
+      assertWithinRoot(resolved, root);
+      const stats = await fs.stat(resolved, { bigint: true });
+      if (stats.isFile()) {
+        identities.add(fileIdentity(stats));
+      }
+    } catch {
+      // Denied files are never opened for content; inaccessible entries remain denied by path.
+    }
+  }
+  return identities;
+}
+
+async function collectDeniedSecretFileIdentities(
+  root: string,
+  signal?: AbortSignal,
+): Promise<Set<string>> {
+  const identities = new Set<string>();
+  const pending = [root];
+  let inspectedEntries = 0;
+
+  while (pending.length > 0) {
+    throwIfAborted(signal);
+    const directory = pending.pop();
+    if (!directory) {
+      break;
+    }
+    let entries;
+    try {
+      entries = await fs.readdir(directory, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+
+    for (const entry of entries) {
+      throwIfAborted(signal);
+      inspectedEntries += 1;
+      if (inspectedEntries > MAX_SECRET_IDENTITY_SCAN_ENTRIES) {
+        throw new Error("Secret-file identity scan exceeded its safety limit.");
+      }
+      const absolutePath = path.join(directory, entry.name);
+      const relativePath = toPosixPath(path.relative(root, absolutePath));
+      if (entry.isDirectory()) {
+        if (!DEFAULT_IGNORES.has(entry.name)) {
+          pending.push(absolutePath);
+        }
+        continue;
+      }
+      if ((!entry.isFile() && !entry.isSymbolicLink()) || !isSecretFilePath(relativePath)) {
+        continue;
+      }
+      try {
+        const resolved = await fs.realpath(absolutePath);
+        assertWithinRoot(resolved, root);
+        const stats = await fs.stat(resolved, { bigint: true });
+        if (stats.isFile()) {
+          identities.add(fileIdentity(stats));
+        }
+      } catch {
+        // An unreadable or out-of-root secret alias cannot authorize an inspection read.
+      }
+    }
+  }
+  return identities;
+}
+
+function fileIdentity(stats: BigIntStats): string {
+  return `${stats.dev.toString()}:${stats.ino.toString()}`;
+}
+
+function assertSafeInspectionContent(content: string): void {
+  if (/-----BEGIN [A-Z ]*PRIVATE KEY-----/u.test(content)) {
+    throw new Error("Secret-bearing file content is denied from model inspection.");
+  }
+
+  const meaningfulLines = content
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.startsWith("#"))
+    .slice(0, 2_000);
+  let assignments = 0;
+  let sensitiveAssignments = 0;
+  for (const line of meaningfulLines) {
+    const match = /^(?:export\s+)?([A-Z][A-Z0-9_]*)\s*=\s*.+$/u.exec(line);
+    if (!match) {
+      continue;
+    }
+    assignments += 1;
+    if (
+      /(?:SECRET|TOKEN|PASSWORD|PASSWD|API_KEY|PRIVATE_KEY|ACCESS_KEY|CREDENTIAL|DATABASE_URL|REDIS_URL|DSN|URI)$/u
+        .test(match[1] ?? "")
+    ) {
+      sensitiveAssignments += 1;
+    }
+  }
+  if (
+    sensitiveAssignments > 0 &&
+    assignments >= Math.max(1, Math.ceil(meaningfulLines.length / 2))
+  ) {
+    throw new Error("Environment-like secret content is denied from model inspection.");
+  }
+}
+
+function readLimitFor(file: SourceFile, maxTextFileBytes: number, maxLockfileBytes: number): number {
+  return file.kind === "lockfile" ? maxLockfileBytes : maxTextFileBytes;
+}
+
+function samePath(left: string, right: string): boolean {
+  const normalizedLeft = path.normalize(left);
+  const normalizedRight = path.normalize(right);
+  return process.platform === "win32"
+    ? normalizedLeft.toLowerCase() === normalizedRight.toLowerCase()
+    : normalizedLeft === normalizedRight;
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) {
+    throw signal.reason instanceof Error ? signal.reason : new Error("Inspection was aborted.");
   }
 }
 

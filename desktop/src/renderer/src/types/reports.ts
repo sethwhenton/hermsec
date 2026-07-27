@@ -33,6 +33,20 @@ export interface ConverseReportResult {
   reportPath?: string;
   usedModel?: boolean;
   modelId?: string;
+  modelStatus?:
+    | "success"
+    | "not-configured"
+    | "insufficient-credits"
+    | "rate-limited"
+    | "authentication-failed"
+    | "request-blocked"
+    | "provider-unavailable"
+    | "request-failed"
+    | "empty-response"
+    | "invalid-response"
+    | "timeout"
+    | "canceled"
+    | "transport-error";
   error?: string;
 }
 
@@ -50,6 +64,11 @@ export interface LatestReportResult {
   dashboardHtmlPath?: string;
   onepagerHtmlPath?: string;
   onepagerPdfPath?: string;
+  runId?: string;
+  assistMode?: import("./scan").HermsecProductScanAssistMode;
+  assistModeLabel?: string;
+  terminalStatus?: import("./scan").ScanTerminalStatus;
+  degradationReasons?: string[];
   generatedAt?: string;
   projectState?: import("./scan").ProjectStateFingerprint;
   error?: string;

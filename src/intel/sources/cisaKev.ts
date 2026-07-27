@@ -59,6 +59,7 @@ export const cisaKevFetcher: IntelFetcher = {
     }
     const response = await fetchIntelJson<{ vulnerabilities?: CisaKevVulnerability[] }>("cisa-kev", cisaKevUrl, {
       ...(input.cache ? { cache: input.cache } : {}),
+      ...(input.signal ? { signal: input.signal } : {}),
     });
     if (!response.ok) {
       return {

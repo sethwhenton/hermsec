@@ -21,7 +21,7 @@ test("scan --json streams HERMSEC_PROGRESS JSONL on stderr while returning final
 
   try {
     const outcome = await runScanCommand([
-      path.resolve("tests/fixtures/repos/node-express-vulnerable"),
+      path.resolve("tests/fixtures/repos/node-express-vulnerable/project"),
       "--mode",
       "offline",
       "--out",

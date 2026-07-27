@@ -156,6 +156,7 @@ export const githubAdvisoryFetcher: IntelFetcher = {
           accept: "application/vnd.github+json",
           "user-agent": "hermsec-local-intel",
         },
+        ...(input.signal ? { signal: input.signal } : {}),
         ...(urls.length === 1 && input.cache ? { cache: input.cache } : {}),
       });
       if (!response.ok) {

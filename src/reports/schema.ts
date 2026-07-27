@@ -1,4 +1,11 @@
-import type { Finding, ScanMode, ScannerStatus, Severity } from "../shared/types.js";
+import type {
+  CanonicalScanAssistMode,
+  Finding,
+  ScanMode,
+  ScanTerminalStatus,
+  ScannerStatus,
+  Severity,
+} from "../shared/types.js";
 import type { ModelExplanation } from "../agent/structuredOutput.js";
 
 export type ReportFormat = "html" | "markdown" | "json";
@@ -13,6 +20,9 @@ export type ScanRunSummary = {
   id: string;
   mode: ScanMode;
   modeLabel?: string;
+  assistMode?: CanonicalScanAssistMode;
+  terminalStatus?: ScanTerminalStatus;
+  degradationReasons?: string[];
   startedAt: string;
   finishedAt: string;
   durationMs: number;
@@ -64,6 +74,10 @@ export type ReportAgentModeMetadata = {
   mode?: string;
   scanMode?: string;
   modeLabel?: string;
+  terminalStatus?: ScanTerminalStatus;
+  degradationReasons?: string[];
+  rawScannerFindingCount?: number;
+  rawAgentFindingCount?: number;
   agents?: ReportAgentDescriptor[];
   agentsUsed?: string[];
   candidateCount?: number;

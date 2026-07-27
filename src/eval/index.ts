@@ -9,4 +9,6 @@ export * from "./metrics.js";
 export * from "./pathNormalize.js";
 export * from "./schema.js";
 export * from "./severityTolerance.js";
+export * from "./suite.js";
+export * from "./vulnerabilityClass.js";
 export type { EvalMetrics, GroundTruthFinding } from "./schema.js";

@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 2,
+  "provenance": {
+    "capturedAt": "2026-07-25",
+    "method": "Each SHA-256 was recorded from GitHub Releases asset digest metadata for the exact versioned URL below. At packaging time this committed file is the offline trust root: Hermsec downloads only the named binary asset, hashes it locally, and compares it to this value. It never downloads a checksum file from the release being verified.",
+    "reviewNote": "Refreshing a value requires independent review of the exact upstream release asset and this manifest change. No credentials or private release URLs are used."
+  },
+  "assets": [
+    {
+      "tool": "gitleaks",
+      "version": "v8.30.1",
+      "asset": "gitleaks_8.30.1_darwin_arm64.tar.gz",
+      "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_darwin_arm64.tar.gz",
+      "sha256": "b40ab0ae55c505963e365f271a8d3846efbc170aa17f2607f13df610a9aeb6a5"
+    },
+    {
+      "tool": "gitleaks",
+      "version": "v8.30.1",
+      "asset": "gitleaks_8.30.1_darwin_x64.tar.gz",
+      "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_darwin_x64.tar.gz",
+      "sha256": "dfe101a4db2255fc85120ac7f3d25e4342c3c20cf749f2c20a18081af1952709"
+    },
+    {
+      "tool": "gitleaks",
+      "version": "v8.30.1",
+      "asset": "gitleaks_8.30.1_linux_arm64.tar.gz",
+      "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_arm64.tar.gz",
+      "sha256": "e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080"
+    },
+    {
+      "tool": "gitleaks",
+      "version": "v8.30.1",
+      "asset": "gitleaks_8.30.1_linux_x64.tar.gz",
+      "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz",
+      "sha256": "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+    },
+    {
+      "tool": "gitleaks",
+      "version": "v8.30.1",
+      "asset": "gitleaks_8.30.1_windows_arm64.zip",
+      "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_windows_arm64.zip",
+      "sha256": "b95f5e4f5c425cedca7ee203d9afd29597e692c4924a12ed42f970537c72cc0f"
+    },
+    {
+      "tool": "gitleaks",
+      "version": "v8.30.1",
+      "asset": "gitleaks_8.30.1_windows_x64.zip",
+      "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_windows_x64.zip",
+      "sha256": "d29144deff3a68aa93ced33dddf84b7fdc26070add4aa0f4513094c8332afc4e"
+    },
+    {
+      "tool": "osv-scanner",
+      "version": "v2.4.0",
+      "asset": "osv-scanner_darwin_amd64",
+      "url": "https://github.com/google/osv-scanner/releases/download/v2.4.0/osv-scanner_darwin_amd64",
+      "sha256": "088119325156321c34c456ac3703d6013538fd71cbac82b891ab34db491e4d66"
+    },
+    {
+      "tool": "osv-scanner",
+      "version": "v2.4.0",
+      "asset": "osv-scanner_darwin_arm64",
+      "url": "https://github.com/google/osv-scanner/releases/download/v2.4.0/osv-scanner_darwin_arm64",
+      "sha256": "9ca3185ad63e9ab54f7cb90f46a7362be02d80e37f0123d095a54355ea202f5d"
+    },
+    {
+      "tool": "osv-scanner",
+      "version": "v2.4.0",
+      "asset": "osv-scanner_linux_amd64",
+      "url": "https://github.com/google/osv-scanner/releases/download/v2.4.0/osv-scanner_linux_amd64",
+      "sha256": "15314940c10d26af9c6649f150b8a47c1262e8fc7e17b1d1029b0e479e8ed8a0"
+    },
+    {
+      "tool": "osv-scanner",
+      "version": "v2.4.0",
+      "asset": "osv-scanner_linux_arm64",
+      "url": "https://github.com/google/osv-scanner/releases/download/v2.4.0/osv-scanner_linux_arm64",
+      "sha256": "44e580752910f0ff36ec99aff59af20f65df1e859aa31e5605a8f0d055b496e9"
+    },
+    {
+      "tool": "osv-scanner",
+      "version": "v2.4.0",
+      "asset": "osv-scanner_windows_amd64.exe",
+      "url": "https://github.com/google/osv-scanner/releases/download/v2.4.0/osv-scanner_windows_amd64.exe",
+      "sha256": "0cdd113610126d5dfd5e12ad0e0b4f3e879291ff19bb43b0c52ed2f2c2df1a37"
+    },
+    {
+      "tool": "osv-scanner",
+      "version": "v2.4.0",
+      "asset": "osv-scanner_windows_arm64.exe",
+      "url": "https://github.com/google/osv-scanner/releases/download/v2.4.0/osv-scanner_windows_arm64.exe",
+      "sha256": "1ce89d7d8ef083634648ef0f193fe1254f36f46f4bdc93d61178adacc2e60da0"
+    },
+    {
+      "tool": "pmg",
+      "version": "v0.19.1",
+      "asset": "pmg_Darwin_all.tar.gz",
+      "url": "https://github.com/safedep/pmg/releases/download/v0.19.1/pmg_Darwin_all.tar.gz",
+      "sha256": "7d82043d6ef2de527204009ded6d7bf81978a6b6f897ef5e46c01a9cd277c086"
+    },
+    {
+      "tool": "pmg",
+      "version": "v0.19.1",
+      "asset": "pmg_Linux_arm64.tar.gz",
+      "url": "https://github.com/safedep/pmg/releases/download/v0.19.1/pmg_Linux_arm64.tar.gz",
+      "sha256": "731b3041249af1fd50e6c5d20f4d38b73b03bfa6b7b78fb69e30205232f6b648"
+    },
+    {
+      "tool": "pmg",
+      "version": "v0.19.1",
+      "asset": "pmg_Linux_x86_64.tar.gz",
+      "url": "https://github.com/safedep/pmg/releases/download/v0.19.1/pmg_Linux_x86_64.tar.gz",
+      "sha256": "4e9ecc8d5422b3e664649dcf67d8a229d9fbc644ad31a617823f6fbc8ee22cb5"
+    },
+    {
+      "tool": "pmg",
+      "version": "v0.19.1",
+      "asset": "pmg_Windows_x86_64.zip",
+      "url": "https://github.com/safedep/pmg/releases/download/v0.19.1/pmg_Windows_x86_64.zip",
+      "sha256": "4a8e7e20f2237991845ff31916cbe1bbaeea4a1d16b4ed893c852349a754e9bc"
+    },
+    {
+      "tool": "python-build-standalone",
+      "version": "20250612",
+      "asset": "cpython-3.12.11+20250612-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
+      "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20250612/cpython-3.12.11%2B20250612-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
+      "sha256": "51bc462f3d6caf4aef3d77209d01cd5f6c8fe8213c1ae739e573e1c2c473cb2b"
+    },
+    {
+      "tool": "python-build-standalone",
+      "version": "20250612",
+      "asset": "cpython-3.12.11+20250612-x86_64-apple-darwin-install_only_stripped.tar.gz",
+      "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20250612/cpython-3.12.11%2B20250612-x86_64-apple-darwin-install_only_stripped.tar.gz",
+      "sha256": "16797cdee1b879ce0f32d9162f2a3af8b91d8ccb663c75ed3afc2384845c24d7"
+    },
+    {
+      "tool": "python-build-standalone",
+      "version": "20250612",
+      "asset": "cpython-3.12.11+20250612-aarch64-apple-darwin-install_only_stripped.tar.gz",
+      "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20250612/cpython-3.12.11%2B20250612-aarch64-apple-darwin-install_only_stripped.tar.gz",
+      "sha256": "74dd3b2bbbcb5c87a5044e1f3513fe3b07e72fcfdeb039d0ae83b754911ac31e"
+    },
+    {
+      "tool": "python-build-standalone",
+      "version": "20250612",
+      "asset": "cpython-3.12.11+20250612-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz",
+      "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20250612/cpython-3.12.11%2B20250612-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz",
+      "sha256": "15a3c9964e485f04d3c92739aca190616e09b2c4fac29b263432f6f29f00c6cf"
+    }
+  ]
+}

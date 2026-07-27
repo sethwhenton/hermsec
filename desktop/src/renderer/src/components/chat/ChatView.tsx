@@ -3,7 +3,7 @@ import { Clock, LayoutDashboard } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { requireHermsecApi } from "@/lib/ipc";
-import { normalizeScanAssistMode, scanModeLabel, scanModeOptions } from "@/lib/scanModes";
+import { normalizeScanAssistMode, scanModeLabel, scanModeOptions, scanModeRequiresModel } from "@/lib/scanModes";
 import { useReportStore } from "@/store/reportStore";
 import { useSessionStore } from "@/store/sessionStore";
 import { useSettingsStore } from "@/store/settingsStore";
@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/Button";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
 import { QuickActions } from "./QuickActions";
+import { isLoopbackProviderUrl } from "../../../../shared/providerSecurity";
 
 function createId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -89,7 +90,7 @@ type PushMessageOptions = {
   scrollBehavior?: ChatMessage["scrollBehavior"];
 };
 type ParsedAutomation = Pick<AutomationSettings, "frequency" | "intervalDays" | "time" | "scanMode">;
-type HermsecActionRoute = "scan" | "automation" | "capabilities" | "doctor" | "fix-prompt" | "chat";
+type HermsecActionRoute = "scan" | "automation" | "doctor" | "fix-prompt" | "chat";
 interface ActiveHermsecAction {
   id: number;
   stop?: () => void;
@@ -337,18 +338,6 @@ export function ChatView() {
     }
   };
 
-  const pushCapabilityQuestions = () =>
-    pushQuestionItem([
-      {
-        id: "hermsec_action",
-        prompt: "Choose what you want Hermsec to do next.",
-        options: [
-          { id: "scan_repo", label: "Scan repo", description: "Run Hermsec against the selected project." },
-          { id: "set_automation", label: "Set an automation", description: "Schedule recurring scans while the app is open." },
-        ],
-      },
-    ]);
-
   const pushScanModeQuestions = () =>
     pushQuestionItem([
       {
@@ -376,7 +365,7 @@ export function ChatView() {
 
     const assistMode = normalizeScanAssistMode(assistModeInput ?? currentSettings?.general.scanMode);
     const label = scanModeLabel(assistMode);
-    if (!hasUsableModel(currentSettings)) {
+    if (scanModeRequiresModel(assistMode) && !hasUsableModel(currentSettings)) {
       await pushMessage("assistant", modelSetupRequiredMessage(label));
       return;
     }
@@ -390,7 +379,7 @@ export function ChatView() {
         reportDir: currentSettings?.defaultReportDir,
         mode: "online",
         assistMode,
-        useModel: true,
+        useModel: scanModeRequiresModel(assistMode),
       });
       if (!isActionCurrent(actionId)) return;
 
@@ -506,16 +495,6 @@ export function ChatView() {
       if (route === "automation") {
         setAgentStatus("Planning a scan automation...");
         await handleAutomationRequest(text);
-        if (!isActionCurrent(actionId)) return;
-        return;
-      }
-
-      if (route === "capabilities") {
-        setAgentStatus("Preparing Hermsec capabilities...");
-        await pushMessage("assistant", buildHermsecAboutAnswer(activeProjectPath()), undefined, undefined, {
-          scrollBehavior: "readable",
-        });
-        await pushCapabilityQuestions();
         if (!isActionCurrent(actionId)) return;
         return;
       }
@@ -672,7 +651,6 @@ function classifyHermsecAction(text: string, chatItems: ChatItem[]): HermsecActi
   if (isDoctorRequest(lower)) return "doctor";
   if (isScanRequestText(lower)) return "scan";
   if (isAutomationRequest(lower)) return "automation";
-  if (wantsCapabilities(lower)) return "capabilities";
   if (wantsFixPrompt(lower) || wantsPromptRevision(lower, findLatestFixPrompt(chatItems))) return "fix-prompt";
   return "chat";
 }
@@ -800,37 +778,6 @@ async function answerSecurityQuestion(
   const lower = text.toLowerCase();
   const previousPrompt = findLatestFixPrompt(chatItems);
   const promptFollowUp = wantsPromptRevision(lower, previousPrompt);
-  const settings = useSettingsStore.getState().settings;
-
-  if (wantsCapabilities(lower)) {
-    return [
-      "I can help with Hermsec security work for this project:",
-      "1. Run the full online scan pipeline for the selected repo.",
-      "2. Explain the latest HTML report and summarize the real findings.",
-      "3. Prioritize fixes by severity, secrets exposure, and exploitability.",
-      "4. Talk through remediation steps and what to rerun after patching.",
-      "5. Help configure report folders, model/provider settings, and project sessions.",
-      "",
-      "Ask me to scan the project, explain the latest report, list the highest-risk findings, or suggest what to fix first.",
-    ].join("\n");
-  }
-
-  if (!hasUsableModel(settings) && !wantsFixPrompt(lower) && !promptFollowUp) {
-    const fallback = await requireHermsecApi().reports.converse({
-      reportPath: latestReportPath,
-      projectPath,
-      question: text,
-      history: buildConversationHistory(chatItems),
-    });
-    return [
-      "No model is configured. HermSec is currently in offline mode.",
-      "Set up a provider in Settings > Providers, then enable the models you want in Settings > Models.",
-      "",
-      fallback.ok
-        ? fallback.message
-        : offlineRuleBasedAnswer(text, Boolean(latestReportPath), projectPath),
-    ].join("\n");
-  }
 
   if (wantsFixPrompt(lower) || promptFollowUp) {
     if (!latestReportPath) {
@@ -871,50 +818,37 @@ async function answerSecurityQuestion(
     reportPath: latestReportPath,
     projectPath,
     question: text,
-    history: buildConversationHistory(chatItems),
+    history: buildConversationHistory(chatItems, text),
   });
-  return result.ok
-    ? result.message
-    : `I could not reach the model cleanly yet. ${result.message}`;
-}
-
-function wantsCapabilities(text: string): boolean {
-  return /\b(what can you do|help|capabilities|commands|how do you work|what is hermsec|about hermsec|what does hermsec do|what it does|scan modes?)\b/.test(text);
+  return result.message;
 }
 
 function hasUsableModel(settings: AppSettings | null | undefined): boolean {
   if (!settings) return false;
   const providers = settings.providers.filter((provider) => provider.enabled && provider.apiFormat !== "cursor");
-  const activeProvider = settings.activeProviderId
-    ? providers.find((provider) => provider.id === settings.activeProviderId)
-    : undefined;
-  const provider =
-    activeProvider ??
-    providers.find((item) => item.models.some((model) => model.enabled && model.id === settings.activeModelId)) ??
-    providers[0];
+  const provider = settings.activeProviderId
+    ? providers.find((item) => item.id === settings.activeProviderId)
+    : providers[0];
   if (!provider?.baseUrl?.trim()) return false;
 
-  const model =
-    (settings.activeModelId
-      ? provider.models.find((item) => item.enabled && item.id === settings.activeModelId)
-      : undefined) ?? provider.models.find((item) => item.enabled);
+  const model = settings.activeModelId
+    ? provider.models.find((item) => item.enabled && item.id === settings.activeModelId)
+    : provider.models.find((item) => item.enabled);
   if (!model?.id) return false;
 
   return providerHasCredential(provider);
 }
 
 function providerAllowsNoApiKey(provider: AppSettings["providers"][number]): boolean {
-  const baseUrl = provider.baseUrl?.trim().toLowerCase() ?? "";
   return provider.id === "ollama-local" ||
     provider.presetId === "ollama-local" ||
-    baseUrl.startsWith("http://127.0.0.1") ||
-    baseUrl.startsWith("http://localhost");
+    isLoopbackProviderUrl(provider.baseUrl);
 }
 
 function providerHasCredential(provider: AppSettings["providers"][number]): boolean {
   if (providerAllowsNoApiKey(provider)) return true;
   if (provider.apiKey?.trim()) return true;
-  return Boolean(provider.apiKeyEnvVar?.trim());
+  return /^[A-Za-z_][A-Za-z0-9_]*$/u.test(provider.apiKeyEnvVar?.trim() ?? "");
 }
 
 function modelSetupRequiredMessage(scanModeLabelText: string): string {
@@ -924,62 +858,6 @@ function modelSetupRequiredMessage(scanModeLabelText: string): string {
     "Open Settings > Providers, add your provider API key, then enable at least one model in Settings > Models.",
     "",
     "Rule-based actions still work: you can run Check system health, review existing report artifacts, or ask how HermSec works.",
-  ].join("\n");
-}
-
-function offlineRuleBasedAnswer(text: string, hasReport: boolean, projectPath?: string): string {
-  const lower = text.toLowerCase();
-  if (wantsCapabilities(lower)) {
-    return buildHermsecAboutAnswer(projectPath);
-  }
-
-  if (/\b(provider|model|api key|settings|configure|setup|set up)\b/.test(lower)) {
-    return [
-      "To enable model features:",
-      "1. Open Settings > Providers.",
-      "2. Select a supported provider and add the API key.",
-      "3. Open Settings > Models and enable the models you want HermSec to use.",
-      "4. Return to chat and rerun the scan or prompt action.",
-    ].join("\n");
-  }
-
-  if (/\b(scan|single agent|moa|deep|scanner)\b/.test(lower)) {
-    return [
-      "Model-backed scan modes cannot start until a model is configured.",
-      "Check system health can still verify scanners, internet checks, and local readiness.",
-      projectPath ? `Current project: ${projectPath}` : "Choose a project folder before running a scan.",
-    ].join("\n");
-  }
-
-  if (hasReport) {
-    return "I can still answer from the latest saved report using local report evidence, but model-based deeper explanation is disabled until a provider is configured.";
-  }
-
-  return "I can answer basic HermSec usage questions offline. For project-specific findings, run a scan after configuring a model provider.";
-}
-
-function buildHermsecAboutAnswer(projectPath?: string): string {
-  return [
-    "HermSec is a local-first desktop security assistant for code projects.",
-    "It helps you pick a project folder, inspect what languages and files are present, choose the right security tools, run checks, validate evidence, and create readable reports.",
-    "",
-    "Main features:",
-    "- Project inspection: detects languages, manifests, lockfiles, and config files before scanning.",
-    "- Adaptive scanners: prepares only the scanner tools that match the project.",
-    "- Doctor checks: verifies scanner readiness, provider access, and internet sources.",
-    "- Live progress: shows each scan stage directly in chat.",
-    "- Reports: writes dashboard, JSON, Markdown, HTML, and PDF artifacts with findings and remediation guidance.",
-    "- Automations: can schedule recurring scans while HermSec is open.",
-    "",
-    "Scan modes:",
-    "- Deep assisted scan: scanners run first, then the model explains and prioritizes scanner-backed findings.",
-    "- Single agent inspection: one model inspects focused code candidates without scanner tools.",
-    "- MoA inspection: Mixture of Agents. Specialist agents review focused code candidates, then a false-positive judge and aggregator keep accepted evidence.",
-    "- Scanner + MoA inspection: scanners and MoA run independently, then HermSec validates, deduplicates, and merges both evidence sources.",
-    "",
-    projectPath
-      ? `Current project: ${projectPath}`
-      : "Next step: choose a project folder, then run Scan project or Check system health.",
   ].join("\n");
 }
 
@@ -1037,14 +915,29 @@ function thinkingLabel(level: string | undefined): string {
   return "Balanced";
 }
 
-function buildConversationHistory(chatItems: ChatItem[]) {
-  return chatItems
+function buildConversationHistory(chatItems: ChatItem[], currentQuestion?: string) {
+  const history = chatItems
     .filter((item): item is Extract<ChatItem, { kind: "message" }> => item.kind === "message")
-    .slice(-10)
     .map((item) => ({
       role: item.message.role,
       content: item.message.content,
     }));
+  const last = history.at(-1);
+  if (
+    currentQuestion &&
+    last?.role === "user" &&
+    normalizeConversationText(last.content) ===
+      normalizeConversationText(currentQuestion)
+  ) {
+    history.pop();
+  }
+  // Keep enough local history for deterministic fallback pagination. The main
+  // process applies the configured, much smaller model-context limit.
+  return history.slice(-100);
+}
+
+function normalizeConversationText(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
 function findLatestFixPrompt(chatItems: ChatItem[]): string | undefined {
@@ -1162,12 +1055,16 @@ function parseAutomationRequest(text: string): Partial<ParsedAutomation> {
 }
 
 function parseScanModeText(lower: string): HermsecProductScanAssistMode | undefined {
-  if (/\b(scanner|scan|scanners)\s*(\+|plus|and|with)?\s*(moa|mixture\s+of\s+agents|multi[-\s]?agent)\b/.test(lower) || /\b(hybrid|scanner[-\s]?moa|scanner\+moa)\b/.test(lower)) {
-    return "scanner-moa-assisted";
+  const scannerMoa = /\b(scanner|scan|scanners)\s*(\+|plus|and|with)?\s*(moa|mixture\s+of\s+agents|multi[-\s]?agent)\b/.test(lower) || /\b(hybrid|scanner[-\s]?moa|scanner\+moa)\b/.test(lower);
+  const high = /\b(high|five|5)\b/.test(lower);
+  const low = /\b(low|three|3)\b/.test(lower);
+  if (scannerMoa) return high ? "scanner-moa-high" : "scanner-moa-low";
+  if (/\b(scanner|scan|scanners)\s*(\+|plus|and|with)?\s*(single|one\s+agent)\b/.test(lower) || /\b(scanner[-\s]?single|scanner\+single)\b/.test(lower)) {
+    return "scanner-single";
   }
-  if (/\b(moa|mixture\s+of\s+agents|multi[-\s]?agent)\b/.test(lower)) return "moa-assisted";
+  if (/\b(moa|mixture\s+of\s+agents|multi[-\s]?agent)\b/.test(lower)) return high ? "moa-high" : low ? "moa-low" : "moa-low";
   if (/\b(single[-\s]?agent|one\s+agent)\b/.test(lower)) return "single-agent";
-  if (/\b(deep[-\s]?assisted|deep\s+scan|deep)\b/.test(lower)) return "deep-assisted";
+  if (/\b(scanner[-\s]?only|scan[-\s]?only|no\s+model)\b/.test(lower)) return "scanner-only";
   return undefined;
 }
 

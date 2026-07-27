@@ -39,6 +39,7 @@ export type SafeExecRequest = {
   allowedExitCodes: readonly number[];
   maxOutputBytes?: number;
   env?: Record<string, string>;
+  signal?: AbortSignal;
 };
 
 export type SafeExecResult = {
@@ -121,6 +122,19 @@ export async function safeExec(request: SafeExecRequest): Promise<SafeExecResult
       errorMessage: validationError,
     };
   }
+  if (request.signal?.aborted) {
+    return {
+      tool: request.tool,
+      status: "failed",
+      stdout: "",
+      stderr: "",
+      durationMs: Date.now() - started,
+      timedOut: false,
+      stdoutTruncated: false,
+      stderrTruncated: false,
+      errorMessage: "Scanner canceled before process launch.",
+    };
+  }
 
   return await new Promise<SafeExecResult>((resolve) => {
     let settled = false;
@@ -139,6 +153,11 @@ export async function safeExec(request: SafeExecRequest): Promise<SafeExecResult
       windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"],
     });
+    const abort = () => {
+      child.kill("SIGTERM");
+      setTimeout(() => child.kill("SIGKILL"), 500).unref();
+    };
+    request.signal?.addEventListener("abort", abort, { once: true });
 
     const timer = setTimeout(() => {
       timedOut = true;
@@ -165,6 +184,7 @@ export async function safeExec(request: SafeExecRequest): Promise<SafeExecResult
       }
       settled = true;
       clearTimeout(timer);
+      request.signal?.removeEventListener("abort", abort);
       resolve({
         tool: request.tool,
         status: "failed",
@@ -184,11 +204,17 @@ export async function safeExec(request: SafeExecRequest): Promise<SafeExecResult
       }
       settled = true;
       clearTimeout(timer);
+      request.signal?.removeEventListener("abort", abort);
       const exitCode = code ?? undefined;
       const allowed = exitCode !== undefined && request.allowedExitCodes.includes(exitCode);
       resolve({
         tool: request.tool,
-        status: timedOut ? "timed_out" : allowed ? "completed" : "failed",
+        status:
+          timedOut
+            ? "timed_out"
+            : allowed && !request.signal?.aborted
+              ? "completed"
+              : "failed",
         ...(exitCode !== undefined ? { exitCode } : {}),
         stdout: Buffer.concat(stdoutChunks).toString("utf8"),
         stderr: Buffer.concat(stderrChunks).toString("utf8"),
@@ -196,7 +222,13 @@ export async function safeExec(request: SafeExecRequest): Promise<SafeExecResult
         timedOut,
         stdoutTruncated,
         stderrTruncated,
-        ...(!timedOut && !allowed ? { errorMessage: `${request.tool} exited with code ${exitCode ?? "unknown"}.` } : {}),
+        ...(!timedOut && request.signal?.aborted
+          ? { errorMessage: "Scanner canceled." }
+          : !timedOut && !allowed
+            ? {
+                errorMessage: `${request.tool} exited with code ${exitCode ?? "unknown"}.`,
+              }
+            : {}),
       });
     });
   });

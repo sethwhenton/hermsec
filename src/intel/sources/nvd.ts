@@ -186,6 +186,7 @@ export const nvdFetcher: IntelFetcher = {
       const response = await fetchIntelJson<NvdResponse>("nvd", url, {
         headers: { "user-agent": "hermsec-local-intel" },
         ...(urls.length === 1 && input.cache ? { cache: input.cache } : {}),
+        ...(input.signal ? { signal: input.signal } : {}),
       });
       if (!response.ok) {
         return {

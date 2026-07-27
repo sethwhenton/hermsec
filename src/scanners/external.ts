@@ -3,7 +3,12 @@ import os from "node:os";
 import path from "node:path";
 import { emitScanProgress, type ScanProgressCallback } from "../core/progress.js";
 import type { SourceFile } from "../core/files.js";
-import type { Finding, ScanAssistMode, ScanProgressStatus, ScannerStatus } from "../shared/types.js";
+import type {
+  CanonicalScanAssistMode,
+  Finding,
+  ScanProgressStatus,
+  ScannerStatus,
+} from "../shared/types.js";
 import { scannerCatalog } from "./catalog.js";
 import { parseScannerJson, type ParserContext } from "./parsers.js";
 import {
@@ -21,7 +26,8 @@ export type ExternalScannerRuntime = {
   timeoutMs?: number;
   maxOutputBytes?: number;
   onProgress?: ScanProgressCallback;
-  assistMode?: ScanAssistMode;
+  assistMode?: CanonicalScanAssistMode;
+  signal?: AbortSignal;
 };
 
 type ScannerDefinition = {
@@ -265,6 +271,9 @@ export async function runExternalScanners(
   const assistMode = runtime.assistMode;
 
   for (const scanner of EXTERNAL_SCANNERS) {
+    if (runtime.signal?.aborted) {
+      break;
+    }
     if (enabledScanners && !enabledScanners.has(scanner.id)) {
       emitScannerProgress(runtime.onProgress, scanner, "skipped", `${scanner.label} is disabled in the current scanner settings.`, {
         assistMode,
@@ -358,6 +367,7 @@ export async function runExternalScanners(
             timeoutMs: execution.timeoutMs ?? timeoutMs,
             allowedExitCodes: execution.allowedExitCodes,
             maxOutputBytes: execution.maxOutputBytes ?? maxOutputBytes,
+            ...(runtime.signal ? { signal: runtime.signal } : {}),
           });
         } catch (error) {
           failures.push(`${scanner.label} execution threw: ${error instanceof Error ? error.message : String(error)}`);
@@ -429,7 +439,7 @@ function emitScannerProgress(
   options: {
     findingCount?: number | undefined;
     durationMs?: number | undefined;
-    assistMode?: ScanAssistMode | undefined;
+    assistMode?: CanonicalScanAssistMode | undefined;
     details?: Array<{ id?: string; label: string; status?: ScanProgressStatus; message?: string; value?: string }> | undefined;
   } = {},
 ): void {
