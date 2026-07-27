@@ -391,7 +391,7 @@ test("snapshot cleanup detects a root swap after the final identity check", asyn
 
 test("Darwin cleanup verifier distinguishes linked, renamed, and removed directories", async (t) => {
   if (process.platform !== "darwin") {
-    t.skip("Darwin F_GETPATH semantics are macOS-specific.");
+    t.skip("Darwin open-directory namespace semantics are macOS-specific.");
     return;
   }
   const parent = await fs.mkdtemp(
