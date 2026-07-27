@@ -8,6 +8,7 @@ import {
   assertPortablePythonRuntime,
   createPackagedSmokeArguments,
   createPackagedSmokeEnvironment,
+  formatPackagedProcessFailure,
   parseDoctorSmokeResultArtifact,
   parseDoctorSmokeOutput,
 } from "../scripts/smoke-packaged-runtime.mjs";
@@ -204,6 +205,13 @@ test("packaged smoke clears Node escape hatches and validates required scanner g
   assert.deepEqual(
     createPackagedSmokeArguments("darwin"),
     ["--smoke-doctor"],
+  );
+  assert.equal(
+    formatPackagedProcessFailure({
+      stderr: "sandbox warning\n",
+      stdout: "{\"ok\":false}\n",
+    }),
+    "stderr:\nsandbox warning\nstdout:\n{\"ok\":false}",
   );
 
   const smokeSource = await fs.readFile(path.join(desktopRoot, "scripts/smoke-packaged-runtime.mjs"), "utf8");

@@ -47,6 +47,18 @@ export function createPackagedSmokeArguments(platform = process.platform) {
     : ["--smoke-doctor"];
 }
 
+export function formatPackagedProcessFailure(result) {
+  const streams = [
+    result.stderr?.trim()
+      ? `stderr:\n${result.stderr.trim()}`
+      : "",
+    result.stdout?.trim()
+      ? `stdout:\n${result.stdout.trim()}`
+      : "",
+  ].filter(Boolean);
+  return streams.join("\n");
+}
+
 export function parseDoctorSmokeOutput(stdout) {
   const text = String(stdout ?? "").trim();
   const firstObject = text.indexOf("{");
@@ -116,7 +128,12 @@ export async function smokePackagedRuntime(input) {
       },
     );
     if (result.exitCode !== 0) {
-      throw new Error(`Packaged Doctor exited ${result.exitCode}: ${result.stderr.trim() || result.stdout.trim()}`);
+      const detail = formatPackagedProcessFailure(result);
+      throw new Error(
+        `Packaged Doctor exited ${result.exitCode}${
+          detail ? `:\n${detail}` : ""
+        }`,
+      );
     }
 
     let artifactContents;

@@ -216,7 +216,36 @@ async function runDashboardSmoke(): Promise<void> {
 async function runDoctorSmoke(): Promise<void> {
   const progress: unknown[] = [];
   const result = await runDoctor((event) => progress.push(event));
-  const smokeResult = createPackagedDoctorSmokeResult(result);
+  let smokeResult: typeof result;
+  try {
+    smokeResult = createPackagedDoctorSmokeResult(result);
+  } catch (error) {
+    console.error(
+      JSON.stringify(
+        {
+          kind: "hermsec-doctor-smoke-failure",
+          error: error instanceof Error ? error.message : String(error),
+          runtimeReady: result.runtimeReady,
+          message: result.message,
+          status: result.status,
+          failingChecks: result.checks
+            .filter(
+              (check) =>
+                check.status === "fail" &&
+                check.requirement === "required",
+            )
+            .map((check) => ({
+              id: check.id,
+              label: check.label,
+              message: check.message,
+            })),
+        },
+        null,
+        2,
+      ),
+    );
+    throw error;
+  }
   writeDoctorSmokeResultArtifact({
     schemaVersion: 1,
     kind: "hermsec-doctor-smoke",
