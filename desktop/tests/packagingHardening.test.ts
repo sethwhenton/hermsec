@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
@@ -88,6 +89,40 @@ test("runtime assets include source-pinned portable Python for every release tar
   assert.doesNotMatch(source, /checksumAsset/u);
   assert.doesNotMatch(source, /SHA256SUMS/u);
   assert.doesNotMatch(source, /checksums\.txt/u);
+});
+
+test("Darwin cleanup verifier has a pinned universal prebuilt fallback", async () => {
+  const expected =
+    "37ea88028a8df0c73d0123a652bd2923b6bf214ce380f08194062ac83bb4c40d";
+  const prebuilt = await fs.readFile(
+    path.join(
+      repoRoot,
+      "scripts",
+      "prebuilt",
+      "hermsec-darwin-fd-link-state",
+    ),
+  );
+  assert.equal(
+    createHash("sha256").update(prebuilt).digest("hex"),
+    expected,
+  );
+  const builder = await fs.readFile(
+    path.join(repoRoot, "scripts", "build-darwin-fd-link-state.mjs"),
+    "utf8",
+  );
+  assert.match(builder, new RegExp(expected, "u"));
+  assert.match(builder, /copyFileSync\(prebuilt, output\)/u);
+  assert.match(
+    builder,
+    /"-arch",\s*"arm64",\s*"-arch",\s*"x86_64"/u,
+  );
+  const rootPackage = JSON.parse(
+    await fs.readFile(path.join(repoRoot, "package.json"), "utf8"),
+  );
+  assert.equal(
+    rootPackage.bin["hermsec-darwin-fd-link-state"],
+    "./dist/src/research/native/hermsec-darwin-fd-link-state",
+  );
 });
 
 test("Python scanners install only from a fully hashed no-deps platform lock", async () => {
@@ -497,6 +532,8 @@ test("release workflows pin actions, use exact uv, verify tags, and block on pac
       assert.match(source, /linux-runtime-gate/u);
       assert.match(source, /safedep\/pmg@[a-f0-9]{40}/u);
       assert.match(source, /linux-unpacked\/hermsec-v3/u);
+      assert.match(source, /xvfb-run --auto-servernum/u);
+      assert.match(source, /lipo "\$\{helper\}" -verify_arch arm64 x86_64/u);
       assert.match(source, /vtool -show-build/u);
       assert.match(source, /hdiutil attach/u);
       assert.match(source, /Smoke released DMG artifact/u);

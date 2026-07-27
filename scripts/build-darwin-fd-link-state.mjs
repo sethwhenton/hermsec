@@ -1,12 +1,16 @@
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   chmodSync,
+  copyFileSync,
   mkdirSync,
-  rmSync,
+  readFileSync,
 } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+const PREBUILT_SHA256 =
+  "37ea88028a8df0c73d0123a652bd2923b6bf214ce380f08194062ac83bb4c40d";
 const root = path.resolve(import.meta.dirname, "..");
 const outputDirectory = path.join(
   root,
@@ -19,9 +23,26 @@ const output = path.join(
   outputDirectory,
   "hermsec-darwin-fd-link-state",
 );
+const prebuilt = path.join(
+  root,
+  "scripts",
+  "prebuilt",
+  "hermsec-darwin-fd-link-state",
+);
 
 if (process.platform !== "darwin") {
-  rmSync(output, { force: true });
+  const prebuiltBytes = readFileSync(prebuilt);
+  const digest = createHash("sha256")
+    .update(prebuiltBytes)
+    .digest("hex");
+  if (digest !== PREBUILT_SHA256) {
+    throw new Error(
+      "The prebuilt universal Darwin cleanup verifier failed integrity verification.",
+    );
+  }
+  mkdirSync(outputDirectory, { recursive: true });
+  copyFileSync(prebuilt, output);
+  chmodSync(output, 0o755);
   process.exit(0);
 }
 

@@ -6,7 +6,8 @@
   "private": false,
   "license": "UNLICENSED",
   "bin": {
-    "hermsec": "./dist/src/bin/hermsec.js"
+    "hermsec": "./dist/src/bin/hermsec.js",
+    "hermsec-darwin-fd-link-state": "./dist/src/research/native/hermsec-darwin-fd-link-state"
   },
   "files": [
     "dist/src",

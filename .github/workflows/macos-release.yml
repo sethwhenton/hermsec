@@ -138,7 +138,7 @@ jobs:
             echo "The packaged Darwin cleanup verifier is missing or not executable."
             exit 1
           fi
-          if ! lipo -verify_arch arm64 x86_64 "${helper}"; then
+          if ! lipo "${helper}" -verify_arch arm64 x86_64; then
             echo "Darwin cleanup verifier is not a universal arm64/x86_64 binary."
             lipo -info "${helper}" || true
             exit 1
@@ -297,7 +297,7 @@ jobs:
             echo "No packaged Hermsec Linux executable was produced."
             exit 1
           fi
-          node desktop/scripts/smoke-packaged-runtime.mjs --app "${app}"
+          xvfb-run --auto-servernum node desktop/scripts/smoke-packaged-runtime.mjs --app "${app}"
 
       - name: Enforce PMG policy
         if: always()
