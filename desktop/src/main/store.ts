@@ -5,6 +5,10 @@ import type { HermsecProductScanAssistMode } from "../renderer/src/types/scan";
 import type { AgentScanSettings, AppSettings, AutomationFrequency, DeepPartial, ProviderConfig } from "../renderer/src/types/settings";
 import { getEnvDefaults } from "./env";
 import { normalizeProviderConfig, providerFromPreset, providerPresets } from "./providerCatalog";
+import {
+  isEnvironmentVariableName,
+  normalizeProviderCredential,
+} from "./providerCredentials";
 import { defaultScannerSettings, normalizeScannerSettings } from "./scannerDefaults";
 
 const SETTINGS_FILE = "settings.json";
@@ -119,7 +123,15 @@ export function readSettings(): AppSettings {
   try {
     const raw = readFileSync(path, "utf8");
     const parsed = JSON.parse(raw) as AppSettings;
-    return normalizeSettings(deepMerge(defaultSettings(), parsed));
+    const normalized = normalizeSettings(deepMerge(defaultSettings(), parsed));
+    if (hasMisplacedProviderCredential(parsed)) {
+      try {
+        writeSettings(normalized);
+      } catch {
+        // Keep the migrated in-memory settings usable even if persistence is temporarily unavailable.
+      }
+    }
+    return normalized;
   } catch {
     const settings = defaultSettings();
     writeSettings(settings);
@@ -146,30 +158,41 @@ function normalizeSettings(settings: AppSettings): AppSettings {
   const defaultProvider = defaults.providers[0];
   const generalSettings = { ...(settings.general as AppSettings["general"] & { showReasoning?: boolean }) };
   delete generalSettings.showReasoning;
-  const providers = settings.providers.map(normalizeProviderConfig).map((provider) => {
-    if (provider.id !== defaultProvider.id) return provider;
-    const existingModelIds = new Set(provider.models.map((model) => model.id));
-    const defaultModelsById = new Map(defaultProvider.models.map((model) => [model.id, model]));
-    const modelsById = new Map<string, ProviderConfig["models"][number]>();
-    for (const model of [
-      ...provider.models,
-      ...defaultProvider.models.filter((model) => !existingModelIds.has(model.id)),
-    ]) {
-      const defaultModel = defaultModelsById.get(model.id);
-      const current = modelsById.get(model.id);
-      modelsById.set(model.id, {
-        ...model,
-        label: defaultModel && model.label === model.id ? defaultModel.label : model.label,
-        enabled: current ? current.enabled || model.enabled : model.enabled,
-      });
-    }
-    return {
-      ...provider,
-      baseUrl: provider.baseUrl?.trim() ? provider.baseUrl : defaultProvider.baseUrl,
-      apiKeyEnvVar: normalizeProviderApiKeyEnv(provider, defaultProvider),
-      models: Array.from(modelsById.values()),
-    };
-  });
+  const configuredProviders = Array.isArray(settings.providers)
+    ? settings.providers
+    : [];
+  const providers = configuredProviders
+    .map(normalizeProviderConfig)
+    .map((provider) =>
+      normalizeProviderCredential(
+        provider,
+        defaultProviderEnvironmentVariable(provider),
+      ),
+    )
+    .map((provider) => {
+      if (provider.id !== defaultProvider.id) return provider;
+      const existingModelIds = new Set(provider.models.map((model) => model.id));
+      const defaultModelsById = new Map(defaultProvider.models.map((model) => [model.id, model]));
+      const modelsById = new Map<string, ProviderConfig["models"][number]>();
+      for (const model of [
+        ...provider.models,
+        ...defaultProvider.models.filter((model) => !existingModelIds.has(model.id)),
+      ]) {
+        const defaultModel = defaultModelsById.get(model.id);
+        const current = modelsById.get(model.id);
+        modelsById.set(model.id, {
+          ...model,
+          label: defaultModel && model.label === model.id ? defaultModel.label : model.label,
+          enabled: current ? current.enabled || model.enabled : model.enabled,
+        });
+      }
+      return {
+        ...provider,
+        baseUrl: provider.baseUrl?.trim() ? provider.baseUrl : defaultProvider.baseUrl,
+        apiKeyEnvVar: normalizeProviderApiKeyEnv(provider, defaultProvider),
+        models: Array.from(modelsById.values()),
+      };
+    });
 
   if (!providers.some((provider) => provider.id === defaultProvider.id)) {
     providers.unshift(defaultProvider);
@@ -274,14 +297,10 @@ function normalizeActiveSelection(
     return { providerId: provider.id, modelId: providerModel.id };
   }
 
-  if (modelId) {
-    const matchingProvider = chatProviders.find((item) =>
-      item.enabled && item.models.some((model) => model.enabled && model.id === modelId),
-    );
-    if (matchingProvider) {
-      return { providerId: matchingProvider.id, modelId };
-    }
+  if (providerId && modelId) {
+    return { providerId, modelId };
   }
+  if (providerId || modelId) return undefined;
 
   const fallbackProvider = chatProviders.find((item) => item.enabled && item.models.some((model) => model.enabled));
   const fallbackModel = fallbackProvider?.models.find((model) => model.enabled);
@@ -339,6 +358,24 @@ function normalizeProviderApiKeyEnv(provider: ProviderConfig, defaultProvider: P
   }
 
   return current;
+}
+
+function hasMisplacedProviderCredential(settings: AppSettings): boolean {
+  const providers = Array.isArray(settings.providers) ? settings.providers : [];
+  return providers.some((provider) => {
+    const environmentValue = provider.apiKeyEnvVar?.trim();
+    return Boolean(
+      environmentValue &&
+      !isEnvironmentVariableName(environmentValue),
+    );
+  });
+}
+
+function defaultProviderEnvironmentVariable(provider: ProviderConfig): string {
+  const preset = providerPresets().find(
+    (item) => item.id === provider.presetId || item.id === provider.id,
+  );
+  return preset?.apiKeyEnvVar?.trim() || "HERMSEC_MODEL_API_KEY";
 }
 
 function normalizeAutomationFrequency(frequency: AutomationFrequency | undefined): AutomationFrequency {

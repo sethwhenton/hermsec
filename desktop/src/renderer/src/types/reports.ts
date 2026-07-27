@@ -36,8 +36,10 @@ export interface ConverseReportResult {
   modelStatus?:
     | "success"
     | "not-configured"
+    | "insufficient-credits"
     | "rate-limited"
     | "authentication-failed"
+    | "request-blocked"
     | "provider-unavailable"
     | "request-failed"
     | "empty-response"

@@ -20,7 +20,6 @@ import {
 } from "./privacy";
 import {
   addFindingCoverageDisclosure,
-  buildConversationalFallback,
   historyBeforeCurrentQuestion,
   inferDetectorFindingCounts,
   validateConversationModelAnswer,
@@ -31,6 +30,8 @@ import { buildDashboardReport, type DashboardReport } from "./reportData";
 import { openReportLocation } from "./scan";
 import type { LocalScanMetadata } from "./scanMetadata";
 import { readSettings } from "./store";
+import { resolveCredentialValue } from "./providerCredentials";
+import { isLoopbackProviderUrl } from "../shared/providerSecurity";
 
 type Finding = {
   title?: string;
@@ -112,8 +113,10 @@ let activeConversationController: AbortController | null = null;
 type ConversationModelStatus =
   | "success"
   | "not-configured"
+  | "insufficient-credits"
   | "rate-limited"
   | "authentication-failed"
+  | "request-blocked"
   | "provider-unavailable"
   | "request-failed"
   | "empty-response"
@@ -133,6 +136,28 @@ type ConversationModelAttempt =
       modelId?: string;
       httpStatus?: number;
     };
+
+type OpenAiCompatibleConversationError = {
+  code?: number | string;
+  message?: string;
+  metadata?: {
+    error_type?: string;
+  };
+};
+
+type OpenAiCompatibleConversationResponse = {
+  error?: OpenAiCompatibleConversationError;
+  choices?: Array<{
+    finish_reason?: string;
+    error?: OpenAiCompatibleConversationError;
+    message?: {
+      content?: string | null | Array<{
+        text?: string;
+        content?: string;
+      }>;
+    };
+  }>;
+};
 
 export function explainReport(request: ExplainReportRequest): ExplainReportResult {
   try {
@@ -242,27 +267,9 @@ export async function converseReport(request: ConverseReportRequest): Promise<Co
       };
     }
 
-    const fallback = privacyMode
-      ? redactPrivacyText(
-          buildConversationalFallback(
-            request.question,
-            evidence,
-            request.history ?? [],
-          ),
-          projectRoot,
-        )
-      : buildConversationalFallback(
-          request.question,
-          evidence,
-          request.history ?? [],
-        );
     return {
-      ok: true,
-      message: [
-        fallback,
-        "",
-        conversationModelAvailabilityNote(modelAttempt),
-      ].join("\n"),
+      ok: false,
+      message: conversationModelFailureMessage(modelAttempt),
       ...(reportPath ? { reportPath } : {}),
       usedModel: false,
       ...(modelAttempt.modelId ? { modelId: modelAttempt.modelId } : {}),
@@ -806,9 +813,9 @@ async function callConversationModel({
       role: "system",
       content: [
         "You are Hermsec, a defensive security assistant for repository owners.",
-        "Use a formal, concise, direct tone.",
-        "Avoid casual greetings, playful language, excessive encouragement, and ultra-friendly chat.",
-        "Answer with the minimum context needed to be useful.",
+        "Speak naturally, like a knowledgeable security teammate having an ongoing conversation.",
+        "Answer the current question directly. Use concise prose and short lists only when they make the answer easier to follow.",
+        "Vary openings and structure based on the question instead of following a fixed response template.",
         "Treat follow-up questions as part of one ongoing conversation. Answer the new question directly instead of restarting the report summary.",
         "Do not repeat a previous answer verbatim. If the user asks for other or remaining findings, discuss different findings from the evidence packet.",
         "When the user asks what scanners versus agents found, use detectorSummary and scan status exactly; distinguish zero findings from a failed or unavailable detector path.",
@@ -874,6 +881,10 @@ async function callConversationModel({
     if (modelConfig.apiKey) {
       headers.Authorization = `Bearer ${modelConfig.apiKey}`;
     }
+    if (modelConfig.isOpenRouter) {
+      headers["HTTP-Referer"] = "https://github.com/sethwhenton/hermsec";
+      headers["X-OpenRouter-Title"] = "Hermsec";
+    }
     let attemptMessages = messages;
     let invalidReason =
       "The selected model did not return a usable, grounded answer.";
@@ -898,10 +909,17 @@ async function callConversationModel({
           httpStatus: response.status,
         };
       }
-      const body = await response.json() as {
-        choices?: Array<{ message?: { content?: string } }>;
-      };
-      const rawContent = body.choices?.[0]?.message?.content?.trim();
+      const body = await response.json() as OpenAiCompatibleConversationResponse;
+      const embeddedError =
+        body.error ??
+        body.choices?.find((choice) => choice.error)?.error;
+      if (embeddedError || body.choices?.[0]?.finish_reason === "error") {
+        return {
+          status: modelStatusForProviderError(embeddedError),
+          modelId: modelConfig.modelId,
+        };
+      }
+      const rawContent = readAssistantContent(body);
       const content = rawContent
         ? sanitizeModelAnswer(rawContent, privacyMode, projectRoot)
         : null;
@@ -1005,40 +1023,100 @@ function sanitizeModelAnswer(
 function modelStatusForHttp(
   status: number,
 ): Exclude<ConversationModelStatus, "success"> {
-  if (status === 401 || status === 403) return "authentication-failed";
+  if (status === 401) return "authentication-failed";
+  if (status === 402) return "insufficient-credits";
+  if (status === 403) return "request-blocked";
+  if (status === 408 || status === 504) return "timeout";
   if (status === 429) return "rate-limited";
   if (status >= 500) return "provider-unavailable";
   return "request-failed";
 }
 
-function conversationModelAvailabilityNote(
+function readAssistantContent(
+  body: OpenAiCompatibleConversationResponse,
+): string | undefined {
+  const content = body.choices?.[0]?.message?.content;
+  if (typeof content === "string") {
+    const trimmed = content.trim();
+    return trimmed || undefined;
+  }
+  if (!Array.isArray(content)) return undefined;
+
+  const joined = content
+    .map((part) => part.text ?? part.content ?? "")
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+  return joined || undefined;
+}
+
+function modelStatusForProviderError(
+  error: OpenAiCompatibleConversationError | undefined,
+): Exclude<ConversationModelStatus, "success"> {
+  const code =
+    typeof error?.code === "number"
+      ? error.code
+      : typeof error?.code === "string" && /^\d{3}$/u.test(error.code)
+        ? Number(error.code)
+        : undefined;
+  if (code) return modelStatusForHttp(code);
+
+  const errorType =
+    typeof error?.metadata?.error_type === "string"
+      ? error.metadata.error_type.toLocaleLowerCase()
+      : "";
+  if (errorType.includes("auth")) return "authentication-failed";
+  if (errorType.includes("credit") || errorType.includes("payment")) {
+    return "insufficient-credits";
+  }
+  if (
+    errorType.includes("policy") ||
+    errorType.includes("moderation") ||
+    errorType.includes("guardrail") ||
+    errorType.includes("permission") ||
+    errorType.includes("forbidden")
+  ) {
+    return "request-blocked";
+  }
+  if (errorType.includes("rate")) return "rate-limited";
+  if (errorType.includes("timeout")) return "timeout";
+  return "provider-unavailable";
+}
+
+function conversationModelFailureMessage(
   attempt: Exclude<ConversationModelAttempt, { status: "success" }>,
 ): string {
   if (attempt.status === "not-configured") {
-    return "Conversation model note: no usable model is configured, so this answer comes from the saved report evidence.";
+    return "No usable conversation model is configured. Open Settings > Providers, add a valid API key or environment-variable name, then select an enabled model and try again.";
+  }
+  if (attempt.status === "insufficient-credits") {
+    return "The selected model could not answer because the provider account has insufficient credits. Add credits or switch models, then try again. Hermsec did not substitute a canned findings answer.";
   }
   if (attempt.status === "rate-limited") {
-    return "Conversation model note: the selected model is rate-limited right now, so this answer comes from the saved report evidence. Retry shortly or switch providers.";
+    return "The selected model is rate-limited right now. Retry shortly or switch models. Hermsec did not substitute a canned findings answer.";
   }
   if (attempt.status === "authentication-failed") {
-    return "Conversation model note: the selected provider rejected its credential, so this answer comes from the saved report evidence. Check Settings > Providers.";
+    return "The selected provider rejected its credential. Check Settings > Providers and try again. Hermsec did not substitute a canned findings answer.";
+  }
+  if (attempt.status === "request-blocked") {
+    return "The selected provider blocked this request or denied permission for it. Review the provider policy and model access, then try again. Hermsec did not substitute a canned findings answer.";
   }
   if (attempt.status === "timeout") {
-    return "Conversation model note: the selected model timed out, so this answer comes from the saved report evidence.";
+    return "The selected model timed out before answering. Try again or switch models. Hermsec did not substitute a canned findings answer.";
   }
   if (
     attempt.status === "empty-response" ||
     attempt.status === "invalid-response"
   ) {
-    return "Conversation model note: the selected model did not return a usable answer, so this answer comes from the saved report evidence.";
+    return "The selected model did not return a usable grounded answer. Try again or switch models. Hermsec did not substitute a canned findings answer.";
   }
   if (
     attempt.status === "provider-unavailable" ||
     attempt.status === "transport-error"
   ) {
-    return "Conversation model note: the selected provider is unavailable, so this answer comes from the saved report evidence.";
+    return "The selected provider is unavailable right now. Try again or switch providers. Hermsec did not substitute a canned findings answer.";
   }
-  return "Conversation model note: the selected model request failed, so this answer comes from the saved report evidence.";
+  return "The selected model request failed before it produced an answer. Check the provider settings and try again. Hermsec did not substitute a canned findings answer.";
 }
 
 function extractFinalAnswer(content: string): string {
@@ -1073,18 +1151,24 @@ function looksLikeInternalReasoning(content: string): boolean {
   return leakPatterns.some((pattern) => pattern.test(start));
 }
 
-function resolveModelConfig(): { baseUrl: string; apiKey?: string; modelId: string; maxTokens: number; historyTurns: number } | null {
+function resolveModelConfig(): {
+  baseUrl: string;
+  apiKey?: string;
+  modelId: string;
+  maxTokens: number;
+  historyTurns: number;
+  isOpenRouter: boolean;
+} | null {
   const settings = readSettings();
   const candidates = settings.providers.filter((provider) => provider.enabled && provider.apiFormat !== "cursor");
-  const provider =
-    candidates.find((item) => item.id === settings.activeProviderId && item.models.some((model) => model.enabled && model.id === settings.activeModelId)) ??
-    candidates.find((item) => item.models.some((model) => model.enabled && model.id === settings.activeModelId)) ??
-    candidates[0];
+  const provider = candidates.find(
+    (item) => item.id === settings.activeProviderId,
+  );
   if (!provider) return null;
 
-  const model =
-    provider.models.find((item) => item.enabled && item.id === settings.activeModelId) ??
-    provider.models.find((item) => item.enabled);
+  const model = provider.models.find(
+    (item) => item.enabled && item.id === settings.activeModelId,
+  );
   const apiKey = resolveProviderApiKey(provider);
   if (!model?.id || !provider.baseUrl?.trim() || (!apiKey && !providerAllowsNoApiKey(provider))) return null;
 
@@ -1094,6 +1178,7 @@ function resolveModelConfig(): { baseUrl: string; apiKey?: string; modelId: stri
     modelId: model.id,
     maxTokens: modelBudget(settings.general.thinkingLevel),
     historyTurns: contextTurns(settings.general.contextWindow),
+    isOpenRouter: provider.id === "openrouter" || provider.presetId === "openrouter",
   };
 }
 
@@ -1111,31 +1196,17 @@ function contextTurns(window: string | undefined): number {
 
 function resolveProviderApiKey(provider: ProviderConfig): string | undefined {
   if (providerAllowsNoApiKey(provider)) return undefined;
-  if (provider.apiKey?.trim()) return provider.apiKey.trim();
-  const envNames = [
-    provider.apiKeyEnvVar,
+  return resolveCredentialValue(provider, [
     process.env.HERMSEC_MODEL_API_KEY_ENV,
     provider.id === "opencode-go" ? "OPENCODE_GO_API_KEY" : undefined,
     "HERMSEC_MODEL_API_KEY",
-  ]
-    .map(cleanEnvValue)
-    .filter((name): name is string => Boolean(name));
-
-  for (const envName of Array.from(new Set(envNames))) {
-    const value = process.env[envName]?.trim();
-    if (value) return value;
-  }
-
-  return undefined;
+  ]);
 }
 
 function providerAllowsNoApiKey(provider: ProviderConfig): boolean {
-  return provider.id === "ollama-local" || provider.presetId === "ollama-local";
-}
-
-function cleanEnvValue(value: string | undefined): string | undefined {
-  const trimmed = value?.trim().replace(/^["']|["']$/g, "");
-  return trimmed ? trimmed : undefined;
+  return provider.id === "ollama-local" ||
+    provider.presetId === "ollama-local" ||
+    isLoopbackProviderUrl(provider.baseUrl);
 }
 
 function normalizeCounts(summary: Record<string, unknown> | undefined, findings: Finding[]) {

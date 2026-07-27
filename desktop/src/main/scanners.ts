@@ -11,6 +11,7 @@ import type {
   ScannerStatusItem,
 } from "../renderer/src/types/scanners";
 import { collectModelEnvironmentVariableNames } from "./cliProcess";
+import { safeEnvironmentVariableName } from "./providerCredentials";
 import { readSettings, updateSettings } from "./store";
 
 const scannerCatalog: ScannerCatalogItem[] = [
@@ -182,7 +183,12 @@ export function scannerEnvForCli(
 export function modelEnvironmentVariableNames(): string[] {
   const settings = readSettings();
   return collectModelEnvironmentVariableNames(
-    settings.providers.map((provider) => provider.apiKeyEnvVar?.trim() || defaultProviderKeyEnv(provider)),
+    settings.providers.map((provider) =>
+      safeEnvironmentVariableName(
+        provider.apiKeyEnvVar,
+        defaultProviderKeyEnv(provider),
+      ),
+    ),
   );
 }
 
@@ -203,7 +209,10 @@ function modelEnvForCli(settings: ReturnType<typeof readSettings>): Record<strin
   if (provider.baseUrl?.trim()) {
     env.HERMSEC_MODEL_BASE_URL = provider.baseUrl.trim();
   }
-  const apiKeyEnv = provider.apiKeyEnvVar?.trim() || defaultProviderKeyEnv(provider);
+  const apiKeyEnv = safeEnvironmentVariableName(
+    provider.apiKeyEnvVar,
+    defaultProviderKeyEnv(provider),
+  );
   if (apiKeyEnv) {
     env.HERMSEC_MODEL_API_KEY_ENV = apiKeyEnv;
     if (provider.apiKey?.trim()) {
@@ -260,15 +269,25 @@ function routeForSelection(
   selection: { providerId?: string; modelId?: string } | undefined,
   env: Record<string, string>,
 ): AgentModelRoute | undefined {
-  const provider = selection?.providerId
-    ? settings.providers.find((item) => item.enabled && item.id === selection.providerId)
+  const hasExplicitProvider = Boolean(selection?.providerId);
+  const hasExplicitModel = Boolean(selection?.modelId);
+  const hasExplicitSelection = hasExplicitProvider || hasExplicitModel;
+  if (hasExplicitSelection && !(hasExplicitProvider && hasExplicitModel)) {
+    return unavailableAgentModelRoute();
+  }
+
+  const provider = hasExplicitSelection
+    ? settings.providers.find((item) => item.enabled && item.id === selection?.providerId)
     : selectedProvider(settings);
   if (!provider || provider.apiFormat === "cursor") {
-    return undefined;
+    return hasExplicitSelection ? unavailableAgentModelRoute() : undefined;
   }
-  const model = selection?.modelId
-    ? provider.models.find((item) => item.enabled && item.id === selection.modelId)
+  const model = hasExplicitSelection
+    ? provider.models.find((item) => item.enabled && item.id === selection?.modelId)
     : selectedModel(settings, provider);
+  if (hasExplicitSelection && !model) {
+    return unavailableAgentModelRoute();
+  }
   const providerId = rootProviderId(provider);
   const route: AgentModelRoute = {
     provider: providerId,
@@ -280,7 +299,10 @@ function routeForSelection(
   if (model?.id) {
     route.model = model.id;
   }
-  const apiKeyEnv = provider.apiKeyEnvVar?.trim() || defaultProviderKeyEnv(provider);
+  const apiKeyEnv = safeEnvironmentVariableName(
+    provider.apiKeyEnvVar,
+    defaultProviderKeyEnv(provider),
+  );
   if (apiKeyEnv) {
     route.apiKeyEnv = apiKeyEnv;
     if (provider.apiKey?.trim()) {
@@ -290,19 +312,24 @@ function routeForSelection(
   return route;
 }
 
+function unavailableAgentModelRoute(): AgentModelRoute {
+  return {
+    provider: "none",
+    allowRemoteProviders: false,
+  };
+}
+
 function selectedProvider(settings: ReturnType<typeof readSettings>): ProviderConfig | undefined {
   const providers = settings.providers.filter((provider) => provider.enabled);
   if (settings.activeProviderId) {
-    const active = providers.find((provider) => provider.id === settings.activeProviderId);
-    if (active) return active;
+    return providers.find((provider) => provider.id === settings.activeProviderId);
   }
   return providers.find((provider) => provider.apiFormat !== "cursor");
 }
 
 function selectedModel(settings: ReturnType<typeof readSettings>, provider: ProviderConfig): ProviderConfig["models"][number] | undefined {
   if (settings.activeModelId) {
-    const active = provider.models.find((model) => model.enabled && model.id === settings.activeModelId);
-    if (active) return active;
+    return provider.models.find((model) => model.enabled && model.id === settings.activeModelId);
   }
   return provider.models.find((model) => model.enabled);
 }

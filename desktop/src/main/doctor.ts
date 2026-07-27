@@ -22,6 +22,10 @@ import {
   findBundledToolExecutable,
   type BundledRuntimeExecutionLease,
 } from "./runtimeBundle";
+import {
+  resolveCredentialValue,
+  safeEnvironmentVariableName,
+} from "./providerCredentials";
 import { readSettings } from "./store";
 
 const CLI_RELATIVE_PATH = path.join("dist", "src", "bin", "hermsec.js");
@@ -710,7 +714,7 @@ function desktopProviderCheck(provider: ProviderConfig, activeProviderId?: strin
         status: "warn",
         requirement: "recommended",
         message: `${provider.displayName} is enabled but no API key is available to the desktop app.`,
-        remediation: `Save a local API key or set ${provider.apiKeyEnvVar || "CURSOR_API_KEY"}.`,
+        remediation: credentialRemediation(provider, "CURSOR_API_KEY"),
       };
     }
 
@@ -759,7 +763,7 @@ function desktopProviderCheck(provider: ProviderConfig, activeProviderId?: strin
       status: "warn",
       requirement: "recommended",
       message: `${provider.displayName} is enabled but no API key is available to the desktop app.`,
-      remediation: `Save a local API key or set ${provider.apiKeyEnvVar || "the provider API key environment variable"}.`,
+      remediation: credentialRemediation(provider),
     };
   }
 
@@ -776,19 +780,23 @@ function desktopProviderCheck(provider: ProviderConfig, activeProviderId?: strin
 
 function resolveDesktopProviderApiKey(provider: ProviderConfig): string | undefined {
   if (providerAllowsNoApiKey(provider)) return undefined;
-  if (provider.apiKey?.trim()) return provider.apiKey.trim();
-  const envNames = [
-    provider.apiKeyEnvVar,
+  return resolveCredentialValue(provider, [
     provider.id === "opencode-go" ? "OPENCODE_GO_API_KEY" : undefined,
     "HERMSEC_MODEL_API_KEY",
-  ].filter((name): name is string => Boolean(name?.trim()));
+  ]);
+}
 
-  for (const envName of Array.from(new Set(envNames))) {
-    const value = process.env[envName]?.trim();
-    if (value) return value;
-  }
-
-  return undefined;
+function credentialRemediation(
+  provider: ProviderConfig,
+  fallbackEnvironmentVariable?: string,
+): string {
+  const environmentVariable = safeEnvironmentVariableName(
+    provider.apiKeyEnvVar,
+    fallbackEnvironmentVariable,
+  );
+  return environmentVariable
+    ? `Save a local API key or set ${environmentVariable}.`
+    : "Save a local API key or configure a valid provider API key environment variable.";
 }
 
 function providerAllowsNoApiKey(provider: ProviderConfig): boolean {

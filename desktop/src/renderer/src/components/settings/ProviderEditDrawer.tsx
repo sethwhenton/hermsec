@@ -54,6 +54,10 @@ export function ProviderEditDrawer({
   const isPreset = Boolean(draft.presetId);
   const canDiscover = draft.supportsModelDiscovery !== false;
   const requiresApiKey = !providerAllowsNoApiKey(draft);
+  const invalidEnvironmentVariable = Boolean(
+    draft.apiKeyEnvVar?.trim() &&
+    !/^[A-Za-z_][A-Za-z0-9_]*$/u.test(draft.apiKeyEnvVar.trim()),
+  );
 
   const runProviderCheck = async (_source: "auto" | "manual") => {
     if (!draft.baseUrl.trim() || !canDiscover) return;
@@ -194,12 +198,21 @@ export function ProviderEditDrawer({
               />
             </Field>
 
-            <Field label="Environment variable">
+            <Field
+              label="Environment variable"
+              hint="Enter the variable name only, such as OPENROUTER_API_KEY."
+            >
               <Input
                 value={draft.apiKeyEnvVar ?? ""}
                 onChange={(e) => setDraft({ ...draft, apiKeyEnvVar: e.target.value })}
                 placeholder="HERMSEC_MODEL_API_KEY"
+                aria-invalid={invalidEnvironmentVariable}
               />
+              {invalidEnvironmentVariable && (
+                <p className="mt-1.5 text-[11px] text-danger">
+                  This looks like a credential. Paste it into the API key field above; Hermsec will safely correct it when you save.
+                </p>
+              )}
             </Field>
           </>
         ) : (

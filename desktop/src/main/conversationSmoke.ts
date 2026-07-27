@@ -47,7 +47,7 @@ export interface ConversationSmokeResult {
     modelId?: string;
     message: string;
   };
-  rateLimitedFallback: {
+  rateLimitedFailure: {
     usedModel: boolean;
     modelStatus?: string;
     message: string;
@@ -79,7 +79,7 @@ export async function runConversationSmoke(
 
     assert(rendererResult.first.ok, `First conversation turn failed: ${rendererResult.first.message}`);
     assert(rendererResult.second.ok, `Second conversation turn failed: ${rendererResult.second.message}`);
-    assert(rendererResult.third.ok, `Rate-limited conversation turn failed: ${rendererResult.third.message}`);
+    assert(!rendererResult.third.ok, "The rate-limited turn was incorrectly presented as a successful answer.");
     assert(rendererResult.first.usedModel === true, "First conversation turn did not use the configured model.");
     assert(rendererResult.second.usedModel === true, "Second conversation turn did not use the configured model.");
     assert(
@@ -178,14 +178,15 @@ export async function runConversationSmoke(
       `Expected a typed rate-limited result, received ${rendererResult.third.modelStatus ?? "none"}.`,
     );
     assert(
-      /Scanners contributed 2; model agents contributed 1/u.test(
+      !/Scanners contributed|Hardcoded deployment secret|SQL injection/u.test(
         rendererResult.third.message,
       ),
-      "The rate-limited fallback omitted grounded scanner/agent provenance.",
+      "The rate-limited turn substituted a deterministic findings answer.",
     );
     assert(
-      /rate-limited/u.test(rendererResult.third.message),
-      "The rate-limited fallback did not disclose why saved evidence was used.",
+      /rate-limited/u.test(rendererResult.third.message) &&
+        /did not substitute a canned findings answer/u.test(rendererResult.third.message),
+      "The rate-limited failure did not clearly disclose the provider failure and no-fallback behavior.",
     );
 
     return {
@@ -203,7 +204,7 @@ export async function runConversationSmoke(
         ...(rendererResult.second.modelId ? { modelId: rendererResult.second.modelId } : {}),
         message: secondAnswer,
       },
-      rateLimitedFallback: {
+      rateLimitedFailure: {
         usedModel: false,
         ...(rendererResult.third.modelStatus
           ? { modelStatus: rendererResult.third.modelStatus }
