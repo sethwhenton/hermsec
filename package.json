@@ -1,12 +1,13 @@
 {
   "name": "hermsec",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "Local-first security assistant for vibe-coded repositories.",
   "type": "module",
   "private": false,
   "license": "UNLICENSED",
   "bin": {
-    "hermsec": "./dist/src/bin/hermsec.js"
+    "hermsec": "./dist/src/bin/hermsec.js",
+    "hermsec-darwin-fd-link-state": "./dist/src/research/native/hermsec-darwin-fd-link-state"
   },
   "files": [
     "dist/src",
@@ -17,7 +18,7 @@
   "scripts": {
     "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
     "build": "npm run build:core",
-    "build:core": "npm run clean && tsc -p tsconfig.json",
+    "build:core": "npm run clean && tsc -p tsconfig.json && node scripts/build-darwin-fd-link-state.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test \"dist/tests/**/*.test.js\"",
     "dev": "npm run build && node dist/src/bin/hermsec.js",

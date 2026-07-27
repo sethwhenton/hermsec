@@ -116,11 +116,38 @@ jobs:
       - name: Run root tests
         run: npm test
 
+      - name: Upload universal Darwin cleanup helper
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: darwin-cleanup-helper-${{ matrix.arch }}
+          path: dist/src/research/native/hermsec-darwin-fd-link-state
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Run desktop packaging and runtime tests
         run: npm --prefix desktop test
 
       - name: Build macOS app
         run: npm --prefix desktop run ${{ matrix.package_script }}
+
+      - name: Verify Darwin cleanup helper compatibility
+        shell: bash
+        run: |
+          helper="$(find desktop/release -type f -path '*.app/Contents/Resources/hermsec-cli/dist/src/research/native/hermsec-darwin-fd-link-state' -print -quit)"
+          if [[ -z "${helper}" || ! -x "${helper}" ]]; then
+            echo "The packaged Darwin cleanup verifier is missing or not executable."
+            exit 1
+          fi
+          if ! lipo "${helper}" -verify_arch arm64 x86_64; then
+            echo "Darwin cleanup verifier is not a universal arm64/x86_64 binary."
+            lipo -info "${helper}" || true
+            exit 1
+          fi
+          minos="$(vtool -show-build "${helper}" | awk '/minos/{print $2; exit}')"
+          if [[ "${minos}" != "12.0" ]]; then
+            echo "Darwin cleanup verifier targets macOS ${minos:-unknown}, expected 12.0."
+            exit 1
+          fi
 
       - name: Run desktop smoke checks
         run: |
@@ -265,12 +292,12 @@ jobs:
       - name: Smoke packaged Linux runtime without system Node or Python
         shell: bash
         run: |
-          app="$(find desktop/release -type f -path '*linux-unpacked/*' \( -name 'hermsec' -o -name 'Hermsec' \) -print -quit)"
-          if [[ -z "${app}" ]]; then
+          app="desktop/release/linux-unpacked/hermsec-v3"
+          if [[ ! -x "${app}" ]]; then
             echo "No packaged Hermsec Linux executable was produced."
             exit 1
           fi
-          node desktop/scripts/smoke-packaged-runtime.mjs --app "${app}"
+          xvfb-run --auto-servernum node desktop/scripts/smoke-packaged-runtime.mjs --app "${app}"
 
       - name: Enforce PMG policy
         if: always()
@@ -278,6 +305,7 @@ jobs:
 
   publish:
     name: Publish macOS Release Assets
+    if: ${{ startsWith(github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name, 'v') }}
     needs: [build, linux-runtime-gate]
     runs-on: ubuntu-latest
     timeout-minutes: 15

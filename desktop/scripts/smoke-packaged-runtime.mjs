@@ -7,8 +7,10 @@ import { fileURLToPath } from "node:url";
 import { smokePortableRuntimeTree } from "./runtime-python-layout.mjs";
 
 const appRoot = path.resolve(import.meta.dirname, "..");
-const DEFAULT_TIMEOUT_MS = 90_000;
-const PORTABLE_SFX_TIMEOUT_MS = 180_000;
+const DEFAULT_TIMEOUT_MS = 240_000;
+const PORTABLE_SFX_TIMEOUT_MS = 300_000;
+const MAX_PROCESS_STREAM_CHARS = 256_000;
+const MAX_FAILURE_STREAM_CHARS = 16_000;
 const SCANNER_CHECK_IDS = [
   "command-semgrep",
   "command-gitleaks",
@@ -39,6 +41,47 @@ export function createPackagedSmokeEnvironment(input = {}) {
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.NODE_OPTIONS;
   return env;
+}
+
+export function createPackagedSmokeArguments(platform = process.platform) {
+  return platform === "linux"
+    ? ["--no-sandbox", "--smoke-doctor"]
+    : ["--smoke-doctor"];
+}
+
+export function formatPackagedProcessFailure(result) {
+  const streams = [
+    result.stderr?.trim()
+      ? `stderr:\n${safePackagedDiagnosticText(result.stderr)}`
+      : "",
+    result.stdout?.trim()
+      ? `stdout:\n${safePackagedDiagnosticText(result.stdout)}`
+      : "",
+  ].filter(Boolean);
+  return streams.join("\n");
+}
+
+export function safePackagedDiagnosticText(value, maxChars = MAX_FAILURE_STREAM_CHARS) {
+  const redacted = String(value ?? "")
+    .replace(
+      /(["']?)(authorization)(\1?\s*[:=]\s*)(["']?)(?:bearer\s+)?[^"'\s;,)]+(?:\s+[^"'\s;,)]+)?/giu,
+      "$1$2$3$4[REDACTED]",
+    )
+    .replace(
+      /(["']?)(token|secret|api[_-]?key|password|passwd|private[_-]?key|access[_-]?key|client[_-]?secret)(\1?\s*[:=]\s*)(["']?)[^"'\s;,)]+/giu,
+      "$1$2$3$4[REDACTED]",
+    )
+    .replace(/\b(?:ghp|gho|ghu|ghs|ghr|github_pat)_[A-Za-z0-9_]{20,}\b/gu, "[REDACTED_SECRET]")
+    .replace(/\bglpat-[A-Za-z0-9_-]{20,}\b/gu, "[REDACTED_SECRET]")
+    .replace(/\bsk-[A-Za-z0-9_-]{16,}\b/gu, "[REDACTED_SECRET]")
+    .replace(/\bxox[baprs]-[A-Za-z0-9-]{10,}\b/gu, "[REDACTED_SECRET]")
+    .replace(/\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/gu, "[REDACTED_SECRET]")
+    .replace(/\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\b/gu, "[REDACTED_SECRET]")
+    .replace(/\b(?=[A-Za-z0-9_+/=-]{32,}\b)(?=[A-Za-z0-9_+/=-]*[A-Z])(?=[A-Za-z0-9_+/=-]*[a-z])(?=[A-Za-z0-9_+/=-]*\d)[A-Za-z0-9_+/=-]{32,}\b/gu, "[REDACTED_SECRET]")
+    .replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/gu, "[REDACTED_SECRET]")
+    .trim();
+  if (redacted.length <= maxChars) return redacted;
+  return `[truncated]\n${redacted.slice(-maxChars)}`;
 }
 
 export function parseDoctorSmokeOutput(stdout) {
@@ -96,17 +139,26 @@ export async function smokePackagedRuntime(input) {
   const artifactDir = await mkdtemp(path.join(tmpdir(), "hermsec-packaged-doctor-"));
   const artifactPath = path.join(artifactDir, "doctor-result.json");
   try {
-    const result = await runProcess(executable, ["--smoke-doctor"], {
-      cwd: path.dirname(executable),
-      env: createPackagedSmokeEnvironment({
-        platform: input.platform,
-        inheritedEnv: input.inheritedEnv,
-        smokeResultPath: artifactPath,
-      }),
-      timeoutMs: input.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    });
+    const result = await runProcess(
+      executable,
+      createPackagedSmokeArguments(input.platform),
+      {
+        cwd: path.dirname(executable),
+        env: createPackagedSmokeEnvironment({
+          platform: input.platform,
+          inheritedEnv: input.inheritedEnv,
+          smokeResultPath: artifactPath,
+        }),
+        timeoutMs: input.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+      },
+    );
     if (result.exitCode !== 0) {
-      throw new Error(`Packaged Doctor exited ${result.exitCode}: ${result.stderr.trim() || result.stdout.trim()}`);
+      const detail = formatPackagedProcessFailure(result);
+      throw new Error(
+        `Packaged Doctor exited ${result.exitCode}${
+          detail ? `:\n${detail}` : ""
+        }`,
+      );
     }
 
     let artifactContents;
@@ -155,10 +207,10 @@ async function runProcess(executable, args, options) {
     }, options.timeoutMs);
 
     child.stdout.on("data", (chunk) => {
-      stdout += String(chunk);
+      stdout = collectProcessOutput(stdout, chunk);
     });
     child.stderr.on("data", (chunk) => {
-      stderr += String(chunk);
+      stderr = collectProcessOutput(stderr, chunk);
     });
     child.on("error", (error) => {
       if (settled) return;
@@ -173,6 +225,13 @@ async function runProcess(executable, args, options) {
       resolve({ exitCode: code ?? 1, stdout, stderr });
     });
   });
+}
+
+function collectProcessOutput(current, chunk) {
+  const next = `${current}${String(chunk)}`;
+  return next.length > MAX_PROCESS_STREAM_CHARS
+    ? next.slice(-MAX_PROCESS_STREAM_CHARS)
+    : next;
 }
 
 function defaultExecutable() {

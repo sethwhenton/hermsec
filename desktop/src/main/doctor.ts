@@ -32,7 +32,12 @@ const CLI_RELATIVE_PATH = path.join("dist", "src", "bin", "hermsec.js");
 const MAX_OUTPUT_CHARS = 2_000_000;
 const CONNECTIVITY_TIMEOUT_MS = 7_000;
 const DOCTOR_CLI_TIMEOUT_MS = 20_000;
-const BUNDLED_SCANNER_PROBE_TIMEOUT_MS = 8_000;
+// First launch can trigger OS malware/notarization scans for every freshly
+// materialized executable in the verified lease. Keep the probe bounded, but
+// allow cold Windows and macOS machines enough time to return real versions.
+const BUNDLED_SCANNER_PROBE_TIMEOUT_MS = 30_000;
+const BUNDLED_SCANNER_TERMINATION_GRACE_MS = 5_000;
+const BUNDLED_SCANNER_TERMINATION_DRAIN_MS = 2_000;
 
 type DoctorCliOutcome = {
   ok?: boolean;
@@ -155,9 +160,11 @@ export async function runDoctor(onProgress?: DoctorProgressEmitter): Promise<Doc
     const groups = buildGroups(checks, connectivity);
     const healthScore = calculateHealthScore(groups);
     const status = resultStatus(groups);
+    const runtimeReady = Boolean(cli.ok);
 
     return {
-      ok: Boolean(cli.ok) && status !== "blocked",
+      ok: runtimeReady && status !== "blocked",
+      runtimeReady,
       message: cli.message ?? "Hermsec doctor completed.",
       generatedAt: cli.data?.generatedAt ?? new Date().toISOString(),
       durationMs: Date.now() - started,
@@ -200,30 +207,38 @@ async function packagedScannerChecks(
     }));
   }
 
-  return Promise.all(BUNDLED_SCANNERS.map(async ([command, label, versionArgs]) => {
+  // Run first-launch probes serially. The Intel build runners can otherwise
+  // spend the entire per-scanner timeout starting several large bundled tools
+  // at once even though each launcher succeeds independently.
+  const checks: DoctorCheck[] = [];
+  for (const [command, label, versionArgs] of BUNDLED_SCANNERS) {
     const executable = toolsRoot ? findBundledToolExecutable(toolsRoot, command) : undefined;
-    if (!executable) return missingBundledScannerCheck(command, label);
+    if (!executable) {
+      checks.push(missingBundledScannerCheck(command, label));
+      continue;
+    }
     try {
       const version = await probeBundledScanner(runtimeLease, executable, versionArgs);
-      return {
+      checks.push({
         id: `command-${command}`,
         label,
         status: "pass" as const,
         requirement: "required" as const,
         message: `Bundled scanner executable verified: ${version}.`,
-      };
+      });
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
-      return {
+      checks.push({
         id: `command-${command}`,
         label,
         status: "fail" as const,
         requirement: "required" as const,
         message: `Bundled ${label} launcher could not execute: ${detail}`,
         remediation: "Reinstall Hermsec from a release that includes a complete, executable runtime-tools bundle.",
-      };
+      });
     }
-  }));
+  }
+  return checks;
 }
 
 function missingBundledScannerCheck(command: string, label: string): DoctorCheck {
@@ -262,17 +277,39 @@ function probeBundledScanner(
     runtimeLease.assertIntact();
     const child = spawn(executable, args, {
       env: packagedScannerProbeEnvironment(runtimeLease),
+      detached: process.platform !== "win32",
       shell: false,
       windowsHide: true,
     });
     let stdout = "";
     let stderr = "";
     let settled = false;
-    const timer = windowlessSetTimeout(() => {
+    let timedOut = false;
+    let forceTimer: NodeJS.Timeout | undefined;
+    let drainTimer: NodeJS.Timeout | undefined;
+    const clearTerminationTimers = () => {
+      if (forceTimer) clearTimeout(forceTimer);
+      if (drainTimer) clearTimeout(drainTimer);
+    };
+    const rejectTimeout = () => {
       if (settled) return;
       settled = true;
-      child.kill();
+      clearTimeout(timer);
+      clearTerminationTimers();
       reject(new Error(`timed out after ${BUNDLED_SCANNER_PROBE_TIMEOUT_MS} ms`));
+    };
+    const timer = windowlessSetTimeout(() => {
+      if (settled) return;
+      timedOut = true;
+      terminateBundledScannerProbe(child, false);
+      forceTimer = windowlessSetTimeout(() => {
+        if (settled) return;
+        terminateBundledScannerProbe(child, true);
+        drainTimer = windowlessSetTimeout(
+          rejectTimeout,
+          BUNDLED_SCANNER_TERMINATION_DRAIN_MS,
+        );
+      }, BUNDLED_SCANNER_TERMINATION_GRACE_MS);
     }, BUNDLED_SCANNER_PROBE_TIMEOUT_MS);
     child.stdout.on("data", (chunk) => {
       stdout = collectOutput(chunk, stdout);
@@ -282,14 +319,24 @@ function probeBundledScanner(
     });
     child.on("error", (error) => {
       if (settled) return;
+      if (timedOut) {
+        rejectTimeout();
+        return;
+      }
       settled = true;
       clearTimeout(timer);
+      clearTerminationTimers();
       reject(error);
     });
     child.on("close", (code) => {
       if (settled) return;
+      if (timedOut) {
+        rejectTimeout();
+        return;
+      }
       settled = true;
       clearTimeout(timer);
+      clearTerminationTimers();
       const output = `${stdout}\n${stderr}`.trim();
       if (code !== 0) {
         reject(new Error(`exited ${code ?? 1}${output ? `: ${output}` : ""}`));
@@ -302,6 +349,33 @@ function probeBundledScanner(
       resolve(output.replace(/\s+/gu, " ").slice(0, 240));
     });
   });
+}
+
+function terminateBundledScannerProbe(
+  child: ChildProcessWithoutNullStreams,
+  force: boolean,
+): void {
+  if (!child.pid) return;
+  if (process.platform === "win32") {
+    const systemRoot = process.env.SystemRoot?.trim();
+    const taskkill = systemRoot && path.win32.isAbsolute(systemRoot)
+      ? path.win32.join(systemRoot, "System32", "taskkill.exe")
+      : "C:\\Windows\\System32\\taskkill.exe";
+    const killer = spawn(
+      taskkill,
+      ["/PID", String(child.pid), "/T", ...(force ? ["/F"] : [])],
+      { windowsHide: true, stdio: "ignore" },
+    );
+    killer.once("error", () => {
+      child.kill();
+    });
+    return;
+  }
+  try {
+    process.kill(-child.pid, force ? "SIGKILL" : "SIGTERM");
+  } catch {
+    child.kill(force ? "SIGKILL" : "SIGTERM");
+  }
 }
 
 function packagedScannerProbeEnvironment(runtimeLease: BundledRuntimeExecutionLease): NodeJS.ProcessEnv {

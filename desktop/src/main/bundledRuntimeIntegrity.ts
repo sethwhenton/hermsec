@@ -46,6 +46,14 @@ export type VerifiedBundleExecutionLease = BundledResourceVerification & {
 };
 
 const CLI_ENTRY_PATH = path.posix.join("hermsec-cli", "dist", "src", "bin", "hermsec.js");
+const DARWIN_FD_LINK_STATE_HELPER_PATH = path.posix.join(
+  "hermsec-cli",
+  "dist",
+  "src",
+  "research",
+  "native",
+  "hermsec-darwin-fd-link-state",
+);
 
 /**
  * This inventory intentionally includes the runtime manifest itself. The manifest
@@ -312,14 +320,24 @@ function removeLeaseSnapshotSync(
 }
 
 function isExecutableEntry(relativePath: string): boolean {
-  return relativePath.includes("/bin/") || relativePath.endsWith("/python-runtime/python.exe");
+  return (
+    relativePath.includes("/bin/") ||
+    relativePath.endsWith("/python-runtime/python.exe") ||
+    relativePath === DARWIN_FD_LINK_STATE_HELPER_PATH
+  );
 }
 
 function assertEntryMatches(filePath: string, expected: BundledResourceEntry): void {
-  if (!existsSync(filePath)) {
+  let stat: ReturnType<typeof lstatSync>;
+  try {
+    // existsSync follows symbolic links, so it reports a legitimate dangling
+    // link (for example Python's optional 2to3 launcher) as missing. The
+    // integrity inventory records the link entry and target text themselves,
+    // which must be inspected with lstat instead.
+    stat = lstatSync(filePath);
+  } catch {
     throw new Error(`Bundled resource changed while creating execution lease: ${expected.path}`);
   }
-  const stat = lstatSync(filePath);
   const kind = stat.isDirectory() ? "directory" : stat.isSymbolicLink() ? "symlink" : stat.isFile() ? "file" : undefined;
   if (kind !== expected.kind) {
     throw new Error(`Bundled resource type changed while creating execution lease: ${expected.path}`);

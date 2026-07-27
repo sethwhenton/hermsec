@@ -52,6 +52,7 @@ export interface DoctorProgressEvent {
 
 export interface DoctorRunResult {
   ok: boolean;
+  runtimeReady: boolean;
   message: string;
   generatedAt: string;
   durationMs: number;

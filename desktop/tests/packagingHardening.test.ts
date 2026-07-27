@@ -1,13 +1,17 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import {
   assertPackagedDoctorResult,
   assertPortablePythonRuntime,
+  createPackagedSmokeArguments,
   createPackagedSmokeEnvironment,
+  formatPackagedProcessFailure,
   parseDoctorSmokeResultArtifact,
   parseDoctorSmokeOutput,
+  safePackagedDiagnosticText,
 } from "../scripts/smoke-packaged-runtime.mjs";
 import {
   assertPortablePythonTarget,
@@ -89,6 +93,40 @@ test("runtime assets include source-pinned portable Python for every release tar
   assert.doesNotMatch(source, /checksums\.txt/u);
 });
 
+test("Darwin cleanup verifier has a pinned universal prebuilt fallback", async () => {
+  const expected =
+    "37ea88028a8df0c73d0123a652bd2923b6bf214ce380f08194062ac83bb4c40d";
+  const prebuilt = await fs.readFile(
+    path.join(
+      repoRoot,
+      "scripts",
+      "prebuilt",
+      "hermsec-darwin-fd-link-state",
+    ),
+  );
+  assert.equal(
+    createHash("sha256").update(prebuilt).digest("hex"),
+    expected,
+  );
+  const builder = await fs.readFile(
+    path.join(repoRoot, "scripts", "build-darwin-fd-link-state.mjs"),
+    "utf8",
+  );
+  assert.match(builder, new RegExp(expected, "u"));
+  assert.match(builder, /copyFileSync\(prebuilt, output\)/u);
+  assert.match(
+    builder,
+    /"-arch",\s*"arm64",\s*"-arch",\s*"x86_64"/u,
+  );
+  const rootPackage = JSON.parse(
+    await fs.readFile(path.join(repoRoot, "package.json"), "utf8"),
+  );
+  assert.equal(
+    rootPackage.bin["hermsec-darwin-fd-link-state"],
+    "./dist/src/research/native/hermsec-darwin-fd-link-state",
+  );
+});
+
 test("Python scanners install only from a fully hashed no-deps platform lock", async () => {
   const source = await fs.readFile(path.join(desktopRoot, "scripts/prepare-runtime-tools.mjs"), "utf8");
   const runtimeLayoutSource = await fs.readFile(path.join(desktopRoot, "scripts/runtime-python-layout.mjs"), "utf8");
@@ -161,9 +199,28 @@ test("packaged smoke clears Node escape hatches and validates required scanner g
   );
   const resultEnv = createPackagedSmokeEnvironment({ smokeResultPath: "C:\\temp\\doctor-result.json" });
   assert.equal(resultEnv.HERMSEC_SMOKE_RESULT_PATH, "C:\\temp\\doctor-result.json");
+  assert.deepEqual(
+    createPackagedSmokeArguments("linux"),
+    ["--no-sandbox", "--smoke-doctor"],
+  );
+  assert.deepEqual(
+    createPackagedSmokeArguments("darwin"),
+    ["--smoke-doctor"],
+  );
+  assert.equal(
+    formatPackagedProcessFailure({
+      stderr: "sandbox warning sk-example-secret-token-123456\n",
+      stdout: "{\"ok\":false,\"api_key\":\"example-secret-value-123456\"}\n",
+    }),
+    "stderr:\nsandbox warning [REDACTED_SECRET]\nstdout:\n{\"ok\":false,\"api_key\":\"[REDACTED]\"}",
+  );
+  assert.equal(
+    safePackagedDiagnosticText(`prefix-${"x".repeat(40)}`, 16),
+    `[truncated]\n${"x".repeat(16)}`,
+  );
 
   const smokeSource = await fs.readFile(path.join(desktopRoot, "scripts/smoke-packaged-runtime.mjs"), "utf8");
-  assert.match(smokeSource, /runProcess\(executable, \["--smoke-doctor"\]/u);
+  assert.match(smokeSource, /createPackagedSmokeArguments\(input\.platform\)/u);
   assert.match(smokeSource, /--portable-sfx/u);
   assert.match(smokeSource, /HERMSEC_SMOKE_RESULT_PATH/u);
   assert.match(smokeSource, /exited successfully without writing its result artifact/u);
@@ -172,26 +229,60 @@ test("packaged smoke clears Node escape hatches and validates required scanner g
   const indexSource = await fs.readFile(path.join(desktopRoot, "src/main/index.ts"), "utf8");
   assert.match(indexSource, /writeDoctorSmokeResultArtifact/u);
   assert.match(indexSource, /renameSync\(temporary, destination\)/u);
+  assert.match(indexSource, /createPackagedDoctorSmokeResult/u);
 
   const doctorSource = await fs.readFile(path.join(desktopRoot, "src/main/doctor.ts"), "utf8");
   assert.match(doctorSource, /createVerifiedBundledRuntimeExecutionLease/u);
   assert.match(doctorSource, /probeBundledScanner/u);
   assert.match(doctorSource, /BUNDLED_SCANNER_PROBE_TIMEOUT_MS/u);
+  assert.match(doctorSource, /BUNDLED_SCANNER_PROBE_TIMEOUT_MS\s*=\s*30_000/u);
   assert.match(doctorSource, /returned no version output/u);
+  assert.match(doctorSource, /for \(const \[command, label, versionArgs\] of BUNDLED_SCANNERS\)/u);
+  assert.match(doctorSource, /detached:\s*process\.platform !== "win32"/u);
+  assert.match(doctorSource, /terminateBundledScannerProbe\(child, false\)/u);
+  assert.match(doctorSource, /terminateBundledScannerProbe\(child, true\)/u);
+  assert.match(doctorSource, /process\.kill\(-child\.pid,\s*force \? "SIGKILL" : "SIGTERM"\)/u);
+  assert.match(doctorSource, /taskkill\.exe/u);
+  assert.doesNotMatch(
+    doctorSource,
+    /Promise\.all\(BUNDLED_SCANNERS\.map/u,
+    "Packaged scanner first-launch probes must not contend on slower Intel runners.",
+  );
 });
 
-test("relative Python launchers are confined to runtime-tools and reject build-machine paths", () => {
+test("relative Python launchers are confined to runtime-tools and reject build-machine paths", async () => {
   for (const platform of ["darwin", "linux"]) {
     for (const tool of ["semgrep", "bandit", "pip-audit"]) {
       const content = relativePythonLauncherContent(tool, platform);
       assert.match(content, / -I -B -m /u);
+      if (tool === "semgrep") {
+        assert.match(
+          content,
+          /export SSL_CERT_FILE="\$SELF_DIR\/\.\.\/python-runtime\/lib\/python3\.12\/site-packages\/certifi\/cacert\.pem"/u,
+        );
+        assert.doesNotMatch(content, /--legacy/u);
+      } else {
+        assert.doesNotMatch(content, /SSL_CERT_FILE/u);
+      }
       assert.match(content, /export PYTHONDONTWRITEBYTECODE=1/u);
+      assert.match(content, /SELF_DIR=\$\{0%\/\*\}/u);
+      assert.doesNotMatch(content, /\bdirname\b/u);
       assert.doesNotThrow(() => assertRelativePythonLauncher(content, { tool, platform }));
+      assert.throws(() => assertRelativePythonLauncher(content.replace("SELF_DIR=${0%/*}", "SELF_DIR=$(dirname -- \"$0\")"), { tool, platform }));
       assert.throws(() => assertRelativePythonLauncher(`${content}\nC:\\build\\python.exe`, { tool, platform }));
     }
   }
   assert.throws(() => relativePythonLauncherContent("semgrep", "win32"));
   assert.throws(() => assertPortablePythonTarget("linux", "arm64"));
+
+  const layoutSource = await fs.readFile(
+    path.join(desktopRoot, "scripts", "runtime-python-layout.mjs"),
+    "utf8",
+  );
+  assert.match(layoutSource, /PATH:\s*path\.join\(runtime\.toolsRoot,\s*"bin"\)/u);
+  assert.match(layoutSource, /SEMGREP_ENABLE_VERSION_CHECK:\s*"0"/u);
+  assert.match(layoutSource, /hermsec\.runtime-smoke\.eval/u);
+  assert.match(layoutSource, /\["scan", "--config", rulesPath, "--json", "--metrics", "off", "--output"/u);
 });
 
 test("Windows scanner launcher verification rejects non-native and build-path-bearing shims", () => {
@@ -293,6 +384,10 @@ test("runtime anchor binds the full staged tree and CLI without wall-clock metad
     path.join(desktopRoot, "scripts/prepare-bundled-integrity-anchor.mjs"),
     "utf8",
   );
+  const darwinHelperBuildSource = await fs.readFile(
+    path.join(repoRoot, "scripts/build-darwin-fd-link-state.mjs"),
+    "utf8",
+  );
   assert.match(stagingSource, /createRuntimeManifest\(\{/u);
   assert.doesNotMatch(stagingSource, /new Date\(\)\.toISOString\(\)/u);
   assert.match(integritySource, /schemaVersion:\s*"4\.0"/u);
@@ -302,6 +397,10 @@ test("runtime anchor binds the full staged tree and CLI without wall-clock metad
   assert.match(runtimeSource, /createVerifiedBundleExecutionLease/u);
   assert.match(anchorSource, /createBundledResourceIntegrityAnchor/u);
   assert.match(anchorSource, /Generated during packaging/u);
+  assert.match(
+    darwinHelperBuildSource,
+    /-mmacosx-version-min=12\.0/u,
+  );
   assert.match(await fs.readFile(path.join(desktopRoot, "package.json"), "utf8"), /prepare:integrity-anchor/u);
 });
 
@@ -345,6 +444,18 @@ test("execution lease survives resource swaps and fails closed when its own snap
   let lease: ReturnType<typeof createVerifiedBundleExecutionLease> | undefined;
   try {
     const fixture = await writeBundledResourceFixture(resourcesRoot);
+    const danglingRuntimeLink = path.join(
+      resourcesRoot,
+      "runtime-tools",
+      `${process.platform}-${process.arch}`,
+      "python-runtime",
+      "bin",
+      "2to3",
+    );
+    if (process.platform !== "win32") {
+      await fs.mkdir(path.dirname(danglingRuntimeLink), { recursive: true });
+      await fs.symlink("2to3-3.12", danglingRuntimeLink);
+    }
     const anchor = createBundledResourceIntegrityAnchor({
       resourcesRoot,
       platform: process.platform,
@@ -353,6 +464,29 @@ test("execution lease survives resource swaps and fails closed when its own snap
     lease = createVerifiedBundleExecutionLease({ resourcesRoot, leaseParent, anchor });
     const leasedCli = await fs.readFile(lease.cliEntryPath, "utf8");
     assert.equal(leasedCli, "export const safe = true;");
+    if (process.platform !== "win32") {
+      assert.equal(
+        await fs.readlink(path.join(
+          lease.toolsRoot,
+          "python-runtime",
+          "bin",
+          "2to3",
+        )),
+        "2to3-3.12",
+      );
+      const leasedDarwinHelper = path.join(
+        lease.cliRoot,
+        "dist",
+        "src",
+        "research",
+        "native",
+        "hermsec-darwin-fd-link-state",
+      );
+      assert.notEqual(
+        (await fs.stat(leasedDarwinHelper)).mode & 0o111,
+        0,
+      );
+    }
 
     await fs.rename(fixture.cliEntry, `${fixture.cliEntry}.original`);
     await fs.writeFile(fixture.cliEntry, "export const swapped = true;", "utf8");
@@ -414,14 +548,17 @@ test("portable runtime smoke clears system Python state and checks an actual sta
   assert.doesNotThrow(() => assertPortablePythonRuntime({ toolsRoot: stagedToolsRoot }));
   assert.doesNotThrow(() => assertRuntimeProvenance(stagedToolsRoot));
 
-  const relocatedToolsRoot = path.join(desktopRoot, ".tmp-packaging-relocated-runtime");
+  const relocatedParent = await fs.mkdtemp(
+    path.join(desktopRoot, ".tmp-packaging-relocated-"),
+  );
+  const relocatedToolsRoot = path.join(relocatedParent, "runtime-tools");
   try {
     assert.doesNotThrow(() => smokeRelocatedPortableRuntimeTree({
       toolsRoot: stagedToolsRoot,
       relocationPath: relocatedToolsRoot,
     }));
   } finally {
-    await fs.rm(relocatedToolsRoot, { recursive: true, force: true });
+    await fs.rm(relocatedParent, { recursive: true, force: true });
   }
 });
 
@@ -454,6 +591,7 @@ test("release workflows pin actions, use exact uv, verify tags, and block on pac
     assert.match(source, /smoke-packaged-runtime\.mjs/u);
     assert.match(source, /npm --prefix desktop test/u);
     assert.match(source, /unsigned development build/u);
+    assert.match(source, /startsWith\(github\.event_name.*inputs\.tag_name.*'v'\)/u);
     if (workflow === "windows-release.yml") {
       assert.match(source, /ilammy\/msvc-dev-cmd@[a-f0-9]{40}/u);
       assert.match(source, /Hermsec-Portable-Windows-x64\.exe/u);
@@ -464,6 +602,10 @@ test("release workflows pin actions, use exact uv, verify tags, and block on pac
     if (workflow === "macos-release.yml") {
       assert.match(source, /linux-runtime-gate/u);
       assert.match(source, /safedep\/pmg@[a-f0-9]{40}/u);
+      assert.match(source, /linux-unpacked\/hermsec-v3/u);
+      assert.match(source, /xvfb-run --auto-servernum/u);
+      assert.match(source, /lipo "\$\{helper\}" -verify_arch arm64 x86_64/u);
+      assert.match(source, /vtool -show-build/u);
       assert.match(source, /hdiutil attach/u);
       assert.match(source, /Smoke released DMG artifact/u);
     }
@@ -478,15 +620,26 @@ async function writeBundledResourceFixture(resourcesRoot: string): Promise<{
   manifest: string;
 }> {
   const cliEntry = path.join(resourcesRoot, "hermsec-cli", "dist", "src", "bin", "hermsec.js");
+  const darwinHelper = path.join(
+    resourcesRoot,
+    "hermsec-cli",
+    "dist",
+    "src",
+    "research",
+    "native",
+    "hermsec-darwin-fd-link-state",
+  );
   const runtimeRoot = path.join(resourcesRoot, "runtime-tools", `${process.platform}-${process.arch}`);
   const manifest = path.join(runtimeRoot, "manifest.json");
   await Promise.all([
     fs.mkdir(path.dirname(cliEntry), { recursive: true }),
+    fs.mkdir(path.dirname(darwinHelper), { recursive: true }),
     fs.mkdir(path.join(runtimeRoot, "bin"), { recursive: true }),
     fs.mkdir(path.join(runtimeRoot, "python-runtime"), { recursive: true }),
   ]);
   await Promise.all([
     fs.writeFile(cliEntry, "export const safe = true;", "utf8"),
+    fs.writeFile(darwinHelper, "#!/bin/sh\nexit 0\n", "utf8"),
     fs.writeFile(manifest, "{\"schemaVersion\":\"4.0\"}", "utf8"),
     fs.writeFile(path.join(runtimeRoot, "bin", process.platform === "win32" ? "semgrep.exe" : "semgrep"), "scanner", "utf8"),
     fs.writeFile(path.join(runtimeRoot, "python-runtime", process.platform === "win32" ? "python.exe" : "python3"), "python", "utf8"),

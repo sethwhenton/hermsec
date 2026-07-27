@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { spawn } from "node:child_process";
 import {
   constants as fsConstants,
   type BigIntStats,
@@ -6,6 +7,7 @@ import {
 import fs, { type FileHandle } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ValidatedFixtureLayout } from "../eval/fixtureLayout.js";
 import { canonicalJson } from "./integrity.js";
 import {
@@ -200,6 +202,11 @@ export async function removeSubjectSnapshotWorkspace(
       tombstonePath: string,
       cleanupRoot: string,
     ) => void | Promise<void>;
+    afterFinalTombstoneInspection?: (
+      relativePath: string,
+      finalTombstonePath: string,
+      cleanupRoot: string,
+    ) => void | Promise<void>;
     afterRootInspection?: (
       cleanupRoot: string,
       phase: "quarantined" | "before-remove",
@@ -302,6 +309,11 @@ async function removeCapturedTree(
     afterTombstoneInspection?: (
       relativePath: string,
       tombstonePath: string,
+      cleanupRoot: string,
+    ) => void | Promise<void>;
+    afterFinalTombstoneInspection?: (
+      relativePath: string,
+      finalTombstonePath: string,
       cleanupRoot: string,
     ) => void | Promise<void>;
     afterRootInspection?: (
@@ -443,6 +455,12 @@ async function removeCapturedTree(
               deletionTombstone,
               root,
             ),
+          (finalTombstone) =>
+            options.afterFinalTombstoneInspection?.(
+              entry.path,
+              finalTombstone,
+              root,
+            ),
         );
       } finally {
         await entryHandle.close();
@@ -456,6 +474,12 @@ async function removeCapturedTree(
       expectedRoot,
       rootHandle,
       () => options.afterRootInspection?.(root, "before-remove"),
+      (finalTombstone) =>
+        options.afterFinalTombstoneInspection?.(
+          ".",
+          finalTombstone,
+          root,
+        ),
     );
   } finally {
     await rootHandle?.close();
@@ -636,6 +660,9 @@ async function removeWitnessedEntry(
   expected: StableTreeIdentity,
   witness: FileHandle,
   afterDeleteWitnessOpened?: () => void | Promise<void>,
+  afterFinalIdentityCheck?: (
+    finalTombstone: string,
+  ) => void | Promise<void>,
 ): Promise<void> {
   const before = await witness.stat({ bigint: true });
   const identity = statIdentity(before);
@@ -649,17 +676,46 @@ async function removeWitnessedEntry(
   );
   try {
     await afterDeleteWitnessOpened?.();
+    await assertWitnessAtPath(absolutePath, deleteHandle, expected);
+    const finalTombstone = path.join(
+      path.dirname(absolutePath),
+      `.${WORKSPACE_PREFIX}final-${randomUUID()}`,
+    );
+    assertDirectChild(path.dirname(absolutePath), finalTombstone);
+    await assertPathAbsent(finalTombstone);
+    await fs.rename(absolutePath, finalTombstone);
+    await assertPathAbsent(absolutePath);
+    await assertWitnessAtPath(finalTombstone, deleteHandle, expected);
+    await afterFinalIdentityCheck?.(finalTombstone);
+    const beforeRemoval = await witness.stat({ bigint: true });
+    // Recheck the sealed entry after the final callback. In particular, a file
+    // must still have exactly one link: otherwise an attacker could park the
+    // inode, hard-link it back at the tombstone, let us unlink only that alias,
+    // and make cleanup report success while the sealed bytes remain.
+    assertCleanupStat(beforeRemoval, expected);
     try {
       if (expected.kind === "file") {
-        await fs.unlink(absolutePath);
+        await fs.unlink(finalTombstone);
       } else {
-        await fs.rmdir(absolutePath);
+        await fs.rmdir(finalTombstone);
       }
     } catch (error) {
       if (
         expected.kind === "directory" &&
         isNodeError(error, "ENOTEMPTY", "EEXIST")
       ) {
+        await assertPathAbsent(absolutePath);
+        await assertWitnessAtPath(
+          finalTombstone,
+          deleteHandle,
+          expected,
+        );
+        await fs.rename(finalTombstone, absolutePath);
+        await assertWitnessAtPath(
+          absolutePath,
+          deleteHandle,
+          expected,
+        );
         throw new Error(
           `Research cleanup directory contains unexpected entries: ${expected.path}`,
           { cause: error },
@@ -672,25 +728,98 @@ async function removeWitnessedEntry(
     const afterDeleteHandle = await deleteHandle.stat({
       bigint: true,
     });
-    // Linux reports zero links for an open, removed directory, while APFS
-    // keeps one descriptor-only link until the handle closes. In both cases
-    // removal decreases the witnessed object's link count. A path swap removes
-    // only the replacement and leaves the sealed object's count unchanged.
+    const linkCountProvesRemoval =
+      afterWitness.nlink < beforeRemoval.nlink;
+    const darwinNamespaceProvesRemoval =
+      expected.kind === "directory" &&
+      process.platform === "darwin" &&
+      afterWitness.nlink === beforeRemoval.nlink &&
+      (await probeDarwinDirectoryLinkState(deleteHandle)) ===
+        "unlinked";
     if (
-      objectIdentity(afterWitness) !== objectIdentity(before) ||
-      objectIdentity(afterDeleteHandle) !== objectIdentity(before) ||
+      objectIdentity(afterWitness) !== objectIdentity(beforeRemoval) ||
+      objectIdentity(afterDeleteHandle) !== objectIdentity(beforeRemoval) ||
       afterWitness.nlink !== afterDeleteHandle.nlink ||
-      afterWitness.nlink >= before.nlink ||
-      afterDeleteHandle.nlink >= before.nlink
+      (!linkCountProvesRemoval && !darwinNamespaceProvesRemoval)
     ) {
       throw new Error(
         `Research cleanup removed a replacement instead of the sealed entry: ${expected.path}`,
       );
     }
     await assertPathAbsent(absolutePath);
+    await assertPathAbsent(finalTombstone);
   } finally {
     await deleteHandle.close();
   }
+}
+
+export async function probeDarwinDirectoryLinkState(
+  handle: FileHandle,
+): Promise<"linked" | "unlinked"> {
+  if (process.platform !== "darwin") {
+    throw new Error(
+      "The Darwin directory link-state verifier is unavailable on this platform.",
+    );
+  }
+  const helper = fileURLToPath(
+    new URL(
+      "./native/hermsec-darwin-fd-link-state",
+      import.meta.url,
+    ),
+  );
+  return new Promise((resolve, reject) => {
+    const child = spawn(helper, [], {
+      env: {},
+      shell: false,
+      windowsHide: true,
+      stdio: ["ignore", "pipe", "pipe", handle.fd],
+    });
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      child.kill();
+      reject(
+        new Error(
+          "Darwin cleanup link-state verification timed out.",
+        ),
+      );
+    }, 5_000);
+    child.stdout!.on("data", (chunk) => {
+      stdout = `${stdout}${String(chunk)}`.slice(-1_024);
+    });
+    child.stderr!.on("data", (chunk) => {
+      stderr = `${stderr}${String(chunk)}`.slice(-1_024);
+    });
+    child.on("error", (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.on("close", (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      const state = stdout.trim();
+      if (
+        code !== 0 ||
+        (state !== "linked" && state !== "unlinked")
+      ) {
+        reject(
+          new Error(
+            `Darwin cleanup link-state verification failed: ${
+              stderr.trim() || `unexpected helper result ${state || "<empty>"}`
+            }`,
+          ),
+        );
+        return;
+      }
+      resolve(state);
+    });
+  });
 }
 
 function assertCleanupStat(

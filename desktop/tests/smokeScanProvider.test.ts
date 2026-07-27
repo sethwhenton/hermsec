@@ -19,6 +19,7 @@ import {
   createSmokeChildEnvironment,
   createSmokeDesktopSettings,
   createUniqueSmokeReportRoot,
+  isProcessGroupRunning,
   processTreeTerminationPlan,
   readBoundedSmokeRequestBody,
   spawnSmokeProcessInContainment,
@@ -619,6 +620,23 @@ test("process-tree termination plans use Job ownership on Windows and process gr
       { platform: "win32" },
     ),
     /must be created inside a Job Object before they resume/u,
+  );
+});
+
+test("process-group liveness retries permission-denied probes and stops on missing groups", () => {
+  const permissionDenied = Object.assign(new Error("permission denied"), { code: "EPERM" });
+  const missing = Object.assign(new Error("missing"), { code: "ESRCH" });
+  assert.equal(isProcessGroupRunning(-1234, () => {
+    throw permissionDenied;
+  }), true);
+  assert.equal(isProcessGroupRunning(-1234, () => {
+    throw missing;
+  }), false);
+  assert.throws(
+    () => isProcessGroupRunning(-1234, () => {
+      throw new Error("unexpected");
+    }),
+    /unexpected/u,
   );
 });
 

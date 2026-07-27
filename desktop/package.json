@@ -1,6 +1,6 @@
 {
   "name": "hermsec-v3",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "Hermsec desktop security scanning workspace",
   "author": "Hermsec",
   "private": true,
@@ -80,6 +80,7 @@
     },
     "mac": {
       "icon": "resources/icon.icns",
+      "minimumSystemVersion": "12.0.0",
       "target": [
         "dmg",
         "zip"
