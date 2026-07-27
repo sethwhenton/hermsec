@@ -32,7 +32,10 @@ const CLI_RELATIVE_PATH = path.join("dist", "src", "bin", "hermsec.js");
 const MAX_OUTPUT_CHARS = 2_000_000;
 const CONNECTIVITY_TIMEOUT_MS = 7_000;
 const DOCTOR_CLI_TIMEOUT_MS = 20_000;
-const BUNDLED_SCANNER_PROBE_TIMEOUT_MS = 8_000;
+// First launch can trigger OS malware/notarization scans for every freshly
+// materialized executable in the verified lease. Keep the probe bounded, but
+// allow cold Windows and macOS machines enough time to return real versions.
+const BUNDLED_SCANNER_PROBE_TIMEOUT_MS = 30_000;
 
 type DoctorCliOutcome = {
   ok?: boolean;

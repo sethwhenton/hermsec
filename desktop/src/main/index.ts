@@ -9,6 +9,7 @@ import { defaultProjectDir, findHermsecRoot, scanProject } from "./scan";
 import { runDoctor } from "./doctor";
 import { createPackagedDoctorSmokeResult } from "./doctorSmokeResult";
 import { configureBundledRuntime } from "./runtimeBundle";
+import { safeDiagnosticText } from "./safeDiagnostics";
 import type { ScanProgressEvent } from "../renderer/src/types/scan";
 
 const mainDir = import.meta.dirname;
@@ -224,9 +225,11 @@ async function runDoctorSmoke(): Promise<void> {
       JSON.stringify(
         {
           kind: "hermsec-doctor-smoke-failure",
-          error: error instanceof Error ? error.message : String(error),
+          error: safeDiagnosticText(
+            error instanceof Error ? error.message : String(error),
+          ),
           runtimeReady: result.runtimeReady,
-          message: result.message,
+          message: safeDiagnosticText(result.message),
           status: result.status,
           failingChecks: result.checks
             .filter(
@@ -237,7 +240,7 @@ async function runDoctorSmoke(): Promise<void> {
             .map((check) => ({
               id: check.id,
               label: check.label,
-              message: check.message,
+              message: safeDiagnosticText(check.message),
             })),
         },
         null,

@@ -115,7 +115,16 @@ export function relativePythonLauncherContent(tool, platform = process.platform)
       "#!/bin/sh",
       "set -eu",
       "export PYTHONDONTWRITEBYTECODE=1",
-      "SELF_DIR=$(CDPATH= cd -- \"$(dirname -- \"$0\")\" && pwd)",
+      "case \"$0\" in",
+      "  */*)",
+      "    SELF_DIR=${0%/*}",
+      "    case \"$SELF_DIR\" in",
+      "      \"\") SELF_DIR=/ ;;",
+      "    esac",
+      "    ;;",
+      "  *) SELF_DIR=. ;;",
+      "esac",
+      "SELF_DIR=$(CDPATH= cd -- \"$SELF_DIR\" && pwd)",
       `exec \"$SELF_DIR/../python-runtime/bin/python3\" -I -B -m ${moduleName} \"$@\"`,
     ].join("\n") + "\n";
   }
@@ -163,6 +172,13 @@ export function assertRelativePythonLauncher(content, input) {
   }
   if (normalized.includes("/Users/") || normalized.includes("/home/") || normalized.includes("\\\\")) {
     throw new Error(`${tool} launcher contains a build-machine path.`);
+  }
+  if (
+    normalized.includes("dirname")
+    || !normalized.includes("SELF_DIR=${0%/*}")
+    || !normalized.includes("SELF_DIR=$(CDPATH= cd -- \"$SELF_DIR\" && pwd)")
+  ) {
+    throw new Error(`${tool} ${platform} launcher depends on host path-resolution tools.`);
   }
 
   const expected = `exec \"$SELF_DIR/../python-runtime/bin/python3\" -I -B -m ${moduleName} \"$@\"`;

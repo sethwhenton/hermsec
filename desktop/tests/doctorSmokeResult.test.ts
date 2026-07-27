@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createPackagedDoctorSmokeResult } from "../src/main/doctorSmokeResult.ts";
+import { safeDiagnosticText } from "../src/main/safeDiagnostics.ts";
 
 function resultWith(
   requiredStatus: string,
@@ -66,5 +67,16 @@ test("packaged Doctor smoke rejects bundled scanner failures", () => {
   assert.throws(
     () => createPackagedDoctorSmokeResult(resultWith("pass", "fail")),
     /Scanner checks are not ready/u,
+  );
+});
+
+test("packaged Doctor diagnostics redact secrets and bound public log text", () => {
+  assert.equal(
+    safeDiagnosticText("scanner api_key=example-secret-value-123456"),
+    "scanner api_key=[REDACTED]",
+  );
+  assert.equal(
+    safeDiagnosticText(`prefix-${"x".repeat(40)}`, 16),
+    `[truncated]\n${"x".repeat(16)}`,
   );
 });

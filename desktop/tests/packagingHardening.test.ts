@@ -11,6 +11,7 @@ import {
   formatPackagedProcessFailure,
   parseDoctorSmokeResultArtifact,
   parseDoctorSmokeOutput,
+  safePackagedDiagnosticText,
 } from "../scripts/smoke-packaged-runtime.mjs";
 import {
   assertPortablePythonTarget,
@@ -208,10 +209,14 @@ test("packaged smoke clears Node escape hatches and validates required scanner g
   );
   assert.equal(
     formatPackagedProcessFailure({
-      stderr: "sandbox warning\n",
-      stdout: "{\"ok\":false}\n",
+      stderr: "sandbox warning sk-example-secret-token-123456\n",
+      stdout: "{\"ok\":false,\"api_key\":\"example-secret-value-123456\"}\n",
     }),
-    "stderr:\nsandbox warning\nstdout:\n{\"ok\":false}",
+    "stderr:\nsandbox warning [REDACTED_SECRET]\nstdout:\n{\"ok\":false,\"api_key\":\"[REDACTED]\"}",
+  );
+  assert.equal(
+    safePackagedDiagnosticText(`prefix-${"x".repeat(40)}`, 16),
+    `[truncated]\n${"x".repeat(16)}`,
   );
 
   const smokeSource = await fs.readFile(path.join(desktopRoot, "scripts/smoke-packaged-runtime.mjs"), "utf8");
@@ -230,6 +235,7 @@ test("packaged smoke clears Node escape hatches and validates required scanner g
   assert.match(doctorSource, /createVerifiedBundledRuntimeExecutionLease/u);
   assert.match(doctorSource, /probeBundledScanner/u);
   assert.match(doctorSource, /BUNDLED_SCANNER_PROBE_TIMEOUT_MS/u);
+  assert.match(doctorSource, /BUNDLED_SCANNER_PROBE_TIMEOUT_MS\s*=\s*30_000/u);
   assert.match(doctorSource, /returned no version output/u);
 });
 
@@ -239,7 +245,10 @@ test("relative Python launchers are confined to runtime-tools and reject build-m
       const content = relativePythonLauncherContent(tool, platform);
       assert.match(content, / -I -B -m /u);
       assert.match(content, /export PYTHONDONTWRITEBYTECODE=1/u);
+      assert.match(content, /SELF_DIR=\$\{0%\/\*\}/u);
+      assert.doesNotMatch(content, /\bdirname\b/u);
       assert.doesNotThrow(() => assertRelativePythonLauncher(content, { tool, platform }));
+      assert.throws(() => assertRelativePythonLauncher(content.replace("SELF_DIR=${0%/*}", "SELF_DIR=$(dirname -- \"$0\")"), { tool, platform }));
       assert.throws(() => assertRelativePythonLauncher(`${content}\nC:\\build\\python.exe`, { tool, platform }));
     }
   }
