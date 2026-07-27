@@ -19,6 +19,7 @@
     "smoke:doctor": "node scripts/smoke-doctor.mjs",
     "smoke:dashboard": "node scripts/smoke-dashboard.mjs",
     "smoke:ui": "node scripts/smoke-ui.mjs",
+    "smoke:conversation": "node scripts/smoke-conversation.mjs",
     "smoke:scan-modes": "node scripts/smoke-scan-modes.mjs",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "dist:win": "npm run build:packaged && electron-builder --win nsis portable --x64 --publish never",

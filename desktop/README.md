@@ -92,6 +92,7 @@ npm run typecheck
 npm run build
 npm run smoke:doctor
 npm run smoke:dashboard
+npm run smoke:conversation
 ```
 
 The latest verified packaged Doctor smoke reports status `ready`, health score `100`, required `7/7`, scanners `6/6`, internet `5/5`, and providers `1/1`.

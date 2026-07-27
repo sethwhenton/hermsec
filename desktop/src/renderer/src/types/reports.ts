@@ -33,6 +33,18 @@ export interface ConverseReportResult {
   reportPath?: string;
   usedModel?: boolean;
   modelId?: string;
+  modelStatus?:
+    | "success"
+    | "not-configured"
+    | "rate-limited"
+    | "authentication-failed"
+    | "provider-unavailable"
+    | "request-failed"
+    | "empty-response"
+    | "invalid-response"
+    | "timeout"
+    | "canceled"
+    | "transport-error";
   error?: string;
 }
 

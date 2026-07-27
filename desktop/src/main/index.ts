@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSyn
 import { dirname, join, resolve } from "node:path";
 import { loadEnvFile } from "./env";
 import { registerIpcHandlers } from "./ipc";
+import { runConversationSmoke } from "./conversationSmoke";
 import { dashboardBundle } from "./reportArtifacts";
 import { defaultProjectDir, findHermsecRoot, scanProject } from "./scan";
 import { runDoctor } from "./doctor";
@@ -17,6 +18,7 @@ const dashboardSmokeMode = isDashboardSmokeMode();
 const doctorSmokeMode = isDoctorSmokeMode();
 const scanModesSmokeMode = isScanModesSmokeMode();
 const uiSmokeMode = isUiSmokeMode();
+const conversationSmokeMode = isConversationSmokeMode();
 
 configureGraphicsMode();
 configureAppPaths();
@@ -73,6 +75,19 @@ function createWindow(): BrowserWindow {
 
 app.whenReady().then(async () => {
   loadEnvFile();
+  if (conversationSmokeMode) {
+    try {
+      registerIpcHandlers();
+      const window = createWindow();
+      const result = await runConversationSmoke(window);
+      await writeStdout(`${JSON.stringify(result, null, 2)}\n`);
+      app.quit();
+    } catch (error) {
+      console.error(error);
+      app.exit(1);
+    }
+    return;
+  }
   if (uiSmokeMode) {
     try {
       registerIpcHandlers();
@@ -126,7 +141,13 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => {
-  if (dashboardSmokeMode || doctorSmokeMode || scanModesSmokeMode || uiSmokeMode) {
+  if (
+    dashboardSmokeMode ||
+    doctorSmokeMode ||
+    scanModesSmokeMode ||
+    uiSmokeMode ||
+    conversationSmokeMode
+  ) {
     return;
   }
   if (process.platform !== "darwin") {
@@ -656,7 +677,14 @@ function configureAppPaths(): void {
 }
 
 function configureGraphicsMode(): void {
-  if (!dashboardSmokeMode && !doctorSmokeMode && !scanModesSmokeMode && !uiSmokeMode && process.env.HERMSEC_DISABLE_GPU !== "true") {
+  if (
+    !dashboardSmokeMode &&
+    !doctorSmokeMode &&
+    !scanModesSmokeMode &&
+    !uiSmokeMode &&
+    !conversationSmokeMode &&
+    process.env.HERMSEC_DISABLE_GPU !== "true"
+  ) {
     return;
   }
 
@@ -695,4 +723,11 @@ function isScanModesSmokeMode(): boolean {
 
 function isUiSmokeMode(): boolean {
   return process.env.HERMSEC_SMOKE_UI === "true" || process.argv.includes("--smoke-ui");
+}
+
+function isConversationSmokeMode(): boolean {
+  return (
+    process.env.HERMSEC_SMOKE_CONVERSATION === "true" ||
+    process.argv.includes("--smoke-conversation")
+  );
 }

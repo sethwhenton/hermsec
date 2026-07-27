@@ -820,16 +820,11 @@ async function answerSecurityQuestion(
       reportPath: latestReportPath,
       projectPath,
       question: text,
-      history: buildConversationHistory(chatItems),
+      history: buildConversationHistory(chatItems, text),
     });
-    return [
-      "No model is configured. HermSec is currently in offline mode.",
-      "Set up a provider in Settings > Providers, then enable the models you want in Settings > Models.",
-      "",
-      fallback.ok
-        ? fallback.message
-        : offlineRuleBasedAnswer(text, Boolean(latestReportPath), projectPath),
-    ].join("\n");
+    return fallback.ok
+      ? fallback.message
+      : offlineRuleBasedAnswer(text, Boolean(latestReportPath), projectPath);
   }
 
   if (wantsFixPrompt(lower) || promptFollowUp) {
@@ -871,7 +866,7 @@ async function answerSecurityQuestion(
     reportPath: latestReportPath,
     projectPath,
     question: text,
-    history: buildConversationHistory(chatItems),
+    history: buildConversationHistory(chatItems, text),
   });
   return result.ok
     ? result.message
@@ -1038,14 +1033,29 @@ function thinkingLabel(level: string | undefined): string {
   return "Balanced";
 }
 
-function buildConversationHistory(chatItems: ChatItem[]) {
-  return chatItems
+function buildConversationHistory(chatItems: ChatItem[], currentQuestion?: string) {
+  const history = chatItems
     .filter((item): item is Extract<ChatItem, { kind: "message" }> => item.kind === "message")
-    .slice(-10)
     .map((item) => ({
       role: item.message.role,
       content: item.message.content,
     }));
+  const last = history.at(-1);
+  if (
+    currentQuestion &&
+    last?.role === "user" &&
+    normalizeConversationText(last.content) ===
+      normalizeConversationText(currentQuestion)
+  ) {
+    history.pop();
+  }
+  // Keep enough local history for deterministic fallback pagination. The main
+  // process applies the configured, much smaller model-context limit.
+  return history.slice(-100);
+}
+
+function normalizeConversationText(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
 function findLatestFixPrompt(chatItems: ChatItem[]): string | undefined {
