@@ -548,14 +548,17 @@ test("portable runtime smoke clears system Python state and checks an actual sta
   assert.doesNotThrow(() => assertPortablePythonRuntime({ toolsRoot: stagedToolsRoot }));
   assert.doesNotThrow(() => assertRuntimeProvenance(stagedToolsRoot));
 
-  const relocatedToolsRoot = path.join(desktopRoot, ".tmp-packaging-relocated-runtime");
+  const relocatedParent = await fs.mkdtemp(
+    path.join(desktopRoot, ".tmp-packaging-relocated-"),
+  );
+  const relocatedToolsRoot = path.join(relocatedParent, "runtime-tools");
   try {
     assert.doesNotThrow(() => smokeRelocatedPortableRuntimeTree({
       toolsRoot: stagedToolsRoot,
       relocationPath: relocatedToolsRoot,
     }));
   } finally {
-    await fs.rm(relocatedToolsRoot, { recursive: true, force: true });
+    await fs.rm(relocatedParent, { recursive: true, force: true });
   }
 });
 
