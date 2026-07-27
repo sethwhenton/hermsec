@@ -114,13 +114,12 @@ export function pythonLauncherPath(toolsRoot, tool, platform = process.platform)
 export function relativePythonLauncherContent(tool, platform = process.platform) {
   const moduleName = pythonModuleName(tool);
   if (platform === "darwin" || platform === "linux") {
-    // The pinned Semgrep console entry point defaults to its native OCaml
-    // frontend, which initializes the host certificate store even for
-    // `--version`. That frontend shells out to host utilities on macOS, while
-    // packaged scans intentionally expose only verified runtime-tools on PATH.
-    // Semgrep 1.167.0's supported escape hatch enters pysemgrep directly and
-    // keeps the launcher self-contained inside the verified runtime lease.
-    const moduleArguments = tool === "semgrep" ? " --legacy" : "";
+    // Semgrep's native frontend initializes a CA store even for `--version`.
+    // Point it at Certifi inside the verified runtime so it never shells out to
+    // macOS `uname` / `security` while PATH remains lease-only.
+    const scannerEnvironment = tool === "semgrep"
+      ? ["export SSL_CERT_FILE=\"$SELF_DIR/../python-runtime/lib/python3.12/site-packages/certifi/cacert.pem\""]
+      : [];
     return [
       "#!/bin/sh",
       "set -eu",
@@ -135,7 +134,8 @@ export function relativePythonLauncherContent(tool, platform = process.platform)
       "  *) SELF_DIR=. ;;",
       "esac",
       "SELF_DIR=$(CDPATH= cd -- \"$SELF_DIR\" && pwd)",
-      `exec \"$SELF_DIR/../python-runtime/bin/python3\" -I -B -m ${moduleName}${moduleArguments} \"$@\"`,
+      ...scannerEnvironment,
+      `exec \"$SELF_DIR/../python-runtime/bin/python3\" -I -B -m ${moduleName} \"$@\"`,
     ].join("\n") + "\n";
   }
   throw new Error(`No relative Python launcher format is configured for ${platform}.`);
@@ -191,10 +191,17 @@ export function assertRelativePythonLauncher(content, input) {
     throw new Error(`${tool} ${platform} launcher depends on host path-resolution tools.`);
   }
 
-  const moduleArguments = tool === "semgrep" ? " --legacy" : "";
-  const expected = `exec \"$SELF_DIR/../python-runtime/bin/python3\" -I -B -m ${moduleName}${moduleArguments} \"$@\"`;
+  const expected = `exec \"$SELF_DIR/../python-runtime/bin/python3\" -I -B -m ${moduleName} \"$@\"`;
   if (!normalized.includes(expected)) {
     throw new Error(`${tool} ${platform} launcher is not a relative embedded-Python wrapper.`);
+  }
+  const bundledCertifi =
+    "export SSL_CERT_FILE=\"$SELF_DIR/../python-runtime/lib/python3.12/site-packages/certifi/cacert.pem\"";
+  if (
+    (tool === "semgrep" && !normalized.includes(bundledCertifi))
+    || (tool !== "semgrep" && normalized.includes("SSL_CERT_FILE"))
+  ) {
+    throw new Error(`${tool} ${platform} launcher has an invalid bundled certificate configuration.`);
   }
 }
 

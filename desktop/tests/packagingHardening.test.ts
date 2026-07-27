@@ -251,9 +251,13 @@ test("relative Python launchers are confined to runtime-tools and reject build-m
       const content = relativePythonLauncherContent(tool, platform);
       assert.match(content, / -I -B -m /u);
       if (tool === "semgrep") {
-        assert.match(content, /semgrep\.console_scripts\.entrypoint --legacy "\$@"/u);
-      } else {
+        assert.match(
+          content,
+          /export SSL_CERT_FILE="\$SELF_DIR\/\.\.\/python-runtime\/lib\/python3\.12\/site-packages\/certifi\/cacert\.pem"/u,
+        );
         assert.doesNotMatch(content, /--legacy/u);
+      } else {
+        assert.doesNotMatch(content, /SSL_CERT_FILE/u);
       }
       assert.match(content, /export PYTHONDONTWRITEBYTECODE=1/u);
       assert.match(content, /SELF_DIR=\$\{0%\/\*\}/u);
