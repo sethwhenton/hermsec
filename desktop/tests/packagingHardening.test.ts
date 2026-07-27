@@ -238,6 +238,11 @@ test("packaged smoke clears Node escape hatches and validates required scanner g
   assert.match(doctorSource, /BUNDLED_SCANNER_PROBE_TIMEOUT_MS\s*=\s*30_000/u);
   assert.match(doctorSource, /returned no version output/u);
   assert.match(doctorSource, /for \(const \[command, label, versionArgs\] of BUNDLED_SCANNERS\)/u);
+  assert.match(doctorSource, /detached:\s*process\.platform !== "win32"/u);
+  assert.match(doctorSource, /terminateBundledScannerProbe\(child, false\)/u);
+  assert.match(doctorSource, /terminateBundledScannerProbe\(child, true\)/u);
+  assert.match(doctorSource, /process\.kill\(-child\.pid,\s*force \? "SIGKILL" : "SIGTERM"\)/u);
+  assert.match(doctorSource, /taskkill\.exe/u);
   assert.doesNotMatch(
     doctorSource,
     /Promise\.all\(BUNDLED_SCANNERS\.map/u,
@@ -275,6 +280,7 @@ test("relative Python launchers are confined to runtime-tools and reject build-m
     "utf8",
   );
   assert.match(layoutSource, /PATH:\s*path\.join\(runtime\.toolsRoot,\s*"bin"\)/u);
+  assert.match(layoutSource, /SEMGREP_ENABLE_VERSION_CHECK:\s*"0"/u);
   assert.match(layoutSource, /hermsec\.runtime-smoke\.eval/u);
   assert.match(layoutSource, /\["scan", "--config", rulesPath, "--json", "--metrics", "off", "--output"/u);
 });

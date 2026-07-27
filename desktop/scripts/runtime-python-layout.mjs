@@ -245,6 +245,7 @@ export function smokePortableRuntimeTree(input) {
   const scannerEnv = {
     ...env,
     PATH: path.join(runtime.toolsRoot, "bin"),
+    SEMGREP_ENABLE_VERSION_CHECK: "0",
     ...(platform === "win32" ? { PATHEXT: ".EXE" } : {}),
   };
   const probe = run(runtime.python, ["-I", "-B", "-c", "import sys; print(sys.executable); print(sys.prefix)"], { env });
