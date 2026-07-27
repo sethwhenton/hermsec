@@ -406,6 +406,18 @@ test("execution lease survives resource swaps and fails closed when its own snap
   let lease: ReturnType<typeof createVerifiedBundleExecutionLease> | undefined;
   try {
     const fixture = await writeBundledResourceFixture(resourcesRoot);
+    const danglingRuntimeLink = path.join(
+      resourcesRoot,
+      "runtime-tools",
+      `${process.platform}-${process.arch}`,
+      "python-runtime",
+      "bin",
+      "2to3",
+    );
+    if (process.platform !== "win32") {
+      await fs.mkdir(path.dirname(danglingRuntimeLink), { recursive: true });
+      await fs.symlink("2to3-3.12", danglingRuntimeLink);
+    }
     const anchor = createBundledResourceIntegrityAnchor({
       resourcesRoot,
       platform: process.platform,
@@ -415,6 +427,15 @@ test("execution lease survives resource swaps and fails closed when its own snap
     const leasedCli = await fs.readFile(lease.cliEntryPath, "utf8");
     assert.equal(leasedCli, "export const safe = true;");
     if (process.platform !== "win32") {
+      assert.equal(
+        await fs.readlink(path.join(
+          lease.toolsRoot,
+          "python-runtime",
+          "bin",
+          "2to3",
+        )),
+        "2to3-3.12",
+      );
       const leasedDarwinHelper = path.join(
         lease.cliRoot,
         "dist",

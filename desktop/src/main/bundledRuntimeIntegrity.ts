@@ -328,10 +328,16 @@ function isExecutableEntry(relativePath: string): boolean {
 }
 
 function assertEntryMatches(filePath: string, expected: BundledResourceEntry): void {
-  if (!existsSync(filePath)) {
+  let stat: ReturnType<typeof lstatSync>;
+  try {
+    // existsSync follows symbolic links, so it reports a legitimate dangling
+    // link (for example Python's optional 2to3 launcher) as missing. The
+    // integrity inventory records the link entry and target text themselves,
+    // which must be inspected with lstat instead.
+    stat = lstatSync(filePath);
+  } catch {
     throw new Error(`Bundled resource changed while creating execution lease: ${expected.path}`);
   }
-  const stat = lstatSync(filePath);
   const kind = stat.isDirectory() ? "directory" : stat.isSymbolicLink() ? "symlink" : stat.isFile() ? "file" : undefined;
   if (kind !== expected.kind) {
     throw new Error(`Bundled resource type changed while creating execution lease: ${expected.path}`);
