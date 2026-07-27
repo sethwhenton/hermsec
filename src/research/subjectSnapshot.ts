@@ -688,6 +688,11 @@ async function removeWitnessedEntry(
     await assertWitnessAtPath(finalTombstone, deleteHandle, expected);
     await afterFinalIdentityCheck?.(finalTombstone);
     const beforeRemoval = await witness.stat({ bigint: true });
+    // Recheck the sealed entry after the final callback. In particular, a file
+    // must still have exactly one link: otherwise an attacker could park the
+    // inode, hard-link it back at the tombstone, let us unlink only that alias,
+    // and make cleanup report success while the sealed bytes remain.
+    assertCleanupStat(beforeRemoval, expected);
     try {
       if (expected.kind === "file") {
         await fs.unlink(finalTombstone);

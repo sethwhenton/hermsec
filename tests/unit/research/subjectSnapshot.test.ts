@@ -353,6 +353,45 @@ test("snapshot cleanup detects a directory swap after the final identity check",
   );
 });
 
+test("snapshot cleanup rejects a hardlink retained after the final identity check", async (t) => {
+  const { sourceRoot, workspace } = await createSealedWorkspace();
+  let cleanupRoot: string | undefined;
+  let parkedFile: string | undefined;
+  t.after(async () => {
+    if (parkedFile) {
+      await fs.rm(parkedFile, { force: true });
+    }
+    if (cleanupRoot) {
+      await fs.rm(cleanupRoot, { recursive: true, force: true });
+    }
+    await fs.rm(sourceRoot, { recursive: true, force: true });
+  });
+
+  await assert.rejects(
+    removeSubjectSnapshotWorkspace(workspace, {
+      afterFinalTombstoneInspection: async (
+        relativePath,
+        finalTombstone,
+        root,
+      ) => {
+        if (!relativePath.endsWith("/subject/nested/app.js")) {
+          return;
+        }
+        cleanupRoot = root;
+        parkedFile = `${finalTombstone}.sealed`;
+        await fs.rename(finalTombstone, parkedFile);
+        await fs.link(parkedFile, finalTombstone);
+      },
+    }),
+    /Research cleanup requires the sealed file/u,
+  );
+  assert.ok(parkedFile);
+  assert.equal(
+    await fs.readFile(parkedFile, "utf8"),
+    "export const safe = true;\n",
+  );
+});
+
 test("snapshot cleanup detects a root swap after the final identity check", async (t) => {
   const { sourceRoot, workspace } = await createSealedWorkspace();
   let cleanupRoot: string | undefined;

@@ -323,13 +323,24 @@ test("incomplete or stale exit-zero output cannot reuse a seeded prior report", 
     });
     assert.equal(currentResult.ok, true);
     if (currentResult.ok) {
-      assert.equal(
-        await fs.realpath(currentResult.reportDir),
-        await fs.realpath(currentReportDir),
+      const [
+        actualReport,
+        expectedReport,
+        actualHtml,
+        expectedHtml,
+      ] = await Promise.all([
+        fs.stat(currentResult.reportDir, { bigint: true }),
+        fs.stat(currentReportDir, { bigint: true }),
+        fs.stat(currentResult.htmlPath, { bigint: true }),
+        fs.stat(currentHtmlPath, { bigint: true }),
+      ]);
+      assert.deepEqual(
+        [actualReport.dev, actualReport.ino],
+        [expectedReport.dev, expectedReport.ino],
       );
-      assert.equal(
-        await fs.realpath(currentResult.htmlPath),
-        await fs.realpath(currentHtmlPath),
+      assert.deepEqual(
+        [actualHtml.dev, actualHtml.ino],
+        [expectedHtml.dev, expectedHtml.ino],
       );
     }
   } finally {
