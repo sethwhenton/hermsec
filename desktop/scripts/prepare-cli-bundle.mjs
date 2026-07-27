@@ -24,6 +24,7 @@ if (!existsSync(rootTsc)) {
 // surface and make the packaging path harder to audit.
 rmSync(resolve(root, "dist"), { recursive: true, force: true });
 runNode([rootTsc, "-p", resolve(root, "tsconfig.json")], root);
+runNode([resolve(root, "scripts/build-darwin-fd-link-state.mjs")], root);
 
 const distSrc = resolve(root, "dist/src");
 if (!existsSync(resolve(distSrc, "bin/hermsec.js"))) {

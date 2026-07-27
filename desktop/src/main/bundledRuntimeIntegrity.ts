@@ -46,6 +46,14 @@ export type VerifiedBundleExecutionLease = BundledResourceVerification & {
 };
 
 const CLI_ENTRY_PATH = path.posix.join("hermsec-cli", "dist", "src", "bin", "hermsec.js");
+const DARWIN_FD_LINK_STATE_HELPER_PATH = path.posix.join(
+  "hermsec-cli",
+  "dist",
+  "src",
+  "research",
+  "native",
+  "hermsec-darwin-fd-link-state",
+);
 
 /**
  * This inventory intentionally includes the runtime manifest itself. The manifest
@@ -312,7 +320,11 @@ function removeLeaseSnapshotSync(
 }
 
 function isExecutableEntry(relativePath: string): boolean {
-  return relativePath.includes("/bin/") || relativePath.endsWith("/python-runtime/python.exe");
+  return (
+    relativePath.includes("/bin/") ||
+    relativePath.endsWith("/python-runtime/python.exe") ||
+    relativePath === DARWIN_FD_LINK_STATE_HELPER_PATH
+  );
 }
 
 function assertEntryMatches(filePath: string, expected: BundledResourceEntry): void {

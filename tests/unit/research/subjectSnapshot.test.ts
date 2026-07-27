@@ -12,6 +12,7 @@ import {
 import {
   createSubjectSnapshotWorkspace,
   materializeFixtureSnapshots,
+  probeDarwinDirectoryLinkState,
   removeSubjectSnapshotWorkspace,
   sealSubjectSnapshotWorkspace,
 } from "../../../src/research/subjectSnapshot.js";
@@ -76,7 +77,7 @@ test("snapshot cleanup rejects a post-inspection hardlink replacement and preser
         await fs.link(externalFile, tombstone);
       },
     }),
-    /Research cleanup removed a replacement/u,
+    /Research cleanup (?:identity changed|requires the sealed file)/u,
   );
   assert.equal(
     await fs.readFile(externalFile, "utf8"),
@@ -304,10 +305,121 @@ test("snapshot cleanup detects a successfully removed empty-directory replacemen
         await fs.mkdir(root, { mode: 0o700 });
       },
     }),
+    /Research cleanup identity changed/u,
+  );
+  assert.ok(parkedRoot);
+  assert.equal((await fs.lstat(parkedRoot)).isDirectory(), true);
+});
+
+test("snapshot cleanup detects a directory swap after the final identity check", async (t) => {
+  const { sourceRoot, workspace } = await createSealedWorkspace();
+  let cleanupRoot: string | undefined;
+  let parkedDirectory: string | undefined;
+  t.after(async () => {
+    if (parkedDirectory) {
+      await fs.rm(parkedDirectory, {
+        recursive: true,
+        force: true,
+      });
+    }
+    if (cleanupRoot) {
+      await fs.rm(cleanupRoot, { recursive: true, force: true });
+    }
+    await fs.rm(sourceRoot, { recursive: true, force: true });
+  });
+
+  await assert.rejects(
+    removeSubjectSnapshotWorkspace(workspace, {
+      afterFinalTombstoneInspection: async (
+        relativePath,
+        finalTombstone,
+        root,
+      ) => {
+        if (!relativePath.endsWith("/subject/nested")) {
+          return;
+        }
+        cleanupRoot = root;
+        parkedDirectory = `${finalTombstone}.sealed`;
+        await fs.rename(finalTombstone, parkedDirectory);
+        await fs.mkdir(finalTombstone, { mode: 0o700 });
+      },
+    }),
+    /Research cleanup removed a replacement/u,
+  );
+  assert.ok(parkedDirectory);
+  assert.equal(
+    (await fs.lstat(parkedDirectory)).isDirectory(),
+    true,
+  );
+});
+
+test("snapshot cleanup detects a root swap after the final identity check", async (t) => {
+  const { sourceRoot, workspace } = await createSealedWorkspace();
+  let cleanupRoot: string | undefined;
+  let parkedRoot: string | undefined;
+  t.after(async () => {
+    if (parkedRoot) {
+      await fs.rm(parkedRoot, { recursive: true, force: true });
+    }
+    if (cleanupRoot) {
+      await fs.rm(cleanupRoot, { recursive: true, force: true });
+    }
+    await fs.rm(sourceRoot, { recursive: true, force: true });
+  });
+
+  await assert.rejects(
+    removeSubjectSnapshotWorkspace(workspace, {
+      afterFinalTombstoneInspection: async (
+        relativePath,
+        finalTombstone,
+        root,
+      ) => {
+        if (relativePath !== ".") {
+          return;
+        }
+        cleanupRoot = root;
+        parkedRoot = `${finalTombstone}.sealed`;
+        await fs.rename(finalTombstone, parkedRoot);
+        await fs.mkdir(finalTombstone, { mode: 0o700 });
+      },
+    }),
     /Research cleanup removed a replacement/u,
   );
   assert.ok(parkedRoot);
   assert.equal((await fs.lstat(parkedRoot)).isDirectory(), true);
+});
+
+test("Darwin cleanup verifier distinguishes linked, renamed, and removed directories", async (t) => {
+  if (process.platform !== "darwin") {
+    t.skip("Darwin F_GETPATH semantics are macOS-specific.");
+    return;
+  }
+  const parent = await fs.mkdtemp(
+    path.join(os.tmpdir(), "hermsec-darwin-link-state-"),
+  );
+  const directory = path.join(parent, "directory");
+  const renamed = path.join(parent, "renamed");
+  await fs.mkdir(directory, { mode: 0o700 });
+  const handle = await fs.open(directory, "r");
+  t.after(async () => {
+    await handle.close();
+    await fs.rm(parent, { recursive: true, force: true });
+  });
+
+  assert.equal(
+    await probeDarwinDirectoryLinkState(handle),
+    "linked",
+  );
+  await fs.rename(directory, renamed);
+  assert.equal(
+    await probeDarwinDirectoryLinkState(handle),
+    "linked",
+  );
+  await fs.rmdir(renamed);
+  assert.equal(
+    await probeDarwinDirectoryLinkState(handle),
+    "unlinked",
+  );
 });
 
 test("snapshot cleanup quarantines unexpected entries instead of recursively discovering them", async (t) => {

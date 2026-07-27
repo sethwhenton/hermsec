@@ -172,6 +172,7 @@ test("packaged smoke clears Node escape hatches and validates required scanner g
   const indexSource = await fs.readFile(path.join(desktopRoot, "src/main/index.ts"), "utf8");
   assert.match(indexSource, /writeDoctorSmokeResultArtifact/u);
   assert.match(indexSource, /renameSync\(temporary, destination\)/u);
+  assert.match(indexSource, /createPackagedDoctorSmokeResult/u);
 
   const doctorSource = await fs.readFile(path.join(desktopRoot, "src/main/doctor.ts"), "utf8");
   assert.match(doctorSource, /createVerifiedBundledRuntimeExecutionLease/u);
@@ -293,6 +294,10 @@ test("runtime anchor binds the full staged tree and CLI without wall-clock metad
     path.join(desktopRoot, "scripts/prepare-bundled-integrity-anchor.mjs"),
     "utf8",
   );
+  const darwinHelperBuildSource = await fs.readFile(
+    path.join(repoRoot, "scripts/build-darwin-fd-link-state.mjs"),
+    "utf8",
+  );
   assert.match(stagingSource, /createRuntimeManifest\(\{/u);
   assert.doesNotMatch(stagingSource, /new Date\(\)\.toISOString\(\)/u);
   assert.match(integritySource, /schemaVersion:\s*"4\.0"/u);
@@ -302,6 +307,10 @@ test("runtime anchor binds the full staged tree and CLI without wall-clock metad
   assert.match(runtimeSource, /createVerifiedBundleExecutionLease/u);
   assert.match(anchorSource, /createBundledResourceIntegrityAnchor/u);
   assert.match(anchorSource, /Generated during packaging/u);
+  assert.match(
+    darwinHelperBuildSource,
+    /-mmacosx-version-min=12\.0/u,
+  );
   assert.match(await fs.readFile(path.join(desktopRoot, "package.json"), "utf8"), /prepare:integrity-anchor/u);
 });
 
@@ -353,6 +362,20 @@ test("execution lease survives resource swaps and fails closed when its own snap
     lease = createVerifiedBundleExecutionLease({ resourcesRoot, leaseParent, anchor });
     const leasedCli = await fs.readFile(lease.cliEntryPath, "utf8");
     assert.equal(leasedCli, "export const safe = true;");
+    if (process.platform !== "win32") {
+      const leasedDarwinHelper = path.join(
+        lease.cliRoot,
+        "dist",
+        "src",
+        "research",
+        "native",
+        "hermsec-darwin-fd-link-state",
+      );
+      assert.notEqual(
+        (await fs.stat(leasedDarwinHelper)).mode & 0o111,
+        0,
+      );
+    }
 
     await fs.rename(fixture.cliEntry, `${fixture.cliEntry}.original`);
     await fs.writeFile(fixture.cliEntry, "export const swapped = true;", "utf8");
@@ -464,6 +487,8 @@ test("release workflows pin actions, use exact uv, verify tags, and block on pac
     if (workflow === "macos-release.yml") {
       assert.match(source, /linux-runtime-gate/u);
       assert.match(source, /safedep\/pmg@[a-f0-9]{40}/u);
+      assert.match(source, /linux-unpacked\/hermsec-v3/u);
+      assert.match(source, /vtool -show-build/u);
       assert.match(source, /hdiutil attach/u);
       assert.match(source, /Smoke released DMG artifact/u);
     }
@@ -478,15 +503,26 @@ async function writeBundledResourceFixture(resourcesRoot: string): Promise<{
   manifest: string;
 }> {
   const cliEntry = path.join(resourcesRoot, "hermsec-cli", "dist", "src", "bin", "hermsec.js");
+  const darwinHelper = path.join(
+    resourcesRoot,
+    "hermsec-cli",
+    "dist",
+    "src",
+    "research",
+    "native",
+    "hermsec-darwin-fd-link-state",
+  );
   const runtimeRoot = path.join(resourcesRoot, "runtime-tools", `${process.platform}-${process.arch}`);
   const manifest = path.join(runtimeRoot, "manifest.json");
   await Promise.all([
     fs.mkdir(path.dirname(cliEntry), { recursive: true }),
+    fs.mkdir(path.dirname(darwinHelper), { recursive: true }),
     fs.mkdir(path.join(runtimeRoot, "bin"), { recursive: true }),
     fs.mkdir(path.join(runtimeRoot, "python-runtime"), { recursive: true }),
   ]);
   await Promise.all([
     fs.writeFile(cliEntry, "export const safe = true;", "utf8"),
+    fs.writeFile(darwinHelper, "#!/bin/sh\nexit 0\n", "utf8"),
     fs.writeFile(manifest, "{\"schemaVersion\":\"4.0\"}", "utf8"),
     fs.writeFile(path.join(runtimeRoot, "bin", process.platform === "win32" ? "semgrep.exe" : "semgrep"), "scanner", "utf8"),
     fs.writeFile(path.join(runtimeRoot, "python-runtime", process.platform === "win32" ? "python.exe" : "python3"), "python", "utf8"),

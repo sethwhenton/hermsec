@@ -155,9 +155,11 @@ export async function runDoctor(onProgress?: DoctorProgressEmitter): Promise<Doc
     const groups = buildGroups(checks, connectivity);
     const healthScore = calculateHealthScore(groups);
     const status = resultStatus(groups);
+    const runtimeReady = Boolean(cli.ok);
 
     return {
-      ok: Boolean(cli.ok) && status !== "blocked",
+      ok: runtimeReady && status !== "blocked",
+      runtimeReady,
       message: cli.message ?? "Hermsec doctor completed.",
       generatedAt: cli.data?.generatedAt ?? new Date().toISOString(),
       durationMs: Date.now() - started,

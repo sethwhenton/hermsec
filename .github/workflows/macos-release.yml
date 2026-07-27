@@ -122,6 +122,20 @@ jobs:
       - name: Build macOS app
         run: npm --prefix desktop run ${{ matrix.package_script }}
 
+      - name: Verify Darwin cleanup helper compatibility
+        shell: bash
+        run: |
+          helper="$(find desktop/release -type f -path '*.app/Contents/Resources/hermsec-cli/dist/src/research/native/hermsec-darwin-fd-link-state' -print -quit)"
+          if [[ -z "${helper}" || ! -x "${helper}" ]]; then
+            echo "The packaged Darwin cleanup verifier is missing or not executable."
+            exit 1
+          fi
+          minos="$(vtool -show-build "${helper}" | awk '/minos/{print $2; exit}')"
+          if [[ "${minos}" != "12.0" ]]; then
+            echo "Darwin cleanup verifier targets macOS ${minos:-unknown}, expected 12.0."
+            exit 1
+          fi
+
       - name: Run desktop smoke checks
         run: |
           npm --prefix desktop run smoke:doctor
@@ -265,8 +279,8 @@ jobs:
       - name: Smoke packaged Linux runtime without system Node or Python
         shell: bash
         run: |
-          app="$(find desktop/release -type f -path '*linux-unpacked/*' \( -name 'hermsec' -o -name 'Hermsec' \) -print -quit)"
-          if [[ -z "${app}" ]]; then
+          app="desktop/release/linux-unpacked/hermsec-v3"
+          if [[ ! -x "${app}" ]]; then
             echo "No packaged Hermsec Linux executable was produced."
             exit 1
           fi
