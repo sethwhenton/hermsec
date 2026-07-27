@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   assertPackagedDoctorResult,
   assertPortablePythonRuntime,
+  createPackagedSmokeArguments,
   createPackagedSmokeEnvironment,
   parseDoctorSmokeResultArtifact,
   parseDoctorSmokeOutput,
@@ -161,9 +162,17 @@ test("packaged smoke clears Node escape hatches and validates required scanner g
   );
   const resultEnv = createPackagedSmokeEnvironment({ smokeResultPath: "C:\\temp\\doctor-result.json" });
   assert.equal(resultEnv.HERMSEC_SMOKE_RESULT_PATH, "C:\\temp\\doctor-result.json");
+  assert.deepEqual(
+    createPackagedSmokeArguments("linux"),
+    ["--no-sandbox", "--smoke-doctor"],
+  );
+  assert.deepEqual(
+    createPackagedSmokeArguments("darwin"),
+    ["--smoke-doctor"],
+  );
 
   const smokeSource = await fs.readFile(path.join(desktopRoot, "scripts/smoke-packaged-runtime.mjs"), "utf8");
-  assert.match(smokeSource, /runProcess\(executable, \["--smoke-doctor"\]/u);
+  assert.match(smokeSource, /createPackagedSmokeArguments\(input\.platform\)/u);
   assert.match(smokeSource, /--portable-sfx/u);
   assert.match(smokeSource, /HERMSEC_SMOKE_RESULT_PATH/u);
   assert.match(smokeSource, /exited successfully without writing its result artifact/u);

@@ -2733,13 +2733,16 @@ function waitForProcessGroupExit(groupPid, timeoutMs) {
   });
 }
 
-function isProcessGroupRunning(groupPid) {
+export function isProcessGroupRunning(groupPid, kill = process.kill) {
   try {
-    process.kill(groupPid, 0);
+    kill(groupPid, 0);
     return true;
   } catch (error) {
     if (error?.code === "ESRCH") {
       return false;
+    }
+    if (error?.code === "EPERM") {
+      return true;
     }
     throw error;
   }

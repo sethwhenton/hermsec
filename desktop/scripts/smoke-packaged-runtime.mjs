@@ -41,6 +41,12 @@ export function createPackagedSmokeEnvironment(input = {}) {
   return env;
 }
 
+export function createPackagedSmokeArguments(platform = process.platform) {
+  return platform === "linux"
+    ? ["--no-sandbox", "--smoke-doctor"]
+    : ["--smoke-doctor"];
+}
+
 export function parseDoctorSmokeOutput(stdout) {
   const text = String(stdout ?? "").trim();
   const firstObject = text.indexOf("{");
@@ -96,15 +102,19 @@ export async function smokePackagedRuntime(input) {
   const artifactDir = await mkdtemp(path.join(tmpdir(), "hermsec-packaged-doctor-"));
   const artifactPath = path.join(artifactDir, "doctor-result.json");
   try {
-    const result = await runProcess(executable, ["--smoke-doctor"], {
-      cwd: path.dirname(executable),
-      env: createPackagedSmokeEnvironment({
-        platform: input.platform,
-        inheritedEnv: input.inheritedEnv,
-        smokeResultPath: artifactPath,
-      }),
-      timeoutMs: input.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    });
+    const result = await runProcess(
+      executable,
+      createPackagedSmokeArguments(input.platform),
+      {
+        cwd: path.dirname(executable),
+        env: createPackagedSmokeEnvironment({
+          platform: input.platform,
+          inheritedEnv: input.inheritedEnv,
+          smokeResultPath: artifactPath,
+        }),
+        timeoutMs: input.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+      },
+    );
     if (result.exitCode !== 0) {
       throw new Error(`Packaged Doctor exited ${result.exitCode}: ${result.stderr.trim() || result.stdout.trim()}`);
     }

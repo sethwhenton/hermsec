@@ -323,8 +323,8 @@ test("incomplete or stale exit-zero output cannot reuse a seeded prior report", 
     });
     assert.equal(currentResult.ok, true);
     if (currentResult.ok) {
-      assert.equal(path.resolve(currentResult.reportDir), path.resolve(currentReportDir));
-      assert.equal(path.resolve(currentResult.htmlPath), path.resolve(currentHtmlPath));
+      assert.equal(currentResult.reportDir, await fs.realpath(currentReportDir));
+      assert.equal(currentResult.htmlPath, await fs.realpath(currentHtmlPath));
     }
   } finally {
     await fs.rm(root, { recursive: true, force: true });

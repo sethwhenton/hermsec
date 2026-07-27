@@ -116,6 +116,14 @@ jobs:
       - name: Run root tests
         run: npm test
 
+      - name: Upload universal Darwin cleanup helper
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: darwin-cleanup-helper-${{ matrix.arch }}
+          path: dist/src/research/native/hermsec-darwin-fd-link-state
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Run desktop packaging and runtime tests
         run: npm --prefix desktop test
 
@@ -128,6 +136,11 @@ jobs:
           helper="$(find desktop/release -type f -path '*.app/Contents/Resources/hermsec-cli/dist/src/research/native/hermsec-darwin-fd-link-state' -print -quit)"
           if [[ -z "${helper}" || ! -x "${helper}" ]]; then
             echo "The packaged Darwin cleanup verifier is missing or not executable."
+            exit 1
+          fi
+          if ! lipo -verify_arch arm64 x86_64 "${helper}"; then
+            echo "Darwin cleanup verifier is not a universal arm64/x86_64 binary."
+            lipo -info "${helper}" || true
             exit 1
           fi
           minos="$(vtool -show-build "${helper}" | awk '/minos/{print $2; exit}')"
