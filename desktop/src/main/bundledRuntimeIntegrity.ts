@@ -12,6 +12,7 @@ import {
   rmSync,
   symlinkSync,
 } from "node:fs";
+import { rm as rmAsync } from "node:fs/promises";
 import path from "node:path";
 
 export type BundledResourceEntry = {
@@ -41,7 +42,7 @@ export type VerifiedBundleExecutionLease = BundledResourceVerification & {
   leaseRoot: string;
   cliEntryPath: string;
   assertIntact: () => void;
-  release: () => void;
+  release: () => Promise<void>;
 };
 
 const CLI_ENTRY_PATH = path.posix.join("hermsec-cli", "dist", "src", "bin", "hermsec.js");
@@ -127,6 +128,7 @@ export function createVerifiedBundleExecutionLease(input: {
     });
     hardenSnapshotPermissions(leaseRoot, source.anchor.files);
     let released = false;
+    let releasePromise: Promise<void> | undefined;
     return {
       ...snapshot,
       leaseRoot,
@@ -141,13 +143,14 @@ export function createVerifiedBundleExecutionLease(input: {
         });
       },
       release: () => {
-        if (released) return;
+        if (releasePromise) return releasePromise;
         released = true;
-        rmSync(leaseRoot, { recursive: true, force: true, maxRetries: 3, retryDelay: 40 });
+        releasePromise = removeLeaseSnapshot(leaseRoot, source.anchor.files);
+        return releasePromise;
       },
     };
   } catch (error) {
-    rmSync(leaseRoot, { recursive: true, force: true, maxRetries: 3, retryDelay: 40 });
+    removeLeaseSnapshotSync(leaseRoot, source.anchor.files);
     throw error;
   }
 }
@@ -247,6 +250,64 @@ function hardenSnapshotPermissions(leaseRoot: string, entries: readonly BundledR
       // Some Windows filesystems expose only a readonly attribute. The content
       // verification before every spawn remains the security boundary.
     }
+  }
+}
+
+function prepareLeaseSnapshotForRemoval(
+  leaseRoot: string,
+  entries: readonly BundledResourceEntry[],
+): void {
+  try {
+    if (lstatSync(leaseRoot).isDirectory()) {
+      chmodSync(leaseRoot, 0o700);
+    }
+  } catch {
+    // Recursive removal below remains the final cleanup attempt.
+  }
+  for (const entry of entries) {
+    if (entry.kind === "symlink") continue;
+    const target = resolveAnchoredPath(leaseRoot, entry.path);
+    try {
+      const stat = lstatSync(target);
+      if (stat.isDirectory()) {
+        chmodSync(target, 0o700);
+      } else if (process.platform === "win32" && stat.isFile()) {
+        chmodSync(target, 0o600);
+      }
+    } catch {
+      // A missing entry is handled by the confined recursive removal.
+    }
+  }
+}
+
+async function removeLeaseSnapshot(
+  leaseRoot: string,
+  entries: readonly BundledResourceEntry[],
+): Promise<void> {
+  prepareLeaseSnapshotForRemoval(leaseRoot, entries);
+  try {
+    await rmAsync(leaseRoot, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 100,
+    });
+  } catch (error) {
+    hardenSnapshotPermissions(leaseRoot, entries);
+    throw error;
+  }
+}
+
+function removeLeaseSnapshotSync(
+  leaseRoot: string,
+  entries: readonly BundledResourceEntry[],
+): void {
+  prepareLeaseSnapshotForRemoval(leaseRoot, entries);
+  try {
+    rmSync(leaseRoot, { recursive: true, force: true, maxRetries: 3, retryDelay: 40 });
+  } catch (error) {
+    hardenSnapshotPermissions(leaseRoot, entries);
+    throw error;
   }
 }
 

@@ -195,23 +195,20 @@ test("relative Python launchers are confined to runtime-tools and reject build-m
 });
 
 test("Windows scanner launcher verification rejects non-native and build-path-bearing shims", () => {
+  const toolsRoot = path.resolve(desktopRoot, "release", "runtime-tools", "win32-x64");
+  const input = {
+    tool: "semgrep",
+    toolsRoot,
+    platform: "win32",
+  };
   const valid = Buffer.alloc(2048);
   valid.write("MZ", 0, "ascii");
-  assert.doesNotThrow(() => assertWindowsBinaryLauncher(valid, {
-    tool: "semgrep",
-    toolsRoot: "C:\\release\\runtime-tools\\win32-x64",
-  }));
-  assert.throws(() => assertWindowsBinaryLauncher(Buffer.from("@echo off"), {
-    tool: "semgrep",
-    toolsRoot: "C:\\release\\runtime-tools\\win32-x64",
-  }));
+  assert.doesNotThrow(() => assertWindowsBinaryLauncher(valid, input));
+  assert.throws(() => assertWindowsBinaryLauncher(Buffer.from("@echo off"), input));
   const leaked = Buffer.alloc(2048);
   leaked.write("MZ", 0, "ascii");
-  Buffer.from("C:\\release\\runtime-tools\\win32-x64", "utf16le").copy(leaked, 256);
-  assert.throws(() => assertWindowsBinaryLauncher(leaked, {
-    tool: "semgrep",
-    toolsRoot: "C:\\release\\runtime-tools\\win32-x64",
-  }));
+  Buffer.from(toolsRoot, "utf16le").copy(leaked, 256);
+  assert.throws(() => assertWindowsBinaryLauncher(leaked, input));
 });
 
 test("bundled Windows scanner discovery cannot fall back to command or batch scripts", async () => {
@@ -371,7 +368,9 @@ test("execution lease survives resource swaps and fails closed when its own snap
     }
   } finally {
     const leaseRoot = lease?.leaseRoot;
-    lease?.release();
+    if (lease) {
+      await Promise.all([lease.release(), lease.release()]);
+    }
     if (leaseRoot) {
       await assert.rejects(fs.access(leaseRoot));
     }

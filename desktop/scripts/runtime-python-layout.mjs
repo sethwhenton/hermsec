@@ -192,8 +192,9 @@ export function createPortableRuntimeSmokeEnvironment(input = {}) {
   const inheritedEnv = input.inheritedEnv ?? process.env;
   const env = { ...inheritedEnv };
   const systemRoot = env.SystemRoot ?? env.SYSTEMROOT ?? "C:\\Windows";
+  const windowsSystemRoot = path.win32.normalize(systemRoot);
   env.PATH = platform === "win32"
-    ? `${path.join(systemRoot, "System32")};${systemRoot}`
+    ? `${path.win32.join(windowsSystemRoot, "System32")};${windowsSystemRoot}`
     : "/usr/bin:/bin:/usr/sbin:/sbin";
   env.PYTHONDONTWRITEBYTECODE = "1";
   delete env.PYTHONHOME;

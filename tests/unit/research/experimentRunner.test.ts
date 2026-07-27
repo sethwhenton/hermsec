@@ -1414,7 +1414,9 @@ test("live bounded-loop timeout trips the paid gate before another MoA role can 
           ...input,
           limits: {
             specialist: {
-              timeoutMs: 100,
+              // Leave enough scheduling headroom for both parallel roles to
+              // dispatch on loaded CI runners before the first local timeout.
+              timeoutMs: 1_000,
             },
           },
         }),
