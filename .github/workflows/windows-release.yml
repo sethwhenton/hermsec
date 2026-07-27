@@ -196,6 +196,7 @@ jobs:
 
   publish:
     name: Publish Windows Release Assets
+    if: ${{ startsWith(github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name, 'v') }}
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15

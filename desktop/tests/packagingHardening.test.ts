@@ -559,6 +559,7 @@ test("release workflows pin actions, use exact uv, verify tags, and block on pac
     assert.match(source, /smoke-packaged-runtime\.mjs/u);
     assert.match(source, /npm --prefix desktop test/u);
     assert.match(source, /unsigned development build/u);
+    assert.match(source, /startsWith\(github\.event_name.*inputs\.tag_name.*'v'\)/u);
     if (workflow === "windows-release.yml") {
       assert.match(source, /ilammy\/msvc-dev-cmd@[a-f0-9]{40}/u);
       assert.match(source, /Hermsec-Portable-Windows-x64\.exe/u);
@@ -572,7 +573,6 @@ test("release workflows pin actions, use exact uv, verify tags, and block on pac
       assert.match(source, /linux-unpacked\/hermsec-v3/u);
       assert.match(source, /xvfb-run --auto-servernum/u);
       assert.match(source, /lipo "\$\{helper\}" -verify_arch arm64 x86_64/u);
-      assert.match(source, /startsWith\(github\.event_name.*inputs\.tag_name.*'v'\)/u);
       assert.match(source, /vtool -show-build/u);
       assert.match(source, /hdiutil attach/u);
       assert.match(source, /Smoke released DMG artifact/u);
