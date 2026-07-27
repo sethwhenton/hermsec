@@ -305,6 +305,7 @@ jobs:
 
   publish:
     name: Publish macOS Release Assets
+    if: ${{ startsWith(github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name, 'v') }}
     needs: [build, linux-runtime-gate]
     runs-on: ubuntu-latest
     timeout-minutes: 15
