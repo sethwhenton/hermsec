@@ -76,7 +76,7 @@ test("snapshot cleanup rejects a post-inspection hardlink replacement and preser
         await fs.link(externalFile, tombstone);
       },
     }),
-    /Research cleanup (?:requires the sealed file|metadata changed|identity changed|removed a replacement)/u,
+    /Research cleanup removed a replacement/u,
   );
   assert.equal(
     await fs.readFile(externalFile, "utf8"),
@@ -278,6 +278,34 @@ test("snapshot cleanup rejects a root replacement after the final delete witness
     return;
   }
   assert.equal(await fs.readFile(sentinel, "utf8"), "do not delete\n");
+  assert.ok(parkedRoot);
+  assert.equal((await fs.lstat(parkedRoot)).isDirectory(), true);
+});
+
+test("snapshot cleanup detects a successfully removed empty-directory replacement", async (t) => {
+  const { sourceRoot, workspace } = await createSealedWorkspace();
+  let parkedRoot: string | undefined;
+  t.after(async () => {
+    if (parkedRoot) {
+      await fs.rm(parkedRoot, { recursive: true, force: true });
+    }
+    await fs.rm(workspace.root, { recursive: true, force: true });
+    await fs.rm(sourceRoot, { recursive: true, force: true });
+  });
+
+  await assert.rejects(
+    removeSubjectSnapshotWorkspace(workspace, {
+      afterRootInspection: async (root, phase) => {
+        if (phase !== "before-remove") {
+          return;
+        }
+        parkedRoot = `${root}.sealed`;
+        await fs.rename(root, parkedRoot);
+        await fs.mkdir(root, { mode: 0o700 });
+      },
+    }),
+    /Research cleanup removed a replacement/u,
+  );
   assert.ok(parkedRoot);
   assert.equal((await fs.lstat(parkedRoot)).isDirectory(), true);
 });

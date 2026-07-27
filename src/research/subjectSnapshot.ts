@@ -672,11 +672,16 @@ async function removeWitnessedEntry(
     const afterDeleteHandle = await deleteHandle.stat({
       bigint: true,
     });
+    // Linux reports zero links for an open, removed directory, while APFS
+    // keeps one descriptor-only link until the handle closes. In both cases
+    // removal decreases the witnessed object's link count. A path swap removes
+    // only the replacement and leaves the sealed object's count unchanged.
     if (
       objectIdentity(afterWitness) !== objectIdentity(before) ||
       objectIdentity(afterDeleteHandle) !== objectIdentity(before) ||
-      afterWitness.nlink !== 0n ||
-      afterDeleteHandle.nlink !== 0n
+      afterWitness.nlink !== afterDeleteHandle.nlink ||
+      afterWitness.nlink >= before.nlink ||
+      afterDeleteHandle.nlink >= before.nlink
     ) {
       throw new Error(
         `Research cleanup removed a replacement instead of the sealed entry: ${expected.path}`,

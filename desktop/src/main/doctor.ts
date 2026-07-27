@@ -172,7 +172,7 @@ export async function runDoctor(onProgress?: DoctorProgressEmitter): Promise<Doc
       status,
     };
   } finally {
-    runtimeLease?.release();
+    await runtimeLease?.release();
   }
 }
 

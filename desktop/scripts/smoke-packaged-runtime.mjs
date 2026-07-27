@@ -27,8 +27,9 @@ export function createPackagedSmokeEnvironment(input = {}) {
   // The child receives only operating-system locations. The running Hermsec
   // app prepends its staged runtime directories, so a PATH Node cannot mask a
   // bundled-CLI or scanner failure.
+  const windowsSystemRoot = path.win32.normalize(systemRoot);
   env.PATH = platform === "win32"
-    ? `${path.join(systemRoot, "System32")};${systemRoot}`
+    ? `${path.win32.join(windowsSystemRoot, "System32")};${windowsSystemRoot}`
     : "/usr/bin:/bin:/usr/sbin:/sbin";
   env.HERMSEC_SMOKE_DOCTOR = "true";
   env.HERMSEC_OPEN_DEVTOOLS = "false";

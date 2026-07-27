@@ -1782,6 +1782,18 @@ function runNodeCli(
     : args;
   const effectiveCwd = runtimeLease?.cliRoot ?? cwd;
   return new Promise((resolve, reject) => {
+    const settleAfterRuntimeRelease = (
+      complete: () => void,
+    ): void => {
+      void (async () => {
+        try {
+          await runtimeLease?.release();
+          complete();
+        } catch (error) {
+          reject(error);
+        }
+      })();
+    };
     let child: ChildProcessWithoutNullStreams;
     try {
       const processSpec = createCliProcessSpec({
@@ -1811,8 +1823,7 @@ function runNodeCli(
         windowsHide: true,
       });
     } catch (error) {
-      runtimeLease?.release();
-      reject(error);
+      settleAfterRuntimeRelease(() => reject(error));
       return;
     }
     control.child = child;
@@ -1873,25 +1884,25 @@ function runNodeCli(
     });
     child.on("error", (error) => {
       clearTimeout(timer);
-      runtimeLease?.release();
-      reject(error);
+      settleAfterRuntimeRelease(() => reject(error));
     });
     child.on("close", (exitCode) => {
       clearTimeout(timer);
       flushBufferedLines();
-      runtimeLease?.release();
       if (control.child === child) {
         delete control.child;
       }
-      if (control.canceled) {
-        reject(new ScanCanceledError());
-        return;
-      }
-      if (exitCode && !stdout.trim()) {
-        reject(new Error(stderr.trim() || `Hermsec CLI exited with code ${exitCode}.`));
-        return;
-      }
-      resolve({ stdout, stderr, exitCode: exitCode ?? 0 });
+      settleAfterRuntimeRelease(() => {
+        if (control.canceled) {
+          reject(new ScanCanceledError());
+          return;
+        }
+        if (exitCode && !stdout.trim()) {
+          reject(new Error(stderr.trim() || `Hermsec CLI exited with code ${exitCode}.`));
+          return;
+        }
+        resolve({ stdout, stderr, exitCode: exitCode ?? 0 });
+      });
     });
   });
 }
