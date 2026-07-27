@@ -205,30 +205,38 @@ async function packagedScannerChecks(
     }));
   }
 
-  return Promise.all(BUNDLED_SCANNERS.map(async ([command, label, versionArgs]) => {
+  // Run first-launch probes serially. The Intel build runners can otherwise
+  // spend the entire per-scanner timeout starting several large bundled tools
+  // at once even though each launcher succeeds independently.
+  const checks: DoctorCheck[] = [];
+  for (const [command, label, versionArgs] of BUNDLED_SCANNERS) {
     const executable = toolsRoot ? findBundledToolExecutable(toolsRoot, command) : undefined;
-    if (!executable) return missingBundledScannerCheck(command, label);
+    if (!executable) {
+      checks.push(missingBundledScannerCheck(command, label));
+      continue;
+    }
     try {
       const version = await probeBundledScanner(runtimeLease, executable, versionArgs);
-      return {
+      checks.push({
         id: `command-${command}`,
         label,
         status: "pass" as const,
         requirement: "required" as const,
         message: `Bundled scanner executable verified: ${version}.`,
-      };
+      });
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
-      return {
+      checks.push({
         id: `command-${command}`,
         label,
         status: "fail" as const,
         requirement: "required" as const,
         message: `Bundled ${label} launcher could not execute: ${detail}`,
         remediation: "Reinstall Hermsec from a release that includes a complete, executable runtime-tools bundle.",
-      };
+      });
     }
-  }));
+  }
+  return checks;
 }
 
 function missingBundledScannerCheck(command: string, label: string): DoctorCheck {

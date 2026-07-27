@@ -3,12 +3,15 @@ import {
   cpSync,
   existsSync,
   lstatSync,
+  mkdtempSync,
   readFileSync,
   readdirSync,
   readlinkSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { spawnSync } from "node:child_process";
+import os from "node:os";
 import path from "node:path";
 import { verifyExtractedTree } from "./runtime-archive-safety.mjs";
 
@@ -111,6 +114,13 @@ export function pythonLauncherPath(toolsRoot, tool, platform = process.platform)
 export function relativePythonLauncherContent(tool, platform = process.platform) {
   const moduleName = pythonModuleName(tool);
   if (platform === "darwin" || platform === "linux") {
+    // The pinned Semgrep console entry point defaults to its native OCaml
+    // frontend, which initializes the host certificate store even for
+    // `--version`. That frontend shells out to host utilities on macOS, while
+    // packaged scans intentionally expose only verified runtime-tools on PATH.
+    // Semgrep 1.167.0's supported escape hatch enters pysemgrep directly and
+    // keeps the launcher self-contained inside the verified runtime lease.
+    const moduleArguments = tool === "semgrep" ? " --legacy" : "";
     return [
       "#!/bin/sh",
       "set -eu",
@@ -125,7 +135,7 @@ export function relativePythonLauncherContent(tool, platform = process.platform)
       "  *) SELF_DIR=. ;;",
       "esac",
       "SELF_DIR=$(CDPATH= cd -- \"$SELF_DIR\" && pwd)",
-      `exec \"$SELF_DIR/../python-runtime/bin/python3\" -I -B -m ${moduleName} \"$@\"`,
+      `exec \"$SELF_DIR/../python-runtime/bin/python3\" -I -B -m ${moduleName}${moduleArguments} \"$@\"`,
     ].join("\n") + "\n";
   }
   throw new Error(`No relative Python launcher format is configured for ${platform}.`);
@@ -181,7 +191,8 @@ export function assertRelativePythonLauncher(content, input) {
     throw new Error(`${tool} ${platform} launcher depends on host path-resolution tools.`);
   }
 
-  const expected = `exec \"$SELF_DIR/../python-runtime/bin/python3\" -I -B -m ${moduleName} \"$@\"`;
+  const moduleArguments = tool === "semgrep" ? " --legacy" : "";
+  const expected = `exec \"$SELF_DIR/../python-runtime/bin/python3\" -I -B -m ${moduleName}${moduleArguments} \"$@\"`;
   if (!normalized.includes(expected)) {
     throw new Error(`${tool} ${platform} launcher is not a relative embedded-Python wrapper.`);
   }
@@ -224,13 +235,19 @@ export function smokePortableRuntimeTree(input) {
   const platform = input.platform ?? process.platform;
   const runtime = assertPortableRuntimeTree({ toolsRoot: input.toolsRoot, platform });
   const env = createPortableRuntimeSmokeEnvironment({ platform, inheritedEnv: input.inheritedEnv });
+  const scannerEnv = {
+    ...env,
+    PATH: path.join(runtime.toolsRoot, "bin"),
+    ...(platform === "win32" ? { PATHEXT: ".EXE" } : {}),
+  };
   const probe = run(runtime.python, ["-I", "-B", "-c", "import sys; print(sys.executable); print(sys.prefix)"], { env });
   assertRuntimePathsConfined(probe.stdout, runtime.toolsRoot);
 
   for (const tool of Object.keys(PYTHON_SCANNER_MODULES)) {
     const launcher = pythonLauncherPath(runtime.toolsRoot, tool, platform);
-    runLauncher(launcher, ["--version"], { platform, env });
+    runLauncher(launcher, ["--version"], { platform, env: scannerEnv });
   }
+  smokeSemgrepLocalRule(runtime.toolsRoot, platform, scannerEnv);
 }
 
 export function smokeRelocatedPortableRuntimeTree(input) {
@@ -262,6 +279,47 @@ export function smokeRelocatedPortableRuntimeTree(input) {
 
 function runLauncher(launcher, args, input) {
   run(launcher, args, { env: input.env });
+}
+
+function smokeSemgrepLocalRule(toolsRoot, platform, env) {
+  const smokeRoot = mkdtempSync(path.join(os.tmpdir(), "hermsec-semgrep-smoke-"));
+  const sourcePath = path.join(smokeRoot, "subject.js");
+  const rulesPath = path.join(smokeRoot, "rules.yml");
+  const outputPath = path.join(smokeRoot, "semgrep.json");
+  try {
+    writeFileSync(sourcePath, "eval(userInput);\n", "utf8");
+    writeFileSync(
+      rulesPath,
+      [
+        "rules:",
+        "  - id: hermsec.runtime-smoke.eval",
+        "    languages: [javascript]",
+        "    message: Hermsec runtime smoke match",
+        "    severity: WARNING",
+        "    pattern: eval(...)",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const launcher = pythonLauncherPath(toolsRoot, "semgrep", platform);
+    runLauncher(
+      launcher,
+      ["scan", "--config", rulesPath, "--json", "--metrics", "off", "--output", outputPath, sourcePath],
+      { platform, env },
+    );
+    const output = JSON.parse(readFileSync(outputPath, "utf8"));
+    if (
+      !Array.isArray(output?.results)
+      || !output.results.some((result) =>
+        typeof result?.check_id === "string"
+        && result.check_id.endsWith("hermsec.runtime-smoke.eval")
+      )
+    ) {
+      throw new Error("Bundled Semgrep did not emit the expected local-rule JSON finding.");
+    }
+  } finally {
+    rmSync(smokeRoot, { recursive: true, force: true });
+  }
 }
 
 function assertRuntimePathsConfined(stdout, toolsRoot) {

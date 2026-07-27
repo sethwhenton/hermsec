@@ -237,13 +237,24 @@ test("packaged smoke clears Node escape hatches and validates required scanner g
   assert.match(doctorSource, /BUNDLED_SCANNER_PROBE_TIMEOUT_MS/u);
   assert.match(doctorSource, /BUNDLED_SCANNER_PROBE_TIMEOUT_MS\s*=\s*30_000/u);
   assert.match(doctorSource, /returned no version output/u);
+  assert.match(doctorSource, /for \(const \[command, label, versionArgs\] of BUNDLED_SCANNERS\)/u);
+  assert.doesNotMatch(
+    doctorSource,
+    /Promise\.all\(BUNDLED_SCANNERS\.map/u,
+    "Packaged scanner first-launch probes must not contend on slower Intel runners.",
+  );
 });
 
-test("relative Python launchers are confined to runtime-tools and reject build-machine paths", () => {
+test("relative Python launchers are confined to runtime-tools and reject build-machine paths", async () => {
   for (const platform of ["darwin", "linux"]) {
     for (const tool of ["semgrep", "bandit", "pip-audit"]) {
       const content = relativePythonLauncherContent(tool, platform);
       assert.match(content, / -I -B -m /u);
+      if (tool === "semgrep") {
+        assert.match(content, /semgrep\.console_scripts\.entrypoint --legacy "\$@"/u);
+      } else {
+        assert.doesNotMatch(content, /--legacy/u);
+      }
       assert.match(content, /export PYTHONDONTWRITEBYTECODE=1/u);
       assert.match(content, /SELF_DIR=\$\{0%\/\*\}/u);
       assert.doesNotMatch(content, /\bdirname\b/u);
@@ -254,6 +265,14 @@ test("relative Python launchers are confined to runtime-tools and reject build-m
   }
   assert.throws(() => relativePythonLauncherContent("semgrep", "win32"));
   assert.throws(() => assertPortablePythonTarget("linux", "arm64"));
+
+  const layoutSource = await fs.readFile(
+    path.join(desktopRoot, "scripts", "runtime-python-layout.mjs"),
+    "utf8",
+  );
+  assert.match(layoutSource, /PATH:\s*path\.join\(runtime\.toolsRoot,\s*"bin"\)/u);
+  assert.match(layoutSource, /hermsec\.runtime-smoke\.eval/u);
+  assert.match(layoutSource, /\["scan", "--config", rulesPath, "--json", "--metrics", "off", "--output"/u);
 });
 
 test("Windows scanner launcher verification rejects non-native and build-path-bearing shims", () => {
